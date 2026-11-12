@@ -212,7 +212,13 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 
 		// Ships that pace us hold station on the ship itself; everything else is fixed in the sea and slides with the helm.
 		const bool bPacing = Obj.bHostile && !Obj.bExternal;
-		const FVector Local(Obj.Base.X, bPacing ? Obj.Base.Y : Obj.Base.Y - LaneOffset, Obj.Base.Z);
+		FVector Local(Obj.Base.X, bPacing ? Obj.Base.Y : Obj.Base.Y - LaneOffset, Obj.Base.Z);
+		if (!Obj.bHostile && !Obj.bSolid)
+		{
+			// Scenery cannot be hit, so never let the helm carry the ship through it: it keeps its distance.
+			const float MinY = ShipHalfWidth + Obj.Radius + 1500.f;
+			if (FMath::Abs(Local.Y) < MinY) { Local.Y = (Obj.Base.Y - LaneOffset >= 0.f ? 1.f : -1.f) * MinY; }
+		}
 		Actor->SetActorLocationAndRotation(Rock.TransformPosition(Local), Rock.GetRotation() * FRotator(0.f, Obj.Yaw, 0.f).Quaternion());
 
 		// Lookout: call an obstacle once, when it is close enough to matter and near our course.
