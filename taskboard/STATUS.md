@@ -2,6 +2,15 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 14:40 — maelstrom pass 4: mist
+
+Review set: `taskboard/review/10-maelstrom-mist/` (five helm frames from bursting out of the tunnel to the creature fully risen).
+
+- Mist now hangs where the falls land all round the foot of the crater wall, and boils around the creature's base. It softens the hard line between wall and water and gives the far side depth.
+- Light shafts from the sun now show across the deck in these frames.
+- State of the maelstrom against its reference: position, crater, waterfalls, mist, teal foaming water, spray, sun and rays, the creature rising with arms around it are all in. Still short: the creature's head is built from simple shapes; the curling water walls beside the ship are only there for the first seconds; the deck is not wet; crew are mannequins.
+- Packaging a fresh build now (Atlantis, faces, portal, mist).
+
 ## Thu 12 Nov 14:38 — the portal out of Atlantis
 
 Review set: `taskboard/review/09-portal/` (six helm frames over the last minute of the fog, ending inside the tunnel).

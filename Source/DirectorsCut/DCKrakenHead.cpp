@@ -261,6 +261,34 @@ void ADCKrakenHead::BeginPlay()
 		Spines.Add(AddPart(Mesh, TEXT("Cone"), FVector::ZeroVector, FRotator::ZeroRotator, FVector(S * 0.55f, S * 0.3f, S * 2.2f), HideMID));
 	}
 
+	// Mist: where the falls land at the foot of the crater wall, and boiling around the creature itself.
+	if (UMaterialInterface* CloudBase = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Cloud.M_Cloud")))
+	{
+		MistMID = UMaterialInstanceDynamic::Create(CloudBase, this);
+		MistRoot = NewObject<USceneComponent>(this, TEXT("MistRoot"));
+		MistRoot->SetMobility(EComponentMobility::Movable);
+		MistRoot->SetupAttachment(Mesh);
+		MistRoot->RegisterComponent();
+		FRandomStream MistRng(99);
+		const float RimRadius = Director ? Director->CraterRim - Director->CraterWidth * 1.6f : 100000.f;
+		for (int32 i = 0; i < 84; ++i)
+		{
+			const float A = 2.f * UE_PI * i / 84.f + MistRng.FRandRange(-0.03f, 0.03f);
+			const float Size = MistRng.FRandRange(11000.f, 20000.f);
+			UStaticMeshComponent* Puff = AddPart(MistRoot, TEXT("Sphere"), FVector(FMath::Cos(A), FMath::Sin(A), 0.f) * (RimRadius + MistRng.FRandRange(-5000.f, 3000.f)) + FVector(0.f, 0.f, MistRng.FRandRange(-2000.f, 5000.f)),
+				FRotator::ZeroRotator, FVector(Size / 50.f, Size / 50.f, Size / 85.f), MistMID);
+			Puff->SetCastShadow(false);
+		}
+		for (int32 i = 0; i < 14; ++i)
+		{
+			const float A = 2.f * UE_PI * i / 14.f;
+			const float Size = MistRng.FRandRange(7000.f, 12000.f);
+			UStaticMeshComponent* Puff = AddPart(Mesh, TEXT("Sphere"), FVector(FMath::Cos(A), FMath::Sin(A), 0.f) * MoundRadii.X * MistRng.FRandRange(1.1f, 1.7f) + FVector(0.f, 0.f, MistRng.FRandRange(-1500.f, 2500.f)),
+				FRotator::ZeroRotator, FVector(Size / 50.f, Size / 50.f, Size / 90.f), MistMID);
+			Puff->SetCastShadow(false);
+		}
+	}
+
 	UpdateNeck(true);
 	Mesh->SetMaterial(NeckSection, Skin);
 	for (int32 i = 0; i < NumArms; ++i)
@@ -315,6 +343,17 @@ void ADCKrakenHead::Tick(float DeltaSeconds)
 	const float FaceYaw = FMath::RadiansToDegrees(FMath::Atan2(-Director->WhirlCenter.Y, -Director->WhirlCenter.X)) - 90.f;
 	SetActorRelativeRotation(FRotator(0.f, FaceYaw, 0.f));
 
+	// Keep the ring of mist at the foot of the wall while the creature itself rises through the floor.
+	if (MistRoot && MistMID)
+	{
+		const float RimRatio = Director->CraterRim / Director->WhirlRadius;
+		const float BowlAtRim = Director->GetEnv().Whirl * Director->WhirlDepth * (1.f - 1.f / (1.f + RimRatio * RimRatio));
+		MistRoot->SetRelativeLocation(FVector(0.f, 0.f, BowlAtRim - Lift));
+		const float SunLit = FMath::Clamp(Director->GetEnv().SunIntensity / 9.f, 0.1f, 1.f);
+		MistMID->SetVectorParameterValue(TEXT("Top"), FLinearColor(0.8f, 0.88f, 0.95f) * SunLit);
+		MistMID->SetVectorParameterValue(TEXT("Bottom"), FLinearColor(0.5f, 0.62f, 0.72f) * SunLit);
+		MistMID->SetVectorParameterValue(TEXT("Flash"), FLinearColor(0.f, 0.f, 0.f, 0.6f * Director->GetEnv().Crater));
+	}
 	UpdateNeck(false);
 	for (int32 i = 0; i < NumArms; ++i) { UpdateArm(i, false); }
 

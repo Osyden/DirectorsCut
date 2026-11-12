@@ -45,6 +45,8 @@ protected:
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Mesh;
 	UPROPERTY() TObjectPtr<USceneComponent> HeadRoot;
 	UPROPERTY() TObjectPtr<USceneComponent> JawRoot;
+	UPROPERTY() TObjectPtr<USceneComponent> MistRoot;
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> MistMID;
 	UPROPERTY() TArray<TObjectPtr<UStaticMeshComponent>> Spines;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> EyeMID;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> HideMID;
