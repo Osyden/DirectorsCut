@@ -6,11 +6,11 @@ The repo is public, so licensed content and large binaries stay local. To run th
 | --- | --- | --- |
 | Brigantine ship asset (purchased) | `Content/Brigantine/` | Fab library, added through the Epic launcher |
 | NVIDIA DLSS 4.5 plugin v8.7.2 for UE 5.8 | `Plugins/DLSS`, `Plugins/StreamlineCore`, `Plugins/StreamlineDLSSG`, `Plugins/StreamlineNGXCommon`, `Plugins/StreamlineReflex` | NVIDIA developer site, "DLSS Unreal Engine plugin archive" |
-| llama.cpp server, CUDA 12.4 build b12317 (plus the `cudart` zip) | `Sidecars/bin/llama/` | github.com/ggml-org/llama.cpp releases |
-| whisper.cpp, CUDA 12.4 build b5454 | `Sidecars/bin/whisper/` | github.com/ggml-org/whisper.cpp releases |
+| llama.cpp server, Vulkan build b12317 (`llama-b12317-bin-win-vulkan-x64.zip`) | `Sidecars/bin/llama/` | github.com/ggml-org/llama.cpp releases |
+| whisper.cpp, CPU build b5454 (`whisper-bin-x64.zip`) | `Sidecars/bin/whisper/` | github.com/ggml-org/whisper.cpp releases |
 | Piper 2023.11.14-2, Windows | `Sidecars/bin/piper/` | github.com/rhasspy/piper releases |
 | LLM weights `Qwen3.5-4B-Q5_K_M.gguf` | `Sidecars/models/` | local copy in `E:\AI\Oobabooga\user_data\models` |
-| Speech model `ggml-small.en.bin` | `Sidecars/models/` | huggingface.co/ggerganov/whisper.cpp |
+| Speech model `ggml-base.en.bin` | `Sidecars/models/` | huggingface.co/ggerganov/whisper.cpp |
 | Voices `en_GB-alan-medium`, `en_GB-northern_english_male-medium`, `en_GB-alba-medium` (`.onnx` and `.onnx.json`) | `Sidecars/models/voices/` | huggingface.co/rhasspy/piper-voices |
 
 Engine: Unreal Engine 5.8.4 (launcher build) with Visual Studio 2022.

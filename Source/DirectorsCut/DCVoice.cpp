@@ -206,7 +206,7 @@ void ADCVoice::LaunchSidecars()
 	const FString STTModelPath = Dir / TEXT("models") / STTModel;
 	if (!bSTTReady && FPaths::FileExists(STTExe) && FPaths::FileExists(STTModelPath))
 	{
-		const FString Args = FString::Printf(TEXT("-m \"%s\" --host 127.0.0.1 --port %d"), *STTModelPath, STTPort);
+		const FString Args = FString::Printf(TEXT("-m \"%s\" --host 127.0.0.1 --port %d -t 8"), *STTModelPath, STTPort);
 		STTProc = FPlatformProcess::CreateProc(*STTExe, *Args, false, true, true, nullptr, 0, *(Dir / TEXT("bin/whisper/Release")), nullptr);
 		UE_LOG(LogDC, Log, TEXT("Voice: started whisper-server (%s)"), STTProc.IsValid() ? TEXT("ok") : TEXT("failed"));
 	}

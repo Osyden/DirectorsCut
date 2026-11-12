@@ -48,7 +48,7 @@ public:
 	UPROPERTY(Config, EditAnywhere) int32 LLMPort = 8791;
 	UPROPERTY(Config, EditAnywhere) int32 STTPort = 8792;
 	UPROPERTY(Config, EditAnywhere) FString LLMModel = TEXT("Qwen3.5-4B-Q5_K_M.gguf");
-	UPROPERTY(Config, EditAnywhere) FString STTModel = TEXT("ggml-small.en.bin");
+	UPROPERTY(Config, EditAnywhere) FString STTModel = TEXT("ggml-base.en.bin");
 	UPROPERTY(Config, EditAnywhere) bool bUseLLM = true;
 	/** Seconds to wait for the LLM before speaking the canned line instead. */
 	UPROPERTY(Config, EditAnywhere) float LLMTimeout = 1.5f;

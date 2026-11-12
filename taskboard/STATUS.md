@@ -2,6 +2,15 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 11:42 — readable HUD, lighter build, submission notes
+
+- **HUD redone:** hull bar, phase name, score, fire and rigging alerts, subtitles on dark plates, a one-line key reminder, and title and score cards that scale with resolution. Debug numbers only show with `-DCDebug`.
+- **Build is about 2.7 GB lighter and no longer needs an NVIDIA card for the crew AI.** The language model server now uses Vulkan and speech-to-text runs on the CPU with a smaller model. Measured here: same reply speed, an order registers in about half a second.
+- **Submission notes are in `taskboard/SUBMISSION.md`:** deadline (Mon 16 Nov 01:59 GMT, from secondary sources), what to upload, the list of sourced assets, draft NVIDIA answers, and the build-size question. **Owner: itch.io normally limits files to about 1 GB; our build is about 5 GB.** Please check the rules or tell me which cut to make.
+- **Gun station** checked with a scripted player: the camera now sits outboard of the shrouds with a clear field of fire. Ghost ships hold station on the ship instead of drifting into it.
+- Fires now burn out on their own after 40 seconds; arms take more shots; the lookout only calls rocks that actually threaten the ship.
+- `Tools/contact.ps1` tiles a run's screenshots into one sheet (`Saved/Screenshots/contact.png`).
+
 ## Thu 12 Nov 11:26 — whole ride plays start to finish; kraken head; balance
 
 - **The ride now plays from title card to score card.** A full unattended run-through (4x speed, `-DCRunThrough`) passes through all seven phases and ends on the score card. `R` sails again, `Esc` quits.
