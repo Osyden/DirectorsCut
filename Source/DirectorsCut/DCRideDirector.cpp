@@ -403,7 +403,8 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 	}
 	// Thrown clear of the maelstrom: the screen whites out, then the calm sea fades in.
 	WhiteOut = FMath::Max(0.f, WhiteOut - DeltaSeconds / 3.5f);
-	PostProcess->Settings.AutoExposureBias = (bUDS ? 0.f : Env.Exposure) + 7.f * WhiteOut * WhiteOut;
+	// Under the pack an overcast sky already takes most of the sun away, so the dim phases are opened up.
+	PostProcess->Settings.AutoExposureBias = Env.Exposure + (bUDS ? 2.2f * (1.f - FMath::Clamp(Env.SunIntensity / 7.f, 0.f, 1.f)) : 0.f) + 7.f * WhiteOut * WhiteOut;
 	if (bUDS) { TickUDS(); }
 
 	// Sea motion: the world rocks, the ship does not.
@@ -620,8 +621,8 @@ void ADCRideDirector::SetupUDS()
 	// Ultra Dynamic Sky (Content/UltraDynamicSky, a Fab pack that is not in the repo). When it is
 	// installed it takes over the sun, sky light, atmosphere, height fog, clouds and weather, and
 	// the ride drives it. Without it, or with -DCNoUDS, the director's own sky is used.
-	// Not working yet (sky comes up as dusk with no clouds, sea over-bright), so it is opt-in: -DCUDS.
-	if (!FParse::Param(FCommandLine::Get(), TEXT("DCUDS"))) { return; }
+	// -DCNoUDS goes back to the director's own sky (which also has the storm front, portal and cloud faces).
+	if (FParse::Param(FCommandLine::Get(), TEXT("DCNoUDS"))) { return; }
 	UClass* SkyClass = LoadClass<AActor>(nullptr, TEXT("/Game/UltraDynamicSky/Blueprints/Ultra_Dynamic_Sky.Ultra_Dynamic_Sky_C"), nullptr, LOAD_NoWarn | LOAD_Quiet);
 	UClass* WeatherClass = LoadClass<AActor>(nullptr, TEXT("/Game/UltraDynamicSky/Blueprints/Ultra_Dynamic_Weather.Ultra_Dynamic_Weather_C"), nullptr, LOAD_NoWarn | LOAD_Quiet);
 	if (!SkyClass || !WeatherClass) { return; }
@@ -637,6 +638,8 @@ void ADCRideDirector::SetupUDS()
 	SkyFlag(UDSSky, TEXT("Manually Position Sun Target"), true);
 	SkyFlag(UDSSky, TEXT("Use Volumetric Fog"), true);
 	SkyFlag(UDSSky, TEXT("Enable Sun Light Shaft Bloom"), true);
+	// The director keeps its own fixed exposure per phase, so dark scenes stay dark.
+	SkyFlag(UDSSky, TEXT("Apply Exposure Settings"), false);
 	SkyNum(UDSSky, TEXT("Time of Day"), 1300.0);
 	UGameplayStatics::FinishSpawningActor(UDSSky, FTransform::Identity);
 
@@ -649,20 +652,22 @@ void ADCRideDirector::SetupUDS()
 	UGameplayStatics::FinishSpawningActor(UDSWeather, FTransform::Identity);
 
 	bUDS = true;
-	// Exposure is the pack's from here; the director keeps only the white-out at the end.
-	PostProcess->Settings.bOverride_AutoExposureMethod = false;
-	PostProcess->Settings.bOverride_AutoExposureApplyPhysicalCameraExposure = false;
 	UE_LOG(LogDC, Log, TEXT("Sky: Ultra Dynamic Sky in use"));
 }
 
 void ADCRideDirector::TickUDS()
 {
-	// The director's light points down along its pitch; the pack wants where the sun stands.
-	SkyNum(UDSSky, TEXT("Sun Pitch"), -Env.SunPitch);
-	SkyNum(UDSSky, TEXT("Sun Yaw"), Env.SunYaw + 180.0);
+	// The director's light points down along its pitch; the pack wants a point to hang the sun on.
+	if (FStructProperty* Target = FindFProperty<FStructProperty>(UDSSky->GetClass(), TEXT("Sun Target")))
+	{
+		const FVector ToSun = -FRotator(Env.SunPitch, Env.SunYaw, 0.f).Vector();
+		*Target->ContainerPtrToValuePtr<FVector>(UDSSky.Get()) = ToSun * 1000000.0;
+	}
 	SkyNum(UDSWeather, TEXT("Cloud Coverage"), FMath::Clamp(2.0 + 8.0 * Env.CloudCover, 0.0, 10.0));
 	SkyNum(UDSWeather, TEXT("Fog"), FMath::Clamp(Env.FogDensity * 250.0 + Env.Mist * 3.0, 0.0, 10.0));
 	SkyNum(UDSWeather, TEXT("Rain"), FMath::Clamp(Env.Rain * 10.0, 0.0, 10.0));
 	SkyNum(UDSWeather, TEXT("Wind Intensity"), FMath::Clamp(Env.WaveHeight / 30.0, 1.0, 10.0));
 	SkyNum(UDSWeather, TEXT("Thunder/Lightning"), 0.0);
+	SkyNum(UDSSky, TEXT("Sun Light Intensity"), Env.SunIntensity * 0.75 + 2.0);
+	SkyNum(UDSSky, TEXT("Sky Light Intensity"), Env.SkyIntensity);
 }

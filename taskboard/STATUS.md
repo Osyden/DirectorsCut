@@ -2,6 +2,19 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 21:08 — Ultra Dynamic Sky is working and is now the default sky (set 22)
+
+Review set: `taskboard/review/22-ultra-dynamic-sky/` (twelve helm frames through the voyage, 720p). Corrects the 20:25 entry: the pack was not broken, I was positioning its sun the wrong way (it wants a target point, not pitch and yaw).
+
+- **The pack now supplies sun, sky light, atmosphere, height and volumetric fog, clouds and rain.** The ride drives it per phase: sun position and strength, sky light, cloud cover, fog, rain, wind. The director keeps its own fixed exposure per phase.
+- Open sea: real cumulus, blue sky, sunlit deck and sea. Atlantis: dark violet overcast with rain, the ruins in silhouette at several depths, lanterns warm on deck. Maelstrom: broken cloud with sun through it.
+- Frame rate: 173 to 178 fps open sea, 113 to 123 in Atlantis, 130 to 138 in the maelstrom (720p, DLSS, editor build). Atlantis is about 20 fps faster than under my cloud layer.
+- **Lost for now with the pack on:** the storm front wall and its mouth, the portal out of Atlantis, the cloud faces and the sea mist. They were drawn in my cloud layer, and the engine renders only one. `-DCNoUDS` brings the old sky and all of those back. They need rebuilding another way (the pack has a cloud painter and a radial storm actor to look at).
+- Not yet used from the pack: its lightning (mine still fires), wet materials, rain splashes on the deck, screen droplets (switched on, not yet seen in a frame), its sounds.
+- The opening is flat calm and plain now that the front is gone: nothing approaches. The Atlantis sky is an even overcast without structure.
+
+The packaged build is still the 19:02 one.
+
 ## Thu 12 Nov 20:25 — Atlantis rebuilt from the ruins pack (set 21); Ultra Dynamic Sky wired in but not working yet
 
 Owner's first playtest is in `PLAYTEST-1.md`. Fab packs in the project and ignored by git: AncientRuins, Kraken, UltraDynamicSky.
