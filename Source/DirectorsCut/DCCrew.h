@@ -92,6 +92,8 @@ public:
 	void Say(const FString& Speaker, const FString& Text);
 	/** A crew answer to the current order: goes through the voice loop when it is running. */
 	void Reply(const FString& Speaker, const FString& Text);
+	/** An unprompted warning from the crew ("Rocks dead ahead!"). Rate-limited unless urgent. */
+	void Report(const FString& Text, bool bUrgent = false);
 
 	FDCOnCrewLine OnCrewLine;
 	/** Last few lines, newest last. Read by the HUD for subtitles. */
@@ -103,5 +105,7 @@ protected:
 
 	TArray<FDCStation> Stations;
 	FString CurrentOrderText;
+	double LastReportTime = -100.0;
+	int32 NextReporter = 0;
 	UPROPERTY() TArray<TObjectPtr<ADCCrewMember>> Crew;
 };

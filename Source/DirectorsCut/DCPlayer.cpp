@@ -13,6 +13,11 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Widgets/Input/SEditableTextBox.h"
+#include "Widgets/Layout/SBox.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Engine/GameViewportClient.h"
+#include "Engine/Engine.h"
 
 ADCPlayerCharacter::ADCPlayerCharacter()
 {
@@ -33,6 +38,9 @@ void ADCPlayerCharacter::Tick(float DeltaSeconds)
 
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (!PC) { return; }
+
+	if (bTyping) { return; }
+	if (PC->WasInputKeyJustPressed(EKeys::Enter)) { OpenOrderBox(PC); return; }
 
 	switch (ActiveType)
 	{
@@ -237,4 +245,67 @@ void ADCPlayerCharacter::DebugTakeStation(EDCStationType Type, EDCSide Side)
 	if (ActiveStation != INDEX_NONE) { LeaveStation(PC); }
 	const int32 Index = Crew->FindStation(Type, Side);
 	if (Index != INDEX_NONE) { EnterStation(PC, Index); }
+}
+
+void ADCPlayerCharacter::OpenOrderBox(APlayerController* PC)
+{
+	if (bTyping || !GEngine || !GEngine->GameViewport) { return; }
+	bTyping = true;
+
+	TWeakObjectPtr<ADCPlayerCharacter> Weak(this);
+	SAssignNew(OrderBox, SEditableTextBox)
+		.HintText(FText::FromString(TEXT("Type an order for the crew, then press Enter")))
+		.Font(FCoreStyle::GetDefaultFontStyle("Regular", 18))
+		.OnTextCommitted_Lambda([Weak](const FText& Text, ETextCommit::Type Type)
+		{
+			ADCPlayerCharacter* Self = Weak.Get();
+			if (!Self) { return; }
+			if (Type == ETextCommit::OnEnter && !Text.IsEmpty())
+			{
+				if (UDCCrewSubsystem* Crew = Self->GetWorld()->GetSubsystem<UDCCrewSubsystem>()) { Crew->ExecuteOrder(Text.ToString()); }
+			}
+			Self->CloseOrderBox();
+		});
+
+	OrderRoot = SNew(SBox)
+		.HAlign(HAlign_Center)
+		.VAlign(VAlign_Bottom)
+		.Padding(FMargin(0.f, 0.f, 0.f, 150.f))
+		[
+			SNew(SBox).WidthOverride(720.f)[ OrderBox.ToSharedRef() ]
+		];
+	GEngine->GameViewport->AddViewportWidgetContent(OrderRoot.ToSharedRef(), 50);
+
+	FInputModeGameAndUI Mode;
+	Mode.SetWidgetToFocus(OrderBox);
+	Mode.SetHideCursorDuringCapture(false);
+	PC->SetInputMode(Mode);
+	FSlateApplication::Get().SetKeyboardFocus(OrderBox, EFocusCause::SetDirectly);
+}
+
+void ADCPlayerCharacter::CloseOrderBox()
+{
+	if (!bTyping) { return; }
+	bTyping = false;
+	if (GEngine && GEngine->GameViewport && OrderRoot.IsValid())
+	{
+		GEngine->GameViewport->RemoveViewportWidgetContent(OrderRoot.ToSharedRef());
+	}
+	OrderRoot.Reset();
+	OrderBox.Reset();
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		// The gun station keeps its cursor; everywhere else goes back to mouse-look.
+		if (ActiveType != EDCStationType::Cannons)
+		{
+			PC->SetInputMode(FInputModeGameOnly());
+		}
+		FSlateApplication::Get().SetAllUserFocusToGameViewport();
+	}
+}
+
+void ADCPlayerCharacter::EndPlay(const EEndPlayReason::Type Reason)
+{
+	CloseOrderBox();
+	Super::EndPlay(Reason);
 }

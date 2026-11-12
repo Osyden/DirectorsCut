@@ -48,7 +48,7 @@ void ADCHUD::DrawHUD()
 	}
 	if (ADCVoice* V = ADCVoice::Get(this))
 	{
-		DrawText(FString::Printf(TEXT("Voice: speech-in %s  crew-mind %s  speech-out %s   [hold V to talk, 1-6 quick orders]"),
+		DrawText(FString::Printf(TEXT("Voice: speech-in %s  crew-mind %s  speech-out %s   [hold V to talk, Enter to type, 1-6 quick orders]"),
 			V->IsSTTReady() ? TEXT("on") : TEXT("off"), V->IsLLMReady() ? TEXT("on") : TEXT("off"), V->IsTTSReady() ? TEXT("on") : TEXT("off")),
 			FLinearColor(0.6f, 0.7f, 0.6f), 40.f, 84.f, Font, 1.f);
 		if (V->IsListening())

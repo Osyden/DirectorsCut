@@ -1,6 +1,7 @@
 #include "DCTreadmill.h"
 #include "DCRideDirector.h"
 #include "DCHazards.h"
+#include "DCCrew.h"
 #include "Engine/StaticMeshActor.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
@@ -141,6 +142,10 @@ void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
 		const float Side = FMath::RandBool() ? 1.f : -1.f;
 		const FVector Base(SpawnDistance, LaneOffset + Side * FMath::FRandRange(4500.f, 8000.f), SeaZ);
 		AActor* Ghost = DCHazards::SpawnGhostShip(World, bHell ? FLinearColor(1.f, 0.25f, 0.03f) : FLinearColor(0.15f, 0.9f, 0.75f));
+		if (UDCCrewSubsystem* Crew = World->GetSubsystem<UDCCrewSubsystem>())
+		{
+			Crew->Report(bHell ? (Side > 0.f ? TEXT("Burning ship to starboard!") : TEXT("Burning ship to port!")) : (Side > 0.f ? TEXT("Ghost ship to starboard!") : TEXT("Ghost ship to port!")));
+		}
 		Register(Ghost, Base, 1600.f, true, 2.f, FMath::FRandRange(-8.f, 8.f), false);
 	}
 }
@@ -196,9 +201,20 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 		const FVector Local(Obj.Base.X, Obj.Base.Y - LaneOffset, Obj.Base.Z);
 		Actor->SetActorLocationAndRotation(Rock.TransformPosition(Local), Rock.GetRotation() * FRotator(0.f, Obj.Yaw, 0.f).Quaternion());
 
+		// Lookout: call an obstacle once, when it is close enough to matter and near our course.
+		if (!Obj.bHostile && Obj.bSolid && !Obj.bCalled && Local.X < 13000.f && FMath::Abs(Local.Y) < ShipHalfWidth + Obj.Radius + 900.f)
+		{
+			Obj.bCalled = true;
+			if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
+			{
+				Crew->Report(FMath::Abs(Local.Y) < 250.f ? TEXT("Rocks dead ahead!") : (Local.Y > 0.f ? TEXT("Rocks ahead, off the starboard bow!") : TEXT("Rocks ahead, off the port bow!")));
+			}
+		}
+
 		if (!Obj.bHostile && Obj.bSolid && FMath::Abs(Local.X) < ShipHalfLength && FMath::Abs(Local.Y) < ShipHalfWidth + Obj.Radius)
 		{
 			Director->DamageShip(10.f);
+			if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>()) { Crew->Report(TEXT("We struck the rocks! Hull is breached!"), true); }
 			Actor->Destroy();
 			Objects.RemoveAtSwap(i);
 			continue;

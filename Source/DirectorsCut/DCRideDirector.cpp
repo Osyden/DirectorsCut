@@ -8,6 +8,7 @@
 #include "Components/VolumetricCloudComponent.h"
 #include "ProceduralMeshComponent.h"
 #include "DCTreadmill.h"
+#include "DCCrew.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
@@ -189,6 +190,19 @@ void ADCRideDirector::Tick(float DeltaSeconds)
 		CurrentPhase = Cur.Phase;
 		UE_LOG(LogDC, Log, TEXT("Phase -> %s at %.1fs"), DCPhaseName(CurrentPhase), RideTime);
 		OnPhaseChanged.Broadcast(CurrentPhase);
+		if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
+		{
+			switch (CurrentPhase)
+			{
+			case EDCPhase::Fog: Crew->Report(TEXT("Fog bank rolling in, Captain. Unnatural thick."), true); break;
+			case EDCPhase::Slide: Crew->Report(TEXT("The sea is falling away beneath us! Hold on!"), true); break;
+			case EDCPhase::Hell: Crew->Report(TEXT("The water is burning! We are in hell itself!"), true); break;
+			case EDCPhase::Breach: Crew->Report(TEXT("Light ahead! We are breaking through!"), true); break;
+			case EDCPhase::Maelstrom: Crew->Report(TEXT("Whirlpool! And something huge moving in it!"), true); break;
+			case EDCPhase::Ending: Crew->Report(TEXT("Clear water, Captain. We made it through."), true); break;
+			default: break;
+			}
+		}
 	}
 
 	if (Idx > 0 && Cur.BlendTime > 0.f)

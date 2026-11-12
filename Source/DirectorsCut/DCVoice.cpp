@@ -450,11 +450,20 @@ void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const 
 		Situation += FString::Printf(TEXT("; hull at %d percent"), FMath::RoundToInt(D->ShipHealth));
 	}
 
-	const FString System = FString::Printf(
-		TEXT("You are %s, crew on a pirate brigantine. The captain has given an order and you are already carrying it out. ")
-		TEXT("Say one short line aloud to the captain confirming it, in character. At most 10 words. Spoken words only: no quotes, no actions, no narration."),
-		*PersonaFor(Speaker));
-	const FString User = FString::Printf(TEXT("Captain's order: \"%s\"\nWhat you are doing: %s\nSituation: %s"), *Context, *Fallback, *Situation);
+	// An empty Context means nobody asked: the crew member is reporting something they have seen.
+	const bool bReport = Context.IsEmpty();
+	const FString System = bReport
+		? FString::Printf(
+			TEXT("You are %s, crew on a pirate brigantine. You have just seen something the captain must know. ")
+			TEXT("Shout it in one short urgent line, in character. At most 8 words. Keep any direction given (port, starboard, ahead). Spoken words only: no quotes, no actions, no narration."),
+			*PersonaFor(Speaker))
+		: FString::Printf(
+			TEXT("You are %s, crew on a pirate brigantine. The captain has given an order and you are already carrying it out. ")
+			TEXT("Say one short line aloud to the captain confirming it, in character. At most 10 words. Spoken words only: no quotes, no actions, no narration."),
+			*PersonaFor(Speaker));
+	const FString User = bReport
+		? FString::Printf(TEXT("What you saw: %s\nSituation: %s"), *Fallback, *Situation)
+		: FString::Printf(TEXT("Captain's order: \"%s\"\nWhat you are doing: %s\nSituation: %s"), *Context, *Fallback, *Situation);
 
 	TSharedRef<FJsonObject> Root = MakeShared<FJsonObject>();
 	TArray<TSharedPtr<FJsonValue>> Messages;

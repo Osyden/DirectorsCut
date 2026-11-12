@@ -49,4 +49,14 @@ protected:
 	EDCStationType ActiveType = EDCStationType::None;
 	EDCSide ActiveSide = EDCSide::None;
 	FString Prompt;
+
+	// Typed orders: Enter opens a text box, Enter again sends it to the crew.
+	void OpenOrderBox(APlayerController* PC);
+	void CloseOrderBox();
+	TSharedPtr<class SWidget> OrderRoot;
+	TSharedPtr<class SEditableTextBox> OrderBox;
+	bool bTyping = false;
+
+public:
+	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
 };

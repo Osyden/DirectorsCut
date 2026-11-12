@@ -492,3 +492,23 @@ void ADCCrewMember::SetWalking(bool bWalk)
 		Figure->PlayAnimation(Anim, true);
 	}
 }
+
+void UDCCrewSubsystem::Report(const FString& Text, bool bUrgent)
+{
+	if (!Crew.Num()) { return; }
+	const double Now = GetWorld()->GetTimeSeconds();
+	if (Now - LastReportTime < (bUrgent ? 1.5 : 5.0)) { return; }
+	LastReportTime = Now;
+
+	// Take turns, so the whole crew has a voice.
+	ADCCrewMember* Speaker = Crew[NextReporter++ % Crew.Num()];
+	if (!Speaker) { return; }
+	if (ADCVoice* Voice = ADCVoice::Get(this))
+	{
+		Voice->CrewReply(Speaker->CrewName, Text, FString());
+	}
+	else
+	{
+		Say(Speaker->CrewName, Text);
+	}
+}

@@ -24,6 +24,8 @@ struct FDCWorldObject
 	float Yaw = 0.f;
 	/** False for scenery that the ship cannot hit. */
 	bool bSolid = true;
+	/** The lookout has already called this one. */
+	bool bCalled = false;
 };
 
 /**
