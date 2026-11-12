@@ -306,6 +306,15 @@ void ADCGameMode::StartPlay()
 	Crew->AddStation(EDCStationType::Fire, EDCSide::None, DeckAt(GunS.X - 200.f, 60.f, MainTop));
 	Crew->AddStation(EDCStationType::Rigging, EDCSide::None, DeckAt(GunS.X + 420.f, 120.f, MainTop));
 
+	// Light the ship's own lanterns.
+	Director->AddLamp(ShipPart(TEXT("SM_Lamp"), FVector(-2067.f, 0.f, 908.f)));
+	{
+		const FVector Mid = ShipPart(TEXT("SM_Lamp-brigantine1"), FVector(-618.f, 0.f, 826.f));
+		Director->AddLamp(Mid + FVector(0.f, -75.f, 0.f));
+		Director->AddLamp(Mid + FVector(0.f, 75.f, 0.f));
+		Director->AddLamp(ShipPart(TEXT("SM_Lamp-brigantine2"), FVector(607.f, 0.f, 731.f)));
+	}
+
 	// Troubles: where fires may start (main deck and quarterdeck, clear of the stations).
 	ADCTroubles* Troubles = World->SpawnActor<ADCTroubles>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
 	for (const FVector2D& P : { FVector2D(GunS.X + 250.f, -120.f), FVector2D(GunS.X - 80.f, 140.f), FVector2D(GunS.X + 520.f, 60.f), FVector2D(GunS.X - 330.f, -150.f) })

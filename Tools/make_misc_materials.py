@@ -140,3 +140,12 @@ mel.connect_material_expressions(inv, "", mul, "B")
 mel.connect_material_property(mul, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
 mel.recompile_material(mat)
 unreal.log_warning("DC_RESULT M_Glow saved=%s" % unreal.EditorAssetLibrary.save_asset(path, only_if_is_dirty=False))
+
+# ---- M_Bolt: flat self-lit colour seen from both sides (lightning ribbons).
+mat, path = new_material("M_Bolt")
+mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+mat.set_editor_property("two_sided", True)
+col = vparam(mat, "Color", (60.0, 70.0, 90.0, 1), -400, 0)
+mel.connect_material_property(col, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+mel.recompile_material(mat)
+unreal.log_warning("DC_RESULT M_Bolt saved=%s" % unreal.EditorAssetLibrary.save_asset(path, only_if_is_dirty=False))

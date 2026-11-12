@@ -47,6 +47,7 @@ void ADCPlayerCharacter::Tick(float DeltaSeconds)
 	if (bTyping) { return; }
 	if (PC->WasInputKeyJustPressed(EKeys::Enter)) { OpenOrderBox(PC); return; }
 	TickMeta(PC);
+	TickCameraFeel(DeltaSeconds);
 
 	switch (ActiveType)
 	{
@@ -357,4 +358,22 @@ void ADCPlayerCharacter::TickMeta(APlayerController* PC)
 	{
 		UKismetSystemLibrary::QuitGame(this, PC, EQuitPreference::Quit, false);
 	}
+}
+
+void ADCPlayerCharacter::TickCameraFeel(float DeltaSeconds)
+{
+	// Shake from blows and thunder, a steady rumble and a wider lens while the sea drops away.
+	ADCRideDirector* Director = ADCRideDirector::Get(this);
+	if (!Director || !Camera) { return; }
+	const FDCEnvState& Env = Director->GetEnv();
+	const float Rush = FMath::Clamp(Env.Drop / 260.f, 0.f, 1.f);
+	const float Shake = FMath::Square(Director->Trauma) + Rush * 0.12f + Env.Tube * 0.03f;
+	const float T = GetWorld()->GetTimeSeconds();
+	const FRotator Jitter(
+		Shake * 2.2f * FMath::PerlinNoise1D(T * 17.f),
+		Shake * 1.6f * FMath::PerlinNoise1D(T * 15.f + 40.f),
+		Shake * 3.5f * FMath::PerlinNoise1D(T * 13.f + 80.f));
+	Camera->SetRelativeRotation(Jitter);
+	Camera->SetRelativeLocation(FVector(0.f, 0.f, 64.f) + FVector(0.f, Shake * 6.f * FMath::PerlinNoise1D(T * 19.f + 7.f), Shake * 8.f * FMath::PerlinNoise1D(T * 21.f + 3.f)));
+	Camera->SetFieldOfView(FMath::FInterpTo(Camera->FieldOfView, 90.f + 16.f * Rush, DeltaSeconds, 2.f));
 }

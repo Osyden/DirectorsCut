@@ -55,10 +55,21 @@ public:
 	/** Fired at the start of every lightning flash. */
 	FSimpleMulticastDelegate OnLightning;
 
+	/** A ship lantern at a world position; lit automatically when it gets dark. */
+	void AddLamp(const FVector& Location);
+	UPROPERTY(EditAnywhere) float LampIntensity = 2200.f;
+	/** 0..1 camera shake: hits, thunder, kraken blows. Decays by itself. */
+	float Trauma = 0.f;
+
 protected:
 	void BuildDefaultPhases();
 	void ApplyEnv(float DeltaSeconds);
 	void BuildSeaMesh();
+	void BuildBolt();
+	void TickLamps();
+	UPROPERTY() TObjectPtr<class UProceduralMeshComponent> Bolt;
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> BoltMID;
+	UPROPERTY() TArray<TObjectPtr<class UPointLightComponent>> Lamps;
 	FVector2D SeaScroll = FVector2D::ZeroVector;
 
 public:

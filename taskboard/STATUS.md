@@ -2,6 +2,14 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 12:03 — lanterns, lightning bolts, shake; lighter build verified
+
+- **Packaged build re-verified at 5.2 GB** with the lighter AI servers: it started them itself, heard the recorded order in 420 ms, the crew answered and spoke, DLSS active.
+- **Ship lanterns** light up as daylight goes (stern, mainmast pair, foremast), flickering. In the fog the deck is now lit warm against the blue murk.
+- **Lightning has bolts:** a forked ribbon a few kilometres off for the length of each flash, then thunder. The flash itself is gentler so the sea does not turn bright blue.
+- **Camera feel:** shake on hull strikes and thunder, a rumble and wider lens while the sea drops away in the slide.
+- Test flag `-DCLightningTest` holds each flash for 4 seconds so bolts can be photographed.
+
 ## Thu 12 Nov 11:42 — readable HUD, lighter build, submission notes
 
 - **HUD redone:** hull bar, phase name, score, fire and rigging alerts, subtitles on dark plates, a one-line key reminder, and title and score cards that scale with resolution. Debug numbers only show with `-DCDebug`.

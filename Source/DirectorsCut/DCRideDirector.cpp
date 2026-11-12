@@ -5,6 +5,7 @@
 #include "Components/ExponentialHeightFogComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/PostProcessComponent.h"
+#include "Components/PointLightComponent.h"
 #include "Components/VolumetricCloudComponent.h"
 #include "ProceduralMeshComponent.h"
 #include "DCTreadmill.h"
@@ -15,6 +16,8 @@
 #include "EngineUtils.h"
 #include "UObject/ConstructorHelpers.h"
 #include "HAL/IConsoleManager.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 
 ADCRideDirector::ADCRideDirector()
 {
@@ -31,7 +34,7 @@ ADCRideDirector::ADCRideDirector()
 	Flash->SetMobility(EComponentMobility::Movable);
 	Flash->bAtmosphereSunLight = false;
 	Flash->Intensity = 0.f;
-	Flash->LightColor = FColor(190, 210, 255);
+	Flash->LightColor = FColor(220, 228, 255);
 	Flash->SetRelativeRotation(FRotator(-60.f, 40.f, 0.f));
 
 	SkyLight = CreateDefaultSubobject<USkyLightComponent>(TEXT("SkyLight"));
@@ -65,6 +68,13 @@ ADCRideDirector::ADCRideDirector()
 	PostProcess->Settings.AutoExposureApplyPhysicalCameraExposure = false;
 	PostProcess->Settings.bOverride_AutoExposureBias = true;
 	PostProcess->Settings.AutoExposureBias = 0.f;
+
+	Bolt = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("Bolt"));
+	Bolt->SetupAttachment(RootComponent);
+	Bolt->SetMobility(EComponentMobility::Movable);
+	Bolt->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Bolt->SetCastShadow(false);
+	Bolt->SetVisibility(false);
 
 	BuildDefaultPhases();
 }
@@ -142,6 +152,11 @@ ADCRideDirector* ADCRideDirector::Get(const UObject* WorldContext)
 void ADCRideDirector::BeginPlay()
 {
 	Super::BeginPlay();
+	if (UMaterialInterface* GlowBase = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Bolt.M_Bolt")))
+	{
+		BoltMID = UMaterialInstanceDynamic::Create(GlowBase, this);
+	}
+	Flash->SetAtmosphereSunLight(false);
 	BuildSeaMesh();
 	UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Sea.M_Sea"));
 	if (!Base) { Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial")); }
@@ -166,6 +181,7 @@ void ADCRideDirector::Seek(float NewTime)
 void ADCRideDirector::DamageShip(float Amount, bool bQuiet)
 {
 	ShipHealth = FMath::Max(0.f, ShipHealth - Amount);
+	if (!bQuiet) { Trauma = FMath::Min(1.f, Trauma + 0.25f + Amount * 0.06f); }
 	if (!bQuiet) { UE_LOG(LogDC, Log, TEXT("Ship hit for %.0f, health %.0f"), Amount, ShipHealth); }
 }
 
@@ -267,11 +283,16 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 	const FQuat Level = FRotator(0.f, 0.f, FMath::RadiansToDegrees(FMath::Atan(Slope)) * (WhirlCenter.Y < 0.f ? 1.f : -1.f)).Quaternion();
 	Sea->SetRelativeTransform(FTransform(WorldRock.GetRotation() * Level, FVector(0.f, 0.f, SeaLevelZ + Heave)));
 
+	TickLamps();
+	Trauma = FMath::Max(0.f, Trauma - DeltaSeconds * 1.4f);
+
 	// Lightning.
 	if (FlashTimeLeft > 0.f)
 	{
 		FlashTimeLeft -= DeltaSeconds;
-		Flash->SetIntensity(FlashTimeLeft > 0.f ? FMath::FRandRange(8.f, 30.f) : 0.f);
+		Flash->SetIntensity(FlashTimeLeft > 0.f ? FMath::FRandRange(3.f, 11.f) : 0.f);
+		if (FlashTimeLeft <= 0.f) { Bolt->SetVisibility(false); }
+		else if (BoltMID) { BoltMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.75f, 0.85f, 1.f) * FMath::FRandRange(40.f, 160.f)); }
 	}
 	else if (Env.LightningRate > 0.01f)
 	{
@@ -279,6 +300,10 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 		if (NextFlashIn <= 0.f)
 		{
 			FlashTimeLeft = FMath::FRandRange(0.08f, 0.35f);
+			if (FParse::Param(FCommandLine::Get(), TEXT("DCLightningTest"))) { FlashTimeLeft = 4.f; }
+			BuildBolt();
+			Bolt->SetVisibility(true);
+			Trauma = FMath::Min(1.f, Trauma + 0.12f);
 			OnLightning.Broadcast();
 			Flash->SetRelativeRotation(FRotator(FMath::FRandRange(-80.f, -30.f), FMath::FRandRange(0.f, 360.f), 0.f));
 			NextFlashIn = FMath::FRandRange(0.5f, 1.5f) * 60.f / Env.LightningRate;
@@ -361,4 +386,73 @@ FVector ADCRideDirector::GetWhirlFloorLocal() const
 {
 	const float K = WhirlCenter.SizeSquared() / (WhirlRadius * WhirlRadius);
 	return FVector(WhirlCenter.X, WhirlCenter.Y, -Env.Whirl * WhirlDepth * (1.f - 1.f / (1.f + K)));
+}
+
+void ADCRideDirector::AddLamp(const FVector& Location)
+{
+	UPointLightComponent* Lamp = NewObject<UPointLightComponent>(this);
+	Lamp->SetMobility(EComponentMobility::Movable);
+	Lamp->SetupAttachment(RootComponent);
+	Lamp->SetWorldLocation(Location);
+	Lamp->SetLightColor(FLinearColor(1.f, 0.62f, 0.28f));
+	Lamp->SetAttenuationRadius(1600.f);
+	Lamp->SetSourceRadius(12.f);
+	Lamp->SetIntensity(0.f);
+	Lamp->SetCastShadows(true);
+	Lamp->RegisterComponent();
+	Lamps.Add(Lamp);
+}
+
+void ADCRideDirector::TickLamps()
+{
+	// Lanterns come up as the daylight goes, and gutter in the wind.
+	const float Dark = FMath::Clamp(1.15f - Env.SunIntensity / 3.5f, 0.f, 1.f);
+	for (int32 i = 0; i < Lamps.Num(); ++i)
+	{
+		const float Flicker = 0.85f + 0.15f * FMath::Sin(RideTime * 9.f + i * 2.1f) * FMath::Sin(RideTime * 5.3f + i);
+		Lamps[i]->SetIntensity(LampIntensity * Dark * Flicker);
+	}
+}
+
+void ADCRideDirector::BuildBolt()
+{
+	// A jagged ribbon from the cloud base to the sea, a few kilometres off, with a couple of forks.
+	const float Angle = FMath::FRandRange(0.f, 2.f * UE_PI);
+	const float Dist = FMath::FRandRange(60000.f, 260000.f);
+	const FVector Foot(FMath::Cos(Angle) * Dist, FMath::Sin(Angle) * Dist, SeaLevelZ);
+	const FVector Side = FVector(-FMath::Sin(Angle), FMath::Cos(Angle), 0.f); // across the line of sight
+	const float Top = Dist * 0.55f + 30000.f;
+	const float Width = Dist * 0.0022f;
+
+	TArray<FVector> Verts;
+	TArray<int32> Tris;
+	auto Ribbon = [&](FVector From, const FVector& To, int32 Steps, float W, float Jitter)
+	{
+		FVector Prev = From;
+		for (int32 i = 1; i <= Steps; ++i)
+		{
+			FVector P = FMath::Lerp(From, To, static_cast<float>(i) / Steps);
+			if (i < Steps) { P += Side * FMath::FRandRange(-Jitter, Jitter) + FVector(0.f, 0.f, FMath::FRandRange(-Jitter, Jitter) * 0.3f); }
+			const int32 B = Verts.Num();
+			Verts.Append({ Prev - Side * W, Prev + Side * W, P - Side * W, P + Side * W });
+			Tris.Append({ B, B + 2, B + 1, B + 1, B + 2, B + 3 });
+			Prev = P;
+		}
+		return Prev;
+	};
+	const FVector Head = Foot + FVector(0.f, 0.f, Top) + Side * FMath::FRandRange(-0.2f, 0.2f) * Top;
+	Ribbon(Head, Foot, 16, Width, Top * 0.045f);
+	for (int32 f = 0; f < 3; ++f)
+	{
+		// Forks leave the main stroke part way down and die out before the sea.
+		const float T = FMath::FRandRange(0.2f, 0.7f);
+		const FVector Start = FMath::Lerp(Head, Foot, T);
+		const FVector End = Start + Side * FMath::FRandRange(-0.35f, 0.35f) * Top - FVector(0.f, 0.f, Top * FMath::FRandRange(0.15f, 0.35f));
+		Ribbon(Start, End, 7, Width * 0.45f, Top * 0.03f);
+	}
+	TArray<FVector> Normals;
+	Normals.Init(FVector::UpVector, Verts.Num());
+	Bolt->ClearAllMeshSections();
+	Bolt->CreateMeshSection(0, Verts, Tris, Normals, TArray<FVector2D>(), TArray<FColor>(), TArray<FProcMeshTangent>(), false);
+	if (BoltMID) { Bolt->SetMaterial(0, BoltMID); }
 }

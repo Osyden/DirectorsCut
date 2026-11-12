@@ -39,6 +39,7 @@ protected:
 	void TickCannons(APlayerController* PC);
 	void Look(APlayerController* PC);
 	void TickMeta(APlayerController* PC);
+	void TickCameraFeel(float DeltaSeconds);
 	void EnterStation(APlayerController* PC, int32 Index);
 	void LeaveStation(APlayerController* PC);
 
