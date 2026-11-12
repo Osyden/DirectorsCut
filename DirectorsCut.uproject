@@ -45,6 +45,11 @@
 			"Enabled": true
 		},
 		{
+			"Name": "DynamicRealWater",
+			"Enabled": true,
+			"Optional": true
+		},
+		{
 			"Name": "ModelingToolsEditorMode",
 			"Enabled": true,
 			"TargetAllowList": [

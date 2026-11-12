@@ -249,6 +249,7 @@ void ADCRideDirector::BeginPlay()
 	}
 	ApplyEnv(0.f);
 	SetupUDS();
+	SetupOcean();
 }
 
 void ADCRideDirector::Seek(float NewTime)
@@ -424,6 +425,7 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 	const FVector2D ToCentre = WhirlCenter.GetSafeNormal();
 	const FQuat Level = FQuat::FindBetweenNormals(FVector(ToCentre.X * Slope, ToCentre.Y * Slope, 1.f).GetSafeNormal(), FVector::UpVector);
 	Sea->SetRelativeTransform(FTransform(WorldRock.GetRotation() * Level, FVector(0.f, 0.f, SeaLevelZ + Heave)));
+	if (Ocean) { Sea->SetVisibility(Env.Tube > 0.02f || Env.Whirl > 0.02f); Ocean->SetActorHiddenInGame(Env.Tube > 0.5f || Env.Whirl > 0.5f); }
 
 	TickLamps();
 	Trauma = FMath::Max(0.f, Trauma - DeltaSeconds * 1.4f);
@@ -670,4 +672,17 @@ void ADCRideDirector::TickUDS()
 	SkyNum(UDSWeather, TEXT("Thunder/Lightning"), 0.0);
 	SkyNum(UDSSky, TEXT("Sun Light Intensity"), Env.SunIntensity * 0.75 + 2.0);
 	SkyNum(UDSSky, TEXT("Sky Light Intensity"), Env.SkyIntensity);
+}
+
+void ADCRideDirector::SetupOcean()
+{
+	// Dynamic Real Water (an engine-installed Fab plugin, optional). Trial: -DCDRW puts its stock
+	// ocean at sea level and hides the director's own sea outside the tunnel and the maelstrom.
+	if (!FParse::Param(FCommandLine::Get(), TEXT("DCDRW"))) { return; }
+	UClass* OceanClass = LoadClass<AActor>(nullptr, TEXT("/DynamicRealWater/Blueprints/BP_DynamicRealWater.BP_DynamicRealWater_C"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	if (!OceanClass) { UE_LOG(LogDC, Warning, TEXT("Ocean: Dynamic Real Water not found")); return; }
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	Ocean = GetWorld()->SpawnActor<AActor>(OceanClass, FVector(0.f, 0.f, SeaLevelZ), FRotator::ZeroRotator, Params);
+	UE_LOG(LogDC, Log, TEXT("Ocean: Dynamic Real Water in use (%s)"), Ocean ? *Ocean->GetClass()->GetName() : TEXT("spawn failed"));
 }

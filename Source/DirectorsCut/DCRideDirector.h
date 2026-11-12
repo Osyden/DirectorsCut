@@ -122,6 +122,8 @@ protected:
 	UPROPERTY() TObjectPtr<AActor> UDSSky;
 	UPROPERTY() TObjectPtr<AActor> UDSWeather;
 	void SetupUDS();
+	void SetupOcean();
+	UPROPERTY() TObjectPtr<AActor> Ocean;
 	void TickUDS();
 	UPROPERTY() TArray<TObjectPtr<class UTexture>> CloudNoise;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<class UPostProcessComponent> PostProcess;
