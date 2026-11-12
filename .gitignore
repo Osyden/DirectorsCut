@@ -38,3 +38,7 @@ Build/
 
 # Licensed recordings (Sonniss GDC bundle): usable in the game, not shareable as assets
 Content/Sonniss/
+
+# Fab packs (licensed; keep out of the public repo)
+Content/AncientRuins/
+Content/Kraken/
