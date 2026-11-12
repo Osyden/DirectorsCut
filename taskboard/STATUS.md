@@ -2,6 +2,14 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 18:23 — packaged build is current again
+
+`E:\projects\directorscut\Builds\Windows\DirectorsCut.exe` (5.3 GB) now contains everything up to commit `895ace0`: enlarged maelstrom with the descent, rebuilt leviathan head, water walls, volumetric storm front, sky, Atlantis mist and portal.
+
+Verified by a full unattended voyage in the packaged build at 5x with the crew AI and stand-in captain: all phases in order, no errors, speech and language servers started and shut down on exit, 76% hull and 15 orders given at the end. The volumetric clouds render in the packaged build the same as in the editor build (the engine noise volume is cooked in). 132 to 175 fps at 720p with DLSS.
+
+Not verified in the packaged build: sound (run with sound off), microphone, and hands-on play.
+
 ## Thu 12 Nov 18:19 — Atlantis portal is volumetric cloud now (set 18); full voyage passes; packaging
 
 Review set: `taskboard/review/18-atlantis-portal-volumetric/` (eight helm frames from just inside the front to the slide). Best frame: `shot_0215` at full size. No new inbox messages.
