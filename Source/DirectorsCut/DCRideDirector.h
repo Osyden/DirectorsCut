@@ -72,6 +72,7 @@ protected:
 	UPROPERTY(VisibleAnywhere) TObjectPtr<class UProceduralMeshComponent> Sea;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> SeaMID;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<class UPostProcessComponent> PostProcess;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<class UVolumetricCloudComponent> Clouds;
 
 	FDCEnvState Env;
 	EDCPhase CurrentPhase = EDCPhase::OpenSea;

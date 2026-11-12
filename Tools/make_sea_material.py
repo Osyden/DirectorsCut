@@ -49,6 +49,12 @@ for (int i = 0; i < 7; i++)
 // Flatten the far sea so the horizon stays a clean line.
 d *= saturate(1.0 - Dist / 400000.0);
 
+// Calm the water against the hull, and sink it inside the hull so it never shows on deck or below.
+float nearShip = saturate(1.0 - length(P.xy - float2(320.0, 0.0)) / 7000.0);
+d *= lerp(1.0, 0.3, nearShip * nearShip);
+float2 e = float2((P.x - 300.0) / 2150.0, P.y / 430.0);
+d.z -= 600.0 * smoothstep(0.0, 0.2, saturate(1.0 - dot(e, e)));
+
 // q = where this bit of sea ends up, relative to the ship at sea level.
 float3 q = float3(P.x + d.x, P.y + d.y, d.z);
 
@@ -138,14 +144,14 @@ float2 q = p * 0.004;
 float n = sin(q.x * 1.7 + sin(q.y * 2.3 + T * 0.4)) * sin(q.y * 1.3 - sin(q.x * 2.9 - T * 0.3));
 float n2 = sin(p.x * 0.011 + n * 2.0) * sin(p.y * 0.013 - T * 0.6) * 0.5 + 0.5;
 float n3 = sin(p.x * 0.031 - p.y * 0.017 + T) * sin(p.y * 0.037 + p.x * 0.009) * 0.5 + 0.5;
-float crest = saturate((h - 1.45) * 1.6 + sharp * 0.8 - 0.15);
+float crest = saturate((h - 1.5) * 1.6 + sharp * 0.3 - 0.1);
 float f = saturate(crest * 1.6 - (0.35 + 0.45 * n2 + 0.35 * n3) * (1.2 - crest));
 // Streaks that follow the flow: strong inside the tube and on the funnel wall.
 float streak = saturate(sin(p.y * 0.006 + n * 3.0) * sin(p.x * 0.0007 + n2 * 2.0) - 0.55) * 2.2;
 float wr = max(Whirl.w, 1.0);
 float2 rel = P.xy - Whirl.xy;
 float funnel = saturate(Whirl.z / 20000.0) / (1.0 + dot(rel, rel) / (wr * wr));
-f = saturate(f + streak * saturate(Shape.x * 1.5 + funnel * 1.5));
+f = saturate(f + streak * saturate(Shape.x * 1.2 + funnel * 0.6));
 return f * saturate(0.75 + 0.25 * n) * saturate(1.0 - Dist / 150000.0);
 """
 

@@ -5,6 +5,7 @@
 #include "Components/ExponentialHeightFogComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/PostProcessComponent.h"
+#include "Components/VolumetricCloudComponent.h"
 #include "ProceduralMeshComponent.h"
 #include "DCTreadmill.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -39,6 +40,9 @@ ADCRideDirector::ADCRideDirector()
 
 	Atmosphere = CreateDefaultSubobject<USkyAtmosphereComponent>(TEXT("Atmosphere"));
 	Atmosphere->SetupAttachment(RootComponent);
+
+	Clouds = CreateDefaultSubobject<UVolumetricCloudComponent>(TEXT("Clouds"));
+	Clouds->SetupAttachment(RootComponent);
 
 	Fog = CreateDefaultSubobject<UExponentialHeightFogComponent>(TEXT("Fog"));
 	Fog->SetupAttachment(RootComponent);
@@ -105,9 +109,9 @@ void ADCRideDirector::BuildDefaultPhases()
 	}
 	{
 		FDCEnvState& E = Add(EDCPhase::Maelstrom, 440.f, 12.f);
-		E.FogColor = FLinearColor(0.1f, 0.13f, 0.17f); E.FogDensity = 0.012f; E.FogHeightFalloff = 0.008f;
-		E.SunColor = FLinearColor(0.55f, 0.65f, 0.8f); E.SunIntensity = 1.2f; E.SunPitch = -40.f; E.SkyIntensity = 0.5f;
-		E.SeaColor = FLinearColor(0.01f, 0.04f, 0.06f); E.SeaRoughness = 6.f; E.Rain = 1.f; E.LightningRate = 14.f; E.ShipSpeed = 2200.f; E.WaveHeight = 300.f; E.Foam = 1.5f; E.Exposure = 1.3f; E.Whirl = 1.f;
+		E.FogColor = FLinearColor(0.06f, 0.08f, 0.1f); E.FogDensity = 0.02f; E.FogHeightFalloff = 0.004f;
+		E.SunColor = FLinearColor(0.55f, 0.65f, 0.8f); E.SunIntensity = 0.9f; E.SunPitch = -28.f; E.SkyIntensity = 0.6f;
+		E.SeaColor = FLinearColor(0.004f, 0.015f, 0.02f); E.SeaRoughness = 6.f; E.Rain = 1.f; E.LightningRate = 14.f; E.ShipSpeed = 2200.f; E.WaveHeight = 300.f; E.Foam = 0.75f; E.Exposure = 0.9f; E.Whirl = 1.f;
 	}
 	{
 		FDCEnvState& E = Add(EDCPhase::Ending, 600.f, 15.f);
@@ -206,6 +210,12 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 	Sun->SetLightColor(Env.SunColor);
 	Sun->SetRelativeRotation(FRotator(Env.SunPitch, 20.f, 0.f));
 	SkyLight->SetIntensity(Env.SkyIntensity);
+	// Tint ambient light toward the fog so the sea does not mirror a blue sky that is not there.
+	{
+		const float MaxC = FMath::Max3(Env.FogColor.R, Env.FogColor.G, Env.FogColor.B);
+		const FLinearColor Tint = MaxC > KINDA_SMALL_NUMBER ? Env.FogColor / MaxC : FLinearColor::White;
+		SkyLight->SetLightColor(FMath::Lerp(FLinearColor::White, Tint, 0.8f));
+	}
 	Fog->SetFogDensity(Env.FogDensity);
 	Fog->SetFogHeightFalloff(Env.FogHeightFalloff);
 	Fog->SetFogInscatteringColor(Env.FogColor);
