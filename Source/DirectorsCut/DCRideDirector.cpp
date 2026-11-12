@@ -118,14 +118,14 @@ void ADCRideDirector::BuildDefaultPhases()
 
 	{
 		FDCEnvState& E = Add(EDCPhase::OpenSea, 0.f, 0.f);
-		E.FogColor = FLinearColor(0.75f, 0.55f, 0.4f); E.FogDensity = 0.0009f; E.CloudCover = 0.16f; E.CloudBase = 520000.f;
+		E.FogColor = FLinearColor(0.75f, 0.55f, 0.4f); E.FogDensity = 0.0004f; E.CloudCover = 0.05f; E.CloudBase = 520000.f;
 		E.SunColor = FLinearColor(1.f, 0.86f, 0.68f); E.SunIntensity = 7.f; E.SunPitch = -20.f; E.SunYaw = 320.f; // low behind the port quarter, so the face of the storm front ahead is lit
 		E.SeaColor = FLinearColor(0.03f, 0.09f, 0.13f); E.SeaRoughness = 1.2f; E.ShipSpeed = 1000.f; E.WaveHeight = 70.f; E.Foam = 0.5f; E.Exposure = 1.0f;
 	}
 	{
 		FDCEnvState& E = Add(EDCPhase::Fog, 58.f, 7.f); // the mouth of the storm front closes over the bow at 60 s (DCFogFront); dark a few seconds into the tunnel
 		// First the inside of the cloud front: close, dark, nothing to see.
-		E.FogColor = FLinearColor(0.1f, 0.14f, 0.18f); E.FogDensity = 0.11f; E.FogHeightFalloff = 0.002f; E.CloudCover = 1.f; E.CloudBase = 50000.f;
+		E.FogColor = FLinearColor(0.1f, 0.14f, 0.18f); E.FogDensity = 0.035f; E.FogHeightFalloff = 0.002f; E.CloudCover = 1.f; E.CloudBase = 50000.f;
 		E.SunColor = FLinearColor(0.5f, 0.7f, 0.8f); E.SunIntensity = 0.6f; E.SunPitch = -20.f; E.SkyIntensity = 0.35f;
 		E.SeaColor = FLinearColor(0.01f, 0.03f, 0.035f); E.SeaRoughness = 2.5f; E.LightningRate = 5.f; E.ShipSpeed = 1500.f; E.WaveHeight = 130.f; E.Foam = 0.7f; E.Exposure = 0.6f;
 	}

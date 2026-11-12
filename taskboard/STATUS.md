@@ -2,6 +2,26 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 18:00 — clouds pass 4 (set 17): large storm structure found. This is the first set I would put next to the reference
+
+Review set: `taskboard/review/17-storm-front-large-scale/` (thirteen helm frames through the voyage, normal speed, 720p). Best single frames for the storm front: `shot_0024` and `shot_0046`. No new inbox messages.
+
+- **The cause of the small repeated lumps in sets 15 and 16:** one tile of the engine's noise volume holds about eight cells across, so every scale I had chosen was about six times too fine. Everything was small detail with no large form. All scales are now six times coarser: masses around 20 km, towers of 5 km, heads of a kilometre, wisps of a few hundred metres.
+- **Result:** the front is now a range of large rolling towers with soft lit flanks and dark hollows, standing against a clear blue sky, with a top you can see. The mouth is a dark hole ringed by lit spiral arms at the foot of it (`shot_0046`).
+- The sky above the front is nearly clear now, so the front stands as a wall instead of merging with a cloud deck, and the horizon haze is thinner. The face of the front stands nearly upright instead of leaning 1.5 km over the ship.
+- The fog inside the front is a third as thick, so on entry the mouth's glow and the first Atlantis silhouettes show through (`shot_0053`).
+- Atlantis overcast and mist banks picked up the same large structure (`shot_0110` to `0210`): heavier, layered sky over the statues.
+- Frame rate: 165 to 172 fps open sea, 94 to 110 in the front and Atlantis, 134 to 151 maelstrom.
+
+Still short, honestly:
+- Fine grain on thin cloud, and faint diagonal streaks in the lit flanks at full size. Flicker over a sequence not yet checked.
+- `shot_0063`, a few seconds inside the front, shows pale round blobs in blue murk. I have not identified them yet; possibly the sphere-built faces seen through the cloud. To fix next.
+- No rain skirt or hard line where the front meets the sea.
+- The mouth is cold-only; the reference has warm sun against cold lightning.
+- Cloud faces and the Atlantis portal are still sphere-built.
+
+The packaged build is still the 14:44 one.
+
 ## Thu 12 Nov 17:51 — clouds pass 3 (set 16): the front reads as a storm mass now; grain and scale still open
 
 Review set: `taskboard/review/16-storm-clouds-pass-3/` (`a_sky_*` from above the masts, `b_helm_*` from the helm through the voyage; normal speed, 720p). No new inbox messages.

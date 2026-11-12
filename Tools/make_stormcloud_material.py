@@ -19,7 +19,8 @@ NAME = "M_StormCloud"
 mel = unreal.MaterialEditingLibrary
 
 DENSITY = """
-// All the shapes come from one engine noise volume read at several scales. Its red channel sits
+// All the shapes come from one engine noise volume read at several scales. One tile of it holds
+// about eight cells across, so a scale of 0.006 per km gives masses some 20 km across. Its red channel sits
 // in a narrow band (measured: about 0.83 to 0.96, half of it above 0.895), so it is stretched to 0..1
 // here, which puts the median near 0.5.
 #define NZ(p) saturate((Texture3DSampleLevel(Shape, ShapeSampler, (p), 0.0).r - 0.835) / 0.125)
@@ -31,7 +32,7 @@ bool inDeck = h > 0.0 && h < 1.0 && Sky.x > 0.01;
 bool inMist = Mist.x > 0.001 && alt < Mist.y;
 // The front leans out over the ship higher up, like a breaking wave, and its foot runs ahead of it
 // along the water as a skirt of rain and spray.
-float lean = 150000.0 * smoothstep(0.0, 1.0, alt / 450000.0) + 40000.0 * exp(-alt / 20000.0);
+float lean = 50000.0 * smoothstep(0.0, 1.0, alt / 450000.0) + 60000.0 * exp(-alt / 15000.0);
 float face = P.x - Front.x + lean;
 bool inWall = Front.y > 0.001 && face > -260000.0 && face < 640000.0 && alt < 900000.0;
 if (!inDeck && !inWall && !inMist) { return float4(0.0, 0.0, 0.0, 0.0); }
@@ -45,13 +46,13 @@ if (inDeck)
 {
     // The deck: flat-bottomed, heaped on top, as much of the sky as Sky.x says. Masses 10 km and
     // more across carry heads of 3 km and 800 m, and the thin parts are eaten into wisps.
-    float big = NZ(km * 0.04 + wind);
-    float mid = NZ(km * 0.15 + wind * 3.0 + 0.37);
-    float det = NZ(km * 0.6 + wind * 9.0 + 0.71);
+    float big = NZ(km * 0.007 + wind);
+    float mid = NZ(km * 0.026 + wind * 3.0 + 0.37);
+    float det = NZ(km * 0.1 + wind * 9.0 + 0.71);
     float n = big * 0.55 + mid * 0.3 + det * 0.15;
     float need = lerp(0.72, 0.2, Sky.x) + 0.12 * h;
     deck = saturate((n - need) * 5.0) * saturate(h * 9.0) * saturate((1.0 - h) * 3.0);
-    float fine = NZ(km * 2.3 - wind * 20.0);
+    float fine = NZ(km * 0.4 - wind * 20.0);
     deck = saturate(deck - (0.15 + fine * 0.7) * (1.0 - deck) * 0.8);
 }
 if (inWall)
@@ -60,10 +61,10 @@ if (inWall)
     // slowly instead, rising up the face.
     float3 q = float3(P.x - Front.x, P.y, alt) * 0.00001;
     float churn = T * 0.0006;
-    float big = NZ(q * 0.035 + float3(0.0, 0.0, -churn));
-    float mid = NZ(q * 0.13 + float3(churn, 0.0, -churn * 3.0) + 0.21);
-    float det = NZ(q * 0.5 + float3(0.0, churn * 2.0, -churn * 8.0) + 0.63);
-    float fine = NZ(q * 1.9 + float3(churn * 5.0, 0.0, -churn * 20.0));
+    float big = NZ(q * 0.006 + float3(0.0, 0.0, -churn));
+    float mid = NZ(q * 0.022 + float3(churn, 0.0, -churn * 3.0) + 0.21);
+    float det = NZ(q * 0.085 + float3(0.0, churn * 2.0, -churn * 8.0) + 0.63);
+    float fine = NZ(q * 0.32 + float3(churn * 5.0, 0.0, -churn * 20.0));
     // How far inside the surface of the cloud this point is, cm. Towers kilometres across, heads
     // of a kilometre on them, knuckles of a few hundred metres on those.
     float surf = face + (big - 0.5) * 220000.0 + (mid - 0.5) * 80000.0 + (det - 0.5) * 24000.0;
@@ -116,9 +117,9 @@ if (inMist)
     // Sea mist: torn banks lying on the water, thick in places and open in others, so that things
     // stand in it at different depths instead of fading evenly into haze.
     float mh = saturate(1.0 - alt / max(Mist.y, 1.0));
-    float mn = NZ(km * 0.33 + wind * 6.0 + 0.11) * 0.6 + NZ(km * 1.1 - wind * 15.0 + 0.47) * 0.4;
+    float mn = NZ(km * 0.06 + wind * 6.0 + 0.11) * 0.6 + NZ(km * 0.2 - wind * 15.0 + 0.47) * 0.4;
     float bank = saturate((mn - (0.8 - Mist.x * 0.5)) * 3.5) * mh * (0.35 + 0.65 * mh);
-    bank = saturate(bank - NZ(km * 3.7 + wind * 40.0) * 0.5 * (1.0 - bank));
+    bank = saturate(bank - NZ(km * 0.65 + wind * 40.0) * 0.5 * (1.0 - bank));
     d = max(d, bank * Mist.z);
 }
 float mask = saturate(wall * 3.0);
