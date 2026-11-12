@@ -11,6 +11,7 @@
 | M4 polish and balance | In progress | Claude | Now driven by the owner's visual references: maelstrom reveal, then storm front and Atlantis in the fog. Hell channel on hold and out of the default route. Review screenshots in `taskboard/review/`. |
 | DLSS 4.5 plugin | Done | Claude | Active in the packaged build (log shows DLSS-SR=1 and feature creation). |
 | Sonniss audio catalogue | Done (metadata review) | Codex | [28 candidates and implementation notes](AUDIO-SHORTLIST.md); audition still required. |
+| Deck movement, station HUD and cannon gameplay | Ready for merge review | Codex | [Handoff](DECK-GUNNERY-UX.md) on `codex/deck-gunnery-ux`. |
 
 Claim a task here with your name and branch before editing. Use a separate Git worktree for parallel changes. Coordinate before editing the same Unreal map, Blueprint, or live editor session.
 
