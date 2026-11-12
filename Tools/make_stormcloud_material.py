@@ -169,8 +169,13 @@ if (inFace)
         k = max(k, ELL(float3(0.50, 0.0, -0.70), float3(0.20, 0.24, 0.18)));         // chin
         k = max(k, ELL(float3(0.58, 0.0, -0.40), float3(0.13, 0.26, 0.09)));         // lips
         float fd = saturate(k * 5.0);
-        fd *= 1.0 - saturate(ELL(float3(0.64, 0.30, 0.13), float3(0.17, 0.19, 0.11)) * 6.0);   // eye sockets
-        fd *= 1.0 - saturate(ELL(float3(0.70, 0.0, -0.47), float3(0.12, 0.20, 0.035)) * 6.0);  // parted mouth
+        fd *= 1.0 - saturate(ELL(float3(0.66, 0.30, 0.12), float3(0.22, 0.21, 0.14)) * 6.0);   // eye sockets
+        fd *= 1.0 - saturate(ELL(float3(0.70, 0.0, -0.47), float3(0.16, 0.24, 0.06)) * 6.0);   // parted mouth
+        // Shadowed planes: under the brow, beside the nose, under the cheekbones, the mouth.
+        float hollow = saturate(ELL(float3(0.60, 0.30, 0.12), float3(0.3, 0.26, 0.19)) * 3.0);
+        hollow = max(hollow, saturate(ELL(float3(0.60, 0.0, -0.47), float3(0.3, 0.3, 0.1)) * 3.0));
+        hollow = max(hollow, saturate(ELL(float3(0.45, 0.38, -0.42), float3(0.3, 0.16, 0.2)) * 3.0));
+        hollow = max(hollow, saturate(ELL(float3(0.62, 0.17, -0.12), float3(0.2, 0.07, 0.2)) * 3.0));
         // Hair and shoulders: torn cloud streaming back and down from the head.
         float tear = NZ(rel * 0.0000035 + float3(T * 0.002, 0.0, 0.0));
         float hair = ELL(float3(-0.55, 0.0, 0.25), float3(1.25, 1.15, 1.25)) + (tear - 0.5) * 0.9;
@@ -182,7 +187,7 @@ if (inFace)
         if (fd > 0.0)
         {
             // Lit from inside by the storm; the eyes burn cold all the time.
-            glow = max(glow, (0.006 + 0.07 * Front.w) * saturate(k * 3.0 + 0.3) * (1.0 - soft) + eye * 0.6);
+            glow = max(glow, (0.03 + 0.08 * Front.w) * saturate(k * 3.0 + 0.3) * (1.0 - soft) * (1.0 - 0.9 * hollow) + eye * 0.6);
             wall = max(wall, fd * Mist.w);
         }
     }

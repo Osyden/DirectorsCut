@@ -2,6 +2,24 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 19:00 — Atlantis: faces and portal together, and seen from the helm (set 20)
+
+Review set: `taskboard/review/20-atlantis-portal-and-faces/`. `a_bow_*` look ahead from the bow, clear of the rigging; `b_helm_*` are the helm at the same four moments. Best frames: `a_bow_0160`, `a_bow_0185`, `a_bow_0210`. No new inbox messages.
+
+- **The faces now sit where the playable view sees them:** three heads 900 m to 1.3 km tall, low over the city on either side of the portal and one above it, staggered along the route so one is always coming into view. They have shadowed eye sockets, cheeks and mouth, and cold lit eyes.
+- **From the bow this is the closest any frame has come to the fog-to-portal reference:** a luminous spiral tunnel among the ruins, sentinel statues in silhouette at several depths, pale faces looming out of the storm cloud on both sides, a ghost ship crossing.
+- **From the helm** the faces show from about 3:00 onward to starboard of the mainmast (`b_helm_0185`, `0210`); before that the rigging and sails cover most of them. The helm view of this scene is much more cluttered than the bow view.
+
+Still short:
+- The faces read as skull-like masks; they are not the modelled, bearded god-faces of the reference.
+- At 2:15 the scene is still flat pale haze with silhouettes (`a_bow_0135`); the layered cloud only shows once closer.
+- Statues, ruins and temple are still simple placeholder shapes (owner's ruins pack pending).
+- Grain in the cloud as before.
+
+Suggestion for the owner, not acted on: the bow gives a far better view of the reveals than the wheel does. The player can already walk there. A prompt or a station at the bow ("lookout") might be worth it.
+
+The packaged build (18:21) does not include the faces. Repackaging next.
+
 ## Thu 12 Nov 18:39 — cloud faces are volumetric now (set 19), but the helm does not see them yet
 
 Review set: `taskboard/review/19-cloud-faces-volumetric/`. `a_bow_*` look up from just ahead of the bow; `b_helm_*` are the helm at the same stretch. Best frame: `a_bow_0150`. No new inbox messages.

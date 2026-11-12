@@ -552,8 +552,8 @@ void ADCTreadmill::SpawnAtlantis()
 	// Faces in the clouds, high above the city, turned toward the ship and gazing down at it.
 	struct FFace { float X, Y, Z, Height, Yaw; bool bBearded; };
 	const FFace Faces[] = {
-		{ 250000.f, 70000.f, 85000.f, 42000.f, 195.f, true }, { 330000.f, -90000.f, 100000.f, 50000.f, 165.f, false },
-		{ 420000.f, 20000.f, 120000.f, 60000.f, 182.f, true } };
+		{ 280000.f, 100000.f, 55000.f, 75000.f, 195.f, true }, { 350000.f, -120000.f, 60000.f, 85000.f, 165.f, false },
+		{ 440000.f, 50000.f, 90000.f, 110000.f, 182.f, true } };
 	for (const FFace& F : Faces)
 	{
 		FActorSpawnParameters Params;
