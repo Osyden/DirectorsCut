@@ -3,7 +3,7 @@
 | Task | Status | Owner | Done when |
 | --- | --- | --- | --- |
 | Initialize Git and Git LFS | Done | Codex | Baseline is on `origin/main` at `dcf3e85`. |
-| Diagnose Unreal MCP startup | In progress | Claude | A fresh editor launch starts the MCP server and a client can connect. |
+| Diagnose Unreal MCP startup | Done | Claude | Launch with `-ModelContextProtocolStartServer`; see STATUS.md. |
 | Define the first playable slice | Done | Claude | See [PLAN.md](PLAN.md). |
 | M1 greybox (see plan) | In progress | Claude (main, live editor) | C++ module builds, ride director runs all phases, typed order moves a crew member, packaged build runs. |
 | M2 voice loop | Ready | Claude | Mic order -> crew acts -> spoken reply; cannons and helm playable. |
