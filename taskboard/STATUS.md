@@ -2,6 +2,14 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 14:20 — faces in the clouds; the storm front has a mouth and real cloud texture
+
+Review set: `taskboard/review/07-storm-front/` (two exterior views like the storm-front reference, then helm views of the approach). Open `ext_shot_0046.jpg` first.
+
+- **Faces in the clouds (`DCCloudFace.cpp`).** Three heads 400 to 600 m tall hang above the city, modelled from soft billows: brow, nose, cheekbones, hollow eye sockets, parted mouth, chin, streaming hair, and a beard on two of them. They are faint until lightning lights them from inside. In a test frame from the deck one reads clearly as a face looking down. They are stylised and mask-like, not the classical portraits in the references.
+- **Storm front.** The wall now has a mouth where the ship goes in: six rings of billows spiralling back into the cloud around a cold glow that flares with the lightning. The billows got noise-eroded edges and mottling, which was the bigger gain: they no longer read as spheres. From outside the front is now a ragged, towering mass with light breaking through it and blue light low down in the mouth.
+- Against the storm-front reference: scale, darkness over a sunlit sea, and the cold light inside are there. The clean spiral "eye" of the reference is not; the mouth reads as a lit hollow rather than a curling tube.
+
 ## Thu 12 Nov 14:13 — Atlantis in the fog; new route without the hell channel
 
 Review set: `taskboard/review/06-atlantis-route/` (twelve helm frames from entering the cloud front to the maelstrom, plus `_contact.jpg`). `shot_0115.jpg` and `shot_0190.jpg` are the ones to open first.

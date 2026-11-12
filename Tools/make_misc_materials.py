@@ -169,7 +169,11 @@ float h = saturate(P.z / 45000.0);
 // Slow churn so the billows are never still.
 float churn = 0.85 + 0.15 * sin(P.x * 0.0004 + T * 0.3) * sin(P.y * 0.0005 - T * 0.23 + P.z * 0.0003);
 float3 col = lerp(Bottom.rgb, Top.rgb, h * h * h) * churn + Flash.rgb * core * core;
-float alpha = saturate(pow(core, 1.4) * 1.5) * Flash.a;
+// Ragged edges and mottled bodies, so a billow never shows as a clean ball.
+float n1 = sin(P.x * 0.00021 + sin(P.y * 0.00033) * 2.0) * sin(P.y * 0.00027 + sin(P.z * 0.0004) * 2.0) * sin(P.z * 0.00031 + P.x * 0.0002 + T * 0.05);
+float n2 = sin(P.x * 0.0009 + P.z * 0.0007 + T * 0.1) * sin(P.y * 0.0011 - P.z * 0.0005);
+col *= 0.78 + 0.3 * n1 + 0.12 * n2;
+float alpha = saturate(pow(core, 1.9) * 1.9 * (0.55 + 0.6 * n1 + 0.35 * n2)) * Flash.a;
 return float4(col, alpha);
 """
 c = custom(mat, CLOUD, unreal.CustomMaterialOutputType.CMOT_FLOAT4, ["F", "P", "T", "Top", "Bottom", "Flash"], -500, 200)

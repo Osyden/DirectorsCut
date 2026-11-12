@@ -39,6 +39,7 @@ protected:
 	TArray<FBillow> Billows;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> CloudMID;
 	UPROPERTY() TArray<TObjectPtr<UMaterialInstanceDynamic>> CloudShades;
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> CoreMID;
 	UPROPERTY() TObjectPtr<ADCRideDirector> Director;
 	float Flash = 0.f;
 	float NextFlashIn = 3.f;
