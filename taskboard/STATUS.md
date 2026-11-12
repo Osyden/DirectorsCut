@@ -2,6 +2,10 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 19:05 — packaged build current (includes faces and portal)
+
+`E:\projects\directorscut\Builds\Windows\DirectorsCut.exe` (built 19:02) contains everything up to commit `f20e631`. Full unattended voyage in the packaged build at 5x with crew AI and stand-in captain: all phases in order, no errors, servers shut down on exit, 78% hull at the end, 132 to 168 fps at 720p with DLSS. Sound, microphone and hands-on play not verified.
+
 ## Thu 12 Nov 19:00 — Atlantis: faces and portal together, and seen from the helm (set 20)
 
 Review set: `taskboard/review/20-atlantis-portal-and-faces/`. `a_bow_*` look ahead from the bow, clear of the rigging; `b_helm_*` are the helm at the same four moments. Best frames: `a_bow_0160`, `a_bow_0185`, `a_bow_0210`. No new inbox messages.
