@@ -21,6 +21,9 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "Misc/FileHelper.h"
+#include "Animation/SkeletalMeshActor.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Animation/AnimationAsset.h"
 #include "Engine/WindDirectionalSource.h"
 #include "Camera/CameraActor.h"
 #include "UnrealClient.h"
@@ -345,6 +348,26 @@ void ADCGameMode::StartPlay()
 			FPlatformMisc::RequestExit(false);
 			return;
 		}
+	}
+
+	// Test hook: -DCKaiju stands the Claw Kaiju (Fab asset, not in the repo) off the bow playing an animation, to check its import.
+	if (FParse::Param(FCommandLine::Get(), TEXT("DCKaiju")))
+	{
+		USkeletalMesh* KMesh = LoadObject<USkeletalMesh>(nullptr, TEXT("/Game/Fab/Claw_Kaiju_Monster/ClawKaiju_allAnimation.ClawKaiju_allAnimation"));
+		UAnimationAsset* KAnim = LoadObject<UAnimationAsset>(nullptr, TEXT("/Game/Fab/Claw_Kaiju_Monster/ClawKaiju_allAnimationClawKaiju_Intimidate.ClawKaiju_allAnimationClawKaiju_Intimidate"));
+		if (KMesh)
+		{
+			ASkeletalMeshActor* K = World->SpawnActor<ASkeletalMeshActor>(FVector(9000.f, 2500.f, SeaLevelZ - 600.f), FRotator(0.f, 200.f, 0.f), Params);
+			K->GetSkeletalMeshComponent()->SetMobility(EComponentMobility::Movable);
+			K->GetSkeletalMeshComponent()->SetSkeletalMeshAsset(KMesh);
+			K->GetSkeletalMeshComponent()->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+			if (KAnim) { K->GetSkeletalMeshComponent()->PlayAnimation(KAnim, true); }
+			if (UMaterialInterface* KMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Fab/Claw_Kaiju_Monster/M_ClawKaiju.M_ClawKaiju")))
+			{
+				for (int32 s = 0; s < K->GetSkeletalMeshComponent()->GetNumMaterials(); ++s) { K->GetSkeletalMeshComponent()->SetMaterial(s, KMat); }
+			}
+		}
+		UE_LOG(LogDC, Log, TEXT("Kaiju test: mesh %s anim %s"), KMesh ? TEXT("ok") : TEXT("missing"), KAnim ? TEXT("ok") : TEXT("missing"));
 	}
 
 	// Test hook: -DCHide=Name hides every ship component whose name contains Name.
