@@ -24,7 +24,9 @@ public:
 	virtual void Tick(float DeltaSeconds) override;
 
 	/** Radius of the mouth, cm. */
-	UPROPERTY(EditAnywhere) float Radius = 21000.f;
+	UPROPERTY(EditAnywhere) float Radius = 30000.f;
+	/** Also build the old rings of billow meshes. Off: the volumetric cloud layer draws the portal. */
+	UPROPERTY(EditAnywhere) bool bBillows = false;
 
 protected:
 	UPROPERTY() TArray<TObjectPtr<USceneComponent>> Rings;

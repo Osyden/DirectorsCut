@@ -367,6 +367,7 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 	if (CloudMID)
 	{
 		CloudMID->SetVectorParameterValue(TEXT("Sky"), FLinearColor(Env.CloudCover, Env.CloudBase, Env.CloudBase + 380000.f, 0.012f));
+		CloudMID->SetVectorParameterValue(TEXT("Portal"), FLinearColor(PortalLocation.X, PortalLocation.Y, PortalRadius, PortalStrength));
 		CloudMID->SetVectorParameterValue(TEXT("Mist"), FLinearColor(Env.Mist, 45000.f, 0.3f, 0.f));
 		CloudMID->SetVectorParameterValue(TEXT("Front"), FLinearColor(StormFrontX, StormFrontStrength, StormMouthRadius, FlashTimeLeft > 0.f ? 1.f : 0.f));
 	}

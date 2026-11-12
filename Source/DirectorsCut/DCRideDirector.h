@@ -90,6 +90,10 @@ public:
 	float StormFrontX = 400000.f;
 	float StormFrontStrength = 0.f;
 	float StormMouthRadius = 0.f;
+	/** The portal out of Atlantis, drawn in the cloud volume. Set by ADCPortal. */
+	FVector PortalLocation = FVector::ZeroVector;
+	float PortalRadius = 21000.f;
+	float PortalStrength = 0.f;
 	/** Height of the swell that lifts the ship in the maelstrom, cm, and how much of it is up right now. */
 	UPROPERTY(EditAnywhere) float SwellHeight = 11000.f;
 	float SwellLift = 0.f;

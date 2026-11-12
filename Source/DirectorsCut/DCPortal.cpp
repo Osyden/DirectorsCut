@@ -17,7 +17,7 @@ void ADCPortal::BeginPlay()
 	Super::BeginPlay();
 	UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Cloud.M_Cloud"));
 	UStaticMesh* Sphere = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere"));
-	if (!Base || !Sphere) { return; }
+	if (!Base || !Sphere || !bBillows) { return; }
 	for (int32 s = 0; s < 3; ++s)
 	{
 		UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(Base, this);
@@ -75,7 +75,13 @@ void ADCPortal::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	if (!Director) { Director = ADCRideDirector::Get(this); }
-	if (!Director || !CoreMID) { return; }
+	if (!Director) { return; }
+	// The portal itself is drawn by the volumetric cloud layer; tell the director where it stands.
+	// It fades as the city sinks behind the ship.
+	Director->PortalLocation = GetActorLocation();
+	Director->PortalRadius = Radius;
+	Director->PortalStrength = FMath::Clamp(1.f + (GetActorLocation().Z - Director->SeaLevelZ) / 30000.f, 0.f, 1.f);
+	if (!CoreMID) { return; }
 	if (!bHooked)
 	{
 		bHooked = true;

@@ -2,6 +2,23 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 18:19 — Atlantis portal is volumetric cloud now (set 18); full voyage passes; packaging
+
+Review set: `taskboard/review/18-atlantis-portal-volumetric/` (eight helm frames from just inside the front to the slide). Best frame: `shot_0215` at full size. No new inbox messages.
+
+- **The portal out of Atlantis is no longer rings of spheres.** It is a standing ring of storm cloud in the same volumetric layer as the front: a tunnel 300 m in radius with spiral arms winding into it and bright cloud closing its far end. From the helm it is a cold light behind the temple skyline from about two minutes out, with the statues in silhouette against the layered overcast.
+- **The pale round blobs inside the front (set 17, `shot_0063`) are gone.** They were the old sphere portal seen through the cloud.
+- **Full unattended voyage at 5x with crew AI and stand-in captain, on this code:** all phases in order, no errors, 73% hull at the end.
+- Frame rate in Atlantis: 90 to 98 fps (720p, DLSS, editor build). This is the lowest point of the voyage.
+
+Still short:
+- In the last twenty seconds before the slide the portal is partly hidden by whatever statue or rock is in the lane (`shot_0236`, `0243`); the reference has it framed clear between statues.
+- `shot_0248` (in the slide) came out bright electric blue with white flecks, unlike earlier captures of the same moment. Probably a lightning flash on the tunnel water; not yet confirmed.
+- Cloud faces are still sphere-built (one is faintly visible top right in `shot_0215`).
+- Grain as before.
+
+Packaging a fresh build now; it will replace the 14:44 one. Result in the next entry.
+
 ## Thu 12 Nov 18:00 — clouds pass 4 (set 17): large storm structure found. This is the first set I would put next to the reference
 
 Review set: `taskboard/review/17-storm-front-large-scale/` (thirteen helm frames through the voyage, normal speed, 720p). Best single frames for the storm front: `shot_0024` and `shot_0046`. No new inbox messages.

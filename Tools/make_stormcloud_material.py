@@ -11,6 +11,7 @@ Parameters
           z = radius of the tunnel mouth bored into it along the ship's course (cm, 0 = none),
           w = lightning 0..1 (lights the mouth and the inside of the wall)
   Mist    x = amount of sea mist 0..1, y = height of its top (cm), z = how thick it is next to full cloud
+  Portal  xy = where the portal out of Atlantis stands (cm), z = radius of its tunnel (cm), w = strength 0..1
 """
 import unreal
 
@@ -30,12 +31,13 @@ float alt = P.z;
 float h = (alt - Sky.y) / max(Sky.z - Sky.y, 1.0);
 bool inDeck = h > 0.0 && h < 1.0 && Sky.x > 0.01;
 bool inMist = Mist.x > 0.001 && alt < Mist.y;
+bool inPortal = Portal.w > 0.001 && P.x > Portal.x - Portal.z * 2.5 && P.x < Portal.x + Portal.z * 7.0 && abs(P.y - Portal.y) < Portal.z * 6.5 && alt < Portal.z * 6.5;
 // The front leans out over the ship higher up, like a breaking wave, and its foot runs ahead of it
 // along the water as a skirt of rain and spray.
 float lean = 50000.0 * smoothstep(0.0, 1.0, alt / 450000.0) + 60000.0 * exp(-alt / 15000.0);
 float face = P.x - Front.x + lean;
 bool inWall = Front.y > 0.001 && face > -260000.0 && face < 640000.0 && alt < 900000.0;
-if (!inDeck && !inWall && !inMist) { return float4(0.0, 0.0, 0.0, 0.0); }
+if (!inDeck && !inWall && !inMist && !inPortal) { return float4(0.0, 0.0, 0.0, 0.0); }
 
 float3 km = P * 0.00001;
 float3 wind = float3(T * 0.0002, T * 0.00008, 0.0);
@@ -111,6 +113,33 @@ if (inWall)
         glow += 0.05 * within / (1.0 + dot(dd, dd) / (30000.0 * 30000.0));
     }
 }
+if (inPortal)
+{
+    // The way out of Atlantis: a standing ring of storm cloud on the sea with a tunnel through it,
+    // spiral arms winding into the hole, and light at the far end.
+    float R = Portal.z;
+    float pf = P.x - Portal.x;
+    float2 m = float2(P.y - Portal.y, alt - R * 0.4);
+    float rr = length(m) / R;
+    float ang = atan2(m.y, m.x);
+    float lr = log(max(rr, 0.3));
+    float spiral = sin(ang * 3.0 + lr * 6.0 + T * 0.5 - pf / R * 1.3);
+    float arms = spiral * 0.6 + 0.4 * sin(ang * 5.0 - lr * 9.0 - T * 0.3);
+    float lump = NZ(float3(pf, m.x, m.y) * 0.0000012 + 0.4);
+    float fray = NZ(float3(pf, m.x, m.y) * 0.000006 + float3(T * 0.004, 0.0, 0.0));
+    // Thick near the rim of the hole, thinning outward into torn arms.
+    float ring = saturate(1.0 - (rr - 1.0) / (2.6 + 1.2 * arms + 1.5 * (lump - 0.5)));
+    float hole = saturate((rr - 1.0 - 0.2 * spiral - 0.3 * (lump - 0.5)) / 0.3);
+    float along = saturate((pf + R * 2.5) / (R * 1.5)) * saturate((R * 7.0 - pf) / (R * 3.0));
+    float pd = ring * hole * along * Portal.w;
+    pd = saturate(pd * 1.6 - fray * 0.6 * (1.0 - pd));
+    // The far end of the tunnel is closed by bright cloud: the light the ship steers for.
+    float core = exp(-rr * rr * 1.5) * saturate((pf - R * 3.0) / (R * 2.0)) * saturate((R * 7.0 - pf) / R) * Portal.w;
+    pd = max(pd, core * 0.5);
+    float rim = exp(-max(rr - 1.0 - 0.2 * spiral, 0.0) * 3.0);
+    glow = max(glow, (0.05 + 0.35 * Front.w) * rim * (0.5 + 0.5 * arms) * along + core * 0.9);
+    wall = max(wall, pd);
+}
 float d = max(deck, wall);
 if (inMist)
 {
@@ -157,6 +186,7 @@ time = mel.create_material_expression(mat, unreal.MaterialExpressionTime, -1400,
 sky = vector(mat, "Sky", (0.4, 150000, 550000, 0.02), -1400, 700)
 front = vector(mat, "Front", (400000, 0, 0, 0), -1400, 900)
 mist = vector(mat, "Mist", (0, 40000, 0.35, 0), -1400, 1000)
+portal = vector(mat, "Portal", (0, 0, 21000, 0), -1400, 1050)
 albedo = colour(mat, "Albedo", (0.9, 0.9, 0.9, 1), -1400, 1100)
 storm = colour(mat, "StormAlbedo", (0.4, 0.43, 0.5, 1), -1400, 1300)
 flash = colour(mat, "FlashColor", (0.16, 0.22, 0.4, 1), -1400, 1500)
@@ -165,7 +195,7 @@ node = mel.create_material_expression(mat, unreal.MaterialExpressionCustom, -800
 node.set_editor_property("code", DENSITY)
 node.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT4)
 inputs = []
-for n in ["P", "T", "Shape", "Sky", "Front", "Mist"]:
+for n in ["P", "T", "Shape", "Sky", "Front", "Mist", "Portal"]:
     ci = unreal.CustomInput()
     ci.set_editor_property("input_name", n)
     inputs.append(ci)
@@ -179,6 +209,7 @@ mel.connect_material_expressions(time, "", node, "T")
 mel.connect_material_expressions(sky, "", node, "Sky")
 mel.connect_material_expressions(front, "", node, "Front")
 mel.connect_material_expressions(mist, "", node, "Mist")
+mel.connect_material_expressions(portal, "", node, "Portal")
 
 
 def channel(r, g, b, y):
