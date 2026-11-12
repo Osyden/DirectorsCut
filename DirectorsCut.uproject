@@ -3,6 +3,13 @@
 	"EngineAssociation": "{0274916D-43E8-650F-8B04-C7B731855A40}",
 	"Category": "",
 	"Description": "",
+	"Modules": [
+		{
+			"Name": "DirectorsCut",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	],
 	"Plugins": [
 		{
 			"Name": "ModelingToolsEditorMode",
