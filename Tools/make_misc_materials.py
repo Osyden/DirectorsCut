@@ -149,3 +149,46 @@ col = vparam(mat, "Color", (60.0, 70.0, 90.0, 1), -400, 0)
 mel.connect_material_property(col, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
 mel.recompile_material(mat)
 unreal.log_warning("DC_RESULT M_Bolt saved=%s" % unreal.EditorAssetLibrary.save_asset(path, only_if_is_dirty=False))
+
+# ---- M_Cloud: a soft billow for the fog front. Dense in the middle, fading at the edge, dark at the
+# foot and lit at the top, and it can glow from inside when lightning fires ("Flash", 0..1).
+mat, path = new_material("M_Cloud")
+mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
+mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+top = vparam(mat, "Top", (0.55, 0.5, 0.48, 1), -900, 0)
+bottom = vparam(mat, "Bottom", (0.03, 0.045, 0.06, 1), -900, 200)
+flash = vparam(mat, "Flash", (0, 0, 0, 0.9), -900, 400)
+fres = mel.create_material_expression(mat, unreal.MaterialExpressionFresnel, -900, 600)
+fres.set_editor_property("exponent", 1.6)
+fres.set_editor_property("base_reflect_fraction", 0.0)
+wp = mel.create_material_expression(mat, unreal.MaterialExpressionWorldPosition, -900, 750)
+time = mel.create_material_expression(mat, unreal.MaterialExpressionTime, -900, 900)
+CLOUD = """
+float core = saturate(1.0 - F);
+float h = saturate(P.z / 45000.0);
+// Slow churn so the billows are never still.
+float churn = 0.85 + 0.15 * sin(P.x * 0.0004 + T * 0.3) * sin(P.y * 0.0005 - T * 0.23 + P.z * 0.0003);
+float3 col = lerp(Bottom.rgb, Top.rgb, h * h * h) * churn + Flash.rgb * core * core;
+float alpha = saturate(pow(core, 1.4) * 1.5) * Flash.a;
+return float4(col, alpha);
+"""
+c = custom(mat, CLOUD, unreal.CustomMaterialOutputType.CMOT_FLOAT4, ["F", "P", "T", "Top", "Bottom", "Flash"], -500, 200)
+flash4 = mel.create_material_expression(mat, unreal.MaterialExpressionAppendVector, -700, 400)
+mel.connect_material_expressions(flash, "", flash4, "A")
+mel.connect_material_expressions(flash, "A", flash4, "B")
+mel.connect_material_expressions(fres, "", c, "F")
+mel.connect_material_expressions(wp, "", c, "P")
+mel.connect_material_expressions(time, "", c, "T")
+mel.connect_material_expressions(top, "", c, "Top")
+mel.connect_material_expressions(bottom, "", c, "Bottom")
+mel.connect_material_expressions(flash4, "", c, "Flash")
+rgb = mel.create_material_expression(mat, unreal.MaterialExpressionComponentMask, -250, 150)
+rgb.set_editor_property("r", True); rgb.set_editor_property("g", True); rgb.set_editor_property("b", True); rgb.set_editor_property("a", False)
+mel.connect_material_expressions(c, "", rgb, "")
+alpha = mel.create_material_expression(mat, unreal.MaterialExpressionComponentMask, -250, 350)
+alpha.set_editor_property("r", False); alpha.set_editor_property("g", False); alpha.set_editor_property("b", False); alpha.set_editor_property("a", True)
+mel.connect_material_expressions(c, "", alpha, "")
+mel.connect_material_property(rgb, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+mel.connect_material_property(alpha, "", unreal.MaterialProperty.MP_OPACITY)
+mel.recompile_material(mat)
+unreal.log_warning("DC_RESULT M_Cloud saved=%s" % unreal.EditorAssetLibrary.save_asset(path, only_if_is_dirty=False))

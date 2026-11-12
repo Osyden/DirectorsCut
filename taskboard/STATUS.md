@@ -2,6 +2,22 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 14:00 — maelstrom light and spray; the cloud front; NvRTX assessment
+
+New review sets in the repo: `taskboard/review/03-maelstrom-light-spray/` and `taskboard/review/04-fog-front/` (full-size frames in ride order plus `_contact.jpg`).
+
+**Maelstrom (priority 1), pass 3.** Added light shafts from the sun, cloud shadows moving over the water, and wind-blown spray across the deck. With these the helm view now has: teal water torn into white foam spirals, the waterfall rim across the horizon, the horned head with lit eyes framed by arching arms, spray in the air. Against the reference, what is still short: the sun and its rays are above the frame from the helm (hidden by the sail), so god rays do not read; the creature is blocky; no mist at the foot of the falls; deck is not wet.
+
+**Fog front (priority 2), pass 1.** There is now a cloud front (`DCFogFront.cpp`): about 150 billows forming a wall 9 km wide and 1.2 km tall, dark at the foot, sunlit on top, in three shades so it has modelling, flickering from inside with lightning. It stands 4 km off at the start and closes over the bow at 60 seconds. The fog darkens just before it arrives so there is no bright gap as the ship goes in. Inside, the first things out of the murk are ruins, a statue, a ghost ship, and a pale giant walking on the water. What is weak: from a distance the front reads as heavy cloud more than a wall on the sea; the billows are plain spheres.
+
+**NvRTX assessment (asked for in the inbox).**
+
+- What is active now: **DLSS 4.5 Super Resolution** (on, Quality), **DLSS Frame Generation** (integrated, off by default, `F6`). Lighting is stock Unreal: Lumen with hardware ray tracing, volumetric fog and clouds, light shafts. None of RTXDI, ReSTIR GI, ReSTIR PT, Mega Geometry, LSS Hair or ACE is in use.
+- NvRTX features need NVIDIA's fork of the engine. I could find a 5.7 branch mentioned publicly and nothing about 5.8, and NVIDIA's own material describes compiling it, not downloading a binary. The project is on stock 5.8.4.
+- Cost of switching: download and compile an engine from source (hours on this PC), possibly move the project down to 5.7, rebuild the DLSS plugins against it, re-verify packaging and the Unreal MCP tooling, and re-tune the lighting, which would look different under RTXDI. Access needs a GitHub account linked to Epic, which I do not have, so I cannot start it unattended.
+- What it would buy: RTXDI is a real fit for this game (many moving lights: lanterns, deck fires, lightning, ghost ships). ReSTIR PT would be for a path-traced beauty mode, not for play.
+- **My recommendation: do not migrate.** DLSS 4.5 alone meets the listed requirement, three days remain, and the visual gaps the owner listed (composition, scale, atmosphere) are art-direction problems that the stock renderer can solve. If the owner wants it anyway, the low-risk way is a second copy of the project on the NvRTX branch purely to try RTXDI, keeping this one as the entry; the owner would need to do the GitHub download.
+
 ## Thu 12 Nov 13:48 — maelstrom reveal, pass 2: the crater and the leviathan
 
 Screenshots for remote review are now in the repo: `taskboard/review/02-maelstrom-leviathan/` (six full-size frames from the helm, in ride order, plus `_contact.jpg`). `01-maelstrom-reveal/` is the earlier pass for comparison. Reference: `References/maelstrom-direction.jpg`.

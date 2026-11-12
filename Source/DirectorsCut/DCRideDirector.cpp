@@ -107,7 +107,7 @@ void ADCRideDirector::BuildDefaultPhases()
 		E.SeaColor = FLinearColor(0.03f, 0.09f, 0.13f); E.SeaRoughness = 1.2f; E.ShipSpeed = 1000.f; E.WaveHeight = 70.f; E.Foam = 0.5f; E.Exposure = 1.0f;
 	}
 	{
-		FDCEnvState& E = Add(EDCPhase::Fog, 60.f, 25.f);
+		FDCEnvState& E = Add(EDCPhase::Fog, 51.f, 9.f); // dark by the time the cloud front (DCFogFront, arrival 60 s) closes over the bow
 		E.FogColor = FLinearColor(0.12f, 0.17f, 0.2f); E.FogDensity = 0.16f; E.FogHeightFalloff = 0.002f;
 		E.SunColor = FLinearColor(0.5f, 0.7f, 0.8f); E.SunIntensity = 0.6f; E.SunPitch = -20.f; E.SkyIntensity = 0.35f;
 		E.SeaColor = FLinearColor(0.01f, 0.03f, 0.035f); E.SeaRoughness = 2.5f; E.LightningRate = 3.f; E.ShipSpeed = 1100.f; E.WaveHeight = 110.f; E.Foam = 0.6f; E.Exposure = 0.6f;
