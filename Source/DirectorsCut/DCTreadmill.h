@@ -20,6 +20,10 @@ struct FDCWorldObject
 	float Health = 1.f;
 	/** Moved by its owner (e.g. a kraken arm), not by the treadmill. */
 	bool bExternal = false;
+	/** Heading in degrees, on top of the sea rocking. */
+	float Yaw = 0.f;
+	/** False for scenery that the ship cannot hit. */
+	bool bSolid = true;
 };
 
 /**
@@ -68,6 +72,8 @@ public:
 protected:
 	void SpawnObject(bool bHostile, const FVector& Base, const FVector& Scale, UStaticMesh* Mesh, const FLinearColor& Color, float Radius, float Health);
 	void SpawnForPhase(EDCPhase Phase, float DeltaSeconds);
+	void Register(AActor* Actor, const FVector& Base, float Radius, bool bHostile, float Health, float Yaw, bool bSolid);
+	float SceneryTimer = 3.f;
 
 	UPROPERTY() TObjectPtr<ADCRideDirector> Director;
 	UPROPERTY() TObjectPtr<UStaticMesh> CubeMesh;

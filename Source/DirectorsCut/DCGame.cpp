@@ -249,6 +249,7 @@ void ADCGameMode::StartPlay()
 		}
 	}
 
+	FParse::Value(FCommandLine::Get(), TEXT("DCTimeScale="), Director->TimeScale);
 	FString Shots;
 	if (FParse::Value(FCommandLine::Get(), TEXT("DCAutoShots="), Shots, false))
 	{

@@ -224,7 +224,7 @@ void ADCAudio::Tick(float DeltaSeconds)
 	SetLayer(Wind, FMath::Clamp(0.12f + Storm * 0.55f + Env.Tube * 0.5f + Env.FogDensity * 1.2f, 0.f, 1.f), DeltaSeconds);
 	SetLayer(Sea, FMath::Clamp(0.35f + Storm * 0.6f + Env.Tube * 0.4f, 0.f, 1.2f), DeltaSeconds);
 	SetLayer(Rain, Env.Rain * 0.7f, DeltaSeconds);
-	SetLayer(Rumble, FMath::Clamp(Env.SeaGlow.R * 1.4f + Env.Whirl * 0.5f + Env.Tube * 0.35f, 0.f, 1.f), DeltaSeconds);
+	SetLayer(Rumble, FMath::Clamp(FMath::Min(Env.SeaGlow.R, 1.f) * 0.9f + Env.Whirl * 0.5f + Env.Tube * 0.35f, 0.f, 1.f), DeltaSeconds);
 
 	const double Now = FPlatformTime::Seconds();
 	for (int32 i = PendingThunder.Num() - 1; i >= 0; --i)

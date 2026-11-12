@@ -1,5 +1,6 @@
 #include "DCTreadmill.h"
 #include "DCRideDirector.h"
+#include "DCHazards.h"
 #include "Engine/StaticMeshActor.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
@@ -64,58 +65,85 @@ void ADCTreadmill::SpawnObject(bool bHostile, const FVector& Base, const FVector
 	Obj.Health = Health;
 }
 
-void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
+void ADCTreadmill::Register(AActor* Actor, const FVector& Base, float Radius, bool bHostile, float Health, float Yaw, bool bSolid)
 {
-	float ObstacleEvery = 0.f, HostileEvery = 0.f;
-	switch (Phase)
-	{
-	case EDCPhase::Fog: ObstacleEvery = 7.f; HostileEvery = 14.f; break;
-	case EDCPhase::Hell: ObstacleEvery = 3.5f; HostileEvery = 9.f; break;
-	case EDCPhase::Maelstrom: ObstacleEvery = 0.f; HostileEvery = 0.f; break; // the kraken owns this phase
-	default: break;
-	}
-
-	if (ObstacleEvery > 0.f)
-	{
-		ObstacleTimer -= DeltaSeconds;
-		if (ObstacleTimer <= 0.f)
-		{
-			ObstacleTimer = ObstacleEvery * FMath::FRandRange(0.7f, 1.3f);
-			// Placed in sea space, so add the current lane offset to aim near the ship's present course.
-			const float Y = LaneOffset + FMath::FRandRange(-2500.f, 2500.f);
-			const bool bHell = Phase == EDCPhase::Hell;
-			const float H = FMath::FRandRange(8.f, 30.f);
-			const float W = FMath::FRandRange(4.f, 9.f);
-			SpawnObject(false, FVector(SpawnDistance, Y, H * 50.f - 200.f), FVector(W, W, H), bHell ? ConeMesh.Get() : CubeMesh.Get(),
-				bHell ? FLinearColor(0.35f, 0.05f, 0.01f) : FLinearColor(0.08f, 0.1f, 0.1f), W * 50.f, 1.f);
-		}
-	}
-
-	if (HostileEvery > 0.f)
-	{
-		HostileTimer -= DeltaSeconds;
-		if (HostileTimer <= 0.f)
-		{
-			HostileTimer = HostileEvery * FMath::FRandRange(0.7f, 1.3f);
-			const float Side = FMath::RandBool() ? 1.f : -1.f;
-			const float Y = LaneOffset + Side * FMath::FRandRange(5000.f, 9000.f);
-			if (Phase == EDCPhase::Maelstrom)
-			{
-				// Stand-in tentacle: rises close alongside.
-				SpawnObject(true, FVector(FMath::FRandRange(6000.f, 14000.f), LaneOffset + Side * FMath::FRandRange(2500.f, 4500.f), 1500.f),
-					FVector(5.f, 5.f, 40.f), CylinderMesh.Get(), FLinearColor(0.1f, 0.2f, 0.12f), 400.f, 3.f);
-			}
-			else
-			{
-				// Stand-in ghost ship / demon.
-				const bool bHell = Phase == EDCPhase::Hell;
-				SpawnObject(true, FVector(SpawnDistance, Y, 400.f), FVector(30.f, 8.f, 10.f), CubeMesh.Get(),
-					bHell ? FLinearColor(0.9f, 0.25f, 0.02f) : FLinearColor(0.3f, 0.9f, 0.8f), 1500.f, 2.f);
-			}
-		}
-	}
+	if (!Actor) { return; }
+	FDCWorldObject& Obj = Objects.AddDefaulted_GetRef();
+	Obj.Actor = Actor;
+	Obj.Base = Base;
+	Obj.Radius = Radius;
+	Obj.bHostile = bHostile;
+	Obj.Health = Health;
+	Obj.Yaw = Yaw;
+	Obj.bSolid = bSolid;
+	Actor->SetActorLocation(Base);
 }
 
+void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
+{
+	float ObstacleEvery = 0.f, HostileEvery = 0.f, SceneryEvery = 0.f;
+	switch (Phase)
+	{
+	case EDCPhase::Fog: ObstacleEvery = 7.f; HostileEvery = 14.f; SceneryEvery = 9.f; break;
+	case EDCPhase::Hell: ObstacleEvery = 3.5f; HostileEvery = 9.f; SceneryEvery = 5.f; break;
+	default: break; // the kraken owns the maelstrom
+	}
+	const bool bHell = Phase == EDCPhase::Hell;
+	const float SeaZ = Director ? Director->SeaLevelZ : 0.f;
+	const FLinearColor Stone = bHell ? FLinearColor(0.05f, 0.025f, 0.02f) : FLinearColor(0.07f, 0.085f, 0.08f);
+	const FLinearColor Ember(9.f, 1.6f, 0.15f);
+	UWorld* World = GetWorld();
+
+	// Obstacles: in the lane, must be steered around.
+	if (ObstacleEvery > 0.f && (ObstacleTimer -= DeltaSeconds) <= 0.f)
+	{
+		ObstacleTimer = ObstacleEvery * FMath::FRandRange(0.7f, 1.3f);
+		// Sea space: add the lane offset so they land near the ship's present course.
+		const FVector Base(SpawnDistance, LaneOffset + FMath::FRandRange(-2500.f, 2500.f), SeaZ);
+		if (bHell || FMath::FRand() < 0.6f)
+		{
+			const float Radius = FMath::FRandRange(350.f, 750.f);
+			AActor* Rock = DCHazards::SpawnRock(World, Radius, FMath::FRandRange(1500.f, 4200.f), bHell, Stone);
+			if (bHell) { DCHazards::SetGlow(Rock, Ember); }
+			Register(Rock, Base, Radius, false, 1.f, FMath::FRandRange(0.f, 360.f), true);
+		}
+		else
+		{
+			const float Scale = FMath::FRandRange(0.7f, 1.15f);
+			Register(DCHazards::SpawnRuin(World, Scale, Stone), Base, 1000.f * Scale, false, 1.f, FMath::FRandRange(-25.f, 25.f), true);
+		}
+	}
+
+	// Scenery: off to the sides, never hit, there to loom.
+	if (SceneryEvery > 0.f && (SceneryTimer -= DeltaSeconds) <= 0.f)
+	{
+		SceneryTimer = SceneryEvery * FMath::FRandRange(0.7f, 1.4f);
+		const float Side = FMath::RandBool() ? 1.f : -1.f;
+		const FVector Base(SpawnDistance, LaneOffset + Side * FMath::FRandRange(4500.f, 9000.f), SeaZ);
+		if (!bHell && FMath::FRand() < 0.45f)
+		{
+			// Statues face the passing ship.
+			Register(DCHazards::SpawnStatue(World, FMath::FRandRange(5000.f, 9500.f), Stone), Base - FVector(0.f, 0.f, 600.f), 1500.f, false, 1.f, Side > 0.f ? -110.f : 110.f, false);
+		}
+		else
+		{
+			const float Radius = FMath::FRandRange(900.f, 2200.f);
+			AActor* Rock = DCHazards::SpawnRock(World, Radius, FMath::FRandRange(3000.f, 9000.f), bHell, Stone);
+			if (bHell) { DCHazards::SetGlow(Rock, Ember); }
+			Register(Rock, Base, Radius, false, 1.f, FMath::FRandRange(0.f, 360.f), false);
+		}
+	}
+
+	// Hostiles: spectral ships that come alongside to be shot at.
+	if (HostileEvery > 0.f && (HostileTimer -= DeltaSeconds) <= 0.f)
+	{
+		HostileTimer = HostileEvery * FMath::FRandRange(0.7f, 1.3f);
+		const float Side = FMath::RandBool() ? 1.f : -1.f;
+		const FVector Base(SpawnDistance, LaneOffset + Side * FMath::FRandRange(4500.f, 8000.f), SeaZ);
+		AActor* Ghost = DCHazards::SpawnGhostShip(World, bHell ? FLinearColor(1.f, 0.25f, 0.03f) : FLinearColor(0.15f, 0.9f, 0.75f));
+		Register(Ghost, Base, 1600.f, true, 2.f, FMath::FRandRange(-8.f, 8.f), false);
+	}
+}
 void ADCTreadmill::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
@@ -166,9 +194,9 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 		}
 
 		const FVector Local(Obj.Base.X, Obj.Base.Y - LaneOffset, Obj.Base.Z);
-		Actor->SetActorLocationAndRotation(Rock.TransformPosition(Local), Rock.GetRotation());
+		Actor->SetActorLocationAndRotation(Rock.TransformPosition(Local), Rock.GetRotation() * FRotator(0.f, Obj.Yaw, 0.f).Quaternion());
 
-		if (!Obj.bHostile && FMath::Abs(Local.X) < ShipHalfLength && FMath::Abs(Local.Y) < ShipHalfWidth + Obj.Radius)
+		if (!Obj.bHostile && Obj.bSolid && FMath::Abs(Local.X) < ShipHalfLength && FMath::Abs(Local.Y) < ShipHalfWidth + Obj.Radius)
 		{
 			Director->DamageShip(10.f);
 			Actor->Destroy();
@@ -190,7 +218,7 @@ bool ADCTreadmill::FindObstacleAhead(float MaxDistance, float& OutX, float& OutY
 	bool bFound = false;
 	for (const FDCWorldObject& Obj : Objects)
 	{
-		if (Obj.bHostile) { continue; }
+		if (Obj.bHostile || !Obj.bSolid) { continue; }
 		const float X = Obj.Base.X;
 		const float Y = Obj.Base.Y - LaneOffset;
 		if (X > ShipHalfLength && X < BestX && FMath::Abs(Y) < ShipHalfWidth + Obj.Radius + 600.f)

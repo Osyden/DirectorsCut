@@ -100,7 +100,7 @@ void ADCRideDirector::BuildDefaultPhases()
 		FDCEnvState& E = Add(EDCPhase::Hell, 270.f, 8.f);
 		E.FogColor = FLinearColor(0.5f, 0.09f, 0.02f); E.FogDensity = 0.07f; E.FogHeightFalloff = 0.03f;
 		E.SunColor = FLinearColor(1.f, 0.3f, 0.1f); E.SunIntensity = 2.5f; E.SunPitch = -35.f; E.SkyIntensity = 0.5f;
-		E.SeaColor = FLinearColor(0.25f, 0.03f, 0.0f); E.SeaRoughness = 3.5f; E.ShipSpeed = 1600.f; E.WaveHeight = 170.f; E.Foam = 1.2f; E.SeaGlow = FLinearColor(0.7f, 0.1f, 0.006f); E.Exposure = 0.3f; E.Tube = 0.3f;
+		E.SeaColor = FLinearColor(0.02f, 0.006f, 0.003f); E.SeaRoughness = 3.5f; E.ShipSpeed = 1600.f; E.WaveHeight = 170.f; E.Foam = 1.2f; E.SeaGlow = FLinearColor(10.f, 1.5f, 0.1f); E.Exposure = 0.3f; E.Tube = 0.3f;
 	}
 	{
 		FDCEnvState& E = Add(EDCPhase::Breach, 420.f, 5.f);
@@ -231,6 +231,7 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 		SeaMID->SetScalarParameterValue(TEXT("FoamAmount"), Env.Foam);
 		SeaMID->SetVectorParameterValue(TEXT("DeepColor"), Env.SeaColor);
 		SeaMID->SetVectorParameterValue(TEXT("GlowColor"), Env.SeaGlow);
+		SeaMID->SetScalarParameterValue(TEXT("Roughness"), FMath::Lerp(0.06f, 0.65f, FMath::Clamp(Env.SeaGlow.R, 0.f, 1.f)));
 		SeaMID->SetVectorParameterValue(TEXT("Color"), Env.SeaColor);
 		SeaMID->SetVectorParameterValue(TEXT("Shape"), FLinearColor(Env.Tube, TubeRadius, Env.Drop, 0.f));
 		SeaMID->SetVectorParameterValue(TEXT("Whirl"), FLinearColor(WhirlCenter.X, WhirlCenter.Y, Env.Whirl * WhirlDepth, WhirlRadius));

@@ -52,7 +52,7 @@ d *= saturate(1.0 - Dist / 400000.0);
 // Calm the water against the hull, and sink it inside the hull so it never shows on deck or below.
 float nearShip = saturate(1.0 - length(P.xy - float2(320.0, 0.0)) / 7000.0);
 d *= lerp(1.0, 0.3, nearShip * nearShip);
-float2 e = float2((P.x - 300.0) / 2150.0, P.y / 430.0);
+float2 e = float2((P.x - 150.0) / 1800.0, P.y / 400.0);
 d.z -= 600.0 * smoothstep(0.0, 0.2, saturate(1.0 - dot(e, e)));
 
 // q = where this bit of sea ends up, relative to the ship at sea level.
@@ -153,6 +153,17 @@ float2 rel = P.xy - Whirl.xy;
 float funnel = saturate(Whirl.z / 20000.0) / (1.0 + dot(rel, rel) / (wr * wr));
 f = saturate(f + streak * saturate(Shape.x * 1.2 + funnel * 0.6));
 return f * saturate(0.75 + 0.25 * n) * saturate(1.0 - Dist / 150000.0);
+"""
+
+
+LAVA = WAVES + """
+// Glowing cracks between drifting plates of crust.
+float a = sin(p.x * 0.0021 + sin(p.y * 0.0031 + T * 0.05) * 1.7);
+float b = sin(p.y * 0.0019 + sin(p.x * 0.0027 - T * 0.04) * 1.3);
+float c = abs(a * b);
+float fine = abs(sin(p.x * 0.007 + b * 4.0 + sin(p.y * 0.004) * 2.0) * sin(p.y * 0.0083 + a * 4.0 + sin(p.x * 0.005) * 2.0));
+float cracks = pow(saturate(1.0 - c * 4.5), 2.0) + 0.18 * pow(saturate(1.0 - fine * 5.0), 3.0);
+return (cracks + 0.02) * saturate(1.0 - Dist / 250000.0);
 """
 
 
@@ -275,7 +286,12 @@ def build():
     mel.connect_material_expressions(foam_sat, "", one_minus, "")
     glow = mel.create_material_expression(mat, unreal.MaterialExpressionMultiply, -150, 850)
     mel.connect_material_expressions(glow_col, "", glow, "A")
-    mel.connect_material_expressions(one_minus, "", glow, "B")
+    lava = custom(mat, LAVA, unreal.CustomMaterialOutputType.CMOT_FLOAT1, names, -800, 1000, "Lava crack mask")
+    wire(lava, False)
+    lava_mask = mel.create_material_expression(mat, unreal.MaterialExpressionMultiply, -350, 950)
+    mel.connect_material_expressions(lava, "", lava_mask, "A")
+    mel.connect_material_expressions(one_minus, "", lava_mask, "B")
+    mel.connect_material_expressions(lava_mask, "", glow, "B")
     mel.connect_material_property(glow, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
 
     mel.recompile_material(mat)
