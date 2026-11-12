@@ -3,6 +3,8 @@
 #include "DCTreadmill.h"
 #include "DCCrew.h"
 #include "DCVoice.h"
+#include "DCPlayer.h"
+#include "DCGunnery.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -18,61 +20,6 @@
 #include "Misc/Parse.h"
 #include "Misc/Paths.h"
 #include "HAL/IConsoleManager.h"
-
-// ---------------------------------------------------------------- Player
-
-ADCPlayerCharacter::ADCPlayerCharacter()
-{
-	PrimaryActorTick.bCanEverTick = true;
-
-	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
-	Camera->SetupAttachment(GetCapsuleComponent());
-	Camera->SetRelativeLocation(FVector(0.f, 0.f, 64.f));
-	Camera->bUsePawnControlRotation = true;
-
-	bUseControllerRotationYaw = true;
-	GetCharacterMovement()->MaxWalkSpeed = 450.f;
-}
-
-void ADCPlayerCharacter::Tick(float DeltaSeconds)
-{
-	Super::Tick(DeltaSeconds);
-
-	APlayerController* PC = Cast<APlayerController>(GetController());
-	if (!PC) { return; }
-
-	float DX = 0.f, DY = 0.f;
-	PC->GetInputMouseDelta(DX, DY);
-	FRotator Rot = PC->GetControlRotation();
-	Rot.Yaw += DX * LookSensitivity * 10.f;
-	Rot.Pitch = FMath::Clamp(FRotator::NormalizeAxis(Rot.Pitch) + DY * LookSensitivity * 10.f, -85.f, 85.f);
-	Rot.Roll = 0.f;
-	PC->SetControlRotation(Rot);
-
-	const FRotator YawRot(0.f, Rot.Yaw, 0.f);
-	const FVector Forward = YawRot.Vector();
-	const FVector Right = FRotationMatrix(YawRot).GetUnitAxis(EAxis::Y);
-	float F = 0.f, R = 0.f;
-	if (PC->IsInputKeyDown(EKeys::W)) { F += 1.f; }
-	if (PC->IsInputKeyDown(EKeys::S)) { F -= 1.f; }
-	if (PC->IsInputKeyDown(EKeys::D)) { R += 1.f; }
-	if (PC->IsInputKeyDown(EKeys::A)) { R -= 1.f; }
-	AddMovementInput(Forward, F);
-	AddMovementInput(Right, R);
-	if (PC->WasInputKeyJustPressed(EKeys::SpaceBar)) { Jump(); }
-
-	// Quick orders for players without a microphone.
-	static const TPair<FKey, const TCHAR*> QuickOrders[] = {
-		{ EKeys::One, TEXT("Hard to port") }, { EKeys::Two, TEXT("Hard to starboard") }, { EKeys::Three, TEXT("Steady as she goes") },
-		{ EKeys::Four, TEXT("Port battery, fire") }, { EKeys::Five, TEXT("Starboard battery, fire") }, { EKeys::Six, TEXT("Hold fire") } };
-	for (const TPair<FKey, const TCHAR*>& Q : QuickOrders)
-	{
-		if (PC->WasInputKeyJustPressed(Q.Key))
-		{
-			if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>()) { Crew->ExecuteOrder(Q.Value); }
-		}
-	}
-}
 
 // ---------------------------------------------------------------- HUD
 
@@ -104,6 +51,15 @@ void ADCHUD::DrawHUD()
 		if (V->IsListening())
 		{
 			DrawText(TEXT("LISTENING..."), FLinearColor(1.f, 0.3f, 0.2f), Canvas->SizeX * 0.5f - 70.f, Canvas->SizeY - 110.f, Font, 1.8f);
+		}
+	}
+	if (ADCPlayerCharacter* Captain = Cast<ADCPlayerCharacter>(GetOwningPawn()))
+	{
+		if (!Captain->GetPrompt().IsEmpty())
+		{
+			float TW = 0.f, TH = 0.f;
+			GetTextSize(Captain->GetPrompt(), TW, TH, Font, 1.5f);
+			DrawText(Captain->GetPrompt(), FLinearColor(1.f, 0.95f, 0.8f), (Canvas->SizeX - TW) * 0.5f, Canvas->SizeY * 0.72f, Font, 1.5f);
 		}
 	}
 
@@ -218,6 +174,8 @@ void ADCGameMode::StartPlay()
 		UE_LOG(LogDC, Log, TEXT("Ship %s bounds min %s max %s"), *Ship->GetName(), *Bounds.Min.ToString(), *Bounds.Max.ToString());
 		Treadmill->ShipHalfLength = Bounds.GetExtent().X;
 		Treadmill->ShipHalfWidth = Bounds.GetExtent().Y;
+		ADCGunnery* Guns = World->SpawnActor<ADCGunnery>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
+		Guns->Init(Ship, SeaLevelZ);
 		{
 			TArray<UPrimitiveComponent*> Prims;
 			Ship->GetComponents(Prims);
@@ -268,6 +226,24 @@ void ADCGameMode::StartPlay()
 	}
 
 	Crew->ExecuteOrder(TEXT("Finch, take the helm"));
+
+	// Unattended test hooks: -DCOrders=hard_to_port;port_battery_fire and -DCStation=helm|port|starboard.
+	FString OrderList;
+	if (FParse::Value(FCommandLine::Get(), TEXT("DCOrders="), OrderList, false))
+	{
+		TArray<FString> Orders;
+		OrderList.ParseIntoArray(Orders, TEXT(";"));
+		for (const FString& O : Orders) { Crew->ExecuteOrder(O.Replace(TEXT("_"), TEXT(" "))); }
+	}
+	FString StationName;
+	if (FParse::Value(FCommandLine::Get(), TEXT("DCStation="), StationName))
+	{
+		if (ADCPlayerCharacter* Captain = Cast<ADCPlayerCharacter>(World->GetFirstPlayerController() ? World->GetFirstPlayerController()->GetPawn() : nullptr))
+		{
+			if (StationName == TEXT("helm")) { Captain->DebugTakeStation(EDCStationType::Helm, EDCSide::None); }
+			else { Captain->DebugTakeStation(EDCStationType::Cannons, StationName == TEXT("port") ? EDCSide::Port : EDCSide::Starboard); }
+		}
+	}
 
 	FString Shots;
 	if (FParse::Value(FCommandLine::Get(), TEXT("DCAutoShots="), Shots, false))

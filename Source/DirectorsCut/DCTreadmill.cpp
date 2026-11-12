@@ -243,3 +243,22 @@ int32 ADCTreadmill::NumHostiles() const
 	for (const FDCWorldObject& Obj : Objects) { if (Obj.bHostile) { ++N; } }
 	return N;
 }
+
+int32 ADCTreadmill::DamageNear(const FVector& WorldPos, float Radius, float Damage, bool bDirect)
+{
+	int32 Hits = 0;
+	for (int32 i = Objects.Num() - 1; i >= 0; --i)
+	{
+		const FDCWorldObject& Obj = Objects[i];
+		const AActor* Actor = Obj.Actor.Get();
+		if (!Obj.bHostile || !Actor) { continue; }
+		const float Reach = Radius + Obj.Radius * (bDirect ? 0.6f : 1.f);
+		if (FVector::DistSquared(Actor->GetActorLocation(), WorldPos) < Reach * Reach)
+		{
+			DamageObject(i, Damage);
+			++Hits;
+			if (bDirect) { break; }
+		}
+	}
+	return Hits;
+}

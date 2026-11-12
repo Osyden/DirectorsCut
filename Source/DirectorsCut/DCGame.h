@@ -11,22 +11,6 @@ class UCameraComponent;
 class ADCRideDirector;
 class ADCTreadmill;
 
-/** First-person captain. Reads keys directly so no input assets are needed. */
-UCLASS()
-class ADCPlayerCharacter : public ACharacter
-{
-	GENERATED_BODY()
-
-public:
-	ADCPlayerCharacter();
-	virtual void Tick(float DeltaSeconds) override;
-
-	UPROPERTY(EditAnywhere) float LookSensitivity = 0.12f;
-
-protected:
-	UPROPERTY(VisibleAnywhere) TObjectPtr<UCameraComponent> Camera;
-};
-
 /** Debug HUD: phase, ride time, hull, crew subtitles. */
 UCLASS()
 class ADCHUD : public AHUD

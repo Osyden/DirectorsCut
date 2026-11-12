@@ -49,6 +49,8 @@ public:
 	FVector GetObjectLocation(int32 Index) const;
 	/** Returns true if the hostile was destroyed. */
 	bool DamageObject(int32 Index, float Damage);
+	/** Damage hostiles near a world position. bDirect uses a tighter radius and stops at the first hit. Returns hits. */
+	int32 DamageNear(const FVector& WorldPos, float Radius, float Damage, bool bDirect);
 	int32 NumObjects() const { return Objects.Num(); }
 	int32 NumHostiles() const;
 

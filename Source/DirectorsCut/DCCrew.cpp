@@ -2,6 +2,7 @@
 #include "DCTreadmill.h"
 #include "DCRideDirector.h"
 #include "DCVoice.h"
+#include "DCGunnery.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "Engine/StaticMesh.h"
@@ -230,18 +231,13 @@ void ADCCrewMember::TickHelm(float DeltaSeconds, ADCTreadmill* Treadmill)
 
 void ADCCrewMember::TickCannons(float DeltaSeconds, ADCTreadmill* Treadmill, EDCSide Side)
 {
-	ReloadLeft -= DeltaSeconds;
-	if (bHoldFire || ReloadLeft > 0.f) { return; }
+	if (bHoldFire) { return; }
+	ADCGunnery* Guns = ADCGunnery::Get(this);
+	if (!Guns || !Guns->IsReady(Side)) { return; }
 
-	const int32 Target = Treadmill->FindHostile(Side, 12000.f);
+	const int32 Target = Treadmill->FindHostile(Side, 13000.f);
 	if (Target == INDEX_NONE) { return; }
-
-	ReloadLeft = 3.f;
-	const FVector From = GetActorLocation() + FVector(0.f, Side == EDCSide::Port ? -250.f : 250.f, 0.f);
-	const FVector To = Treadmill->GetObjectLocation(Target);
-	DrawDebugLine(GetWorld(), From, To, FColor(255, 180, 60), false, 0.25f, 0, 12.f);
-	DrawDebugSphere(GetWorld(), To, 250.f, 12, FColor::Orange, false, 0.4f);
-	Treadmill->DamageObject(Target, 1.f);
+	Guns->FireBroadside(Side, Treadmill->GetObjectLocation(Target), 4);
 }
 
 // ---------------------------------------------------------------- Crew subsystem
@@ -316,6 +312,11 @@ ADCCrewMember* UDCCrewSubsystem::EnsureOperator(int32 StationIdx, const FString&
 {
 	FDCStation* S = GetStation(StationIdx);
 	if (!S) { return nullptr; }
+	if (S->bPlayerOperated)
+	{
+		if (Crew.Num() && Crew[0]) { Reply(Crew[0]->CrewName, TEXT("You have that station yourself, Captain!")); }
+		return nullptr;
+	}
 	ADCCrewMember* Current = S->Operator.Get();
 	if (Current && (PreferredName.IsEmpty() || Current->CrewName.Equals(PreferredName, ESearchCase::IgnoreCase)))
 	{
