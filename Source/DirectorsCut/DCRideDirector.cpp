@@ -135,8 +135,8 @@ void ADCRideDirector::BuildDefaultPhases()
 		// Then it thins, and the drowned city stands in layered blue-grey haze out to a couple of kilometres:
 		// cold moonlight from behind the statues, lightning to pick out their outlines, warm lanterns on deck.
 		FDCEnvState& E = Add(EDCPhase::Fog, 78.f, 22.f);
-		E.FogColor = FLinearColor(0.2f, 0.26f, 0.33f); E.FogDensity = 0.006f; E.FogHeightFalloff = 0.0012f; E.CloudCover = 0.8f; E.CloudBase = 110000.f; E.Mist = 0.75f;
-		E.SunColor = FLinearColor(0.6f, 0.72f, 0.9f); E.SunIntensity = 1.6f; E.SunPitch = -24.f; E.SunYaw = 160.f; E.SkyIntensity = 0.55f;
+		E.FogColor = FLinearColor(0.2f, 0.26f, 0.33f); E.FogDensity = 0.006f; E.FogHeightFalloff = 0.0012f; E.CloudCover = 0.5f; E.CloudBase = 110000.f; E.Mist = 0.75f;
+		E.SunColor = FLinearColor(1.f, 0.82f, 0.62f); E.SunIntensity = 3.f; E.SunPitch = -11.f; E.SunYaw = 168.f; // low sun ahead to port, behind the ruins: silhouettes and long shafts through the mist E.SkyIntensity = 0.55f;
 		E.SeaColor = FLinearColor(0.012f, 0.019f, 0.025f); E.SeaRoughness = 3.f; E.Rain = 0.35f; E.LightningRate = 10.f; E.ShipSpeed = 1500.f; E.WaveHeight = 190.f; E.Foam = 1.f; E.Exposure = 0.05f;
 	}
 	{
@@ -539,7 +539,9 @@ void ADCRideDirector::AddLamp(const FVector& Location)
 	Lamp->SetupAttachment(RootComponent);
 	Lamp->SetWorldLocation(Location);
 	Lamp->SetLightColor(FLinearColor(1.f, 0.62f, 0.28f));
-	Lamp->SetAttenuationRadius(1600.f);
+	Lamp->SetAttenuationRadius(2600.f);
+	// Each lantern lights the mist round it: a warm halo in the fog.
+	Lamp->SetVolumetricScatteringIntensity(1.2f);
 	Lamp->SetSourceRadius(12.f);
 	Lamp->SetIntensity(0.f);
 	Lamp->SetCastShadows(true);
@@ -550,7 +552,8 @@ void ADCRideDirector::AddLamp(const FVector& Location)
 void ADCRideDirector::TickLamps()
 {
 	// Lanterns come up as the daylight goes, and gutter in the wind.
-	const float Dark = FMath::Clamp(1.15f - Env.SunIntensity / 3.5f, 0.f, 1.f);
+	// Lit whenever the light is low or there is mist to glow in.
+	const float Dark = FMath::Max(FMath::Clamp(1.15f - Env.SunIntensity / 3.5f, 0.f, 1.f), FMath::Clamp(Env.Mist * 1.4f, 0.f, 1.f));
 	for (int32 i = 0; i < Lamps.Num(); ++i)
 	{
 		const float Flicker = 0.85f + 0.15f * FMath::Sin(RideTime * 9.f + i * 2.1f) * FMath::Sin(RideTime * 5.3f + i);
@@ -639,6 +642,9 @@ void ADCRideDirector::SetupUDS()
 	UDSSky = GetWorld()->SpawnActorDeferred<AActor>(SkyClass, FTransform::Identity);
 	SkyFlag(UDSSky, TEXT("Manually Position Sun Target"), true);
 	SkyFlag(UDSSky, TEXT("Use Volumetric Fog"), true);
+	// Far enough for shafts between ruins a few hundred metres off, and strong enough to see.
+	SkyNum(UDSSky, TEXT("Volumetric Fog Distance"), 40000.0);
+	SkyNum(UDSSky, TEXT("Sun Volumetric Scattering Intensity"), 3.0);
 	SkyFlag(UDSSky, TEXT("Enable Sun Light Shaft Bloom"), true);
 	// The director keeps its own fixed exposure per phase, so dark scenes stay dark.
 	SkyFlag(UDSSky, TEXT("Apply Exposure Settings"), false);
@@ -678,11 +684,14 @@ void ADCRideDirector::SetupOcean()
 {
 	// Dynamic Real Water (an engine-installed Fab plugin, optional). Trial: -DCDRW puts its stock
 	// ocean at sea level and hides the director's own sea outside the tunnel and the maelstrom.
-	if (!FParse::Param(FCommandLine::Get(), TEXT("DCDRW"))) { return; }
+	if (FParse::Param(FCommandLine::Get(), TEXT("DCNoDRW"))) { return; }
 	UClass* OceanClass = LoadClass<AActor>(nullptr, TEXT("/DynamicRealWater/Blueprints/BP_DynamicRealWater.BP_DynamicRealWater_C"), nullptr, LOAD_NoWarn | LOAD_Quiet);
 	if (!OceanClass) { UE_LOG(LogDC, Warning, TEXT("Ocean: Dynamic Real Water not found")); return; }
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	Ocean = GetWorld()->SpawnActor<AActor>(OceanClass, FVector(0.f, 0.f, SeaLevelZ), FRotator::ZeroRotator, Params);
+	Ocean = GetWorld()->SpawnActorDeferred<AActor>(OceanClass, FTransform(FVector(0.f, 0.f, SeaLevelZ)));
+	// The waves run from the bow aft, which reads as the ship making way through them.
+	if (FStructProperty* Wind = FindFProperty<FStructProperty>(OceanClass, TEXT("WindDirection"))) { *Wind->ContainerPtrToValuePtr<FVector2D>(Ocean.Get()) = FVector2D(-1.0, 0.2); }
+	UGameplayStatics::FinishSpawningActor(Ocean, FTransform(FVector(0.f, 0.f, SeaLevelZ)));
 	UE_LOG(LogDC, Log, TEXT("Ocean: Dynamic Real Water in use (%s)"), Ocean ? *Ocean->GetClass()->GetName() : TEXT("spawn failed"));
 }

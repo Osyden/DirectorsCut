@@ -180,3 +180,68 @@ AActor* DCRuins::SpawnCrag(UWorld* World, float Radius, float Height)
 	}
 	return A;
 }
+
+AActor* DCRuins::SpawnComplex(UWorld* World, float Scale, int32 Seed)
+{
+	// A sanctuary: a stepped platform out of the water carrying a temple at the back, a forecourt
+	// walled by colonnades, a monumental arch at the front and statues along the approach. About
+	// 110 m wide and 150 m deep at scale 1, facing along its own +X.
+	AActor* A = RuinActor(World);
+	FRandomStream Rng(Seed);
+	for (int32 s = 0; s < 3; ++s)
+	{
+		const float W = 15000.f - s * 900.f, D = 11000.f - s * 900.f;
+		RuinPiece(A, TEXT("Stone_blocks/SM_Stone_blocks_04_block_01"), FVector(0.f, 0.f, -500.f + s * 220.f), 0.f, FVector(W / 320.f, D / 340.f, 220.f / 170.f));
+	}
+	const float Floor = 160.f;
+	// Temple at the back: six spans wide, columns front and back, pediment over each.
+	for (int32 Row = 0; Row < 2; ++Row)
+	{
+		const float X = -5200.f - Row * 2200.f;
+		for (int32 i = -2; i <= 2; ++i)
+		{
+			RuinPiece(A, (i + Row) % 2 ? TEXT("Columns/SM_Colonnade_02") : TEXT("Columns/SM_Colonnade_01"), FVector(X, i * 1230.f, Floor), 90.f);
+		}
+		RuinPiece(A, TEXT("Stone_blocks/SM_Fronton_01"), FVector(X, 0.f, Floor + 1530.f), 90.f, FVector(4.9f, 1.f, 4.2f));
+	}
+	for (int32 Side = -1; Side <= 1; Side += 2)
+	{
+		RuinPiece(A, TEXT("Wall_sections/SM_Wall_section_01"), FVector(-6300.f, Side * 2600.f, Floor), 0.f, FVector(1.9f, 1.f, 1.6f));
+		// Forecourt colonnades running forward from the temple, with gaps where spans have fallen.
+		for (int32 i = 0; i < 6; ++i)
+		{
+			const FVector At(-3600.f + i * 1230.f, Side * 4300.f, Floor);
+			if (Rng.FRand() < 0.22f)
+			{
+				RuinPiece(A, TEXT("Columns/SM_Column_01_dmg_04"), At + FVector(-350.f, 0.f, 0.f));
+				RuinPiece(A, TEXT("Columns/SM_Column_01_dmg_07"), At + FVector(300.f, -Side * 500.f, 0.f), Rng.FRandRange(0.f, 360.f));
+			}
+			else
+			{
+				RuinPiece(A, i % 2 ? TEXT("Columns/SM_Colonnade_03") : TEXT("Columns/SM_Colonnade_05"), At);
+			}
+		}
+		// Statues along the approach, some broken.
+		for (int32 i = 0; i < 3; ++i)
+		{
+			static const TCHAR* Figures[] = { TEXT("Arch/SM_Statue_01"), TEXT("Arch/SM_Statue_01_dmg_03"), TEXT("Arch/SM_Statue_01"), TEXT("Arch/SM_Statue_01_dmg_02") };
+			const FVector At(-1800.f + i * 2300.f, Side * 2100.f, Floor);
+			RuinPiece(A, TEXT("Arch/SM_Pedestal_01"), At, 90.f);
+			RuinPiece(A, Figures[Rng.RandRange(0, 3)], At + FVector(0.f, 0.f, 300.f), Side > 0 ? -90.f : 90.f, FVector(1.5f));
+		}
+		RuinPiece(A, TEXT("Arch/SM_Pillar_wall_01"), FVector(5600.f, Side * 3300.f, Floor), 90.f, FVector(1.f, 1.f, 1.2f));
+	}
+	// The monumental arch at the front of the court, and the cult statue inside the temple.
+	static const TCHAR* Arches[] = { TEXT("Arch/SM_Arch_01"), TEXT("Arch/SM_Arch_02"), TEXT("Arch/SM_Arch_03"), TEXT("Arch/SM_Arch_04") };
+	RuinPiece(A, Arches[Rng.RandRange(0, 3)], FVector(5200.f, 0.f, Floor), 90.f, FVector(1.5f));
+	RuinPiece(A, TEXT("Arch/SM_Statue_01"), FVector(-6200.f, 0.f, Floor), 90.f, FVector(2.6f));
+	// Fallen masonry in the water around the foot of the platform.
+	for (int32 i = 0; i < 8; ++i)
+	{
+		const float Ang = Rng.FRandRange(0.f, 2.f * UE_PI);
+		static const TCHAR* Debris[] = { TEXT("Columns/SM_Column_01_dmg_07"), TEXT("Columns/SM_Column_01_dmg_08"), TEXT("Stone_blocks/SM_Stone_blocks_04_block_03"), TEXT("Columns/SM_Column_01_dmg_03") };
+		RuinPiece(A, Debris[Rng.RandRange(0, 3)], FVector(FMath::Cos(Ang) * 8200.f, FMath::Sin(Ang) * 6300.f, -450.f), Rng.FRandRange(0.f, 360.f), FVector(Rng.FRandRange(1.f, 1.8f)), Rng.FRandRange(-10.f, 10.f));
+	}
+	A->SetActorScale3D(FVector(Scale));
+	return A;
+}

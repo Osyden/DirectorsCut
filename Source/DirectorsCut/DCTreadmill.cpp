@@ -89,7 +89,7 @@ void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
 	float ObstacleEvery = 0.f, HostileEvery = 0.f, SceneryEvery = 0.f;
 	switch (Phase)
 	{
-	case EDCPhase::Fog: ObstacleEvery = 8.f; HostileEvery = 16.f; SceneryEvery = 15.f; break;
+	case EDCPhase::Fog: ObstacleEvery = 8.f; HostileEvery = bGhostShips ? 16.f : 0.f; SceneryEvery = 15.f; break;
 	case EDCPhase::Hell: ObstacleEvery = 3.5f; HostileEvery = 9.f; SceneryEvery = 5.f; break;
 	default: break; // the kraken owns the maelstrom
 	}
@@ -125,7 +125,7 @@ void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
 		SceneryTimer = SceneryEvery * FMath::FRandRange(0.7f, 1.4f);
 		const float Side = FMath::RandBool() ? 1.f : -1.f;
 		const FVector Base(SpawnDistance, LaneOffset + Side * FMath::FRandRange(4500.f, 9000.f), SeaZ);
-		if (!bHell && FMath::FRand() < 0.3f)
+		if (!bHell && bSpecters && FMath::FRand() < 0.3f)
 		{
 			// Specters: pale giants walking on the water, turned toward the ship as it passes.
 			Register(DCHazards::SpawnSpecter(World, FMath::FRandRange(2200.f, 5000.f), FLinearColor(0.7f, 1.5f, 1.7f), false), Base, 800.f, false, 1.f, Side > 0.f ? -90.f : 90.f, false);
@@ -549,6 +549,13 @@ void ADCTreadmill::SpawnAtlantis()
 			{ 2, 88000.f, -24000.f, 6.f, 60.f }, { 6, 112000.f, 30000.f, 5.f, 100.f }, { 4, 132000.f, -30000.f, 6.f, 75.f },
 			{ 1, 172000.f, 26000.f, 5.f, 110.f }, { 6, 205000.f, -40000.f, 7.f, 70.f }, { 3, 222000.f, 22000.f, 6.f, 95.f },
 			{ 5, 262000.f, 0.f, 9.f, 90.f }, { 4, 300000.f, -32000.f, 8.f, 80.f }, { 1, 318000.f, 30000.f, 8.f, 100.f } };
+		// Sanctuaries: whole complexes on platforms, set back on either hand and turned to face the course.
+		struct FSite { float X, Y, Scale; int32 Seed; };
+		const FSite Sites[] = { { 96000.f, -27000.f, 2.6f, 11 }, { 150000.f, 30000.f, 3.f, 23 }, { 215000.f, -33000.f, 3.4f, 37 }, { 285000.f, 38000.f, 4.f, 41 } };
+		for (const FSite& S : Sites)
+		{
+			Register(DCRuins::SpawnComplex(World, S.Scale, S.Seed), FVector(S.X, S.Y, SeaZ), 2000.f, false, 1.f, S.Y > 0.f ? -90.f : 90.f, false);
+		}
 		for (const FPiece& P : City)
 		{
 			AActor* Built = P.Kind == 5 ? DCRuins::SpawnGate(World, P.Scale) : P.Kind == 6 ? DCRuins::SpawnTemple(World, P.Scale) : DCRuins::SpawnArch(World, P.Kind, P.Scale);
@@ -585,6 +592,7 @@ void ADCTreadmill::SpawnAtlantis()
 	}
 
 	// Presences in the cloud: figures a kilometre tall, seen only as pale shapes far off.
+	if (!bSpecters) { return; }
 	const FLinearColor Pale(0.22f, 0.3f, 0.38f);
 	Register(DCHazards::SpawnSpecter(World, 95000.f, Pale, false), FVector(310000.f, -120000.f, SeaZ - 30000.f), 2000.f, false, 1.f, 150.f, false);
 	Register(DCHazards::SpawnSpecter(World, 110000.f, Pale, false), FVector(430000.f, 95000.f, SeaZ - 35000.f), 2000.f, false, 1.f, 215.f, false);

@@ -59,7 +59,7 @@ public:
 
 	/** A ship lantern at a world position; lit automatically when it gets dark. */
 	void AddLamp(const FVector& Location);
-	UPROPERTY(EditAnywhere) float LampIntensity = 2200.f;
+	UPROPERTY(EditAnywhere) float LampIntensity = 3200.f;
 	/** 0..1 camera shake: hits, thunder, kraken blows. Decays by itself. */
 	float Trauma = 0.f;
 	float WhiteOut = 0.f;

@@ -86,6 +86,9 @@ protected:
 	bool bAtlantisBuilt = false;
 	/** How far ahead the portal stands when the city is laid out: the distance sailed before the slide starts. */
 	UPROPERTY(EditAnywhere) float PortalDistance = 287000.f;
+	/** Ghost ships and the walking giants are placeholders the owner has switched off for now (12 Nov). */
+	UPROPERTY(EditAnywhere) bool bGhostShips = false;
+	UPROPERTY(EditAnywhere) bool bSpecters = false;
 
 	UPROPERTY() TObjectPtr<ADCRideDirector> Director;
 	UPROPERTY() TObjectPtr<UStaticMesh> CubeMesh;

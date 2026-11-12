@@ -29,4 +29,6 @@ namespace DCRuins
 	AActor* SpawnBrokenColumns(UWorld* World, float Radius);
 	/** Lane obstacle: a crag of rock. */
 	AActor* SpawnCrag(UWorld* World, float Radius, float Height);
+	/** A whole sanctuary on a stepped platform: temple, colonnaded forecourt, arch, statues. Scale 1 = about 150 m across. */
+	AActor* SpawnComplex(UWorld* World, float Scale, int32 Seed);
 }

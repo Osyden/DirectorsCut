@@ -2,6 +2,19 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 22:06 — Atlantis lighting pass with the new sky and water (set 24)
+
+Owner's brief: open sea and early fog to AAA standard, ruin complexes, volumetric fog and light, god rays, glowing lanterns, ghost ships off. Review set `taskboard/review/24-atlantis-lighting-pass/` (`a_bow_*` from the bow, `b_helm_*` from the helm). Best frames: `a_bow_0130`, `a_bow_0150`, `b_helm_0130`.
+
+- **Dynamic Real Water is now the default sea** for the opening and Atlantis (`-DCNoDRW` goes back to mine). Waves run from the bow aft.
+- **Light:** a low warm sun ahead to port, behind the ruins, under broken cloud. Ruins stand in silhouette with lit edges, the sun lays a glitter path on the water, and shafts of light come through the gates and columns in the mist (volumetric fog out to 400 m).
+- **Ruin complexes:** four sanctuaries (stepped platform, temple with pediments, colonnaded forecourt, monumental arch, statues on pedestals, fallen masonry) set on either hand, as well as the gates and arches on the course.
+- **Lanterns** are lit whenever there is mist and light the fog around them. First attempt flooded the deck with orange haze; toned down. They still do not read as glowing lamps: the lamp glass itself is not bright.
+- **Ghost ships are off**, and so are the placeholder giants (owner: giants, statues and sea monsters come later). `bGhostShips` and `bSpecters` on the treadmill bring them back.
+- **Frame rate has dropped:** Atlantis is 72 to 74 fps at 720p with DLSS in the editor build (was about 115 before the water and the longer volumetric fog); open sea 144 to 147. Needs a performance pass before this is the shipping setup.
+- Still short: sanctuaries read as small and low from the helm; no wetness or rain splashes; fog is even rather than banked; nothing replaces the storm front, portal or cloud faces yet under the new sky; the sea monster and maelstrom are untouched by this pass.
+- Not repackaged; packaging with the water plugin is untested.
+
 ## Thu 12 Nov 21:40 — Dynamic Real Water trial (set 23); gunnery branch merged
 
 Review set: `taskboard/review/23-dynamic-real-water-trial/` (`a_bow_*` from the bow, `b_helm_*` from the helm). Trial only: run with `-DCDRW`.
