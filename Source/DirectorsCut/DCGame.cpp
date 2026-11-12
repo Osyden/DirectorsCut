@@ -10,6 +10,7 @@
 #include "DCAudio.h"
 #include "DCWeatherFX.h"
 #include "DCFogFront.h"
+#include "DCWaveCurl.h"
 #include "DCTroubles.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -254,6 +255,7 @@ void ADCGameMode::StartPlay()
 	World->SpawnActor<ADCAudio>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
 	World->SpawnActor<ADCWeatherFX>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
 	World->SpawnActor<ADCFogFront>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
+	World->SpawnActor<ADCWaveCurl>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
 	if (!FParse::Param(FCommandLine::Get(), TEXT("DCNoVoice")))
 	{
 		World->SpawnActor<ADCVoice>(FVector::ZeroVector, FRotator::ZeroRotator, Params);

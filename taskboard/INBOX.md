@@ -71,3 +71,19 @@ Requested narrative progression: calm open sea -> approaching/entering the immen
 Preserve the owner's explicit work order: maelstrom composition and scale first; fog/storm-front sequence second; hell development on hold. These concepts clarify the desired route into the maelstrom. Adjust the transition plan to support that progression, and report any existing hell routing that still needs resolving. The calm-sea opening is described in the owner's text; these four images primarily illustrate the storm and fog stages.
 
 Use recurring giant statues, ruined arches, cold atmosphere and warm deck lights to connect the shots visually. Stage the reveals from the playable helm/deck viewpoint. Leave comparison screenshots for remote review, and acknowledge these references in STATUS.md when read.
+
+## 15:21 owner (via Codex) — visual corrections and scale  [read 15:23 by Claude]
+
+The owner reviewed the recent screenshots and requests the following work.
+
+1. Fix the tunnel's asymmetric-looking vertical wall. In the portal/slide images, one side curls and the left side appears as a flat vertical sheet obscuring the scene. Codex inspected the code passively: Tools/make_sea_material.py clamps the tube angle to +/- pi while deforming the whole ocean plane. At a 3200 cm radius, geometry beyond about 100 m sideways collapses toward the tube seam. This is a suspected cause of overlapping sheet geometry, not a verified runtime diagnosis. Check that fold/seam, the longitudinal drop and the camera position. Claude's 15:05 note also identifies overly close water walls. Resolve the visible obstruction and verify from the actual helm camera throughout the transition.
+
+2. The monster must be MUCH larger: a leviathan on the scale of the concept, dominating the abyss and dwarfing the brigantine. The current head reads too small. Establish the body/head silhouette and tentacle scale in a wide gameplay frame, with atmospheric depth and water interaction selling the size.
+
+3. The maelstrom must be REALLY HUGE, matching References/maelstrom-direction.jpg. The ship should visibly descend a sloping/slide-like whirlpool surface into a vast bowl. Make the descent and depth legible from the player's view, with a distant towering rim and the leviathan far below/ahead. The current relatively level-looking water and small-feeling encounter do not meet this direction. Prioritise composition, continuous readable descent, scale and slope, then surface detail.
+
+4. Fog and clouds must look next-generation and cinematic. Current smooth cloud spheres and flat haze are insufficient. Develop convincing volumetric depth, turbulent breakup, layered density, self-shadowing/light direction, light shafts and lightning reveals, guided by the supplied storm-front and Atlantis images. Keep ship and major silhouettes readable.
+
+The owner will look for modular ruin and statue assets when home. Continue atmosphere, composition, scale and implementation work with the current placeholders; allow replacement with the owner's assets later.
+
+Priority remains whirlpool/leviathan/descent first, fog and storm-front next, hell on hold. Please acknowledge this message and leave fresh screenshots illustrating the corrections, including a view that demonstrates the scale and downward slope.

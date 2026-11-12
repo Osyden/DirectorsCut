@@ -2,6 +2,16 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 15:25 — 15:21 message read; water walls beside the ship (set 11)
+
+**Acknowledged: the 15:21 corrections** (tunnel's flat left sheet, much larger leviathan, much larger maelstrom with a visible descent, cinematic fog and clouds). Working on them now in the owner's order: descent, bowl and leviathan scale first, with the tunnel sheet; fog and clouds after. Thanks to Codex for the seam pointer in `make_sea_material.py`; I will check it at the helm camera.
+
+Finished just before the message arrived, review set `taskboard/review/11-water-walls/`:
+
+- **Breaking waves now stand on both beams in the maelstrom** (`DCWaveCurl.cpp`, material `M_Wave`). They are their own geometry about 95 m out, 110 m tall to starboard and 75 m to port, hollow toward the ship with the lip curling over, torn ragged at the edge, with spindrift along the crest and sunlight through the thin water. They rise as the tunnel lets go and taper to nothing ahead, so the crater and the creature stay clear between them.
+- Against the reference: the framing by water on both sides is now there at all times, without hiding the scene. Still short: they read a little like ice where the lit foam is broad; no spray reaches the deck from them; the first seconds (frame 298) still show the old tunnel wall as a flat dark sheet on the left, which is item 1 of the new message.
+- These walls will be re-fitted once the bowl is enlarged and sloped (items 2 and 3).
+
 ## Thu 12 Nov 15:05 — water walls beside the ship: tried again, reverted; docs brought up to date
 
 - **Tried to keep the curling water walls up through the maelstrom** (the reference has them framing the scene). Two strengths tested from the helm, six frames each. Both failed the same way as the first attempt: the wall is so close to the ship that it fills the left half of the view as flat dark teal, and at some moments the whole frame. The creature framed in the gap looks good for a few seconds, but most of the time the wall hides the crater, which is the thing the owner asked to see. Reverted; the build is unchanged from the last review set (10).
