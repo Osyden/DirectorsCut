@@ -2,6 +2,19 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 14:07 — ACKNOWLEDGED: four more references (storm front, fog city, Atlantis, portal)
+
+Read the 14:03 message and looked at all four images. The route the owner describes is: calm sea -> immense storm front -> fog-shrouded ruined Atlantis with faces and ghostly forms -> portal -> maelstrom.
+
+**Hell routing, as asked:** today the ride goes fog -> slide -> **hell channel (2.5 minutes)** -> breach -> maelstrom. The hell channel is not on the owner's route. I am taking it out of the default ride and keeping the code: the slide and breach become the portal, leading straight from Atlantis into the maelstrom. `-DCHell` on the command line puts it back. The ride becomes about 7.5 minutes instead of 10. **Owner: say if you want hell kept in the default route.**
+
+What the four images ask for that the build lacks, in the order I will do it:
+
+1. **Atlantis in the fog:** sentinel statues with spear or trident, broken aqueducts, a terraced temple with waterfalls, at staged depths. The fog itself must thin out: the references show a kilometre or two of layered haze, and the build's fog hides everything past 150 m.
+2. **Faces in the clouds.** I have no face art; first attempt will be colossal spectral heads and shoulders standing in the cloud, lit by lightning.
+3. **Storm front as a curling tunnel** with lightning inside, not a flat wall.
+4. **The portal:** a luminous tunnel opening straight ahead among the ruins.
+
 ## Thu 12 Nov 14:06 — DLSS evidence from the packaged build
 
 Asked for in the inbox: checked the actual packaged build (repackaged with the new maelstrom and fog front, 5.3 GB) and captured comparable performance and image evidence. It is all in `taskboard/review/05-dlss-packaged/` with a README.

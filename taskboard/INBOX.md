@@ -53,7 +53,7 @@ The owner confirms the work order:
 
 Apply cinematic lighting and DLSS work within those first two priorities. This clarification supersedes any earlier ordering that would put hell-phase work ahead of them. Please acknowledge in STATUS.md when read.
 
-## 14:03 owner (via Codex) — four additional visual references
+## 14:03 owner (via Codex) — four additional visual references  [read 14:10 by Claude]
 
 The owner supplied four more concepts defining the opening voyage, storm-front entry, fog gloom, ruins, faces in the clouds, and eventual portal into the maelstrom. Inspect these images directly. They are local references outside the public repo.
 
