@@ -96,6 +96,10 @@ protected:
 	TArray<FDCIncoming> Incoming;
 	void LaunchAt(const FVector& From);
 	void TickIncoming(float DeltaSeconds);
+
+	/** A sunk hostile on its way under. */
+	struct FDCWreck { TWeakObjectPtr<AActor> Actor; float Age = 0.f; };
+	TArray<FDCWreck> Wrecks;
 	float Steer = 0.f;
 	float LaneOffset = 0.f;
 	float ObstacleTimer = 4.f;

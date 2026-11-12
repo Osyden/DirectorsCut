@@ -400,6 +400,16 @@ void ADCGameMode::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	// Frame rate in real time, whatever the test time dilation.
 	SmoothedFps = FMath::Lerp(SmoothedFps, 1.f / FMath::Max(FApp::GetDeltaTime(), 0.0001), 0.05f);
+	// -DCRestartAt=20 reloads the level once after that many seconds, as the R key does (tests that a second voyage works).
+	static bool bRestartTested = false;
+	float RestartAt = 0.f;
+	if (!bRestartTested && FParse::Value(FCommandLine::Get(), TEXT("DCRestartAt="), RestartAt) && GetWorld()->GetTimeSeconds() > RestartAt)
+	{
+		bRestartTested = true;
+		UE_LOG(LogDC, Log, TEXT("Restart test: reloading the level"));
+		UGameplayStatics::OpenLevel(this, FName(*UGameplayStatics::GetCurrentLevelName(this)));
+		return;
+	}
 	if (LateOrders.Num())
 	{
 		ADCVoice* Voice = ADCVoice::Get(this);

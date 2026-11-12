@@ -166,6 +166,21 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 
 	SpawnForPhase(Director->GetPhase(), DeltaSeconds * Director->TimeScale);
 	TickIncoming(DeltaSeconds);
+	for (int32 w = Wrecks.Num() - 1; w >= 0; --w)
+	{
+		FDCWreck& Wreck = Wrecks[w];
+		Wreck.Age += DeltaSeconds;
+		AActor* Hulk = Wreck.Actor.Get();
+		if (!Hulk || Wreck.Age > 4.f)
+		{
+			if (Hulk) { Hulk->Destroy(); }
+			Wrecks.RemoveAtSwap(w);
+			continue;
+		}
+		// Settle, heel over and slide under, falling astern.
+		Hulk->AddActorWorldOffset(FVector(-Speed * 0.5f * DeltaSeconds, 0.f, -260.f * Wreck.Age * DeltaSeconds));
+		Hulk->AddActorLocalRotation(FRotator(-9.f * DeltaSeconds, 0.f, 14.f * DeltaSeconds));
+	}
 
 	const FTransform Rock = Director->GetWorldRock();
 	for (int32 i = Objects.Num() - 1; i >= 0; --i)
@@ -300,7 +315,16 @@ bool ADCTreadmill::DamageObject(int32 Index, float Damage)
 	Obj.Health -= Damage;
 	if (Obj.Health <= 0.f)
 	{
-		if (AActor* Actor = Obj.Actor.Get()) { Actor->Destroy(); }
+		if (AActor* Actor = Obj.Actor.Get())
+		{
+			// Kraken arms are retired by their owner. A ship goes down by the stern instead of vanishing.
+			if (Obj.bExternal) { Actor->Destroy(); }
+			else
+			{
+				Wrecks.Add({ Actor, 0.f });
+				if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>()) { Crew->Report(TEXT("She is going down! Good shooting!")); }
+			}
+		}
 		Objects.RemoveAtSwap(Index);
 		if (Director) { Director->Score += 100; }
 		return true;

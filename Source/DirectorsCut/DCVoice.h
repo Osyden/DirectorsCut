@@ -94,8 +94,9 @@ protected:
 	TAtomic<bool> bRecording{ false };
 	bool bStreamOpen = false;
 
-	FProcHandle LLMProc;
-	FProcHandle STTProc;
+	// Shared across level reloads (R to sail again) so the models stay loaded; stopped only when the game quits.
+	static FProcHandle LLMProc;
+	static FProcHandle STTProc;
 	bool bLaunched = false;
 	bool bLLMReady = false;
 	bool bSTTReady = false;

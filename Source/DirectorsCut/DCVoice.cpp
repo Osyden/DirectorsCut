@@ -91,6 +91,9 @@ namespace
 	}
 }
 
+FProcHandle ADCVoice::LLMProc;
+FProcHandle ADCVoice::STTProc;
+
 ADCVoice::ADCVoice()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -139,8 +142,11 @@ void ADCVoice::EndPlay(const EEndPlayReason::Type Reason)
 		Capture.Reset();
 	}
 	// Only stop servers this run started; ones already running (dev) are left alone.
-	if (LLMProc.IsValid()) { FPlatformProcess::TerminateProc(LLMProc, true); FPlatformProcess::CloseProc(LLMProc); }
-	if (STTProc.IsValid()) { FPlatformProcess::TerminateProc(STTProc, true); FPlatformProcess::CloseProc(STTProc); }
+	if (Reason == EEndPlayReason::Quit || Reason == EEndPlayReason::EndPlayInEditor)
+	{
+		if (LLMProc.IsValid()) { FPlatformProcess::TerminateProc(LLMProc, true); FPlatformProcess::CloseProc(LLMProc); LLMProc.Reset(); }
+		if (STTProc.IsValid()) { FPlatformProcess::TerminateProc(STTProc, true); FPlatformProcess::CloseProc(STTProc); STTProc.Reset(); }
+	}
 	Super::EndPlay(Reason);
 }
 
