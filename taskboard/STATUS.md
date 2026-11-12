@@ -2,6 +2,14 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 15:05 — water walls beside the ship: tried again, reverted; docs brought up to date
+
+- **Tried to keep the curling water walls up through the maelstrom** (the reference has them framing the scene). Two strengths tested from the helm, six frames each. Both failed the same way as the first attempt: the wall is so close to the ship that it fills the left half of the view as flat dark teal, and at some moments the whole frame. The creature framed in the gap looks good for a few seconds, but most of the time the wall hides the crater, which is the thing the owner asked to see. Reverted; the build is unchanged from the last review set (10).
+- What would make it work: walls that stand much further out (hundreds of metres, not tens) and curl over at the top, as separate geometry instead of the sea tube. Not done yet.
+- `PLAN.md` now describes the actual route (no hell by default, Atlantis, portal, crater) and lists the newer source files. `ITCH_PAGE.md` no longer promises a channel of fire. `SUBMISSION.md` no longer mentions lava.
+- **Hell routing, as asked:** the hell channel is out of the default route and nothing in the default voyage refers to it. The code, its hazards and its sound remain behind `-DCHell`. Owner to confirm it stays out.
+- No new inbox messages.
+
 ## Thu 12 Nov 14:44 — packaged build is current
 
 `E:\projects\directorscut\Builds\Windows\DirectorsCut.exe` (5.3 GB) now contains everything up to commit `e5b04ed`: the new route, Atlantis, cloud faces (repaired), portal, crater maelstrom with leviathan and mist, storm bell, recorded sound. Verified by a full unattended voyage at 5x with the crew AI running: all phases in order, a loosely worded order understood by the language model, no errors, servers shut down on exit, 148 to 177 fps at 720p, stand-in captain finished with 73% hull.

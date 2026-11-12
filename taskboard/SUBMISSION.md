@@ -39,7 +39,7 @@ All game code (C++ module `DirectorsCut`), the ride and its phases, the sea/tunn
 ## Draft answers for the NVIDIA questions
 
 - **Feature used:** NVIDIA DLSS 4.5 for Unreal Engine (plugin v8.7.2, NGX 310.6): DLSS Super Resolution at Quality (67%) is on by default. DLSS Frame Generation is integrated and supported but off by default.
-- **Why:** the ride leans on hardware ray-traced Lumen, volumetric fog and clouds, a displaced ocean and many dynamic lights (lightning, deck fires, lava). Rendering at 67% and upscaling with DLSS keeps that affordable.
+- **Why:** the ride leans on hardware ray-traced Lumen, volumetric fog and clouds, a displaced ocean and many dynamic lights (lightning, deck fires, lanterns). Rendering at 67% and upscaling with DLSS keeps that affordable.
 - **Not used:** the NvRTX engine branch (RTXDI, ReSTIR) and NVIDIA ACE.
 - To verify in a build: the log prints `NVIDIA NGX DLSS supported DLSS-SR=1` and `DLSS requested: super resolution at 67%`.
 

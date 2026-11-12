@@ -30,15 +30,17 @@ Length: 8–10 minutes, one sitting, no fail state that ends the ride early (the
 
 ## The ride
 
+Route as of Thu 12 Nov (owner direction in INBOX: calm sea, storm front, Atlantis in the fog, portal, maelstrom). About seven and a half minutes. The hell channel is built but out of the default route; `-DCHell` puts it back between the slide and the breach.
+
 | # | Phase | Time | What happens | Stations in play |
 |---|---|---|---|---|
-| 0 | Open sea | 0:00–1:00 | Calm, sunset. Tutorial: give two orders. Fog bank rolls in. | Helm |
-| 1 | The fog | 1:00–4:00 | Dark mist, statues and ruins looming, specters, ghost ships on both sides. | Helm, cannons |
-| T1 | The slide | 4:00–4:30 | Sea folds into a tunnel, ship loses control, drop. | none (hold on) |
-| 2 | Hell channel | 4:30–7:00 | Lava glow, burning rocks to dodge, demons flinging fire, deck fires. | Helm, cannons, fire buckets |
-| T2 | The breach | 7:00–7:20 | Tunnel opens into enormous space. | none |
-| 3 | The maelstrom | 7:20–10:00 | Kilometre-wide whirlpool, storm, kraken tentacles strike the ship. | Cannons, repairs, helm |
-| E | Ending | 10:00 | Kraken sinks or the ship is thrown clear. Score card. | — |
+| 0 | Open sea | 0:00–0:51 | Calm, sunset. Tutorial: give two orders. A storm front with a tunnel mouth closes on the ship; the bell starts to ring by itself. | Helm |
+| 1 | Into the front | 0:51–1:18 | Dense cloud, lightning, rain begins. | Helm |
+| 2 | Atlantis | 1:18–4:00 | Thin cold fog. Sentinel statues, aqueducts, a temple, kilometre-tall specters, faces in the clouds lit by lightning. Rocks and ruins to steer past, ghost ships to fight. A lit portal grows dead ahead. | Helm, cannons, fires, rigging |
+| T1 | The slide | 4:00–4:30 | The sea rolls into a tunnel and drops. | none (hold on) |
+| T2 | The breach | 4:30–4:50 | The tunnel opens on the crater. | none |
+| 3 | The maelstrom | 4:50–7:30 | A crater ringed by waterfalls and mist, sun through the clouds, the leviathan rising from the pit ahead, its arms striking the ship. | Cannons, repairs, helm |
+| E | Ending | 7:30 | Score card. | — |
 
 ## Stations (in build order)
 
@@ -99,15 +101,16 @@ All game code is in `Source/DirectorsCut/`. The map `Content/DC/Maps/L_Ride` is 
 | File | What it owns |
 |---|---|
 | `DCRideDirector` | Ride time, phases, per-phase environment values, sea mesh and its material parameters, lightning, lanterns, exposure, shake amount |
-| `DCTreadmill` | Obstacles, scenery and ghost ships moving past the ship; lane offset from the helm; helmsman's lane search |
-| `DCHazards` | Builders for rocks, ruins, statues, ghost ships |
+| `DCTreadmill` | Obstacles, scenery, Atlantis and ghost ships moving past the ship; lane offset from the helm; helmsman's lane search |
+| `DCHazards` | Builders for rocks, ruins, ghost ships, specters, sentinel statues, aqueducts, the temple |
+| `DCFogFront`, `DCCloudFace`, `DCPortal` | The storm front and its tunnel mouth; faces in the clouds; the portal out of Atlantis |
 | `DCCrew` | Keyword order grammar, crew members and their station behaviour, the crew subsystem that routes orders and warnings |
 | `DCVoice` | Microphone capture, speech-to-text, language model (order reading and crew lines), text-to-speech, sidecar processes |
 | `DCPlayer` | Captain: walking, taking stations, gun aiming, typed orders, hold-E jobs, camera feel, F5/F6 |
 | `DCGunnery` | Broadsides: muzzle positions, ballistic shots, hits |
 | `DCKraken`, `DCKrakenHead` | The arms that reach the ship; the body in the centre of the maelstrom |
 | `DCTroubles` | Deck fires and loose rigging |
-| `DCWeatherFX`, `DCAudio` | Rain and embers; synthesised wind, sea, rain, rumble, thunder |
+| `DCWeatherFX`, `DCAudio` | Rain, embers, spray; synthesised and recorded wind, sea, rain, rumble, thunder, storm bell |
 | `DCGame` | Game mode (spawns everything, test flags), HUD |
 
 Materials are generated, not hand-made: `Tools/make_*_material*.py`, run with `Tools/py.sh`. Test and build commands are in `SETUP.md`.

@@ -23,7 +23,7 @@ You are the captain. The ship has a helm, two gun batteries, fire buckets and ri
 
 They understand plain speech, answer in their own words and voices, and get on with it. They also call out what they see: rocks off the bow, a ghost ship coming alongside, fire on deck, a torn sail.
 
-The voyage is a ten-minute ride. Open sea at sunset. A fog bank full of drowned ruins, colossal statues and spectral ships. The sea rolling up into a tunnel and dropping away. A channel of fire. And at the end a maelstrom with something very large in the middle of it.
+The voyage is an eight-minute ride. Open sea at sunset. A storm front that swallows the ship. Drowned Atlantis in the fog: colossal statues, broken aqueducts, spectral ships, faces in the clouds. A portal of light, and the sea rolling up into a tunnel and dropping away. And at the end a maelstrom with something very large in the middle of it.
 
 Everything the crew does runs on your own PC: speech recognition, a small language model and speech synthesis are bundled with the game. Nothing is sent anywhere.
 
