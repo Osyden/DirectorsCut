@@ -88,26 +88,26 @@ void ADCRideDirector::BuildDefaultPhases()
 	}
 	{
 		FDCEnvState& E = Add(EDCPhase::Slide, 240.f, 6.f);
-		E.FogColor = FLinearColor(0.05f, 0.1f, 0.14f); E.FogDensity = 0.2f; E.FogHeightFalloff = 0.01f;
+		E.FogColor = FLinearColor(0.05f, 0.1f, 0.14f); E.FogDensity = 0.05f; E.FogHeightFalloff = 0.002f;
 		E.SunIntensity = 0.2f; E.SunPitch = -30.f; E.SkyIntensity = 0.2f;
-		E.SeaColor = FLinearColor(0.0f, 0.05f, 0.08f); E.SeaRoughness = 9.f; E.LightningRate = 12.f; E.ShipSpeed = 4000.f; E.WaveHeight = 320.f; E.Foam = 1.4f; E.Exposure = 1.5f;
+		E.SeaColor = FLinearColor(0.0f, 0.05f, 0.08f); E.SeaRoughness = 9.f; E.LightningRate = 12.f; E.ShipSpeed = 4000.f; E.WaveHeight = 150.f; E.Foam = 1.4f; E.Exposure = 1.5f; E.Tube = 1.f; E.Drop = 260.f;
 	}
 	{
 		FDCEnvState& E = Add(EDCPhase::Hell, 270.f, 8.f);
 		E.FogColor = FLinearColor(0.5f, 0.09f, 0.02f); E.FogDensity = 0.07f; E.FogHeightFalloff = 0.03f;
 		E.SunColor = FLinearColor(1.f, 0.3f, 0.1f); E.SunIntensity = 2.5f; E.SunPitch = -35.f; E.SkyIntensity = 0.5f;
-		E.SeaColor = FLinearColor(0.25f, 0.03f, 0.0f); E.SeaRoughness = 3.5f; E.ShipSpeed = 1600.f; E.WaveHeight = 170.f; E.Foam = 1.2f; E.SeaGlow = FLinearColor(0.7f, 0.1f, 0.006f); E.Exposure = 0.3f;
+		E.SeaColor = FLinearColor(0.25f, 0.03f, 0.0f); E.SeaRoughness = 3.5f; E.ShipSpeed = 1600.f; E.WaveHeight = 170.f; E.Foam = 1.2f; E.SeaGlow = FLinearColor(0.7f, 0.1f, 0.006f); E.Exposure = 0.3f; E.Tube = 0.3f;
 	}
 	{
 		FDCEnvState& E = Add(EDCPhase::Breach, 420.f, 5.f);
 		E.FogColor = FLinearColor(0.1f, 0.1f, 0.12f); E.FogDensity = 0.15f;
-		E.SunIntensity = 0.3f; E.SkyIntensity = 0.3f; E.SeaRoughness = 8.f; E.LightningRate = 20.f; E.ShipSpeed = 3500.f; E.WaveHeight = 340.f; E.Foam = 1.5f; E.Exposure = 1.5f;
+		E.SunIntensity = 0.3f; E.SkyIntensity = 0.3f; E.SeaRoughness = 8.f; E.LightningRate = 20.f; E.ShipSpeed = 3500.f; E.WaveHeight = 200.f; E.Foam = 1.5f; E.Exposure = 1.5f; E.Tube = 0.7f; E.Drop = 150.f;
 	}
 	{
 		FDCEnvState& E = Add(EDCPhase::Maelstrom, 440.f, 12.f);
 		E.FogColor = FLinearColor(0.1f, 0.13f, 0.17f); E.FogDensity = 0.012f; E.FogHeightFalloff = 0.008f;
 		E.SunColor = FLinearColor(0.55f, 0.65f, 0.8f); E.SunIntensity = 1.2f; E.SunPitch = -40.f; E.SkyIntensity = 0.5f;
-		E.SeaColor = FLinearColor(0.01f, 0.04f, 0.06f); E.SeaRoughness = 6.f; E.Rain = 1.f; E.LightningRate = 14.f; E.ShipSpeed = 2200.f; E.WaveHeight = 380.f; E.Foam = 1.5f; E.Exposure = 1.3f;
+		E.SeaColor = FLinearColor(0.01f, 0.04f, 0.06f); E.SeaRoughness = 6.f; E.Rain = 1.f; E.LightningRate = 14.f; E.ShipSpeed = 2200.f; E.WaveHeight = 300.f; E.Foam = 1.5f; E.Exposure = 1.3f; E.Whirl = 1.f;
 	}
 	{
 		FDCEnvState& E = Add(EDCPhase::Ending, 600.f, 15.f);
@@ -222,6 +222,8 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 		SeaMID->SetVectorParameterValue(TEXT("DeepColor"), Env.SeaColor);
 		SeaMID->SetVectorParameterValue(TEXT("GlowColor"), Env.SeaGlow);
 		SeaMID->SetVectorParameterValue(TEXT("Color"), Env.SeaColor);
+		SeaMID->SetVectorParameterValue(TEXT("Shape"), FLinearColor(Env.Tube, TubeRadius, Env.Drop, 0.f));
+		SeaMID->SetVectorParameterValue(TEXT("Whirl"), FLinearColor(WhirlCenter.X, WhirlCenter.Y, Env.Whirl * WhirlDepth, WhirlRadius));
 	}
 	PostProcess->Settings.AutoExposureBias = Env.Exposure;
 
@@ -232,7 +234,13 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 	const float Pitch = A * 0.45f * (FMath::Sin(T * 0.4f + 2.f) + 0.3f * FMath::Sin(T * 1.1f));
 	const float Heave = A * 18.f * FMath::Sin(T * 0.7f + 0.5f);
 	WorldRock = FTransform(FRotator(Pitch, 0.f, Roll), FVector(0.f, 0.f, Heave));
-	Sea->SetRelativeTransform(FTransform(WorldRock.GetRotation(), FVector(0.f, 0.f, SeaLevelZ + Heave)));
+	// On the wall of the maelstrom the sea slopes toward the centre. Tilt the whole sea the other way so
+	// the water is level under the ship and the funnel, not the deck, is what leans.
+	const float R0 = WhirlCenter.Size();
+	const float K = (R0 * R0) / (WhirlRadius * WhirlRadius);
+	const float Slope = Env.Whirl * WhirlDepth * 2.f * R0 / (WhirlRadius * WhirlRadius) / FMath::Square(1.f + K);
+	const FQuat Level = FRotator(0.f, 0.f, FMath::RadiansToDegrees(FMath::Atan(Slope)) * (WhirlCenter.Y < 0.f ? 1.f : -1.f)).Quaternion();
+	Sea->SetRelativeTransform(FTransform(WorldRock.GetRotation() * Level, FVector(0.f, 0.f, SeaLevelZ + Heave)));
 
 	// Lightning.
 	if (FlashTimeLeft > 0.f)

@@ -1,10 +1,18 @@
 """Builds /Game/DC/Materials/M_Sea: an animated ocean driven entirely by parameters.
 
-Run with the editor closed:
-  UnrealEditor-Cmd.exe DirectorsCut.uproject -run=pythonscript -script=Tools/make_sea_material.py
+Run with the editor closed:  Tools/py.sh Tools/make_sea_material.py
 
-The ride director sets the parameters every frame (wave height, scroll, colours, glow), so the
-same material is calm water, storm water and the burning sea of the hell channel.
+The ride director sets the parameters every frame, so one material is calm water, storm water,
+the burning sea of the hell channel, the water tunnel of the slide and the maelstrom funnel.
+
+Parameters
+  WaveAmp      height of the biggest swell (cm)
+  Chop         small ripple strength
+  Scroll       xy = how far the water has slid past the ship (cm)
+  Shape        x = tube amount 0..1 (sea wraps up and over the ship), y = tube radius (cm),
+               z = drop (cm of fall 100 m ahead; the sea falls away in front and rises behind)
+  Whirl        xy = whirlpool centre relative to the ship (cm), z = depth (cm), w = radius (cm)
+  DeepColor, FoamColor, FoamAmount, Roughness, GlowColor
 """
 import unreal
 
@@ -39,8 +47,31 @@ for (int i = 0; i < 7; i++)
     d.z += A * sin(ph);
 }
 // Flatten the far sea so the horizon stays a clean line.
-float fade = saturate(1.0 - Dist / 400000.0);
-return d * fade;
+d *= saturate(1.0 - Dist / 400000.0);
+
+// q = where this bit of sea ends up, relative to the ship at sea level.
+float3 q = float3(P.x + d.x, P.y + d.y, d.z);
+
+// Whirlpool: a funnel centred away from the ship; height is zero at the ship itself.
+float wr = max(Whirl.w, 1.0);
+float r2 = dot(q.xy - Whirl.xy, q.xy - Whirl.xy) / (wr * wr);
+float r02 = dot(Whirl.xy, Whirl.xy) / (wr * wr);
+q.z -= Whirl.z * (1.0 / (1.0 + r2) - 1.0 / (1.0 + r02));
+
+// Drop: the sea falls away ahead and rises behind, like cresting a slide.
+float xn = clamp(q.x / 10000.0, -6.0, 6.0);
+q.z -= Shape.z * xn * abs(xn);
+
+// Tube: roll the sea up around the ship's fore-aft axis until it closes overhead.
+if (Shape.x > 0.001)
+{
+    float Rt = Shape.y / Shape.x;
+    float th = clamp(q.y / Rt, -3.14159, 3.14159);
+    float rad = Rt - q.z;
+    q.y = rad * sin(th);
+    q.z = Rt - rad * cos(th);
+}
+return float3(q.x - P.x, q.y - P.y, q.z);
 """
 
 NORMAL = WAVES + """
@@ -70,7 +101,24 @@ for (int j = 0; j < 5; j++)
     float ph = k * dot(D, p) - w * T;
     g += D * (Ripples[j].w * rf * k * cos(ph));
 }
-return normalize(float3(-g.x, -g.y, 1.0));
+// Slope of the whirlpool funnel.
+float wr = max(Whirl.w, 1.0);
+float2 rel = P.xy - Whirl.xy;
+float r2 = dot(rel, rel) / (wr * wr);
+g += rel * (Whirl.z * 2.0 / (wr * wr) / ((1.0 + r2) * (1.0 + r2)));
+// Slope of the drop.
+g.x -= Shape.z * 2.0 * abs(clamp(P.x / 10000.0, -6.0, 6.0)) / 10000.0;
+
+float3 n = normalize(float3(-g.x, -g.y, 1.0));
+if (Shape.x > 0.001)
+{
+    float Rt = Shape.y / Shape.x;
+    float th = clamp(P.y / Rt, -3.14159, 3.14159);
+    float s = sin(th);
+    float c = cos(th);
+    n = float3(n.x, n.y * c - n.z * s, n.y * s + n.z * c);
+}
+return n;
 """
 
 FOAM = WAVES + """
@@ -85,13 +133,19 @@ for (int i = 0; i < 7; i++)
     h += Waves[i].w * sin(ph);
     sharp += Waves[i].w * Amp * k * sin(ph);
 }
-// Cheap breakup so foam is streaky rather than a clean band.
+// Cheap breakup so foam is streaky and ragged rather than a clean band.
 float2 q = p * 0.004;
 float n = sin(q.x * 1.7 + sin(q.y * 2.3 + T * 0.4)) * sin(q.y * 1.3 - sin(q.x * 2.9 - T * 0.3));
 float n2 = sin(p.x * 0.011 + n * 2.0) * sin(p.y * 0.013 - T * 0.6) * 0.5 + 0.5;
 float n3 = sin(p.x * 0.031 - p.y * 0.017 + T) * sin(p.y * 0.037 + p.x * 0.009) * 0.5 + 0.5;
 float crest = saturate((h - 1.45) * 1.6 + sharp * 0.8 - 0.15);
 float f = saturate(crest * 1.6 - (0.35 + 0.45 * n2 + 0.35 * n3) * (1.2 - crest));
+// Streaks that follow the flow: strong inside the tube and on the funnel wall.
+float streak = saturate(sin(p.y * 0.006 + n * 3.0) * sin(p.x * 0.0007 + n2 * 2.0) - 0.55) * 2.2;
+float wr = max(Whirl.w, 1.0);
+float2 rel = P.xy - Whirl.xy;
+float funnel = saturate(Whirl.z / 20000.0) / (1.0 + dot(rel, rel) / (wr * wr));
+f = saturate(f + streak * saturate(Shape.x * 1.5 + funnel * 1.5));
 return f * saturate(0.75 + 0.25 * n) * saturate(1.0 - Dist / 150000.0);
 """
 
@@ -144,18 +198,33 @@ def build():
     amp = scalar(mat, "WaveAmp", 120.0, -1400, 450)
     chop = scalar(mat, "Chop", 0.3, -1400, 550)
     scroll = vector(mat, "Scroll", (0, 0, 0, 0), -1400, 650)
+    shape = vector(mat, "Shape", (0, 3200, 0, 0), -1400, 850)
+    whirl = vector(mat, "Whirl", (0, -70000, 0, 60000), -1400, 1050)
+
+    # Vector parameters output RGB on the first pin; the custom nodes need all four channels.
+    def rgba(node, x, y):
+        app = mel.create_material_expression(mat, unreal.MaterialExpressionAppendVector, x, y)
+        mel.connect_material_expressions(node, "", app, "A")
+        mel.connect_material_expressions(node, "A", app, "B")
+        return app
+
+    scroll4 = rgba(scroll, -1150, 650)
+    shape4 = rgba(shape, -1150, 850)
+    whirl4 = rgba(whirl, -1150, 1050)
 
     def wire(node, with_chop):
         mel.connect_material_expressions(wp, "", node, "P")
         mel.connect_material_expressions(time, "", node, "T")
         mel.connect_material_expressions(amp, "", node, "Amp")
-        mel.connect_material_expressions(scroll, "", node, "Scroll")
+        mel.connect_material_expressions(scroll4, "", node, "Scroll")
         mel.connect_material_expressions(dist, "", node, "Dist")
+        mel.connect_material_expressions(shape4, "", node, "Shape")
+        mel.connect_material_expressions(whirl4, "", node, "Whirl")
         if with_chop:
             mel.connect_material_expressions(chop, "", node, "Chop")
 
-    names = ["P", "T", "Amp", "Scroll", "Dist"]
-    disp = custom(mat, DISPLACE, unreal.CustomMaterialOutputType.CMOT_FLOAT3, names, -800, 0, "Wave displacement")
+    names = ["P", "T", "Amp", "Scroll", "Dist", "Shape", "Whirl"]
+    disp = custom(mat, DISPLACE, unreal.CustomMaterialOutputType.CMOT_FLOAT3, names, -800, 0, "Wave displacement and sea shape")
     wire(disp, False)
     norm = custom(mat, NORMAL, unreal.CustomMaterialOutputType.CMOT_FLOAT3, names + ["Chop"], -800, 300, "Wave normal")
     wire(norm, True)
@@ -170,13 +239,15 @@ def build():
     foam_mul = mel.create_material_expression(mat, unreal.MaterialExpressionMultiply, -500, 650)
     mel.connect_material_expressions(foam, "", foam_mul, "A")
     mel.connect_material_expressions(foam_amt, "", foam_mul, "B")
+    foam_sat = mel.create_material_expression(mat, unreal.MaterialExpressionSaturate, -400, 650)
+    mel.connect_material_expressions(foam_mul, "", foam_sat, "")
 
     deep = vector(mat, "DeepColor", (0.004, 0.02, 0.03, 1), -500, 0)
     foam_col = vector(mat, "FoamColor", (0.75, 0.8, 0.82, 1), -500, 180)
     base = mel.create_material_expression(mat, unreal.MaterialExpressionLinearInterpolate, -250, 60)
     mel.connect_material_expressions(deep, "", base, "A")
     mel.connect_material_expressions(foam_col, "", base, "B")
-    mel.connect_material_expressions(foam_mul, "", base, "Alpha")
+    mel.connect_material_expressions(foam_sat, "", base, "Alpha")
     mel.connect_material_property(base, "", unreal.MaterialProperty.MP_BASE_COLOR)
 
     rough_lo = scalar(mat, "Roughness", 0.06, -500, 380)
@@ -185,7 +256,7 @@ def build():
     rough = mel.create_material_expression(mat, unreal.MaterialExpressionLinearInterpolate, -250, 400)
     mel.connect_material_expressions(rough_lo, "", rough, "A")
     mel.connect_material_expressions(rough_hi, "", rough, "B")
-    mel.connect_material_expressions(foam_mul, "", rough, "Alpha")
+    mel.connect_material_expressions(foam_sat, "", rough, "Alpha")
     mel.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
 
     spec = mel.create_material_expression(mat, unreal.MaterialExpressionConstant, -250, 520)
@@ -195,7 +266,7 @@ def build():
     # Glow: zero for water. In the hell channel the troughs glow and the crests crust over.
     glow_col = vector(mat, "GlowColor", (0, 0, 0, 1), -500, 900)
     one_minus = mel.create_material_expression(mat, unreal.MaterialExpressionOneMinus, -350, 760)
-    mel.connect_material_expressions(foam_mul, "", one_minus, "")
+    mel.connect_material_expressions(foam_sat, "", one_minus, "")
     glow = mel.create_material_expression(mat, unreal.MaterialExpressionMultiply, -150, 850)
     mel.connect_material_expressions(glow_col, "", glow, "A")
     mel.connect_material_expressions(one_minus, "", glow, "B")
@@ -203,7 +274,7 @@ def build():
 
     mel.recompile_material(mat)
     ok = unreal.EditorAssetLibrary.save_asset(path, only_if_is_dirty=False)
-    unreal.log("DC_RESULT M_Sea saved=%s expressions=%d" % (ok, mel.get_num_material_expressions(mat)))
+    unreal.log_warning("DC_RESULT M_Sea saved=%s expressions=%d" % (ok, mel.get_num_material_expressions(mat)))
 
 
 build()

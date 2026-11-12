@@ -59,6 +59,12 @@ struct FDCEnvState
 	UPROPERTY(EditAnywhere) float Foam = 0.6f;
 	/** Light given off by the sea itself: black for water, orange in the hell channel. */
 	UPROPERTY(EditAnywhere) FLinearColor SeaGlow = FLinearColor::Black;
+	/** 0..1: how far the sea has rolled up into a tunnel around the ship. */
+	UPROPERTY(EditAnywhere) float Tube = 0.f;
+	/** cm the sea falls away 100 m ahead (the slide). */
+	UPROPERTY(EditAnywhere) float Drop = 0.f;
+	/** 0..1: depth of the maelstrom funnel. */
+	UPROPERTY(EditAnywhere) float Whirl = 0.f;
 
 	static FDCEnvState Lerp(const FDCEnvState& A, const FDCEnvState& B, float T)
 	{
@@ -79,6 +85,9 @@ struct FDCEnvState
 		R.WaveHeight = FMath::Lerp(A.WaveHeight, B.WaveHeight, T);
 		R.Foam = FMath::Lerp(A.Foam, B.Foam, T);
 		R.SeaGlow = FMath::Lerp(A.SeaGlow, B.SeaGlow, T);
+		R.Tube = FMath::Lerp(A.Tube, B.Tube, T);
+		R.Drop = FMath::Lerp(A.Drop, B.Drop, T);
+		R.Whirl = FMath::Lerp(A.Whirl, B.Whirl, T);
 		return R;
 	}
 };

@@ -112,7 +112,7 @@ ADCCrewMember::ADCCrewMember()
 	Body->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> Mesh(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
 	if (Mesh.Succeeded()) { Body->SetStaticMesh(Mesh.Object); }
-	Body->SetRelativeScale3D(FVector(0.5f, 0.5f, 1.8f));
+	Body->SetRelativeScale3D(FVector(0.42f, 0.42f, 1.75f));
 
 	Label = CreateDefaultSubobject<UTextRenderComponent>(TEXT("Label"));
 	Label->SetupAttachment(Body);

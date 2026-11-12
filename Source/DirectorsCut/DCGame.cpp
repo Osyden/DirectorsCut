@@ -216,7 +216,7 @@ void ADCGameMode::StartPlay()
 	{
 		if (APawn* Pawn = PC->GetPawn())
 		{
-			const FVector Deck = DeckAt(Wheel.X - 260.f, 90.f, Wheel.Z + 120.f);
+			const FVector Deck = DeckAt(Wheel.X - 170.f, 190.f, Wheel.Z + 120.f);
 			Pawn->SetActorLocation(Deck + FVector(0.f, 0.f, 120.f), false, nullptr, ETeleportType::TeleportPhysics);
 			PC->SetControlRotation(FRotator::ZeroRotator);
 			UE_LOG(LogDC, Log, TEXT("Captain placed at %s"), *Pawn->GetActorLocation().ToString());
