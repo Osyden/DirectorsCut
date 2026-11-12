@@ -40,6 +40,9 @@ protected:
 	void Look(APlayerController* PC);
 	void TickMeta(APlayerController* PC);
 	void TickCameraFeel(float DeltaSeconds);
+	void TickGraphicsKeys(APlayerController* PC);
+	int32 DLSSModeIndex = 0;
+	bool bFrameGen = false;
 	void EnterStation(APlayerController* PC, int32 Index);
 	void LeaveStation(APlayerController* PC);
 

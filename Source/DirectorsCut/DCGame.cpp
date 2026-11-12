@@ -25,6 +25,7 @@
 #include "Misc/Parse.h"
 #include "Misc/Paths.h"
 #include "HAL/IConsoleManager.h"
+#include "Misc/App.h"
 #include "Kismet/GameplayStatics.h"
 
 // ---------------------------------------------------------------- HUD
@@ -100,7 +101,7 @@ void ADCHUD::DrawHUD()
 
 	// Bottom right: how to give orders, and which parts of the voice loop are up.
 	{
-		FString Help = TEXT("V  talk     Enter  type     1-6  quick orders     E  take a station");
+		FString Help = TEXT("V  talk     Enter  type     1-6  quick orders     E  take a station     F5  DLSS mode     F6  frame generation");
 		if (ADCVoice* V = ADCVoice::Get(this))
 		{
 			if (!V->IsSTTReady()) { Help = TEXT("Enter  type     1-6  quick orders     E  take a station     (voice starting...)"); }
@@ -397,6 +398,8 @@ void ADCGameMode::StartPlay()
 void ADCGameMode::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	// Frame rate in real time, whatever the test time dilation.
+	SmoothedFps = FMath::Lerp(SmoothedFps, 1.f / FMath::Max(FApp::GetDeltaTime(), 0.0001), 0.05f);
 	if (LateOrders.Num())
 	{
 		ADCVoice* Voice = ADCVoice::Get(this);
@@ -438,7 +441,7 @@ void ADCGameMode::Tick(float DeltaSeconds)
 	{
 		const FString File = FPaths::ProjectSavedDir() / TEXT("Screenshots/Auto") / FString::Printf(TEXT("shot_%04d.png"), FMath::RoundToInt(AutoShotTimes[AutoShotIndex]));
 		FScreenshotRequest::RequestScreenshot(File, false, false);
-		UE_LOG(LogDC, Log, TEXT("Auto shot %s at ride time %.1f, ship at %s"), *FPaths::GetCleanFilename(File), Director->RideTime, Ship ? *Ship->GetActorLocation().ToString() : TEXT("none"));
+		UE_LOG(LogDC, Log, TEXT("Auto shot %s at ride time %.1f, %.0f fps"), *FPaths::GetCleanFilename(File), Director->RideTime, SmoothedFps);
 		bAutoShotTaken = true;
 		AutoShotWait = 1.f;
 		return;

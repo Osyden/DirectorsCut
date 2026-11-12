@@ -21,6 +21,7 @@
 #include "Engine/Engine.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
+#include "HAL/IConsoleManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 
@@ -48,6 +49,7 @@ void ADCPlayerCharacter::Tick(float DeltaSeconds)
 	if (PC->WasInputKeyJustPressed(EKeys::Enter)) { OpenOrderBox(PC); return; }
 	TickMeta(PC);
 	TickCameraFeel(DeltaSeconds);
+	TickGraphicsKeys(PC);
 
 	switch (ActiveType)
 	{
@@ -376,4 +378,28 @@ void ADCPlayerCharacter::TickCameraFeel(float DeltaSeconds)
 	Camera->SetRelativeRotation(Jitter);
 	Camera->SetRelativeLocation(FVector(0.f, 0.f, 64.f) + FVector(0.f, Shake * 6.f * FMath::PerlinNoise1D(T * 19.f + 7.f), Shake * 8.f * FMath::PerlinNoise1D(T * 21.f + 3.f)));
 	Camera->SetFieldOfView(FMath::FInterpTo(Camera->FieldOfView, 90.f + 16.f * Rush, DeltaSeconds, 2.f));
+}
+
+void ADCPlayerCharacter::TickGraphicsKeys(APlayerController* PC)
+{
+	// F5 cycles the DLSS quality mode, F6 toggles DLSS frame generation. The ship's log confirms.
+	auto SetCVar = [](const TCHAR* Name, const FString& Value)
+	{
+		if (IConsoleVariable* C = IConsoleManager::Get().FindConsoleVariable(Name)) { C->Set(*Value, ECVF_SetByGameOverride); return true; }
+		return false;
+	};
+	UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>();
+	if (PC->WasInputKeyJustPressed(EKeys::F5))
+	{
+		static const TPair<const TCHAR*, float> Modes[] = { { TEXT("Quality"), 67.f }, { TEXT("Balanced"), 58.f }, { TEXT("Performance"), 50.f }, { TEXT("DLAA (native)"), 100.f } };
+		DLSSModeIndex = (DLSSModeIndex + 1) % UE_ARRAY_COUNT(Modes);
+		const bool bOk = SetCVar(TEXT("r.NGX.DLSS.Enable"), TEXT("1")) && SetCVar(TEXT("r.ScreenPercentage"), FString::SanitizeFloat(Modes[DLSSModeIndex].Value));
+		if (Crew) { Crew->Say(TEXT("Ship's log"), bOk ? FString::Printf(TEXT("DLSS Super Resolution: %s"), Modes[DLSSModeIndex].Key) : FString(TEXT("DLSS is not available on this machine"))); }
+	}
+	if (PC->WasInputKeyJustPressed(EKeys::F6))
+	{
+		bFrameGen = !bFrameGen;
+		const bool bOk = SetCVar(TEXT("r.Streamline.DLSSG.Enable"), bFrameGen ? TEXT("1") : TEXT("0"));
+		if (Crew) { Crew->Say(TEXT("Ship's log"), bOk ? FString::Printf(TEXT("DLSS Frame Generation: %s"), bFrameGen ? TEXT("on") : TEXT("off")) : FString(TEXT("Frame generation is not available on this machine"))); }
+	}
 }

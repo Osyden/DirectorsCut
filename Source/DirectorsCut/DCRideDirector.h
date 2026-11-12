@@ -60,6 +60,8 @@ public:
 	UPROPERTY(EditAnywhere) float LampIntensity = 2200.f;
 	/** 0..1 camera shake: hits, thunder, kraken blows. Decays by itself. */
 	float Trauma = 0.f;
+	float WhiteOut = 0.f;
+	int32 HintStage = 0;
 
 protected:
 	void BuildDefaultPhases();

@@ -137,6 +137,14 @@ void ADCTroubles::Tick(float DeltaSeconds)
 	const EDCPhase Phase = Director->GetPhase();
 	const float Dt = DeltaSeconds * Director->TimeScale;
 
+	// Clear water: whatever was still wrong is behind us.
+	if (Phase == EDCPhase::Ending)
+	{
+		for (FDCFire& F : Fires) { if (AActor* V = F.Visual.Get()) { V->Destroy(); } }
+		Fires.Reset();
+		bRiggingLoose = false;
+	}
+
 	// New fires in the hell channel.
 	if (Phase == EDCPhase::Hell && DeckPoints.Num() && Fires.Num() < MaxFires)
 	{

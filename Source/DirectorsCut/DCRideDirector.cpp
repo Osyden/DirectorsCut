@@ -201,6 +201,28 @@ void ADCRideDirector::Tick(float DeltaSeconds)
 		if (RideTime >= Phases[i].StartTime) { Idx = i; }
 	}
 	const FDCPhaseDef& Cur = Phases[Idx];
+
+	// The last seconds in the maelstrom build to the moment the ship is flung out.
+	if (Cur.Phase == EDCPhase::Maelstrom && Phases.IsValidIndex(Idx + 1))
+	{
+		const float Left = Phases[Idx + 1].StartTime - RideTime;
+		if (Left < 10.f) { Trauma = FMath::Max(Trauma, 0.8f * (1.f - Left / 10.f)); }
+	}
+
+	// A nudge at the start for a captain who has not spoken yet.
+	if (UDCCrewSubsystem* CrewSub = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
+	{
+		if (HintStage == 0 && RideTime > 17.f)
+		{
+			HintStage = 1;
+			if (CrewSub->OrdersGiven <= 1) { CrewSub->Report(TEXT("All hands waiting on your word, Captain. Shall we man the guns?"), true); }
+		}
+		if (HintStage == 1 && RideTime > 42.f)
+		{
+			HintStage = 2;
+			CrewSub->Report(TEXT("Fog on the horizon, Captain. It is coming on fast."), true);
+		}
+	}
 	if (Cur.Phase != CurrentPhase)
 	{
 		CurrentPhase = Cur.Phase;
@@ -215,7 +237,7 @@ void ADCRideDirector::Tick(float DeltaSeconds)
 			case EDCPhase::Hell: Crew->Report(TEXT("The water is burning! We are in hell itself!"), true); break;
 			case EDCPhase::Breach: Crew->Report(TEXT("Light ahead! We are breaking through!"), true); break;
 			case EDCPhase::Maelstrom: Crew->Report(TEXT("Whirlpool! And something huge moving in it!"), true); break;
-			case EDCPhase::Ending: Crew->Report(TEXT("Clear water, Captain. We made it through."), true); break;
+			case EDCPhase::Ending: WhiteOut = 1.f; Crew->Report(TEXT("Clear water, Captain. We made it through."), true); break;
 			default: break;
 			}
 		}
@@ -266,7 +288,9 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 		SeaMID->SetVectorParameterValue(TEXT("Shape"), FLinearColor(Env.Tube, TubeRadius, Env.Drop, 0.f));
 		SeaMID->SetVectorParameterValue(TEXT("Whirl"), FLinearColor(WhirlCenter.X, WhirlCenter.Y, Env.Whirl * WhirlDepth, WhirlRadius));
 	}
-	PostProcess->Settings.AutoExposureBias = Env.Exposure;
+	// Thrown clear of the maelstrom: the screen whites out, then the calm sea fades in.
+	WhiteOut = FMath::Max(0.f, WhiteOut - DeltaSeconds / 3.5f);
+	PostProcess->Settings.AutoExposureBias = Env.Exposure + 7.f * WhiteOut * WhiteOut;
 
 	// Sea motion: the world rocks, the ship does not.
 	const float T = RideTime;
