@@ -49,7 +49,7 @@ No microphone? Typed orders and the number keys do everything voice does.
 
 - Windows 10 or 11, 64-bit.
 - A ray-tracing capable GPU. Built and tested on an NVIDIA RTX card with DLSS 4.5.
-- About 6 GB of disk space and 6 GB of free video memory (the language model shares the GPU with the game).
+- About 6 GB of disk space. Video memory: the game and the language model together used about 4 GB at 1080p on the development PC; 8 GB cards should be comfortable.
 - The first launch takes up to a minute before the crew's "mind" is ready; until then they use their stock lines.
 
 ## Made with

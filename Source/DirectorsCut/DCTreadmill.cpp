@@ -2,6 +2,7 @@
 #include "DCRideDirector.h"
 #include "DCHazards.h"
 #include "DCCrew.h"
+#include "DCTroubles.h"
 #include "Engine/StaticMeshActor.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
@@ -136,7 +137,7 @@ void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
 	}
 
 	// Hostiles: spectral ships that come alongside to be shot at.
-	if (HostileEvery > 0.f && (HostileTimer -= DeltaSeconds) <= 0.f)
+	if (HostileEvery > 0.f && (HostileTimer -= DeltaSeconds) <= 0.f && NumHostiles() < 2)
 	{
 		HostileTimer = HostileEvery * FMath::FRandRange(0.7f, 1.3f);
 		const float Side = FMath::RandBool() ? 1.f : -1.f;
@@ -146,7 +147,7 @@ void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
 		{
 			Crew->Report(bHell ? (Side > 0.f ? TEXT("Burning ship to starboard!") : TEXT("Burning ship to port!")) : (Side > 0.f ? TEXT("Ghost ship to starboard!") : TEXT("Ghost ship to port!")));
 		}
-		Register(Ghost, Base, 1600.f, true, 2.f, FMath::FRandRange(-8.f, 8.f), false);
+		Register(Ghost, Base, 1600.f, true, 6.f, FMath::FRandRange(-8.f, 8.f), false);
 	}
 }
 void ADCTreadmill::Tick(float DeltaSeconds)
@@ -164,6 +165,7 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 	LaneOffset = FMath::Clamp(LaneOffset + Steer * LaneSpeed * SteerAuthority * DeltaSeconds, -LaneLimit, LaneLimit);
 
 	SpawnForPhase(Director->GetPhase(), DeltaSeconds * Director->TimeScale);
+	TickIncoming(DeltaSeconds);
 
 	const FTransform Rock = Director->GetWorldRock();
 	for (int32 i = Objects.Num() - 1; i >= 0; --i)
@@ -191,6 +193,16 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 			if (Obj.Base.X <= 1.f)
 			{
 				Obj.Base.X -= Speed * 0.3f * DeltaSeconds;
+			}
+			// Alongside, an untouched hostile keeps shooting. Sinking it is the only way to stop that.
+			if (!Obj.bExternal && FMath::Abs(Obj.Base.X) < 5000.f)
+			{
+				Obj.AttackTimer -= DeltaSeconds;
+				if (Obj.AttackTimer <= 0.f)
+				{
+					Obj.AttackTimer = FMath::FRandRange(10.f, 14.f);
+					LaunchAt(Actor->GetActorLocation() + FVector(0.f, 0.f, 700.f));
+				}
 			}
 		}
 		else
@@ -349,4 +361,69 @@ float ADCTreadmill::FindClearLane(float Lookahead) const
 		if (Cost < BestCost) { BestCost = Cost; Best = Candidate; }
 	}
 	return Best;
+}
+
+void ADCTreadmill::LaunchAt(const FVector& From)
+{
+	// A spectral shot lobbed from a hostile ship onto our deck.
+	const bool bHell = Director && Director->GetPhase() == EDCPhase::Hell;
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	AStaticMeshActor* Shot = GetWorld()->SpawnActor<AStaticMeshActor>(From, FRotator::ZeroRotator, Params);
+	if (!Shot) { return; }
+	UStaticMeshComponent* Comp = Shot->GetStaticMeshComponent();
+	Comp->SetMobility(EComponentMobility::Movable);
+	Comp->SetStaticMesh(LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere")));
+	Comp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Comp->SetCastShadow(false);
+	Shot->SetActorScale3D(FVector(1.3f));
+	if (UMaterialInterface* Glow = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Bolt.M_Bolt")))
+	{
+		UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(Glow, Shot);
+		MID->SetVectorParameterValue(TEXT("Color"), bHell ? FLinearColor(40.f, 8.f, 0.6f) : FLinearColor(3.f, 22.f, 18.f));
+		Comp->SetMaterial(0, MID);
+	}
+
+	FDCIncoming& In = Incoming.AddDefaulted_GetRef();
+	In.Actor = Shot;
+	In.From = From;
+	In.To = FVector(FMath::FRandRange(-900.f, 900.f), FMath::FRandRange(-220.f, 220.f), (Director ? Director->SeaLevelZ : 0.f) + 420.f);
+	In.Duration = FMath::Clamp(FVector::Dist(In.From, In.To) / 4500.f, 1.2f, 3.f);
+
+	if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
+	{
+		Crew->Report(From.Y > 0.f ? TEXT("They are firing on us from starboard!") : TEXT("They are firing on us from port!"));
+	}
+}
+
+void ADCTreadmill::TickIncoming(float DeltaSeconds)
+{
+	for (int32 i = Incoming.Num() - 1; i >= 0; --i)
+	{
+		FDCIncoming& In = Incoming[i];
+		In.T += DeltaSeconds / In.Duration;
+		AActor* Shot = In.Actor.Get();
+		if (In.T >= 1.f || !Shot)
+		{
+			if (Shot) { Shot->Destroy(); }
+			if (Director)
+			{
+				Director->DamageShip(1.f);
+				// In the hell channel their shot is fire, and sometimes it catches.
+				if (Director->GetPhase() == EDCPhase::Hell && FMath::FRand() < 0.3f)
+				{
+					ADCTroubles* Troubles = ADCTroubles::Get(this);
+					if (Troubles && Troubles->DeckPoints.Num() && Troubles->NumFires() < Troubles->MaxFires)
+					{
+						Troubles->StartFire(Troubles->DeckPoints[FMath::RandRange(0, Troubles->DeckPoints.Num() - 1)]);
+					}
+				}
+			}
+			Incoming.RemoveAtSwap(i);
+			continue;
+		}
+		FVector P = FMath::Lerp(In.From, In.To, In.T);
+		P.Z += FMath::Sin(In.T * UE_PI) * 1400.f;
+		Shot->SetActorLocation(P);
+	}
 }

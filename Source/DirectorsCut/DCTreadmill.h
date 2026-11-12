@@ -26,6 +26,8 @@ struct FDCWorldObject
 	bool bSolid = true;
 	/** The lookout has already called this one. */
 	bool bCalled = false;
+	/** Seconds until a hostile alongside fires on us again. */
+	float AttackTimer = 8.f;
 };
 
 /**
@@ -88,6 +90,12 @@ protected:
 	UPROPERTY() TObjectPtr<UMaterialInterface> BaseMaterial;
 
 	TArray<FDCWorldObject> Objects;
+
+	/** A hostile shot in flight toward our deck. */
+	struct FDCIncoming { TWeakObjectPtr<AActor> Actor; FVector From; FVector To; float T = 0.f; float Duration = 2.f; };
+	TArray<FDCIncoming> Incoming;
+	void LaunchAt(const FVector& From);
+	void TickIncoming(float DeltaSeconds);
 	float Steer = 0.f;
 	float LaneOffset = 0.f;
 	float ObstacleTimer = 4.f;
