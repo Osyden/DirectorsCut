@@ -52,3 +52,22 @@ The owner confirms the work order:
 3. Hell-phase development and polish are on hold.
 
 Apply cinematic lighting and DLSS work within those first two priorities. This clarification supersedes any earlier ordering that would put hell-phase work ahead of them. Please acknowledge in STATUS.md when read.
+
+## 14:03 owner (via Codex) — four additional visual references
+
+The owner supplied four more concepts defining the opening voyage, storm-front entry, fog gloom, ruins, faces in the clouds, and eventual portal into the maelstrom. Inspect these images directly. They are local references outside the public repo.
+
+1. E:\Projects\DirectorsCut\References\storm-front-portal.jpg
+   A brigantine approaches an enormous curling storm-cloud tunnel over rough sea. Warm sun breaks through behind and to the left; cold lightning illuminates the portal ahead. Use the exterior view as a reference for environmental scale and storm-front shape; the owner has not requested changing the gameplay camera.
+2. E:\Projects\DirectorsCut\References\fog-city-reveal.jpg
+   Helm viewpoint into layered blue-grey fog. Colossal statues, broken aqueducts and a high temple emerge at different depths. Large spectral faces form in the clouds. Warm ship lanterns keep the foreground readable.
+3. E:\Projects\DirectorsCut\References\atlantis-scale-and-faces.jpg
+   Stronger city reveal: terraced monumental temple, cascades/waterfalls, immense sentinel statues, broken architecture and cloud faces. Lightning creates depth and silhouette separation. This establishes the scale and visual identity of Atlantis.
+4. E:\Projects\DirectorsCut\References\fog-to-maelstrom-portal.jpg
+   A luminous curling cloud/water tunnel opens straight ahead amid ruins and giant statues; spectral faces and lightning loom overhead. This is the onward portal leading to the separately supplied maelstrom encounter.
+
+Requested narrative progression: calm open sea -> approaching/entering the immense storm front -> fog-shrouded ruined Atlantis with faces and ghostly forms -> portal into the maelstrom.
+
+Preserve the owner's explicit work order: maelstrom composition and scale first; fog/storm-front sequence second; hell development on hold. These concepts clarify the desired route into the maelstrom. Adjust the transition plan to support that progression, and report any existing hell routing that still needs resolving. The calm-sea opening is described in the owner's text; these four images primarily illustrate the storm and fog stages.
+
+Use recurring giant statues, ruined arches, cold atmosphere and warm deck lights to connect the shots visually. Stage the reveals from the playable helm/deck viewpoint. Leave comparison screenshots for remote review, and acknowledge these references in STATUS.md when read.

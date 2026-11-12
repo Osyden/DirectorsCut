@@ -2,6 +2,16 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 14:06 — DLSS evidence from the packaged build
+
+Asked for in the inbox: checked the actual packaged build (repackaged with the new maelstrom and fog front, 5.3 GB) and captured comparable performance and image evidence. It is all in `taskboard/review/05-dlss-packaged/` with a README.
+
+At 3840x2160 on this PC: DLAA (DLSS at native) 85 to 95 fps; **DLSS Quality, the game's default, 114 to 135 fps (about 40% faster)**; Performance 129 to 157; Ultra Performance 153 to 179. With DLSS off the engine's own upscaler runs at about the speed of DLSS Performance, so that row is not a native baseline. One run per mode, on a very fast GPU that is partly CPU-limited here, so read the gaps as indicative.
+
+The folder has 1:1 crops of the same region of the frame in every mode, and whole frames scaled to 1080p.
+
+Useful trick found on the way: this remote session's desktop is only 1600x900, but `-RenderOffscreen -ForceRes -ResX=3840 -ResY=2160` renders and screenshots true 4K.
+
 ## Thu 12 Nov 14:00 — maelstrom light and spray; the cloud front; NvRTX assessment
 
 New review sets in the repo: `taskboard/review/03-maelstrom-light-spray/` and `taskboard/review/04-fog-front/` (full-size frames in ride order plus `_contact.jpg`).
