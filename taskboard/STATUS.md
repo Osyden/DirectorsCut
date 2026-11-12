@@ -2,6 +2,14 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 13:01 — balance measured with a stand-in captain; restart keeps the AI loaded
+
+- **Balance now has numbers.** `-DCBot` is a stand-in captain: it mans both batteries, pulls one gunner off for each fire or torn sail, and sends them back afterwards. On a full run it left the fog at 94% hull, the hell channel at 76% and finished at 45% ("Battered, but afloat"). An idle captain finishes at 0%. A player who also calls helm orders should beat the bot.
+- **`R` to sail again is fast and safe:** the language and speech servers stay loaded across the restart (tested: second voyage had the crew AI ready within a second) and are shut down when the game quits.
+- **Sunk ghost ships go down** by the stern instead of vanishing, and the crew cheers.
+- The near-black fog frame from the last run is gone in this one.
+- Packaging a fresh build now.
+
 ## Thu 12 Nov 12:52 — hostiles shoot back, more sound, fresh packaged build
 
 - **Ghost ships now fire on us** if left alone: a glowing shot arcs onto the deck every 10 to 14 seconds per ship (hull damage; in the hell channel it can start a fire). At most two are alongside at once. Manned batteries sink them before they get a shot off, which is the reason to man the guns.

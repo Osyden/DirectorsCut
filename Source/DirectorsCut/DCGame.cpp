@@ -410,6 +410,38 @@ void ADCGameMode::Tick(float DeltaSeconds)
 		UGameplayStatics::OpenLevel(this, FName(*UGameplayStatics::GetCurrentLevelName(this)));
 		return;
 	}
+	// -DCBot: a stand-in captain for balance runs. Mans both batteries, then pulls one gunner off for
+	// each fire or torn sail and sends them back when it is dealt with. Roughly a competent player.
+	static const bool bBot = FParse::Param(FCommandLine::Get(), TEXT("DCBot"));
+	if (bBot)
+	{
+		UDCCrewSubsystem* CrewSub = GetWorld()->GetSubsystem<UDCCrewSubsystem>();
+		ADCTroubles* Troubles = ADCTroubles::Get(this);
+		BotWait -= DeltaSeconds;
+		if (CrewSub && Troubles && BotWait <= 0.f)
+		{
+			BotWait = 2.5f; // reaction time
+			const bool bFire = Troubles->NumFires() > 0;
+			const bool bRig = Troubles->IsRiggingLoose();
+			if (BotStage == 0)
+			{
+				CrewSub->ExecuteOrder(TEXT("Marlow, man the port guns"));
+				CrewSub->ExecuteOrder(TEXT("Odessa, man the starboard guns"));
+				BotStage = 1;
+			}
+			if (bFire != bBotOdessaOnFire)
+			{
+				bBotOdessaOnFire = bFire;
+				CrewSub->ExecuteOrder(bFire ? TEXT("Odessa, put out the fire") : TEXT("Odessa, man the starboard guns"));
+			}
+			if (bRig != bBotMarlowOnRigging)
+			{
+				bBotMarlowOnRigging = bRig;
+				CrewSub->ExecuteOrder(bRig ? TEXT("Marlow, repair the rigging") : TEXT("Marlow, man the port guns"));
+			}
+		}
+	}
+
 	if (LateOrders.Num())
 	{
 		ADCVoice* Voice = ADCVoice::Get(this);

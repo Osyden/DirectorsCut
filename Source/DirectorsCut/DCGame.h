@@ -66,4 +66,8 @@ protected:
 	/** -DCOrdersLate=a_b;c_d : orders given one at a time once the language model is up. */
 	TArray<FString> LateOrders;
 	float LateOrderWait = 0.f;
+	float BotWait = 3.f;
+	int32 BotStage = 0;
+	bool bBotOdessaOnFire = false;
+	bool bBotMarlowOnRigging = false;
 };
