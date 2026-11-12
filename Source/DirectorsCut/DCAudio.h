@@ -45,7 +45,13 @@ protected:
 
 	static const int32 Rate = 24000;
 
-	FLayer Wind, Sea, Rain, Rumble;
+	FLayer Wind, Sea, Rain, Rumble, Drone, Crackle;
+	TArray<TArray<uint8>> Impacts;
+	TArray<uint8> KrakenRoar;
+	float MaelstromTime = 0.f;
+	int32 RoarsPlayed = 0;
+	void OnShipHit(float Amount);
+	void DumpWav(const TCHAR* Name, const TArray<uint8>& Pcm) const;
 	TArray<TArray<uint8>> Thunder;
 	TArray<FOneShot> OneShots;
 	TArray<double> PendingThunder;

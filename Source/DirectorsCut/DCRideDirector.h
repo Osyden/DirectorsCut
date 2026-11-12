@@ -54,6 +54,8 @@ public:
 	FDCOnPhaseChanged OnPhaseChanged;
 	/** Fired at the start of every lightning flash. */
 	FSimpleMulticastDelegate OnLightning;
+	/** Fired for every blow to the hull (not for slow burn damage). */
+	TMulticastDelegate<void(float)> OnShipHit;
 
 	/** A ship lantern at a world position; lit automatically when it gets dark. */
 	void AddLamp(const FVector& Location);

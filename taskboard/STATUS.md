@@ -2,6 +2,14 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 12:52 — hostiles shoot back, more sound, fresh packaged build
+
+- **Ghost ships now fire on us** if left alone: a glowing shot arcs onto the deck every 10 to 14 seconds per ship (hull damage; in the hell channel it can start a fire). At most two are alongside at once. Manned batteries sink them before they get a shot off, which is the reason to man the guns.
+- **More synthesised sound:** a quiet low drone for mood, fire crackle while the deck burns, a thud and splinter for every blow to the hull, and a kraken roar as it rises, when it is up, and near the end. Rumble and thunder lost their inaudible sub-bass.
+- **To audition the sounds without playing:** run with `-DCDumpAudio`; every sound is written to `Saved/AudioDump/*.wav` (already there now). I checked them numerically (none silent, none clipping) but still cannot hear them.
+- **Packaged build refreshed and verified** before the two items above (5.2 GB, voice loop and DLSS working, about 4 GB of video memory at 1080p including the language model). It includes lanterns, lightning, loose-order reading and the new maelstrom.
+- `taskboard/ITCH_PAGE.md` has draft page text and a controls table for the owner to edit.
+
 ## Thu 12 Nov 12:25 — the maelstrom is a pit with the kraken in it
 
 - **Reshaped the maelstrom** into a narrower, steeper pit (600 m deep, 350 m radius, centred 620 m to port) and thinned the storm fog. From the deck the sea now falls away into the pit and the far wall climbs to a quarter of the way up the sky.

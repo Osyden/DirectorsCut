@@ -181,7 +181,11 @@ void ADCRideDirector::Seek(float NewTime)
 void ADCRideDirector::DamageShip(float Amount, bool bQuiet)
 {
 	ShipHealth = FMath::Max(0.f, ShipHealth - Amount);
-	if (!bQuiet) { Trauma = FMath::Min(1.f, Trauma + 0.25f + Amount * 0.06f); }
+	if (!bQuiet)
+	{
+		Trauma = FMath::Min(1.f, Trauma + 0.25f + Amount * 0.06f);
+		OnShipHit.Broadcast(Amount);
+	}
 	if (!bQuiet) { UE_LOG(LogDC, Log, TEXT("Ship hit for %.0f, health %.0f"), Amount, ShipHealth); }
 }
 
