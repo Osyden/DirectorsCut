@@ -11,6 +11,7 @@
 		}
 	],
 	"Plugins": [
+		{ "Name": "ProceduralMeshComponent", "Enabled": true },
 		{ "Name": "DLSS", "Enabled": true },
 		{ "Name": "StreamlineCore", "Enabled": true },
 		{ "Name": "StreamlineNGXCommon", "Enabled": true },

@@ -52,13 +52,15 @@ public:
 protected:
 	void BuildDefaultPhases();
 	void ApplyEnv(float DeltaSeconds);
+	void BuildSeaMesh();
+	FVector2D SeaScroll = FVector2D::ZeroVector;
 
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UDirectionalLightComponent> Sun;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UDirectionalLightComponent> Flash;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<USkyLightComponent> SkyLight;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<USkyAtmosphereComponent> Atmosphere;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UExponentialHeightFogComponent> Fog;
-	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> Sea;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<class UProceduralMeshComponent> Sea;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> SeaMID;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<class UPostProcessComponent> PostProcess;
 

@@ -54,6 +54,11 @@ struct FDCEnvState
 	UPROPERTY(EditAnywhere) float ShipSpeed = 1200.f;
 	/** Manual exposure in stops. Higher is brighter. */
 	UPROPERTY(EditAnywhere) float Exposure = 0.f;
+	/** Height of the biggest swell in cm. */
+	UPROPERTY(EditAnywhere) float WaveHeight = 80.f;
+	UPROPERTY(EditAnywhere) float Foam = 0.6f;
+	/** Light given off by the sea itself: black for water, orange in the hell channel. */
+	UPROPERTY(EditAnywhere) FLinearColor SeaGlow = FLinearColor::Black;
 
 	static FDCEnvState Lerp(const FDCEnvState& A, const FDCEnvState& B, float T)
 	{
@@ -71,6 +76,9 @@ struct FDCEnvState
 		R.LightningRate = FMath::Lerp(A.LightningRate, B.LightningRate, T);
 		R.ShipSpeed = FMath::Lerp(A.ShipSpeed, B.ShipSpeed, T);
 		R.Exposure = FMath::Lerp(A.Exposure, B.Exposure, T);
+		R.WaveHeight = FMath::Lerp(A.WaveHeight, B.WaveHeight, T);
+		R.Foam = FMath::Lerp(A.Foam, B.Foam, T);
+		R.SeaGlow = FMath::Lerp(A.SeaGlow, B.SeaGlow, T);
 		return R;
 	}
 };
