@@ -86,6 +86,10 @@ public:
 	UPROPERTY(EditAnywhere) float WhirlBearing = 15.f;
 	/** Seconds of ride time since the maelstrom phase began (0 before it). */
 	float MaelstromElapsed = 0.f;
+	/** The storm front in the cloud volume: world X of its face, strength 0..1, radius of its tunnel mouth. Set by ADCFogFront. */
+	float StormFrontX = 400000.f;
+	float StormFrontStrength = 0.f;
+	float StormMouthRadius = 0.f;
 	/** Height of the swell that lifts the ship in the maelstrom, cm, and how much of it is up right now. */
 	UPROPERTY(EditAnywhere) float SwellHeight = 11000.f;
 	float SwellLift = 0.f;
@@ -105,6 +109,7 @@ protected:
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UExponentialHeightFogComponent> Fog;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<class UProceduralMeshComponent> Sea;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> SeaMID;
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> CloudMID;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<class UPostProcessComponent> PostProcess;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<class UVolumetricCloudComponent> Clouds;
 

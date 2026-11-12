@@ -58,6 +58,14 @@ ADCRideDirector::ADCRideDirector()
 
 	Clouds = CreateDefaultSubobject<UVolumetricCloudComponent>(TEXT("Clouds"));
 	Clouds->SetupAttachment(RootComponent);
+	// One volume from the sea to 9 km holds both the cloud deck and the storm front (M_StormCloud).
+	Clouds->LayerBottomAltitude = 0.f;
+	Clouds->LayerHeight = 9.f;
+	Clouds->TracingStartMaxDistance = 350.f;
+	Clouds->TracingMaxDistance = 60.f;
+	Clouds->ViewSampleCountScale = 1.6f;
+	Clouds->ShadowViewSampleCountScale = 1.4f;
+	Clouds->ShadowTracingDistance = 8.f; // shorter than the default 15 km: finer steps, so the hollows between cloud heads hold their shadow
 
 	Fog = CreateDefaultSubobject<UExponentialHeightFogComponent>(TEXT("Fog"));
 	Fog->SetupAttachment(RootComponent);
@@ -107,14 +115,14 @@ void ADCRideDirector::BuildDefaultPhases()
 
 	{
 		FDCEnvState& E = Add(EDCPhase::OpenSea, 0.f, 0.f);
-		E.FogColor = FLinearColor(0.75f, 0.55f, 0.4f); E.FogDensity = 0.004f;
-		E.SunColor = FLinearColor(1.f, 0.72f, 0.45f); E.SunIntensity = 7.f; E.SunPitch = -8.f;
+		E.FogColor = FLinearColor(0.75f, 0.55f, 0.4f); E.FogDensity = 0.0009f; E.CloudCover = 0.24f; E.CloudBase = 400000.f;
+		E.SunColor = FLinearColor(1.f, 0.72f, 0.45f); E.SunIntensity = 7.f; E.SunPitch = -20.f; E.SunYaw = 300.f; // low behind the port quarter, so the face of the storm front ahead is lit
 		E.SeaColor = FLinearColor(0.03f, 0.09f, 0.13f); E.SeaRoughness = 1.2f; E.ShipSpeed = 1000.f; E.WaveHeight = 70.f; E.Foam = 0.5f; E.Exposure = 1.0f;
 	}
 	{
-		FDCEnvState& E = Add(EDCPhase::Fog, 51.f, 9.f); // dark by the time the cloud front (DCFogFront, arrival 60 s) closes over the bow
+		FDCEnvState& E = Add(EDCPhase::Fog, 58.f, 7.f); // the mouth of the storm front closes over the bow at 60 s (DCFogFront); dark a few seconds into the tunnel
 		// First the inside of the cloud front: close, dark, nothing to see.
-		E.FogColor = FLinearColor(0.1f, 0.14f, 0.18f); E.FogDensity = 0.11f; E.FogHeightFalloff = 0.002f;
+		E.FogColor = FLinearColor(0.1f, 0.14f, 0.18f); E.FogDensity = 0.11f; E.FogHeightFalloff = 0.002f; E.CloudCover = 1.f; E.CloudBase = 50000.f;
 		E.SunColor = FLinearColor(0.5f, 0.7f, 0.8f); E.SunIntensity = 0.6f; E.SunPitch = -20.f; E.SkyIntensity = 0.35f;
 		E.SeaColor = FLinearColor(0.01f, 0.03f, 0.035f); E.SeaRoughness = 2.5f; E.LightningRate = 5.f; E.ShipSpeed = 1500.f; E.WaveHeight = 130.f; E.Foam = 0.7f; E.Exposure = 0.6f;
 	}
@@ -122,38 +130,38 @@ void ADCRideDirector::BuildDefaultPhases()
 		// Then it thins, and the drowned city stands in layered blue-grey haze out to a couple of kilometres:
 		// cold moonlight from behind the statues, lightning to pick out their outlines, warm lanterns on deck.
 		FDCEnvState& E = Add(EDCPhase::Fog, 78.f, 22.f);
-		E.FogColor = FLinearColor(0.2f, 0.26f, 0.33f); E.FogDensity = 0.011f; E.FogHeightFalloff = 0.0012f;
+		E.FogColor = FLinearColor(0.2f, 0.26f, 0.33f); E.FogDensity = 0.011f; E.FogHeightFalloff = 0.0012f; E.CloudCover = 0.8f; E.CloudBase = 110000.f;
 		E.SunColor = FLinearColor(0.6f, 0.72f, 0.9f); E.SunIntensity = 1.6f; E.SunPitch = -24.f; E.SunYaw = 160.f; E.SkyIntensity = 0.55f;
 		E.SeaColor = FLinearColor(0.012f, 0.019f, 0.025f); E.SeaRoughness = 3.f; E.Rain = 0.35f; E.LightningRate = 10.f; E.ShipSpeed = 1500.f; E.WaveHeight = 190.f; E.Foam = 1.f; E.Exposure = 0.05f;
 	}
 	{
 		FDCEnvState& E = Add(EDCPhase::Slide, 240.f, 6.f);
-		E.FogColor = FLinearColor(0.05f, 0.1f, 0.14f); E.FogDensity = 0.05f; E.FogHeightFalloff = 0.002f;
+		E.FogColor = FLinearColor(0.05f, 0.1f, 0.14f); E.FogDensity = 0.05f; E.FogHeightFalloff = 0.002f; E.CloudCover = 1.f; E.CloudBase = 60000.f;
 		E.SunIntensity = 0.2f; E.SunPitch = -30.f; E.SkyIntensity = 0.2f;
 		E.SeaColor = FLinearColor(0.0f, 0.05f, 0.08f); E.SeaRoughness = 9.f; E.LightningRate = 12.f; E.ShipSpeed = 4000.f; E.WaveHeight = 150.f; E.Foam = 1.4f; E.Exposure = 1.5f; E.Tube = 1.f; E.Drop = 260.f;
 	}
 	{
 		FDCEnvState& E = Add(EDCPhase::Hell, 270.f, 8.f);
-		E.FogColor = FLinearColor(0.2f, 0.035f, 0.01f); E.FogDensity = 0.06f; E.FogHeightFalloff = 0.003f;
+		E.FogColor = FLinearColor(0.2f, 0.035f, 0.01f); E.FogDensity = 0.06f; E.FogHeightFalloff = 0.003f; E.CloudCover = 0.9f; E.CloudBase = 80000.f;
 		E.SunColor = FLinearColor(1.f, 0.3f, 0.1f); E.SunIntensity = 2.5f; E.SunPitch = -35.f; E.SkyIntensity = 0.5f;
 		E.SeaColor = FLinearColor(0.02f, 0.006f, 0.003f); E.SeaRoughness = 3.5f; E.ShipSpeed = 1600.f; E.WaveHeight = 170.f; E.Foam = 1.2f; E.SeaGlow = FLinearColor(16.f, 2.2f, 0.14f); E.Exposure = 0.3f; E.Tube = 0.3f;
 	}
 	{
 		FDCEnvState& E = Add(EDCPhase::Breach, 420.f, 5.f);
-		E.FogColor = FLinearColor(0.3f, 0.38f, 0.5f); E.FogDensity = 0.03f; // the portal: light at the end of the tunnel
+		E.FogColor = FLinearColor(0.3f, 0.38f, 0.5f); E.FogDensity = 0.03f; E.CloudCover = 0.7f; E.CloudBase = 170000.f; // the portal: light at the end of the tunnel
 		E.SunIntensity = 0.3f; E.SkyIntensity = 0.3f; E.SeaRoughness = 8.f; E.LightningRate = 20.f; E.ShipSpeed = 3500.f; E.WaveHeight = 200.f; E.Foam = 1.5f; E.Exposure = 1.5f; E.Tube = 0.9f; E.Drop = 120.f; E.TubeMouth = 3000.f; E.SunYaw = 195.f; E.Whirl = 0.5f; E.Crater = 1.f;
 	}
 	{
 		// The reveal. The ship bursts out of the tunnel into daylight: a crater a kilometre across walled
 		// by falling water, the creature in the middle of it, sun breaking through towering cloud ahead.
 		FDCEnvState& E = Add(EDCPhase::Maelstrom, 440.f, 16.f);
-		E.FogColor = FLinearColor(0.35f, 0.5f, 0.68f); E.FogDensity = 0.0013f; E.FogHeightFalloff = 0.003f;
+		E.FogColor = FLinearColor(0.35f, 0.5f, 0.68f); E.FogDensity = 0.0013f; E.FogHeightFalloff = 0.003f; E.CloudCover = 0.4f; E.CloudBase = 260000.f;
 		E.SunColor = FLinearColor(1.f, 0.93f, 0.8f); E.SunIntensity = 9.f; E.SunPitch = -30.f; E.SunYaw = 195.f; E.SkyIntensity = 1.2f;
 		E.SeaColor = FLinearColor(0.004f, 0.05f, 0.065f); E.SeaRoughness = 3.f; E.Rain = 0.3f; E.LightningRate = 4.f; E.ShipSpeed = 2200.f; E.WaveHeight = 240.f; E.Foam = 1.3f; E.Exposure = -0.2f; E.Whirl = 1.f; E.Crater = 1.f; E.TubeMouth = 1200.f;
 	}
 	{
 		FDCEnvState& E = Add(EDCPhase::Ending, 600.f, 15.f);
-		E.FogColor = FLinearColor(0.7f, 0.6f, 0.5f); E.FogDensity = 0.006f;
+		E.FogColor = FLinearColor(0.7f, 0.6f, 0.5f); E.FogDensity = 0.006f; E.CloudCover = 0.3f; E.CloudBase = 220000.f;
 		E.SunColor = FLinearColor(1.f, 0.8f, 0.6f); E.SunIntensity = 6.f; E.SunPitch = -6.f;
 		E.SeaRoughness = 1.f; E.ShipSpeed = 600.f; E.WaveHeight = 60.f; E.Foam = 0.4f; E.Exposure = 1.0f;
 	}
@@ -199,12 +207,20 @@ void ADCRideDirector::BeginPlay()
 		BoltMID = UMaterialInstanceDynamic::Create(GlowBase, this);
 	}
 	Flash->SetAtmosphereSunLight(false);
+	// Trace the cloud volume at half resolution, not the default quarter: at quarter the edges of the
+	// front against the sea and the rigging come out as blocks once DLSS has scaled the frame up.
+	if (IConsoleVariable* C = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricRenderTarget.Mode"))) { C->Set(1, ECVF_SetByGameOverride); }
 	BuildSeaMesh();
 	UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Sea.M_Sea"));
 	if (!Base) { Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial")); }
 	if (Base)
 	{
 		SeaMID = UMaterialInstanceDynamic::Create(Base, this);
+		if (UMaterialInterface* CloudBase = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_StormCloud.M_StormCloud")))
+		{
+			CloudMID = UMaterialInstanceDynamic::Create(CloudBase, this);
+			Clouds->SetMaterial(CloudMID);
+		}
 		Sea->SetMaterial(0, SeaMID);
 	}
 	if (Phases.Num())
@@ -332,6 +348,11 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 		const float MaxC = FMath::Max3(Env.FogColor.R, Env.FogColor.G, Env.FogColor.B);
 		const FLinearColor Tint = MaxC > KINDA_SMALL_NUMBER ? Env.FogColor / MaxC : FLinearColor::White;
 		SkyLight->SetLightColor(FMath::Lerp(FLinearColor::White, Tint, 0.8f));
+	}
+	if (CloudMID)
+	{
+		CloudMID->SetVectorParameterValue(TEXT("Sky"), FLinearColor(Env.CloudCover, Env.CloudBase, Env.CloudBase + 380000.f, 0.02f));
+		CloudMID->SetVectorParameterValue(TEXT("Front"), FLinearColor(StormFrontX, StormFrontStrength, StormMouthRadius, FlashTimeLeft > 0.f ? 1.f : 0.f));
 	}
 	Fog->SetFogDensity(Env.FogDensity);
 	Fog->SetFogHeightFalloff(Env.FogHeightFalloff);

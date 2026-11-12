@@ -2,6 +2,21 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 17:02 — storm front is now a real volumetric cloud (set 14), first part of item 4
+
+Review set: `taskboard/review/14-volumetric-storm-front/`. Row 1 looks ahead from above the masts as the front closes; rows 2 and 3 are the helm through the approach, the inside of the front, Atlantis, and two maelstrom frames. Normal game speed. No new inbox messages.
+
+- **The storm front is no longer a wall of cloud spheres.** It is part of the engine's ray-marched volumetric cloud layer, with a new material (`M_StormCloud`, `Tools/make_stormcloud_material.py`): a band of cloud 2.5 km deep and 3 to 6 km tall, heaped into towers, eroded at the edges, lit by the sun from the side and shadowing itself. It starts 15 km off as a wall on the horizon and closes at about 250 m a second.
+- **The portal is bored into its foot:** a tunnel mouth 300 m in radius with a torn, turning edge, glowing from inside and flaring with the lightning. It is dead ahead on the sea from the first seconds of the voyage.
+- **The same volume is the sky everywhere else:** a broken deck over the open sea, low overcast inside the front and over Atlantis, towering cloud with the sun through it over the maelstrom. Cover and cloud base are set per phase.
+- The open sea is now clear afternoon light instead of a hazy sunset, so the front can be seen from far off. The old sphere wall is switched off (`bBillows` on the fog front brings it back).
+- Frame rate at 720p with DLSS on the editor build: 175 to 180 fps on the open sea, 101 to 113 in the fog and the first half of the maelstrom, about 150 after. Before this change the fog ran at about 150, so the clouds cost roughly a third there.
+- Against the storm-front reference: a towering, billowing, self-shadowed front with a lit portal at its base and warm side light is there. Still short: no clean concentric spiral around the portal; the cloud is grainy close up; for a few seconds around 0:22 one flank of the front is blown out white; the lightning does not yet show inside the body of the cloud.
+- **Not done in item 4:** the Atlantis fog is still flat haze, and the cloud faces and the portal out of Atlantis are still sphere-built. That is next.
+- Dead end worth recording: the engine's cloud noise textures sampled as plain white from a generated material, so the noise is computed in the shader instead.
+
+The packaged build is still the 14:44 one. A full unattended voyage has not been run since the maelstrom was enlarged.
+
 ## Thu 12 Nov 16:09 — leviathan head rebuilt; it now towers over the ship (set 13)
 
 Review set: `taskboard/review/13-leviathan-head/` (six helm frames through the maelstrom, normal game speed). No new inbox messages.

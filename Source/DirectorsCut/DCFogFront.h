@@ -25,6 +25,8 @@ public:
 
 	/** Ride time at which the front reaches the bow. */
 	UPROPERTY(EditAnywhere) float ArrivalTime = 60.f;
+	/** Also draw the old wall of billow meshes. Off: the volumetric cloud layer carries the front. */
+	UPROPERTY(EditAnywhere) bool bBillows = false;
 	/** How far off it stands at the start of the ride, cm. */
 	UPROPERTY(EditAnywhere) float StartDistance = 400000.f;
 

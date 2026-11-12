@@ -122,7 +122,12 @@ void ADCFogFront::Tick(float DeltaSeconds)
 	// It comes on steadily, reaches the bow at ArrivalTime, then sweeps over and is gone astern.
 	const float Speed = StartDistance / ArrivalTime;
 	const float X = (ArrivalTime - T) * Speed;
-	const bool bVisible = T < ArrivalTime + 35.f;
+	// The front itself is in the volumetric cloud layer; tell the director where its face is.
+	// It is 15 km off when the voyage starts, a wall on the horizon, and closes at about 250 m a second.
+	Director->StormFrontX = 1500000.f * (1.f - T / ArrivalTime);
+	Director->StormFrontStrength = FMath::Clamp((ArrivalTime + 28.f - T) / 12.f, 0.f, 1.f);
+	Director->StormMouthRadius = 35000.f;
+	const bool bVisible = bBillows && T < ArrivalTime + 35.f;
 	RootComponent->SetVisibility(bVisible, true);
 	if (!bVisible) { return; }
 	SetActorLocation(FVector(X, 0.f, Director->SeaLevelZ - 2000.f));
