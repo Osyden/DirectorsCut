@@ -98,7 +98,7 @@ void ADCKraken::TickTentacle(FDCTentacle& T, int32 Index, float Dt, bool bActive
 		SetState(T, EDCTentacleState::Dying, 2.2f);
 		if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
 		{
-			if (Crew->GetCrew().Num() > 1 && Crew->GetCrew()[1]) { Crew->Reply(Crew->GetCrew()[1]->CrewName, TEXT("Arm down! It's pulling back!")); }
+			Crew->Report(TEXT("Arm down! It is pulling back!"));
 		}
 	}
 
@@ -119,7 +119,7 @@ void ADCKraken::TickTentacle(FDCTentacle& T, int32 Index, float Dt, bool bActive
 				if (Proxy)
 				{
 					Proxy->GetRootComponent()->SetMobility(EComponentMobility::Movable);
-					Treadmill->AddExternalHostile(Proxy, T.BaseRadius * 2.2f, 9.f);
+					Treadmill->AddExternalHostile(Proxy, T.BaseRadius * 2.2f, 14.f);
 					T.Proxy = Proxy;
 					T.bHasProxy = true;
 				}

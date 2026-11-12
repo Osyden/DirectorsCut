@@ -495,7 +495,7 @@ void UDCCrewSubsystem::Report(const FString& Text, bool bUrgent)
 {
 	if (!Crew.Num()) { return; }
 	const double Now = GetWorld()->GetTimeSeconds();
-	if (Now - LastReportTime < (bUrgent ? 1.5 : 5.0)) { return; }
+	if (Now - LastReportTime < (bUrgent ? 1.5 : 7.0)) { return; }
 	LastReportTime = Now;
 
 	// Take turns, so the whole crew has a voice.

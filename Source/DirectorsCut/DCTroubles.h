@@ -49,7 +49,9 @@ public:
 	void TearRigging();
 	float GetRiggingProgress() const { return RiggingProgress; }
 
-	UPROPERTY(EditAnywhere) int32 MaxFires = 3;
+	UPROPERTY(EditAnywhere) int32 MaxFires = 2;
+	/** A fire left alone burns itself out after this long, having done its damage. */
+	UPROPERTY(EditAnywhere) float FireBurnTime = 40.f;
 	UPROPERTY(EditAnywhere) float FireDamagePerSecond = 0.08f;
 
 protected:

@@ -56,7 +56,7 @@ public:
 	UPROPERTY(EditAnywhere) int32 NumTentacles = 6;
 	UPROPERTY(EditAnywhere) int32 Rings = 40;
 	UPROPERTY(EditAnywhere) int32 Sides = 12;
-	UPROPERTY(EditAnywhere) float StrikeDamage = 0.8f;
+	UPROPERTY(EditAnywhere) float StrikeDamage = 0.6f;
 	UPROPERTY(BlueprintReadOnly) int32 ArmsDestroyed = 0;
 
 protected:

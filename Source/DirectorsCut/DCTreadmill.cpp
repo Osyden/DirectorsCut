@@ -140,7 +140,7 @@ void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
 	{
 		HostileTimer = HostileEvery * FMath::FRandRange(0.7f, 1.3f);
 		const float Side = FMath::RandBool() ? 1.f : -1.f;
-		const FVector Base(SpawnDistance, LaneOffset + Side * FMath::FRandRange(4500.f, 8000.f), SeaZ);
+		const FVector Base(SpawnDistance, Side * FMath::FRandRange(5000.f, 8500.f), SeaZ);
 		AActor* Ghost = DCHazards::SpawnGhostShip(World, bHell ? FLinearColor(1.f, 0.25f, 0.03f) : FLinearColor(0.15f, 0.9f, 0.75f));
 		if (UDCCrewSubsystem* Crew = World->GetSubsystem<UDCCrewSubsystem>())
 		{
@@ -198,11 +198,13 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 			Obj.Base.X -= Speed * DeltaSeconds;
 		}
 
-		const FVector Local(Obj.Base.X, Obj.Base.Y - LaneOffset, Obj.Base.Z);
+		// Ships that pace us hold station on the ship itself; everything else is fixed in the sea and slides with the helm.
+		const bool bPacing = Obj.bHostile && !Obj.bExternal;
+		const FVector Local(Obj.Base.X, bPacing ? Obj.Base.Y : Obj.Base.Y - LaneOffset, Obj.Base.Z);
 		Actor->SetActorLocationAndRotation(Rock.TransformPosition(Local), Rock.GetRotation() * FRotator(0.f, Obj.Yaw, 0.f).Quaternion());
 
 		// Lookout: call an obstacle once, when it is close enough to matter and near our course.
-		if (!Obj.bHostile && Obj.bSolid && !Obj.bCalled && Local.X < 13000.f && FMath::Abs(Local.Y) < ShipHalfWidth + Obj.Radius + 900.f)
+		if (!Obj.bHostile && Obj.bSolid && !Obj.bCalled && Local.X < 13000.f && FMath::Abs(Local.Y) < ShipHalfWidth + Obj.Radius + 150.f)
 		{
 			Obj.bCalled = true;
 			if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
@@ -213,7 +215,7 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 
 		if (!Obj.bHostile && Obj.bSolid && FMath::Abs(Local.X) < ShipHalfLength && FMath::Abs(Local.Y) < ShipHalfWidth + Obj.Radius)
 		{
-			Director->DamageShip(4.f);
+			Director->DamageShip(3.f);
 			if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>()) { Crew->Report(TEXT("We struck the rocks! Hull is breached!"), true); }
 			Actor->Destroy();
 			Objects.RemoveAtSwap(i);
@@ -253,7 +255,7 @@ int32 ADCTreadmill::FindHostile(EDCSide Side, float MaxRange) const
 	{
 		const FDCWorldObject& Obj = Objects[i];
 		if (!Obj.bHostile) { continue; }
-		const float Y = Obj.Base.Y - LaneOffset;
+		const float Y = Obj.bExternal ? Obj.Base.Y - LaneOffset : Obj.Base.Y;
 		if ((Side == EDCSide::Port && Y > 0.f) || (Side == EDCSide::Starboard && Y < 0.f)) { continue; }
 		const float Dist = FVector2D(Obj.Base.X, Y).Size();
 		if (Dist < BestDist)

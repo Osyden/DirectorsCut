@@ -159,6 +159,16 @@ void ADCTroubles::Tick(float DeltaSeconds)
 		}
 	}
 
+	// A neglected fire burns out in the end.
+	for (int32 i = Fires.Num() - 1; i >= 0; --i)
+	{
+		if (Fires[i].Age > FireBurnTime)
+		{
+			if (AActor* V = Fires[i].Visual.Get()) { V->Destroy(); }
+			Fires.RemoveAt(i);
+		}
+	}
+
 	// Fires burn the ship and animate.
 	for (FDCFire& F : Fires)
 	{

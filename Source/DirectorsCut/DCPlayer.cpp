@@ -19,6 +19,8 @@
 #include "Framework/Application/SlateApplication.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/Engine.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 
@@ -174,8 +176,8 @@ void ADCPlayerCharacter::EnterStation(APlayerController* PC, int32 Index)
 			GunCamera->GetCameraComponent()->bConstrainAspectRatio = false;
 			GunCamera->GetCameraComponent()->SetFieldOfView(80.f);
 		}
-		// High and inboard, looking out over the rail: the whole field of fire on that side is on screen.
-		GunCamera->SetActorLocationAndRotation(FVector(S->Location.X - 100.f, -Sign * 250.f, S->Location.Z + 750.f), FRotator(-24.f, Sign * 90.f, 0.f));
+		// Just outboard of the shrouds and above the rail, so no rigging hides the field of fire.
+		GunCamera->SetActorLocationAndRotation(FVector(S->Location.X - 100.f, Sign * 720.f, S->Location.Z + 620.f), FRotator(-20.f, Sign * 90.f, 0.f));
 		PC->SetViewTargetWithBlend(GunCamera, 0.35f);
 
 		if (!AimMarker)
@@ -262,7 +264,7 @@ void ADCPlayerCharacter::TickCannons(APlayerController* PC)
 
 	ADCGunnery* Guns = ADCGunnery::Get(this);
 	const bool bReady = Guns && Guns->IsReady(ActiveSide);
-	if (bReady && PC->IsInputKeyDown(EKeys::LeftMouseButton))
+	if (bReady && (PC->IsInputKeyDown(EKeys::LeftMouseButton) || FParse::Param(FCommandLine::Get(), TEXT("DCAutoFire"))))
 	{
 		Guns->FireBroadside(ActiveSide, Aim, 6);
 	}
