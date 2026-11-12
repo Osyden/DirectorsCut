@@ -58,6 +58,10 @@ public:
 	UPROPERTY(Config, EditAnywhere) FVector ShipSpawnLocation = FVector::ZeroVector;
 	UPROPERTY(Config, EditAnywhere) FRotator ShipSpawnRotation = FRotator::ZeroRotator;
 	UPROPERTY(Config, EditAnywhere) float SeaLevelZ = 0.f;
+	UPROPERTY(Config, EditAnywhere) bool bEnableDLSS = true;
+	/** 67 = DLSS Quality, 58 = Balanced, 50 = Performance, 100 = DLAA. */
+	UPROPERTY(Config, EditAnywhere) float DLSSScreenPercentage = 67.f;
+	UPROPERTY(Config, EditAnywhere) bool bEnableFrameGeneration = false;
 
 protected:
 	FVector DeckAt(float X, float Y, float TopZ) const;

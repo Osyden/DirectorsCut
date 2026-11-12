@@ -32,3 +32,6 @@ Sidecars/models/
 *.gguf
 *.onnx
 *.bin
+
+Sidecars/test/
+Build/

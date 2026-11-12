@@ -11,6 +11,11 @@
 		}
 	],
 	"Plugins": [
+		{ "Name": "DLSS", "Enabled": true },
+		{ "Name": "StreamlineCore", "Enabled": true },
+		{ "Name": "StreamlineNGXCommon", "Enabled": true },
+		{ "Name": "StreamlineDLSSG", "Enabled": true },
+		{ "Name": "StreamlineReflex", "Enabled": true },
 		{
 			"Name": "AudioCapture",
 			"Enabled": true
