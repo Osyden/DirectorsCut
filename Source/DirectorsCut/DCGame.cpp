@@ -20,6 +20,7 @@
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "Misc/FileHelper.h"
 #include "Engine/WindDirectionalSource.h"
 #include "Camera/CameraActor.h"
 #include "UnrealClient.h"
@@ -246,6 +247,42 @@ void ADCGameMode::StartPlay()
 		else
 		{
 			UE_LOG(LogDC, Warning, TEXT("Ship class %s not found; running without a ship."), *ShipClass.ToString());
+		}
+	}
+
+	// Test hook: -DCDumpClass=/Game/Path/BP.BP_C[;...] writes each class's own variables and defaults to Saved/class_<name>.txt, then quits.
+	{
+		FString Classes;
+		if (FParse::Value(FCommandLine::Get(), TEXT("DCDumpClass="), Classes, false))
+		{
+			TArray<FString> List;
+			Classes.ParseIntoArray(List, TEXT(";"));
+			for (const FString& Path : List)
+			{
+				UClass* Cls = LoadObject<UClass>(nullptr, *Path);
+				if (!Cls) { UE_LOG(LogDC, Warning, TEXT("DumpClass: %s not found"), *Path); continue; }
+				FString Out;
+				const UObject* CDO = Cls->GetDefaultObject();
+				for (TFieldIterator<FProperty> It(Cls, EFieldIteratorFlags::ExcludeSuper); It; ++It)
+				{
+					FString Value;
+					It->ExportText_InContainer(0, Value, CDO, CDO, nullptr, PPF_None);
+					Value.ReplaceInline(TEXT("\n"), TEXT(" "));
+					FString Category;
+#if WITH_EDITOR
+					Category = It->GetMetaData(TEXT("Category"));
+#endif
+					Out += FString::Printf(TEXT("%s | %s | %s | %s\n"), *Category, *It->GetName(), *It->GetCPPType(), *Value.Left(120));
+				}
+				for (TFieldIterator<UFunction> It(Cls, EFieldIteratorFlags::ExcludeSuper); It; ++It)
+				{
+					if (It->HasAnyFunctionFlags(FUNC_BlueprintCallable) && !It->GetName().StartsWith(TEXT("ExecuteUbergraph"))) { Out += FString::Printf(TEXT("FUNC | %s\n"), *It->GetName()); }
+				}
+				FFileHelper::SaveStringToFile(Out, *(FPaths::ProjectSavedDir() / FString::Printf(TEXT("class_%s.txt"), *Cls->GetName())));
+				UE_LOG(LogDC, Display, TEXT("DumpClass: %s written"), *Cls->GetName());
+			}
+			FPlatformMisc::RequestExit(false);
+			return;
 		}
 	}
 
@@ -513,7 +550,9 @@ void ADCGameMode::Tick(float DeltaSeconds)
 
 	if (!bAutoShotTaken)
 	{
-		const FString File = FPaths::ProjectSavedDir() / TEXT("Screenshots/Auto") / FString::Printf(TEXT("shot_%04d.png"), FMath::RoundToInt(AutoShotTimes[AutoShotIndex]));
+		// -DCTenths names shots by tenths of a second and allows them 0.1 s apart (with -DCRunThrough), for checking flicker.
+		const bool bTenths = FParse::Param(FCommandLine::Get(), TEXT("DCTenths"));
+		const FString File = FPaths::ProjectSavedDir() / TEXT("Screenshots/Auto") / (bTenths ? FString::Printf(TEXT("shot_%05d.png"), FMath::RoundToInt(AutoShotTimes[AutoShotIndex] * 10.f)) : FString::Printf(TEXT("shot_%04d.png"), FMath::RoundToInt(AutoShotTimes[AutoShotIndex])));
 		if (FParse::Param(FCommandLine::Get(), TEXT("DCDumpNear")))
 		{
 			// Test hook: list everything visible whose bounds come within 60 m of the ship.
@@ -534,7 +573,7 @@ void ADCGameMode::Tick(float DeltaSeconds)
 		FScreenshotRequest::RequestScreenshot(File, false, false);
 		UE_LOG(LogDC, Log, TEXT("Auto shot %s at ride time %.1f, %.0f fps"), *FPaths::GetCleanFilename(File), Director->RideTime, SmoothedFps);
 		bAutoShotTaken = true;
-		AutoShotWait = 1.f;
+		AutoShotWait = bTenths ? 0.05f : 1.f;
 		return;
 	}
 

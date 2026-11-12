@@ -67,7 +67,8 @@ ADCRideDirector::ADCRideDirector()
 	Clouds->TracingStartMaxDistance = 350.f;
 	Clouds->TracingMaxDistance = 60.f;
 	Clouds->ViewSampleCountScale = 4.f;
-	Clouds->ShadowViewSampleCountScale = 1.6f;
+	Clouds->ShadowViewSampleCountScale = 4.f;
+	Clouds->ShadowTracingDistance = 25.f;
 	Clouds->ShadowTracingDistance = 8.f; // shorter than the default 15 km: finer steps, so the hollows between cloud heads hold their shadow
 
 	Fog = CreateDefaultSubobject<UExponentialHeightFogComponent>(TEXT("Fog"));
@@ -225,6 +226,8 @@ void ADCRideDirector::BeginPlay()
 	// Trace the cloud volume at half resolution, not the default quarter: at quarter the edges of the
 	// front against the sea and the rigging come out as blocks once DLSS has scaled the frame up.
 	if (IConsoleVariable* C = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricRenderTarget.Mode"))) { C->Set(1, ECVF_SetByGameOverride); }
+	// More shadow samples inside the cloud: at the default cap the shading crawled from frame to frame.
+	if (IConsoleVariable* C = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricCloud.Shadow.ViewRaySampleMaxCount"))) { C->Set(256, ECVF_SetByGameOverride); }
 	BuildSeaMesh();
 	UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Sea.M_Sea"));
 	if (!Base) { Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial")); }

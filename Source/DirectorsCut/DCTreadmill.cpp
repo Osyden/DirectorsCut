@@ -5,6 +5,7 @@
 #include "DCTroubles.h"
 #include "DCCloudFace.h"
 #include "DCPortal.h"
+#include "DCRuins.h"
 #include "Engine/StaticMeshActor.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
@@ -107,14 +108,14 @@ void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
 		if (bHell || FMath::FRand() < 0.6f)
 		{
 			const float Radius = FMath::FRandRange(350.f, 750.f);
-			AActor* Rock = DCHazards::SpawnRock(World, Radius, FMath::FRandRange(1500.f, 4200.f), bHell, Stone);
+			AActor* Rock = (!bHell && DCRuins::Available()) ? DCRuins::SpawnCrag(World, Radius, FMath::FRandRange(1500.f, 3200.f)) : DCHazards::SpawnRock(World, Radius, FMath::FRandRange(1500.f, 4200.f), bHell, Stone);
 			if (bHell) { DCHazards::SetGlow(Rock, Ember); }
 			Register(Rock, Base, Radius, false, 1.f, FMath::FRandRange(0.f, 360.f), true);
 		}
 		else
 		{
 			const float Scale = FMath::FRandRange(0.7f, 1.15f);
-			Register(DCHazards::SpawnRuin(World, Scale, Stone), Base, 1000.f * Scale, false, 1.f, FMath::FRandRange(-25.f, 25.f), true);
+			Register(DCRuins::Available() ? DCRuins::SpawnBrokenColumns(World, 1000.f * Scale) : DCHazards::SpawnRuin(World, Scale, Stone), Base, 1000.f * Scale, false, 1.f, FMath::FRandRange(-25.f, 25.f), true);
 		}
 	}
 
@@ -132,7 +133,7 @@ void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
 		else if (!bHell && FMath::FRand() < 0.55f)
 		{
 			// Statues face the passing ship.
-			Register(DCHazards::SpawnSentinel(World, FMath::FRandRange(5000.f, 8000.f), FMath::RandBool(), Stone), Base - FVector(0.f, 0.f, 300.f), 1500.f, false, 1.f, Side > 0.f ? 205.f : 155.f, false);
+			Register(DCRuins::Available() ? DCRuins::SpawnColossus(World, FMath::FRandRange(6000.f, 9000.f)) : DCHazards::SpawnSentinel(World, FMath::FRandRange(5000.f, 8000.f), FMath::RandBool(), Stone), Base - FVector(0.f, 0.f, 300.f), 1500.f, false, 1.f, Side > 0.f ? 205.f : 155.f, false);
 		}
 		else
 		{
@@ -520,6 +521,7 @@ void ADCTreadmill::SpawnAtlantis()
 	UWorld* World = GetWorld();
 	const float SeaZ = Director ? Director->SeaLevelZ : 0.f;
 	const FLinearColor Stone(0.085f, 0.1f, 0.11f);
+	const bool bRuins = DCRuins::Available();
 
 	struct FSentinel { float X, Y, Height; bool bTrident; };
 	const FSentinel Sentinels[] = {
@@ -529,14 +531,31 @@ void ADCTreadmill::SpawnAtlantis()
 	for (const FSentinel& S : Sentinels)
 	{
 		// Turned to watch the ship come.
-		Register(DCHazards::SpawnSentinel(World, S.Height, S.bTrident, Stone), FVector(S.X, S.Y, SeaZ - 300.f), 2000.f, false, 1.f, S.Y > 0.f ? 205.f : 155.f, false);
+		Register(bRuins ? DCRuins::SpawnColossus(World, S.Height * 1.5f) : DCHazards::SpawnSentinel(World, S.Height, S.bTrident, Stone), FVector(S.X, S.Y, SeaZ - 300.f), 2000.f, false, 1.f, S.Y > 0.f ? 205.f : 155.f, false);
 	}
 
-	Register(DCHazards::SpawnAqueduct(World, 8, 5500.f, Stone), FVector(95000.f, 21000.f, SeaZ - 200.f), 2000.f, false, 1.f, 18.f, false);
-	Register(DCHazards::SpawnAqueduct(World, 10, 7000.f, Stone), FVector(185000.f, -27000.f, SeaZ - 200.f), 2000.f, false, 1.f, -22.f, false);
-	Register(DCHazards::SpawnAqueduct(World, 7, 6000.f, Stone), FVector(275000.f, 24000.f, SeaZ - 200.f), 2000.f, false, 1.f, 62.f, false);
+	Register(bRuins ? DCRuins::SpawnColonnade(World, 9, 9000.f) : DCHazards::SpawnAqueduct(World, 8, 5500.f, Stone), FVector(95000.f, 21000.f, SeaZ - 200.f), 2000.f, false, 1.f, 18.f, false);
+	Register(bRuins ? DCRuins::SpawnColonnade(World, 12, 11000.f) : DCHazards::SpawnAqueduct(World, 10, 7000.f, Stone), FVector(185000.f, -27000.f, SeaZ - 200.f), 2000.f, false, 1.f, -22.f, false);
+	Register(bRuins ? DCRuins::SpawnColonnade(World, 8, 10000.f) : DCHazards::SpawnAqueduct(World, 7, 6000.f, Stone), FVector(275000.f, 24000.f, SeaZ - 200.f), 2000.f, false, 1.f, 62.f, false);
 
-	Register(DCHazards::SpawnTemple(World, 1.f, Stone), FVector(345000.f, 36000.f, SeaZ), 2000.f, false, 1.f, -14.f, false);
+	Register(bRuins ? DCRuins::SpawnTemple(World, 9.f) : DCHazards::SpawnTemple(World, 1.f, Stone), FVector(345000.f, 36000.f, SeaZ), 2000.f, false, 1.f, bRuins ? 76.f : -14.f, false);
+	if (bRuins)
+	{
+		// The city proper: gates and arches the course threads between, temples on both hands, all at
+		// several depths so that there is always something large coming up out of the mist.
+		struct FPiece { int32 Kind; float X, Y, Scale, Yaw; };   // Kind 1..4 arch variants, 5 gate, 6 temple
+		const FPiece City[] = {
+			{ 5, 60000.f, 0.f, 5.f, 90.f },
+			{ 2, 88000.f, -24000.f, 6.f, 60.f }, { 6, 112000.f, 30000.f, 5.f, 100.f }, { 4, 132000.f, -30000.f, 6.f, 75.f },
+			{ 1, 172000.f, 26000.f, 5.f, 110.f }, { 6, 205000.f, -40000.f, 7.f, 70.f }, { 3, 222000.f, 22000.f, 6.f, 95.f },
+			{ 5, 262000.f, 0.f, 9.f, 90.f }, { 4, 300000.f, -32000.f, 8.f, 80.f }, { 1, 318000.f, 30000.f, 8.f, 100.f } };
+		for (const FPiece& P : City)
+		{
+			AActor* Built = P.Kind == 5 ? DCRuins::SpawnGate(World, P.Scale) : P.Kind == 6 ? DCRuins::SpawnTemple(World, P.Scale) : DCRuins::SpawnArch(World, P.Kind, P.Scale);
+			// A gate stands across the course (radius 0: it is sailed through, not pushed aside).
+			Register(Built, FVector(P.X, P.Y, SeaZ), P.Kind == 5 ? 0.f : 2000.f, false, 1.f, P.Yaw, false);
+		}
+	}
 
 	// The portal out of the city: on the ship's course, at the distance covered by the time the slide begins.
 	{
