@@ -71,7 +71,7 @@ void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
 	{
 	case EDCPhase::Fog: ObstacleEvery = 7.f; HostileEvery = 14.f; break;
 	case EDCPhase::Hell: ObstacleEvery = 3.5f; HostileEvery = 9.f; break;
-	case EDCPhase::Maelstrom: ObstacleEvery = 0.f; HostileEvery = 6.f; break;
+	case EDCPhase::Maelstrom: ObstacleEvery = 0.f; HostileEvery = 0.f; break; // the kraken owns this phase
 	default: break;
 	}
 
@@ -140,6 +140,13 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 		if (!Actor)
 		{
 			Objects.RemoveAtSwap(i);
+			continue;
+		}
+
+		if (Obj.bExternal)
+		{
+			// Owned and moved elsewhere; just keep our sea-space copy of its position current.
+			Obj.Base = Actor->GetActorLocation() + FVector(0.f, LaneOffset, 0.f);
 			continue;
 		}
 
@@ -261,4 +268,15 @@ int32 ADCTreadmill::DamageNear(const FVector& WorldPos, float Radius, float Dama
 		}
 	}
 	return Hits;
+}
+
+void ADCTreadmill::AddExternalHostile(AActor* Actor, float Radius, float Health)
+{
+	FDCWorldObject& Obj = Objects.AddDefaulted_GetRef();
+	Obj.Actor = Actor;
+	Obj.Base = Actor ? Actor->GetActorLocation() : FVector::ZeroVector;
+	Obj.Radius = Radius;
+	Obj.bHostile = true;
+	Obj.bExternal = true;
+	Obj.Health = Health;
 }

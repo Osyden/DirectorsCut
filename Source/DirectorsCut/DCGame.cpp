@@ -5,6 +5,7 @@
 #include "DCVoice.h"
 #include "DCPlayer.h"
 #include "DCGunnery.h"
+#include "DCKraken.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -176,6 +177,7 @@ void ADCGameMode::StartPlay()
 		Treadmill->ShipHalfWidth = Bounds.GetExtent().Y;
 		ADCGunnery* Guns = World->SpawnActor<ADCGunnery>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
 		Guns->Init(Ship, SeaLevelZ);
+		World->SpawnActor<ADCKraken>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
 		{
 			TArray<UPrimitiveComponent*> Prims;
 			Ship->GetComponents(Prims);
