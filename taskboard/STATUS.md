@@ -2,6 +2,14 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 12:18 — finale beat, opening hints, DLSS keys, plan refreshed
+
+- **Finale:** the last ten seconds of the maelstrom shake harder, then the screen whites out as the ship is flung clear and the calm sea fades in. Fires and loose rigging clear at the ending.
+- **Opening:** if the captain has given no orders after 17 seconds the crew asks for them; at 42 seconds someone calls the fog.
+- **`F5`** cycles the DLSS mode (Quality, Balanced, Performance, DLAA) and **`F6`** toggles DLSS Frame Generation, each confirmed in the subtitle log. Frame generation initialises without errors but I cannot judge how it looks; it stays off by default.
+- **Frame rate on this PC:** 90 to 165 fps through the ride at 720p and about the same at 1440p, so it is limited by the CPU here, not the GPU. I have no slower machine to test on.
+- **`PLAN.md` now matches reality:** milestone states, the real deadline, and a map of which source file owns what.
+
 ## Thu 12 Nov 12:10 — the crew understands loose orders
 
 - **The language model now reads the captain's orders**, not just the crew's replies. Tested in game: "somebody get us away from those rocks" -> helm turns; "blow that spectre on our right out of the water" -> starboard battery fires; "stop shooting you fools" -> hold fire. ("Marlow the mast is coming apart" -> rigging repair was checked against the model directly, not in game.) Small talk gets an in-character answer instead of an action. About half a second per order.
