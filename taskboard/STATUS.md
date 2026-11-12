@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 13:06 — fixed: Odessa had no voice; packaged build verified
+
+- **Bug found and fixed: Odessa has never spoken until now.** Her voice file (the current revision of `en_GB-alba-medium`) does not load in the bundled Piper build, so her lines only ever appeared as subtitles. I missed the warning earlier because my log checks filtered on Finch. The original `v1.0.0` release of the same voice works; it is now in `Sidecars/` and in the packaged build, and she speaks in a test run. `SETUP.md` notes the version.
+- **Packaged build (5.3 GB) ran a whole voyage** with the stand-in captain at 5x speed: every phase, loose-order reading, DLSS, sound start-up, clean shutdown of the AI servers. It finished at 27% hull (the editor run finished at 45%, so expect a spread between runs).
+
 ## Thu 12 Nov 13:01 — balance measured with a stand-in captain; restart keeps the AI loaded
 
 - **Balance now has numbers.** `-DCBot` is a stand-in captain: it mans both batteries, pulls one gunner off for each fire or torn sail, and sends them back afterwards. On a full run it left the fog at 94% hull, the hell channel at 76% and finished at 45% ("Battered, but afloat"). An idle captain finishes at 0%. A player who also calls helm orders should beat the bot.

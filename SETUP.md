@@ -11,7 +11,7 @@ The repo is public, so licensed content and large binaries stay local. To run th
 | Piper 2023.11.14-2, Windows | `Sidecars/bin/piper/` | github.com/rhasspy/piper releases |
 | LLM weights `Qwen3.5-4B-Q5_K_M.gguf` | `Sidecars/models/` | local copy in `E:\AI\Oobabooga\user_data\models` |
 | Speech model `ggml-base.en.bin` | `Sidecars/models/` | huggingface.co/ggerganov/whisper.cpp |
-| Voices `en_GB-alan-medium`, `en_GB-northern_english_male-medium`, `en_GB-alba-medium` (`.onnx` and `.onnx.json`) | `Sidecars/models/voices/` | huggingface.co/rhasspy/piper-voices |
+| Voices `en_GB-alan-medium`, `en_GB-northern_english_male-medium`, `en_GB-alba-medium` (`.onnx` and `.onnx.json`) | `Sidecars/models/voices/` | huggingface.co/rhasspy/piper-voices, **tag `v1.0.0`** (newer revisions of some voices do not load in this Piper build) |
 
 Engine: Unreal Engine 5.8.4 (launcher build) with Visual Studio 2022.
 

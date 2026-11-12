@@ -10,6 +10,7 @@
 | M3 all phases real | Done (first pass) | Claude | Fog, slide, hell, maelstrom, kraken, fires, rigging, ending all in; see STATUS.md. |
 | M4 polish and balance | In progress | Claude | Look, sound mix, readability, balance. |
 | DLSS 4.5 plugin | Done | Claude | Active in the packaged build (log shows DLSS-SR=1 and feature creation). |
+| Sonniss audio catalogue | Done (metadata review) | Codex | [28 candidates and implementation notes](AUDIO-SHORTLIST.md); audition still required. |
 
 Claim a task here with your name and branch before editing. Use a separate Git worktree for parallel changes. Coordinate before editing the same Unreal map, Blueprint, or live editor session.
 
