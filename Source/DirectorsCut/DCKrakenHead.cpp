@@ -8,10 +8,48 @@
 
 namespace
 {
-	const int32 ArmRings = 28;
-	const int32 ArmSides = 10;
-	// Everything below is in the head's own space: origin on the funnel floor, +Y toward the ship.
-	const FVector MantleRadii(15500.f, 13000.f, 21000.f);
+	const int32 TubeRings = 34;
+	const int32 TubeSides = 14;
+	// Everything below is in the creature's own space: origin on the crater floor, +Y toward the ship.
+	const FVector MoundRadii(11000.f, 11000.f, 9000.f);
+	const int32 NeckSection = 1;
+	const int32 FirstArmSection = 2;
+	// When it roars, in seconds after the maelstrom begins. Kept in step with the roar sounds in DCAudio.
+	const float RoarTimes[] = { 27.f, 62.f, 110.f, 148.f };
+
+	/** Skins a spine with a tapering tube. Belly is the side that gets the pale suckered underside. */
+	void SkinTube(const TArray<FVector>& Spine, FVector Belly, float BaseRadius, float TipRadius, float UvLength,
+		TArray<FVector>& Verts, TArray<FVector>& Normals, TArray<FVector2D>& UVs, TArray<FColor>& Colors, TArray<FProcMeshTangent>& Tangents, bool bCloseTip)
+	{
+		const int32 Rings = Spine.Num();
+		const int32 Cols = TubeSides + 1;
+		Verts.SetNumUninitialized(Rings * Cols);
+		Normals.SetNumUninitialized(Rings * Cols);
+		UVs.SetNumUninitialized(Rings * Cols);
+		Colors.SetNumUninitialized(Rings * Cols);
+		Tangents.SetNumUninitialized(Rings * Cols);
+		for (int32 r = 0; r < Rings; ++r)
+		{
+			const float U = static_cast<float>(r) / (Rings - 1);
+			const FVector Tangent = (Spine[FMath::Min(r + 1, Rings - 1)] - Spine[FMath::Max(r - 1, 0)]).GetSafeNormal();
+			Belly = (Belly - Tangent * FVector::DotProduct(Belly, Tangent)).GetSafeNormal();
+			const FVector Bitangent = FVector::CrossProduct(Tangent, Belly);
+			float Radius = FMath::Lerp(BaseRadius, TipRadius, FMath::Pow(U, 0.8f));
+			if (bCloseTip && r == Rings - 1) { Radius *= 0.2f; }
+			for (int32 s = 0; s <= TubeSides; ++s)
+			{
+				const float A = 2.f * UE_PI * s / TubeSides;
+				const float CA = FMath::Cos(A), SA = FMath::Sin(A);
+				const FVector Dir = Belly * CA + Bitangent * SA;
+				const int32 I = r * Cols + s;
+				Verts[I] = Spine[r] + Dir * Radius;
+				Normals[I] = Dir;
+				UVs[I] = FVector2D(U * UvLength, static_cast<float>(s) / TubeSides);
+				Colors[I] = FColor(static_cast<uint8>(FMath::Clamp((CA - 0.25f) / 0.6f, 0.f, 1.f) * 255.f), static_cast<uint8>(FMath::Clamp(0.5f + SA * 0.6f, 0.f, 1.f) * 255.f), static_cast<uint8>(U * 255.f), 255);
+				Tangents[I] = FProcMeshTangent(Tangent, false);
+			}
+		}
+	}
 }
 
 ADCKrakenHead::ADCKrakenHead()
@@ -23,10 +61,23 @@ ADCKrakenHead::ADCKrakenHead()
 	Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
-void ADCKrakenHead::BuildMantle()
+UStaticMeshComponent* ADCKrakenHead::AddPart(USceneComponent* Parent, const TCHAR* Shape, const FVector& Location, const FRotator& Rotation, const FVector& Scale, UMaterialInterface* Material)
 {
-	// A tall lumpy dome, pinched toward the crown, with brow ridges over the eyes.
-	const int32 Rings = 28, Sides = 36;
+	UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
+	C->SetMobility(EComponentMobility::Movable);
+	C->SetStaticMesh(LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Engine/BasicShapes/%s.%s"), Shape, Shape)));
+	C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	if (Material) { C->SetMaterial(0, Material); }
+	C->SetupAttachment(Parent);
+	C->SetRelativeTransform(FTransform(Rotation, Location, Scale));
+	C->RegisterComponent();
+	return C;
+}
+
+void ADCKrakenHead::BuildMound()
+{
+	// The back of the thing, breaking the surface at the bottom of the crater.
+	const int32 Rings = 16, Sides = 28;
 	TArray<FVector> Verts;
 	TArray<int32> Tris;
 	TArray<FVector2D> UVs;
@@ -34,16 +85,14 @@ void ADCKrakenHead::BuildMantle()
 	for (int32 r = 0; r <= Rings; ++r)
 	{
 		const float V = static_cast<float>(r) / Rings;
-		const float Phi = V * UE_PI * 0.62f; // from crown down past the equator
+		const float Phi = V * UE_PI * 0.55f;
 		for (int32 s = 0; s <= Sides; ++s)
 		{
 			const float A = 2.f * UE_PI * s / Sides;
-			FVector D(FMath::Sin(Phi) * FMath::Cos(A), FMath::Sin(Phi) * FMath::Sin(A), FMath::Cos(Phi));
-			const float N = FMath::PerlinNoise3D(D * 2.3f + FVector(11.f)) * 0.12f + FMath::PerlinNoise3D(D * 6.f) * 0.04f;
-			// Brow: a swelling on the side that faces the ship, at eye height.
-			const float Brow = FMath::Exp(-FMath::Square((Phi - 1.25f) * 3.f)) * FMath::Max(0.f, FMath::Sin(A)) * 0.12f;
-			Verts.Add(FVector(D.X * MantleRadii.X, D.Y * MantleRadii.Y, D.Z * MantleRadii.Z) * (1.f + N + Brow));
-			UVs.Add(FVector2D(static_cast<float>(s) / Sides * 20.f, V * 20.f));
+			const FVector D(FMath::Sin(Phi) * FMath::Cos(A), FMath::Sin(Phi) * FMath::Sin(A), FMath::Cos(Phi));
+			const float N = FMath::PerlinNoise3D(D * 2.3f + FVector(11.f)) * 0.18f + FMath::PerlinNoise3D(D * 6.f) * 0.06f;
+			Verts.Add(FVector(D.X * MoundRadii.X, D.Y * MoundRadii.Y, D.Z * MoundRadii.Z) * (1.f + N));
+			UVs.Add(FVector2D(static_cast<float>(s) / Sides * 16.f, V * 12.f));
 			Colors.Add(FColor(0, 128, 0, 255));
 		}
 	}
@@ -71,56 +120,72 @@ void ADCKrakenHead::BuildMantle()
 void ADCKrakenHead::UpdateArm(int32 Index, bool bCreate)
 {
 	const float Seed = ArmSeeds[Index];
-	// Arms stand in a ring around the mantle, the nearest ones leaning toward the ship.
+	// Arms stand in a ring around the base, bowing outward and curling back in at the tips.
 	const float Angle = 2.f * UE_PI * (Index + 0.5f) / NumArms;
 	const FVector Out(FMath::Cos(Angle), FMath::Sin(Angle), 0.f);
-	const FVector Base = Out * FVector(MantleRadii.X, MantleRadii.Y, 0.f).Size() * 1.25f - FVector(0.f, 0.f, 3000.f);
-	const float Length = 30000.f + 9000.f * FMath::Sin(Seed * 7.f);
-	const float BaseRadius = Length * 0.055f;
+	const FVector Base = Out * MoundRadii.X * 1.35f - FVector(0.f, 0.f, 3000.f);
+	const float Length = 24000.f + 8000.f * FMath::Sin(Seed * 7.f);
 	const FVector Side = FVector::CrossProduct(Out, FVector::UpVector);
 	const float T = Clock * 0.45f + Seed;
 
-	const int32 Cols = ArmSides + 1;
-	TArray<FVector> Spine; Spine.SetNumUninitialized(ArmRings);
-	for (int32 r = 0; r < ArmRings; ++r)
+	TArray<FVector> Spine; Spine.SetNumUninitialized(TubeRings);
+	for (int32 r = 0; r < TubeRings; ++r)
 	{
-		const float U = static_cast<float>(r) / (ArmRings - 1);
-		// Up, bowing outward, then curling back in at the tip; slow travelling sway on top.
+		const float U = static_cast<float>(r) / (TubeRings - 1);
 		FVector P = Base + FVector(0.f, 0.f, Length * U * (1.f - 0.25f * U));
 		P += Out * Length * (0.32f * FMath::Sin(U * UE_PI * 0.9f) - 0.28f * U * U);
 		P += Side * Length * 0.12f * FMath::Sin(U * 4.f - T * 1.3f) * U;
 		P += Out * Length * 0.07f * FMath::Sin(U * 5.f - T * 1.7f + 1.f) * U;
 		Spine[r] = P;
 	}
+	TArray<FVector> Verts, Normals; TArray<FVector2D> UVs; TArray<FColor> Colors; TArray<FProcMeshTangent> Tangents;
+	SkinTube(Spine, -Out, Length * 0.055f, Length * 0.0035f, Length / 4000.f, Verts, Normals, UVs, Colors, Tangents, true);
+	if (bCreate) { Mesh->CreateMeshSection(FirstArmSection + Index, Verts, TubeTris, Normals, UVs, Colors, Tangents, false); }
+	else { Mesh->UpdateMeshSection(FirstArmSection + Index, Verts, Normals, UVs, Colors, Tangents); }
+}
 
-	TArray<FVector> Verts; Verts.SetNumUninitialized(ArmRings * Cols);
-	TArray<FVector> Normals; Normals.SetNumUninitialized(ArmRings * Cols);
-	TArray<FVector2D> UVs; UVs.SetNumUninitialized(ArmRings * Cols);
-	TArray<FColor> Colors; Colors.SetNumUninitialized(ArmRings * Cols);
-	TArray<FProcMeshTangent> Tangents; Tangents.SetNumUninitialized(ArmRings * Cols);
-	FVector Belly = -Out;
-	for (int32 r = 0; r < ArmRings; ++r)
+void ADCKrakenHead::UpdateNeck(bool bCreate)
+{
+	// An S-curve: up out of the water, leaning back, then arching over toward the ship. It sways,
+	// and rears a little when the jaws open.
+	const float T = Clock * 0.32f;
+	const float Rear = JawOpen * 0.08f;
+	NeckSpine.SetNumUninitialized(TubeRings);
+	for (int32 r = 0; r < TubeRings; ++r)
 	{
-		const float U = static_cast<float>(r) / (ArmRings - 1);
-		const FVector Tangent = (Spine[FMath::Min(r + 1, ArmRings - 1)] - Spine[FMath::Max(r - 1, 0)]).GetSafeNormal();
-		Belly = (Belly - Tangent * FVector::DotProduct(Belly, Tangent)).GetSafeNormal();
-		const FVector Bitangent = FVector::CrossProduct(Tangent, Belly);
-		const float Radius = FMath::Lerp(BaseRadius, BaseRadius * 0.06f, FMath::Pow(U, 0.8f)) * (r == ArmRings - 1 ? 0.2f : 1.f);
-		for (int32 s = 0; s <= ArmSides; ++s)
-		{
-			const float A = 2.f * UE_PI * s / ArmSides;
-			const float CA = FMath::Cos(A), SA = FMath::Sin(A);
-			const FVector Dir = Belly * CA + Bitangent * SA;
-			const int32 I = r * Cols + s;
-			Verts[I] = Spine[r] + Dir * Radius;
-			Normals[I] = Dir;
-			UVs[I] = FVector2D(U * Length / 4000.f, static_cast<float>(s) / ArmSides);
-			Colors[I] = FColor(static_cast<uint8>(FMath::Clamp((CA - 0.25f) / 0.6f, 0.f, 1.f) * 255.f), static_cast<uint8>(FMath::Clamp(0.5f + SA * 0.6f, 0.f, 1.f) * 255.f), static_cast<uint8>(U * 255.f), 255);
-			Tangents[I] = FProcMeshTangent(Tangent, false);
-		}
+		const float U = static_cast<float>(r) / (TubeRings - 1);
+		FVector P(0.f, 0.f, -4000.f + NeckLength * (U * (1.f - 0.12f * U) + Rear * U * U));
+		P.Y += NeckLength * (-0.16f * FMath::Sin(U * UE_PI) + 0.5f * U * U * U);
+		P.X += NeckLength * 0.07f * FMath::Sin(U * 2.6f - T) * U;
+		P.Y += NeckLength * 0.035f * FMath::Sin(U * 3.4f - T * 1.3f + 1.f) * U;
+		NeckSpine[r] = P;
 	}
-	if (bCreate) { Mesh->CreateMeshSection(1 + Index, Verts, ArmTris, Normals, UVs, Colors, Tangents, false); }
-	else { Mesh->UpdateMeshSection(1 + Index, Verts, Normals, UVs, Colors, Tangents); }
+	TArray<FVector> Verts, Normals; TArray<FVector2D> UVs; TArray<FColor> Colors; TArray<FProcMeshTangent> Tangents;
+	// The pale underside faces the ship.
+	SkinTube(NeckSpine, FVector(0.f, 1.f, 0.f), NeckLength * 0.17f, NeckLength * 0.1f, NeckLength / 4000.f, Verts, Normals, UVs, Colors, Tangents, false);
+	if (bCreate) { Mesh->CreateMeshSection(NeckSection, Verts, TubeTris, Normals, UVs, Colors, Tangents, false); }
+	else { Mesh->UpdateMeshSection(NeckSection, Verts, Normals, UVs, Colors, Tangents); }
+
+	// Head: at the top of the neck, looking along it and down at the ship.
+	const FVector Top = NeckSpine.Last();
+	const FVector Along = (NeckSpine.Last() - NeckSpine[TubeRings - 3]).GetSafeNormal();
+	const FVector Look = (Along * 0.55f + FVector(0.f, 0.8f, -0.32f)).GetSafeNormal();
+	if (HeadRoot)
+	{
+		HeadRoot->SetRelativeLocationAndRotation(Top, FRotationMatrix::MakeFromXZ(Look, FVector::UpVector).Rotator());
+	}
+	// Spines down the back of the neck (the side away from the ship).
+	for (int32 i = 0; i < Spines.Num(); ++i)
+	{
+		const int32 R = FMath::Clamp(3 + i * 2, 1, TubeRings - 2);
+		const float U = static_cast<float>(R) / (TubeRings - 1);
+		const FVector Tangent = (NeckSpine[R + 1] - NeckSpine[R - 1]).GetSafeNormal();
+		const FVector Back = (FVector(0.f, -1.f, 0.f) - Tangent * FVector::DotProduct(FVector(0.f, -1.f, 0.f), Tangent)).GetSafeNormal();
+		const float Radius = FMath::Lerp(NeckLength * 0.17f, NeckLength * 0.1f, FMath::Pow(U, 0.8f));
+		// Cones point along their own +Z; lean them back toward the base.
+		const FVector Up = (Back * 0.85f - Tangent * 0.5f).GetSafeNormal();
+		Spines[i]->SetRelativeLocationAndRotation(NeckSpine[R] + Back * Radius * 0.85f + Up * 900.f, FRotationMatrix::MakeFromZX(Up, Tangent).Rotator());
+	}
 }
 
 void ADCKrakenHead::BeginPlay()
@@ -129,43 +194,82 @@ void ADCKrakenHead::BeginPlay()
 	Director = ADCRideDirector::Get(this);
 
 	UMaterialInterface* Skin = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Kraken.M_Kraken"));
-	BuildMantle();
+	UMaterialInterface* Stone = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Stone.M_Stone"));
+	UMaterialInterface* Glow = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Glow.M_Glow"));
+	if (Stone)
+	{
+		// Horn, bone and hide for the parts built from simple shapes.
+		HideMID = UMaterialInstanceDynamic::Create(Stone, this);
+		HideMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.035f, 0.075f, 0.07f));
+		MawMID = UMaterialInstanceDynamic::Create(Stone, this);
+		MawMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.22f, 0.03f, 0.03f));
+	}
+	if (Glow) { EyeMID = UMaterialInstanceDynamic::Create(Glow, this); }
+
+	BuildMound();
 	Mesh->SetMaterial(0, Skin);
 
-	for (int32 r = 0; r < ArmRings - 1; ++r)
+	for (int32 r = 0; r < TubeRings - 1; ++r)
 	{
-		for (int32 s = 0; s < ArmSides; ++s)
+		for (int32 s = 0; s < TubeSides; ++s)
 		{
-			const int32 A = r * (ArmSides + 1) + s, B = A + ArmSides + 1;
-			ArmTris.Append({ A, B, A + 1 });
-			ArmTris.Append({ A + 1, B, B + 1 });
+			const int32 A = r * (TubeSides + 1) + s, B = A + TubeSides + 1;
+			TubeTris.Append({ A, B, A + 1 });
+			TubeTris.Append({ A + 1, B, B + 1 });
 		}
 	}
+
+	// Head, built around a root whose +X is "forward". Sizes in cm: the skull is about 70 m long.
+	HeadRoot = NewObject<USceneComponent>(this, TEXT("HeadRoot"));
+	HeadRoot->SetMobility(EComponentMobility::Movable);
+	HeadRoot->SetupAttachment(Mesh);
+	HeadRoot->RegisterComponent();
+	const float K = HeadScale;
+	AddPart(HeadRoot, TEXT("Sphere"), FVector(1200.f, 0.f, 300.f) * K, FRotator::ZeroRotator, FVector(52.f, 40.f, 34.f) * K, HideMID);            // skull
+	AddPart(HeadRoot, TEXT("Cone"), FVector(5600.f, 0.f, 500.f) * K, FRotator(-90.f, 0.f, 0.f), FVector(30.f, 17.f, 62.f) * K, HideMID);          // upper jaw / snout
+	AddPart(HeadRoot, TEXT("Sphere"), FVector(3000.f, 0.f, 1500.f) * K, FRotator(-12.f, 0.f, 0.f), FVector(34.f, 22.f, 12.f) * K, HideMID);       // brow ridge
+	for (int32 Side = -1; Side <= 1; Side += 2)
+	{
+		// Eyes under the brow, horns sweeping back, a row of teeth along the upper jaw.
+		AddPart(HeadRoot, TEXT("Sphere"), FVector(3300.f, Side * 1500.f, 950.f) * K, FRotator::ZeroRotator, FVector(8.f, 5.f, 6.f) * K, EyeMID);
+		AddPart(HeadRoot, TEXT("Cone"), FVector(-1200.f, Side * 1300.f, 2300.f) * K, FRotator(55.f, Side * 18.f, 0.f), FVector(9.f, 9.f, 50.f) * K, HideMID);
+		AddPart(HeadRoot, TEXT("Cone"), FVector(-600.f, Side * 2100.f, 1300.f) * K, FRotator(70.f, Side * 40.f, 0.f), FVector(7.f, 7.f, 34.f) * K, HideMID);
+		for (int32 t = 0; t < 6; ++t)
+		{
+			AddPart(HeadRoot, TEXT("Cone"), FVector(3200.f + t * 900.f, Side * (1250.f - t * 150.f), -350.f) * K, FRotator(180.f, 0.f, 0.f), FVector(3.2f, 3.2f, 9.f - t * 0.6f) * K, nullptr);
+		}
+	}
+	// Lower jaw on a hinge at the back of the skull, so it can drop open. The maw is dark red inside.
+	JawRoot = NewObject<USceneComponent>(this, TEXT("JawRoot"));
+	JawRoot->SetMobility(EComponentMobility::Movable);
+	JawRoot->SetupAttachment(HeadRoot);
+	JawRoot->SetRelativeLocation(FVector(600.f, 0.f, -700.f) * K);
+	JawRoot->RegisterComponent();
+	AddPart(JawRoot, TEXT("Cone"), FVector(4300.f, 0.f, -300.f) * K, FRotator(-90.f, 0.f, 0.f), FVector(24.f, 11.f, 56.f) * K, HideMID);
+	AddPart(JawRoot, TEXT("Sphere"), FVector(2800.f, 0.f, 150.f) * K, FRotator::ZeroRotator, FVector(46.f, 20.f, 5.f) * K, MawMID);
+	for (int32 Side = -1; Side <= 1; Side += 2)
+	{
+		for (int32 t = 0; t < 5; ++t)
+		{
+			AddPart(JawRoot, TEXT("Cone"), FVector(3000.f + t * 850.f, Side * (950.f - t * 120.f), 350.f) * K, FRotator::ZeroRotator, FVector(2.8f, 2.8f, 7.5f - t * 0.5f) * K, nullptr);
+		}
+	}
+	// Spines for the neck; placed every frame in UpdateNeck.
+	for (int32 i = 0; i < 13; ++i)
+	{
+		const float S = (16.f - i * 0.5f) * K;
+		Spines.Add(AddPart(Mesh, TEXT("Cone"), FVector::ZeroVector, FRotator::ZeroRotator, FVector(S * 0.55f, S * 0.3f, S * 2.2f), HideMID));
+	}
+
+	UpdateNeck(true);
+	Mesh->SetMaterial(NeckSection, Skin);
 	for (int32 i = 0; i < NumArms; ++i)
 	{
 		ArmSeeds.Add(FMath::FRandRange(0.f, 50.f));
 		UpdateArm(i, true);
-		Mesh->SetMaterial(1 + i, Skin);
+		Mesh->SetMaterial(FirstArmSection + i, Skin);
 	}
 
-	// Eyes: on the side facing the ship (+Y), under the brow.
-	UMaterialInterface* Glow = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Glow.M_Glow"));
-	if (Glow) { EyeMID = UMaterialInstanceDynamic::Create(Glow, this); }
-	UStaticMesh* Sphere = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere"));
-	for (int32 i = 0; i < 2; ++i)
-	{
-		UStaticMeshComponent* Eye = NewObject<UStaticMeshComponent>(this);
-		Eye->SetMobility(EComponentMobility::Movable);
-		Eye->SetStaticMesh(Sphere);
-		Eye->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		Eye->SetCastShadow(false);
-		if (EyeMID) { Eye->SetMaterial(0, EyeMID); }
-		Eye->SetupAttachment(Mesh);
-		Eye->SetRelativeLocation(FVector(i == 0 ? -5200.f : 5200.f, MantleRadii.Y * 0.93f, 4200.f));
-		Eye->SetRelativeScale3D(FVector(26.f, 12.f, 17.f));
-		Eye->RegisterComponent();
-		Eyes.Add(Eye);
-	}
 	if (Director) { Director->OnLightning.AddWeakLambda(this, [this]() { EyeFlare = 1.f; }); }
 	Mesh->SetVisibility(false, true);
 }
@@ -176,7 +280,7 @@ void ADCKrakenHead::Tick(float DeltaSeconds)
 	if (!Director) { return; }
 	if (!bAttached)
 	{
-		// Ride on the sea so the head tilts and rocks with the funnel it stands in.
+		// Ride on the sea so the creature tilts and rocks with the crater it stands in.
 		if (USceneComponent* Sea = Director->GetSea())
 		{
 			AttachToComponent(Sea, FAttachmentTransformRules::KeepRelativeTransform);
@@ -194,21 +298,31 @@ void ADCKrakenHead::Tick(float DeltaSeconds)
 	Mesh->SetVisibility(bVisible, true);
 	if (!bVisible) { return; }
 
-	// Rise out of the funnel floor, with a slow heave once up.
-	const FVector Floor = Director->GetWhirlFloorLocal();
-	const float Lift = FMath::InterpEaseInOut(-static_cast<float>(MantleRadii.Z) * 1.05f - 30000.f, 20000.f, Raised, 2.f) + 600.f * FMath::Sin(Clock * 0.6f);
-	SetActorRelativeLocation(Floor + FVector(0.f, 0.f, Lift));
-	// Its face (local +Y) turns to the ship.
-	const float FaceYaw = FMath::RadiansToDegrees(FMath::Atan2(-Director->WhirlCenter.Y, -Director->WhirlCenter.X)) - 90.f;
-	SetActorRelativeRotation(FRotator(3.f * FMath::Sin(Clock * 0.23f), FaceYaw, 2.f * FMath::Sin(Clock * 0.31f)));
+	// Jaws: slightly parted, thrown wide for each roar.
+	float Roaring = 0.f;
+	for (float RoarAt : RoarTimes)
+	{
+		const float Since = MaelstromTime - RoarAt;
+		if (Since > -0.4f && Since < 4.5f) { Roaring = FMath::Clamp(FMath::Min((Since + 0.4f) / 0.6f, (4.5f - Since) / 1.2f), 0.f, 1.f); }
+	}
+	JawOpen = FMath::FInterpTo(JawOpen, Roaring, DeltaSeconds, 4.f);
+	if (JawRoot) { JawRoot->SetRelativeRotation(FRotator(-(9.f + 30.f * JawOpen + 2.f * FMath::Sin(Clock * 1.3f)), 0.f, 0.f)); }
 
+	// Rise out of the crater floor, with a slow heave once up. Its face (local +Y) turns to the ship.
+	const FVector Floor = Director->GetWhirlFloorLocal();
+	const float Lift = FMath::InterpEaseInOut(-NeckLength * 1.15f, 0.f, Raised, 2.f) + 500.f * FMath::Sin(Clock * 0.6f);
+	SetActorRelativeLocation(Floor + FVector(0.f, 0.f, Lift));
+	const float FaceYaw = FMath::RadiansToDegrees(FMath::Atan2(-Director->WhirlCenter.Y, -Director->WhirlCenter.X)) - 90.f;
+	SetActorRelativeRotation(FRotator(0.f, FaceYaw, 0.f));
+
+	UpdateNeck(false);
 	for (int32 i = 0; i < NumArms; ++i) { UpdateArm(i, false); }
 
-	// Eyes smoulder, and blaze for a moment in each lightning flash.
+	// Eyes smoulder, and blaze for a moment in each lightning flash and each roar.
 	EyeFlare = FMath::Max(0.f, EyeFlare - DeltaSeconds * 1.5f);
 	if (EyeMID)
 	{
-		const float Pulse = 3.f + 1.2f * FMath::Sin(Clock * 1.7f) + EyeFlare * 12.f;
-		EyeMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(1.f, 0.55f, 0.08f) * Pulse);
+		const float Pulse = 5.f + 1.5f * FMath::Sin(Clock * 1.7f) + EyeFlare * 10.f + JawOpen * 8.f;
+		EyeMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(1.f, 0.6f, 0.1f) * Pulse);
 	}
 }

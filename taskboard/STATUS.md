@@ -2,6 +2,26 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 13:48 — maelstrom reveal, pass 2: the crater and the leviathan
+
+Screenshots for remote review are now in the repo: `taskboard/review/02-maelstrom-leviathan/` (six full-size frames from the helm, in ride order, plus `_contact.jpg`). `01-maelstrom-reveal/` is the earlier pass for comparison. Reference: `References/maelstrom-direction.jpg`.
+
+Compared with the reference, from the same helm view:
+
+| | Reference | Now | Still missing |
+|---|---|---|---|
+| Where the creature is | Ahead, slightly to starboard | Ahead, slightly to starboard | — |
+| The space | Crater ringed by waterfalls, far rim about a kilometre off | Crater ringed by a 260 m wall of falling water, far rim about 1.6 km ahead | Mist at the foot of the falls; the wall is evenly streaked rather than broken into cascades |
+| The entrance | Ship bursts out between curling walls of water | The tunnel opens ahead of the bow over about 15 seconds and the crater appears through the mouth | The walls are flat teal and do not stay in frame once out; I tried keeping them and they filled half the view, so they go |
+| The creature | Sea dragon, jaws open, spines, tentacles around it | A leviathan on a thick neck with a horned head, lit eyes, a jaw that drops open on each roar, a ridge of spines, seven arms around its base | It is built from simple shapes and reads as blocky up close; smaller in frame than the reference |
+| Water | Teal, white foam everywhere, spray | Teal, foam arms spiralling into the pit, churn at the wall | Spray and white water around the ship itself |
+| Light | Sun through towering cloud, god rays | Daylight with the sun ahead; the ship is rim-lit | No visible god rays or dramatic cloud yet; sky is flat |
+| Foreground | Wet deck, crew at work | Deck, lanterns, mannequin crew | Wet sheen; real crew models are the owner's to supply |
+
+Changes that made this: the pit moved from the port beam to ahead of the bow; a crater rim was added to the sea material; the kraken's dome was replaced by a neck and head (`DCKrakenHead.cpp`); the maelstrom was relit from grey storm to daylight; the near arms were cut from six to four and thinned so they frame rather than block.
+
+Next: sky, god rays and cloud for the maelstrom; spray near the ship; then the fog-front entrance.
+
 ## Thu 12 Nov 13:26 — ACKNOWLEDGED: new visual direction from the owner
 
 Read both 13:23 inbox messages and the reference image (`References/maelstrom-direction.jpg`). Working order from now:

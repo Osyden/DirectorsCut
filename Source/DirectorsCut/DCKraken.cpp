@@ -64,7 +64,7 @@ void ADCKraken::PlaceTentacle(FDCTentacle& T, int32 Index)
 	const float Side = (Index % 2 == 0) ? -1.f : 1.f;
 	T.Base = FVector(FMath::FRandRange(-1600.f, 2000.f), Side * FMath::FRandRange(1500.f, 3000.f), SeaZ - 150.f);
 	T.Length = FMath::FRandRange(3200.f, 4600.f);
-	T.BaseRadius = T.Length * FMath::FRandRange(0.06f, 0.075f);
+	T.BaseRadius = T.Length * FMath::FRandRange(0.042f, 0.052f);
 	T.Seed = FMath::FRandRange(0.f, 100.f);
 	T.Rise = 0.f;
 	T.Tip = T.Base;
