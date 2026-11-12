@@ -37,94 +37,136 @@ void ADCHUD::DrawHUD()
 	ADCRideDirector* D = ADCRideDirector::Get(this);
 	ADCTreadmill* T = ADCTreadmill::Get(this);
 	UFont* Font = GEngine ? GEngine->GetMediumFont() : nullptr;
+	UFont* Big = GEngine ? GEngine->GetLargeFont() : Font;
+	const float W = Canvas->SizeX, H = Canvas->SizeY;
+	const float S = FMath::Max(1.f, H / 720.f); // everything scales with resolution
 
+	// Text with a drop shadow so it reads over fog, fire and sea alike.
+	auto Label = [this, S](const FString& Str, float X, float Y, float Scale, const FLinearColor& Color, UFont* F)
+	{
+		DrawText(Str, FLinearColor(0.f, 0.f, 0.f, 0.85f * Color.A), X + 2.f * S, Y + 2.f * S, F, Scale * S);
+		DrawText(Str, Color, X, Y, F, Scale * S);
+	};
+	auto Centered = [this, W, S, &Label](const FString& Str, float Y, float Scale, const FLinearColor& Color, UFont* F)
+	{
+		float TW = 0.f, TH = 0.f;
+		GetTextSize(Str, TW, TH, F, Scale * S);
+		Label(Str, (W - TW) * 0.5f, Y, Scale, Color, F);
+	};
+	const FLinearColor Gold(1.f, 0.85f, 0.5f), White(1.f, 1.f, 1.f), Dim(0.75f, 0.8f, 0.85f);
+
+	// Top left: hull bar and where we are. Top right: score.
 	if (D)
 	{
-		const int32 Sec = FMath::FloorToInt(D->RideTime);
-		DrawText(FString::Printf(TEXT("%s   %d:%02d   Hull %d%%   Score %d"), DCPhaseName(D->GetPhase()), Sec / 60, Sec % 60,
-			FMath::RoundToInt(D->ShipHealth), D->Score), FLinearColor::White, 40.f, 30.f, Font, 1.4f);
-	}
-	if (T)
-	{
-		DrawText(FString::Printf(TEXT("Helm %+.1f   Lane %+.0f m   Hostiles %d"), T->GetSteer(), T->GetLaneOffset() / 100.f, T->NumHostiles()),
-			FLinearColor(0.7f, 0.8f, 0.9f), 40.f, 60.f, Font, 1.1f);
-	}
-	if (ADCVoice* V = ADCVoice::Get(this))
-	{
-		DrawText(FString::Printf(TEXT("Voice: speech-in %s  crew-mind %s  speech-out %s   [hold V to talk, Enter to type, 1-6 quick orders]"),
-			V->IsSTTReady() ? TEXT("on") : TEXT("off"), V->IsLLMReady() ? TEXT("on") : TEXT("off"), V->IsTTSReady() ? TEXT("on") : TEXT("off")),
-			FLinearColor(0.6f, 0.7f, 0.6f), 40.f, 84.f, Font, 1.f);
-		if (V->IsListening())
-		{
-			DrawText(TEXT("LISTENING..."), FLinearColor(1.f, 0.3f, 0.2f), Canvas->SizeX * 0.5f - 70.f, Canvas->SizeY - 110.f, Font, 1.8f);
-		}
-	}
-	// Title card at the start, score card at the end.
-	if (D)
-	{
-		UFont* Big = GEngine ? GEngine->GetLargeFont() : Font;
-		auto Centered = [this](const FString& Text, float Y, UFont* F, float Scale, const FLinearColor& Color)
-		{
-			float TW = 0.f, TH = 0.f;
-			GetTextSize(Text, TW, TH, F, Scale);
-			DrawText(Text, Color, (Canvas->SizeX - TW) * 0.5f, Y, F, Scale);
-		};
-		const float H = Canvas->SizeY;
-		if (D->RideTime < 14.f)
-		{
-			const float A = FMath::Clamp((14.f - D->RideTime) / 3.f, 0.f, 1.f);
-			const FLinearColor Gold(1.f, 0.85f, 0.5f, A), White(1.f, 1.f, 1.f, A);
-			DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.62f * A), Canvas->SizeX * 0.12f, H * 0.2f - 30.f, Canvas->SizeX * 0.76f, 290.f);
-			Centered(TEXT("DIRECTOR'S CUT"), H * 0.2f, Big, 4.f, Gold);
-			Centered(TEXT("You are the captain. You cannot do it all yourself. Give the orders."), H * 0.2f + 90.f, Font, 1.6f, White);
-			Centered(TEXT("Hold V and speak  -  or press Enter and type  -  or keys 1 to 6"), H * 0.2f + 135.f, Font, 1.4f, White);
-			Centered(TEXT("\"Finch, hard to starboard\"     \"Port battery, fire\"     \"Odessa, put out the fire\"     \"Repair the rigging\""), H * 0.2f + 170.f, Font, 1.2f, White);
-			Centered(TEXT("WASD walk    E take a station yourself"), H * 0.2f + 205.f, Font, 1.2f, White);
-		}
-		if (D->GetPhase() == EDCPhase::Ending)
-		{
-			const float A = FMath::Clamp((D->RideTime - D->GetRideLength() + 14.f) / 3.f, 0.f, 1.f);
-			const FLinearColor Gold(1.f, 0.85f, 0.5f, A), White(1.f, 1.f, 1.f, A);
-			DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.62f * A), Canvas->SizeX * 0.12f, H * 0.2f - 30.f, Canvas->SizeX * 0.76f, 290.f);
-			int32 Orders = 0;
-			if (UDCCrewSubsystem* Sub = GetWorld()->GetSubsystem<UDCCrewSubsystem>()) { Orders = Sub->OrdersGiven; }
-			const int32 Hull = FMath::RoundToInt(D->ShipHealth);
-			Centered(Hull > 60 ? TEXT("SHE CAME THROUGH") : (Hull > 20 ? TEXT("BATTERED, BUT AFLOAT") : TEXT("BARELY AFLOAT")), H * 0.22f, Big, 3.5f, Gold);
-			Centered(FString::Printf(TEXT("Hull %d%%      Score %d      Orders given %d"), Hull, D->Score, Orders), H * 0.22f + 90.f, Font, 1.8f, White);
-			Centered(TEXT("R  sail again        Esc  quit"), H * 0.22f + 140.f, Font, 1.4f, White);
-		}
+		const float X = 40.f * S, Y = 32.f * S, BW = 260.f * S, BH = 12.f * S;
+		const float Frac = FMath::Clamp(D->ShipHealth / 100.f, 0.f, 1.f);
+		const FLinearColor Bar = Frac > 0.5f ? FMath::Lerp(FLinearColor(0.95f, 0.75f, 0.2f), FLinearColor(0.35f, 0.85f, 0.45f), (Frac - 0.5f) * 2.f)
+			: FMath::Lerp(FLinearColor(0.9f, 0.15f, 0.1f), FLinearColor(0.95f, 0.75f, 0.2f), Frac * 2.f);
+		DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.55f), X - 3.f, Y - 3.f, BW + 6.f, BH + 6.f);
+		DrawRect(Bar, X, Y, BW * Frac, BH);
+		Label(FString::Printf(TEXT("HULL  %d%%"), FMath::RoundToInt(D->ShipHealth)), X, Y + BH + 6.f * S, 1.1f, White, Font);
+		Label(FString(DCPhaseName(D->GetPhase())).ToUpper(), X + BW + 26.f * S, Y - 8.f * S, 1.5f, Gold, Font);
+
+		const FString Score = FString::Printf(TEXT("SCORE  %d"), D->Score);
+		float TW = 0.f, TH = 0.f;
+		GetTextSize(Score, TW, TH, Font, 1.4f * S);
+		Label(Score, W - TW - 40.f * S, Y - 6.f * S, 1.4f, White, Font);
 	}
 
+	// Alerts.
+	float AlertY = 84.f * S;
 	if (ADCTroubles* Troubles = ADCTroubles::Get(this))
 	{
-		float AlertY = 112.f;
 		if (Troubles->NumFires() > 0)
 		{
-			DrawText(FString::Printf(TEXT("FIRE ON DECK  x%d"), Troubles->NumFires()), FLinearColor(1.f, 0.45f, 0.1f), 40.f, AlertY, Font, 1.5f);
-			AlertY += 30.f;
+			Label(FString::Printf(TEXT("FIRE ON DECK  x%d"), Troubles->NumFires()), 40.f * S, AlertY, 1.5f, FLinearColor(1.f, 0.45f, 0.1f), Font);
+			AlertY += 30.f * S;
 		}
 		if (Troubles->IsRiggingLoose())
 		{
-			DrawText(TEXT("RIGGING LOOSE  -  helm sluggish"), FLinearColor(1.f, 0.85f, 0.3f), 40.f, AlertY, Font, 1.5f);
+			Label(TEXT("RIGGING LOOSE   helm sluggish"), 40.f * S, AlertY, 1.5f, FLinearColor(1.f, 0.85f, 0.3f), Font);
+			AlertY += 30.f * S;
 		}
 	}
+
+	// Developer line, only with -DCDebug.
+	static const bool bDebug = FParse::Param(FCommandLine::Get(), TEXT("DCDebug"));
+	if (bDebug && D && T)
+	{
+		const int32 Sec = FMath::FloorToInt(D->RideTime);
+		Label(FString::Printf(TEXT("%d:%02d   helm %+.1f   lane %+.0f m   hostiles %d"), Sec / 60, Sec % 60, T->GetSteer(), T->GetLaneOffset() / 100.f, T->NumHostiles()),
+			40.f * S, AlertY, 1.f, Dim, Font);
+	}
+
+	// Bottom right: how to give orders, and which parts of the voice loop are up.
+	{
+		FString Help = TEXT("V  talk     Enter  type     1-6  quick orders     E  take a station");
+		if (ADCVoice* V = ADCVoice::Get(this))
+		{
+			if (!V->IsSTTReady()) { Help = TEXT("Enter  type     1-6  quick orders     E  take a station     (voice starting...)"); }
+			if (V->IsListening())
+			{
+				Centered(TEXT("LISTENING..."), H - 150.f * S, 2.f, FLinearColor(1.f, 0.35f, 0.25f), Font);
+			}
+		}
+		float TW = 0.f, TH = 0.f;
+		GetTextSize(Help, TW, TH, Font, 1.f * S);
+		Label(Help, W - TW - 40.f * S, H - 34.f * S, 1.f, Dim, Font);
+	}
+
+	// Subtitles, bottom left, on a dark plate.
+	if (UDCCrewSubsystem* Sub = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
+	{
+		const int32 Num = FMath::Min(4, Sub->RecentLines.Num());
+		const float LineH = 28.f * S;
+		float Y = H - 70.f * S - Num * LineH;
+		for (int32 i = Sub->RecentLines.Num() - Num; i < Sub->RecentLines.Num(); ++i)
+		{
+			const FString& Line = Sub->RecentLines[i];
+			float TW = 0.f, TH = 0.f;
+			GetTextSize(Line, TW, TH, Font, 1.3f * S);
+			DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.45f), 34.f * S, Y - 2.f * S, TW + 16.f * S, LineH - 2.f * S);
+			// The newest line is brightest.
+			const float A = i == Sub->RecentLines.Num() - 1 ? 1.f : 0.7f;
+			Label(Line, 42.f * S, Y, 1.3f, Line.StartsWith(TEXT("Captain")) ? FLinearColor(1.f, 0.85f, 0.4f, A) : FLinearColor(1.f, 1.f, 1.f, A), Font);
+			Y += LineH;
+		}
+	}
+
+	// What E does right now.
 	if (ADCPlayerCharacter* Captain = Cast<ADCPlayerCharacter>(GetOwningPawn()))
 	{
 		if (!Captain->GetPrompt().IsEmpty())
 		{
-			float TW = 0.f, TH = 0.f;
-			GetTextSize(Captain->GetPrompt(), TW, TH, Font, 1.5f);
-			DrawText(Captain->GetPrompt(), FLinearColor(1.f, 0.95f, 0.8f), (Canvas->SizeX - TW) * 0.5f, Canvas->SizeY * 0.72f, Font, 1.5f);
+			Centered(Captain->GetPrompt(), H * 0.74f, 1.5f, FLinearColor(1.f, 0.95f, 0.8f), Font);
 		}
 	}
 
-	if (UDCCrewSubsystem* Sub = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
+	// Title card at the start, score card at the end.
+	if (D)
 	{
-		float Y = Canvas->SizeY - 60.f - Sub->RecentLines.Num() * 26.f;
-		for (const FString& Line : Sub->RecentLines)
+		if (D->RideTime < 16.f)
 		{
-			DrawText(Line, Line.StartsWith(TEXT("Captain")) ? FLinearColor(1.f, 0.85f, 0.4f) : FLinearColor::White, 60.f, Y, Font, 1.3f);
-			Y += 26.f;
+			const float A = FMath::Clamp((16.f - D->RideTime) / 3.f, 0.f, 1.f);
+			const FLinearColor G(Gold.R, Gold.G, Gold.B, A), Wh(1.f, 1.f, 1.f, A);
+			DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.62f * A), W * 0.12f, H * 0.17f, W * 0.76f, 300.f * S);
+			Centered(TEXT("DIRECTOR'S CUT"), H * 0.17f + 22.f * S, 4.f, G, Big);
+			Centered(TEXT("You are the captain. You cannot do it all yourself. Give the orders."), H * 0.17f + 118.f * S, 1.6f, Wh, Font);
+			Centered(TEXT("Hold V and speak   or press Enter and type   or use keys 1 to 6"), H * 0.17f + 162.f * S, 1.4f, Wh, Font);
+			Centered(TEXT("\"Finch, hard to starboard\"    \"Port battery, fire\"    \"Odessa, put out the fire\"    \"Repair the rigging\""), H * 0.17f + 202.f * S, 1.2f, Wh, Font);
+			Centered(TEXT("WASD  walk the deck        E  take the helm or a gun battery yourself"), H * 0.17f + 240.f * S, 1.2f, Wh, Font);
+		}
+		if (D->GetPhase() == EDCPhase::Ending)
+		{
+			const float A = FMath::Clamp((D->RideTime - D->GetRideLength() + 14.f) / 3.f, 0.f, 1.f);
+			const FLinearColor G(Gold.R, Gold.G, Gold.B, A), Wh(1.f, 1.f, 1.f, A);
+			int32 Orders = 0;
+			if (UDCCrewSubsystem* Sub = GetWorld()->GetSubsystem<UDCCrewSubsystem>()) { Orders = Sub->OrdersGiven; }
+			const int32 Hull = FMath::RoundToInt(D->ShipHealth);
+			DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.62f * A), W * 0.2f, H * 0.2f, W * 0.6f, 220.f * S);
+			Centered(Hull > 60 ? TEXT("SHE CAME THROUGH") : (Hull > 20 ? TEXT("BATTERED, BUT AFLOAT") : TEXT("BARELY AFLOAT")), H * 0.2f + 22.f * S, 3.5f, G, Big);
+			Centered(FString::Printf(TEXT("Hull %d%%        Score %d        Orders given %d"), Hull, D->Score, Orders), H * 0.2f + 112.f * S, 1.8f, Wh, Font);
+			Centered(TEXT("R  sail again          Esc  quit"), H * 0.2f + 160.f * S, 1.4f, Wh, Font);
 		}
 	}
 }
