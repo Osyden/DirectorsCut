@@ -66,7 +66,7 @@ if (inWall)
     float fine = NZ(q * 1.9 + float3(churn * 5.0, 0.0, -churn * 20.0));
     // How far inside the surface of the cloud this point is, cm. Towers kilometres across, heads
     // of a kilometre on them, knuckles of a few hundred metres on those.
-    float surf = face + (big - 0.5) * 300000.0 + (mid - 0.5) * 130000.0 + (det - 0.5) * 45000.0;
+    float surf = face + (big - 0.5) * 220000.0 + (mid - 0.5) * 80000.0 + (det - 0.5) * 24000.0;
     float bore = 1.0;
     if (Front.z > 1.0)
     {
@@ -84,18 +84,18 @@ if (inWall)
         float edge = rr - 1.0 - 0.22 * spiral - (det - 0.5) * 0.5;
         bore = lerp(saturate(edge / 0.3), 1.0, saturate((face - 330000.0) / 120000.0));
         // Cold light in the walls of the tunnel: faint, and bright with each stroke of lightning.
-        glow = (0.02 + 0.9 * Front.w) * exp(-max(edge, 0.0) * 2.5) * saturate(face / 60000.0 + 0.5) * (0.5 + 0.5 * arms);
+        glow = (0.03 + 0.15 * Front.w) * exp(-max(edge, 0.0) * 5.0) * saturate(face / 60000.0 + 0.5) * (0.5 + 0.5 * arms);
     }
     float topAlt = 300000.0 + big * 380000.0 + (mid - 0.5) * 150000.0;
     // Density builds up over half a kilometre in from the surface. A hard-edged cloud renders flat
     // and unlit: the marcher's first step inside is already too deep for the sun to reach.
-    float body = smoothstep(0.0, 1.0, saturate(surf / 55000.0));
+    float body = smoothstep(0.0, 1.0, saturate(surf / 20000.0));
     // Behind the towers the front is solid, so the bays between them are dark cloud, not sky.
-    body = max(body, smoothstep(0.0, 1.0, saturate((face - 190000.0 + (mid - 0.5) * 60000.0) / 90000.0)));
+    body = max(body, smoothstep(0.0, 1.0, saturate((face - 110000.0 + (mid - 0.5) * 60000.0) / 90000.0)));
     // A veil ahead of the solid face: thin scud and rain that the towers stand behind.
     float veil = saturate(1.0 + surf / 35000.0) * 0.1 * fine * fine * (1.0 - body);
     wall = (body + veil) * saturate((topAlt - alt) / 60000.0) * saturate((600000.0 - face) / 120000.0) * bore * Front.y;
-    wall = saturate(wall - fine * 0.6 * (1.0 - wall) * 0.5);
+    wall = saturate(wall - fine * 0.5 * (1.0 - wall));
     // Sheet lightning inside the cloud: now and then one stretch of the wall lights from within.
     float cell = floor(P.y / 500000.0 + 0.37);
     float slot = floor(T / 0.6 + cell * 0.37);
@@ -107,7 +107,7 @@ if (inWall)
         float3 dd = float3(face, P.y, alt) - c;
         // Faded out toward the edge of its stretch, so the light never ends in a straight line.
         float within = saturate((250000.0 - abs(P.y - (cell + 0.13) * 500000.0)) / 150000.0);
-        glow += 0.1 * within / (1.0 + dot(dd, dd) / (45000.0 * 45000.0));
+        glow += 0.05 * within / (1.0 + dot(dd, dd) / (30000.0 * 30000.0));
     }
 }
 float d = max(deck, wall);
@@ -122,7 +122,7 @@ if (inMist)
     d = max(d, bank * Mist.z);
 }
 float mask = saturate(wall * 3.0);
-return float4(d * Sky.w * lerp(1.0, 1.5, mask), glow * wall, mask, 0.0);
+return float4(d * Sky.w * lerp(1.0, 3.0, mask), glow * wall, mask, 0.0);
 """
 
 
@@ -157,7 +157,7 @@ sky = vector(mat, "Sky", (0.4, 150000, 550000, 0.02), -1400, 700)
 front = vector(mat, "Front", (400000, 0, 0, 0), -1400, 900)
 mist = vector(mat, "Mist", (0, 40000, 0.35, 0), -1400, 1000)
 albedo = colour(mat, "Albedo", (0.9, 0.9, 0.9, 1), -1400, 1100)
-storm = colour(mat, "StormAlbedo", (0.74, 0.78, 0.84, 1), -1400, 1300)
+storm = colour(mat, "StormAlbedo", (0.4, 0.43, 0.5, 1), -1400, 1300)
 flash = colour(mat, "FlashColor", (0.16, 0.22, 0.4, 1), -1400, 1500)
 
 node = mel.create_material_expression(mat, unreal.MaterialExpressionCustom, -800, 300)

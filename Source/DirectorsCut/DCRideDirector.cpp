@@ -66,7 +66,7 @@ ADCRideDirector::ADCRideDirector()
 	Clouds->LayerHeight = 9.f;
 	Clouds->TracingStartMaxDistance = 350.f;
 	Clouds->TracingMaxDistance = 60.f;
-	Clouds->ViewSampleCountScale = 2.4f;
+	Clouds->ViewSampleCountScale = 4.f;
 	Clouds->ShadowViewSampleCountScale = 1.6f;
 	Clouds->ShadowTracingDistance = 8.f; // shorter than the default 15 km: finer steps, so the hollows between cloud heads hold their shadow
 
@@ -119,7 +119,7 @@ void ADCRideDirector::BuildDefaultPhases()
 	{
 		FDCEnvState& E = Add(EDCPhase::OpenSea, 0.f, 0.f);
 		E.FogColor = FLinearColor(0.75f, 0.55f, 0.4f); E.FogDensity = 0.0009f; E.CloudCover = 0.16f; E.CloudBase = 520000.f;
-		E.SunColor = FLinearColor(1.f, 0.72f, 0.45f); E.SunIntensity = 7.f; E.SunPitch = -24.f; E.SunYaw = 330.f; // low behind the port quarter, so the face of the storm front ahead is lit
+		E.SunColor = FLinearColor(1.f, 0.86f, 0.68f); E.SunIntensity = 7.f; E.SunPitch = -20.f; E.SunYaw = 320.f; // low behind the port quarter, so the face of the storm front ahead is lit
 		E.SeaColor = FLinearColor(0.03f, 0.09f, 0.13f); E.SeaRoughness = 1.2f; E.ShipSpeed = 1000.f; E.WaveHeight = 70.f; E.Foam = 0.5f; E.Exposure = 1.0f;
 	}
 	{

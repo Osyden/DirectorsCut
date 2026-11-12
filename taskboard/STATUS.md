@@ -2,6 +2,26 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 17:51 — clouds pass 3 (set 16): the front reads as a storm mass now; grain and scale still open
+
+Review set: `taskboard/review/16-storm-clouds-pass-3/` (`a_sky_*` from above the masts, `b_helm_*` from the helm through the voyage; normal speed, 720p). No new inbox messages.
+
+- **Why set 15's front looked like scattered cloud on empty sky:** I tinted the front red to see it. It was one continuous towering mass all along, but its shaded parts were exactly the colour of the sky behind, so only the sunlit parts showed. Storm cloud is now darker and bluer than the sky, and the open-sea sun is whiter, so the front is cream where lit and dark slate in its hollows.
+- **Firmer body:** the face is denser with a sharper edge and less deep bays, and the finest scale only frays the edges.
+- **Mouth:** half as large again (450 m radius), with spiral arms that show from the helm in the last 15 seconds before entry (`a_sky_0046`, `b_helm_0046`). Its glow and the sheet lightning are confined; the white column of set 15 is gone.
+- **Grain:** tried the engine's full-resolution cloud mode: much worse, because it drops accumulation over frames. Kept the previous mode and raised samples per ray from 2.4 to 4 times default. Better, still visible on thin cloud in full-size frames.
+- Frame rate: 158 to 181 fps open sea, 93 to 104 in the front and Atlantis, 134 to 151 maelstrom.
+
+Still short of the storm-front reference, in my reading of the frames:
+- From the helm the front fills the sky as a ceiling of cloud rather than standing as a wall with a visible top; the sense of height is weak until the last seconds.
+- No clean line where the front meets the sea; the horizon haze hides its foot.
+- The mouth is the right idea but small in frame until late, and cold-only: no warm light against it.
+- Grain remains. Flicker over a frame sequence still not checked.
+- The inside of the front (`b_helm_0058`) is plain grey.
+- Atlantis: mist banks and overcast are in, but the layering is subtle; statues still fade into flat blue.
+
+Next: height and sea contact of the front, inside of the front, then Atlantis layers, faces and portal.
+
 ## Thu 12 Nov 17:44 — 17:17 message read; clouds pass 2 (set 15). Better, not there yet
 
 **Acknowledged: the 17:17 cloud quality message.** Agreed that set 14 was not at the level of the references. This entry is a second pass, and by my own reading of the frames it is still short of them. I am continuing on the clouds; not moving on.
