@@ -2,6 +2,11 @@
 #include "DCRideDirector.h"
 #include "DCTypes.h"
 #include "DCTroubles.h"
+#include "DCCrew.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Animation/AnimationAsset.h"
+#include "Sound/SoundBase.h"
+#include "EngineUtils.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
 #include "Misc/FileHelper.h"
@@ -101,6 +106,17 @@ void ADCAudio::BeginPlay()
 		Director->OnLightning.AddUObject(this, &ADCAudio::OnLightning);
 		Director->OnShipHit.AddUObject(this, &ADCAudio::OnShipHit);
 	}
+
+	// The storm bell: the ship asset has a bell, a strike sound and a swing animation.
+	BellSound = LoadObject<USoundBase>(nullptr, TEXT("/Game/Brigantine/SFX/Cue/Bell_cue.Bell_cue"));
+	BellAnim = LoadObject<UAnimationAsset>(nullptr, TEXT("/Game/Brigantine/Animation/Bell/AS_Bell-brigantine.AS_Bell-brigantine"));
+	for (TActorIterator<AActor> It(GetWorld()); It && !BellMesh.IsValid(); ++It)
+	{
+		TArray<USkeletalMeshComponent*> Skels;
+		It->GetComponents(Skels);
+		for (USkeletalMeshComponent* C : Skels) { if (C->GetName() == TEXT("SK_Bell")) { BellMesh = C; break; } }
+	}
+	UE_LOG(LogDC, Log, TEXT("Audio: storm bell sound %s, bell mesh %s"), BellSound ? TEXT("found") : TEXT("missing"), BellMesh.IsValid() ? TEXT("found") : TEXT("missing"));
 
 	const double Start = FPlatformTime::Seconds();
 	FRandomStream Rng(1717);
@@ -315,7 +331,8 @@ void ADCAudio::Tick(float DeltaSeconds)
 	const FDCEnvState& Env = Director->GetEnv();
 
 	const float Storm = FMath::Clamp(Env.WaveHeight / 320.f, 0.f, 1.2f);
-	SetLayer(Wind, FMath::Clamp(0.12f + Storm * 0.55f + Env.Tube * 0.5f + Env.FogDensity * 1.2f, 0.f, 1.f), DeltaSeconds);
+	TickBell(DeltaSeconds);
+	SetLayer(Wind, FMath::Clamp(0.12f + Storm * 0.55f + Env.Tube * 0.5f + Env.FogDensity * 1.2f, 0.f, 1.f) * (BellDuck > 0.f ? 0.55f : 1.f), DeltaSeconds);
 	SetLayer(Sea, FMath::Clamp(0.35f + Storm * 0.6f + Env.Tube * 0.4f, 0.f, 1.2f), DeltaSeconds);
 	SetLayer(Rain, Env.Rain * 0.7f, DeltaSeconds);
 	SetLayer(Rumble, FMath::Clamp(FMath::Min(Env.SeaGlow.R, 1.f) * 0.9f + Env.Whirl * 0.5f + Env.Tube * 0.35f, 0.f, 1.f), DeltaSeconds);
@@ -381,4 +398,43 @@ void ADCAudio::DumpWav(const TCHAR* Name, const TArray<uint8>& Pcm) const
 	Out.Append(reinterpret_cast<const uint8*>("data"), 4); W32(Pcm.Num());
 	Out.Append(Pcm);
 	FFileHelper::SaveArrayToFile(Out, *(FPaths::ProjectSavedDir() / TEXT("AudioDump") / FString::Printf(TEXT("%s.wav"), Name)));
+}
+
+void ADCAudio::TickBell(float DeltaSeconds)
+{
+	// The ship's bell begins to ring by itself as the weather turns: one lone strike, a long silence,
+	// then slow irregular tolling that quickens at the worst of it. Each strike is its own event so
+	// the pattern never loops, and it stays slower than an alarm.
+	const EDCPhase Phase = Director->GetPhase();
+	const bool bHaunted = Phase != EDCPhase::OpenSea && Phase != EDCPhase::Ending;
+	BellDuck = FMath::Max(0.f, BellDuck - DeltaSeconds);
+	if (!bHaunted)
+	{
+		BellStrikes = 0;
+		NextBellIn = 6.f;
+		return;
+	}
+	NextBellIn -= DeltaSeconds;
+	if (NextBellIn > 0.f || !BellSound) { return; }
+
+	const bool bPeak = Phase == EDCPhase::Slide || Phase == EDCPhase::Breach || Phase == EDCPhase::Maelstrom;
+	++BellStrikes;
+	if (BellStrikes == 1) { NextBellIn = FMath::FRandRange(15.f, 25.f); }
+	else { NextBellIn = bPeak ? FMath::FRandRange(4.f, 8.f) : FMath::FRandRange(8.f, 14.f); }
+
+	// Early strikes are quiet; later ones vary a little in strength. Pitched down for weight.
+	const float Volume = (BellStrikes <= 2 ? 0.6f : FMath::FRandRange(0.8f, 1.05f)) * MasterVolume * BellVolume;
+	const float Pitch = FMath::FRandRange(0.8f, 0.87f);
+	const FVector Where = BellMesh.IsValid() ? BellMesh->Bounds.Origin : FVector(-446.f, 0.f, 812.f);
+	UGameplayStatics::SpawnSoundAtLocation(this, BellSound, Where, FRotator::ZeroRotator, Volume, Pitch);
+	if (BellMesh.IsValid() && BellAnim) { BellMesh->PlayAnimation(BellAnim, false); }
+	BellDuck = 1.6f; // pull the wind back so the strike reads
+
+	if (BellStrikes == 2)
+	{
+		if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
+		{
+			Crew->Report(TEXT("The bell, Captain. Nobody is ringing it."), true);
+		}
+	}
 }

@@ -24,6 +24,7 @@ public:
 	virtual void Tick(float DeltaSeconds) override;
 
 	UPROPERTY(EditAnywhere) float MasterVolume = 0.8f;
+	UPROPERTY(EditAnywhere) float BellVolume = 1.f;
 
 protected:
 	struct FLayer
@@ -51,6 +52,13 @@ protected:
 	float MaelstromTime = 0.f;
 	int32 RoarsPlayed = 0;
 	void OnShipHit(float Amount);
+	void TickBell(float DeltaSeconds);
+	UPROPERTY() TObjectPtr<class USoundBase> BellSound;
+	UPROPERTY() TObjectPtr<class UAnimationAsset> BellAnim;
+	TWeakObjectPtr<class USkeletalMeshComponent> BellMesh;
+	float NextBellIn = 6.f;
+	float BellDuck = 0.f;
+	int32 BellStrikes = 0;
 	void DumpWav(const TCHAR* Name, const TArray<uint8>& Pcm) const;
 	TArray<TArray<uint8>> Thunder;
 	TArray<FOneShot> OneShots;
