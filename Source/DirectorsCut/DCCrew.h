@@ -55,6 +55,11 @@ protected:
 
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> Body;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UTextRenderComponent> Label;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<class USkeletalMeshComponent> Figure;
+	UPROPERTY() TObjectPtr<class UAnimationAsset> IdleAnim;
+	UPROPERTY() TObjectPtr<class UAnimationAsset> WalkAnim;
+	bool bWalking = false;
+	void SetWalking(bool bWalk);
 
 	float MoveSpeed = 350.f;
 	EDCAction HelmOrder = EDCAction::Steady;

@@ -5,6 +5,9 @@
 #include "DCGunnery.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Engine/SkeletalMesh.h"
+#include "Animation/AnimationAsset.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -120,11 +123,32 @@ ADCCrewMember::ADCCrewMember()
 	Label->SetHorizontalAlignment(EHTA_Center);
 	Label->SetWorldSize(16.f);
 	Label->SetUsingAbsoluteScale(true);
+
+	// Stand-in body: the mannequin that ships with the vessel asset, if present.
+	Figure = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Figure"));
+	Figure->SetupAttachment(Body);
+	Figure->SetUsingAbsoluteScale(true);
+	Figure->SetRelativeLocation(FVector(0.f, 0.f, -51.f));
+	Figure->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));
+	Figure->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
 void ADCCrewMember::Init(const FString& InName, const FLinearColor& Color)
 {
 	CrewName = InName;
+	const bool bFemale = InName == TEXT("Odessa");
+	const TCHAR* Dir = TEXT("/Game/Brigantine/Demo/Characters/Mannequins");
+	USkeletalMesh* SkelMesh = LoadObject<USkeletalMesh>(nullptr, *FString::Printf(TEXT("%s/Meshes/%s"), Dir, bFemale ? TEXT("SKM_Quinn_Simple.SKM_Quinn_Simple") : TEXT("SKM_Manny_Simple.SKM_Manny_Simple")));
+	IdleAnim = LoadObject<UAnimationAsset>(nullptr, *FString::Printf(TEXT("%s/Animations/%s"), Dir, bFemale ? TEXT("Quinn/MF_Idle.MF_Idle") : TEXT("Manny/MM_Idle.MM_Idle")));
+	WalkAnim = LoadObject<UAnimationAsset>(nullptr, *FString::Printf(TEXT("%s/Animations/%s"), Dir, bFemale ? TEXT("Quinn/MF_Walk_Fwd.MF_Walk_Fwd") : TEXT("Manny/MM_Walk_Fwd.MM_Walk_Fwd")));
+	if (SkelMesh)
+	{
+		Figure->SetSkeletalMeshAsset(SkelMesh);
+		Figure->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+		if (IdleAnim) { Figure->PlayAnimation(IdleAnim, true); }
+		Body->SetVisibility(false);
+		Label->SetRelativeLocation(FVector(0.f, 0.f, 62.f));
+	}
 	Label->SetText(FText::FromString(InName));
 	Label->SetTextRenderColor(Color.ToFColor(true));
 	if (UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial")))
@@ -186,11 +210,19 @@ void ADCCrewMember::Tick(float DeltaSeconds)
 	if (State == EDCCrewState::Moving)
 	{
 		const FVector Target = Station->Location + FVector(0.f, 0.f, 90.f);
-		const FVector NewLoc = FMath::VInterpConstantTo(GetActorLocation(), Target, DeltaSeconds, MoveSpeed);
+		const FVector Here = GetActorLocation();
+		const FVector NewLoc = FMath::VInterpConstantTo(Here, Target, DeltaSeconds, MoveSpeed);
 		SetActorLocation(NewLoc);
+		const FVector Dir = (Target - Here).GetSafeNormal2D();
+		if (!Dir.IsNearlyZero()) { SetActorRotation(FRotator(0.f, Dir.Rotation().Yaw, 0.f)); }
+		SetWalking(true);
 		if (FVector::DistSquared(NewLoc, Target) < 25.f)
 		{
 			State = EDCCrewState::Operating;
+			// Face the work: the helmsman looks forward, gunners look out over their rail.
+			const float Yaw = Station->Type == EDCStationType::Cannons ? (Station->Side == EDCSide::Port ? -90.f : 90.f) : 0.f;
+			SetActorRotation(FRotator(0.f, Yaw, 0.f));
+			SetWalking(false);
 		}
 		return;
 	}
@@ -450,3 +482,13 @@ static FAutoConsoleCommandWithWorldAndArgs GDCOrderCmd(
 			Sub->ExecuteOrder(FString::Join(Args, TEXT(" ")));
 		}
 	}));
+
+void ADCCrewMember::SetWalking(bool bWalk)
+{
+	if (bWalking == bWalk || !Figure || !Figure->GetSkeletalMeshAsset()) { return; }
+	bWalking = bWalk;
+	if (UAnimationAsset* Anim = bWalk ? WalkAnim : IdleAnim)
+	{
+		Figure->PlayAnimation(Anim, true);
+	}
+}
