@@ -73,4 +73,5 @@ protected:
 	int32 AutoShotIndex = 0;
 	float AutoShotWait = 0.f;
 	bool bAutoShotTaken = false;
+	FString TestWavPath;
 };

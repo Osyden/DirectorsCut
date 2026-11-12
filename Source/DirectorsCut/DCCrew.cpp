@@ -1,6 +1,7 @@
 #include "DCCrew.h"
 #include "DCTreadmill.h"
 #include "DCRideDirector.h"
+#include "DCVoice.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "Engine/StaticMesh.h"
@@ -339,18 +340,33 @@ FString UDCCrewSubsystem::ExecuteOrder(const FString& Text)
 	return RecentLines.Num() ? RecentLines.Last() : FString();
 }
 
-void UDCCrewSubsystem::ExecuteIntent(const FDCIntent& I)
+void UDCCrewSubsystem::Reply(const FString& Speaker, const FString& Text)
 {
+	// With the voice loop running the line is rephrased in character and spoken; otherwise it is shown as-is.
+	if (ADCVoice* Voice = ADCVoice::Get(this))
+	{
+		Voice->CrewReply(Speaker, Text, CurrentOrderText);
+	}
+	else
+	{
+		Say(Speaker, Text);
+	}
+}
+
+void UDCCrewSubsystem::ExecuteIntent(const FDCIntent& I)
+
+{
+	CurrentOrderText = I.RawText;
 	if (!I.bValid)
 	{
-		Say(Crew.Num() && Crew[0] ? Crew[0]->CrewName : TEXT("Crew"), TEXT("Say again, Captain?"));
+		Reply(Crew.Num() && Crew[0] ? Crew[0]->CrewName : TEXT("Crew"), TEXT("Say again, Captain?"));
 		return;
 	}
 
 	if (I.Action == EDCAction::Report)
 	{
 		ADCRideDirector* D = ADCRideDirector::Get(this);
-		Say(Crew.Num() && Crew[0] ? Crew[0]->CrewName : TEXT("Crew"),
+		Reply(Crew.Num() && Crew[0] ? Crew[0]->CrewName : TEXT("Crew"),
 			FString::Printf(TEXT("Hull at %d percent, Captain."), D ? FMath::RoundToInt(D->ShipHealth) : 100));
 		return;
 	}
@@ -365,16 +381,16 @@ void UDCCrewSubsystem::ExecuteIntent(const FDCIntent& I)
 		if (I.Action == EDCAction::TurnPort || I.Action == EDCAction::TurnStarboard)
 		{
 			M->SetHelmOrder(I.Action);
-			Say(M->CrewName, FString::Printf(TEXT("Hard to %s, aye!"), I.Action == EDCAction::TurnPort ? TEXT("port") : TEXT("starboard")));
+			Reply(M->CrewName, FString::Printf(TEXT("Hard to %s, aye!"), I.Action == EDCAction::TurnPort ? TEXT("port") : TEXT("starboard")));
 		}
 		else if (I.Action == EDCAction::Steady)
 		{
 			M->SetHelmOrder(EDCAction::Steady);
-			Say(M->CrewName, TEXT("Steady as she goes."));
+			Reply(M->CrewName, TEXT("Steady as she goes."));
 		}
 		else
 		{
-			Say(M->CrewName, TEXT("Aye, I have the helm."));
+			Reply(M->CrewName, TEXT("Aye, I have the helm."));
 		}
 		break;
 	}
@@ -399,12 +415,12 @@ void UDCCrewSubsystem::ExecuteIntent(const FDCIntent& I)
 			if (I.Action == EDCAction::HoldFire)
 			{
 				M->SetHoldFire(true);
-				Say(M->CrewName, FString::Printf(TEXT("%s guns holding fire."), S));
+				Reply(M->CrewName, FString::Printf(TEXT("%s guns holding fire."), S));
 			}
 			else
 			{
 				M->SetHoldFire(false);
-				Say(M->CrewName, I.Action == EDCAction::Fire ? FString::Printf(TEXT("%s battery, firing!"), S) : FString::Printf(TEXT("%s guns manned and ready."), S));
+				Reply(M->CrewName, I.Action == EDCAction::Fire ? FString::Printf(TEXT("%s battery, firing!"), S) : FString::Printf(TEXT("%s guns manned and ready."), S));
 			}
 		}
 		break;
@@ -415,7 +431,7 @@ void UDCCrewSubsystem::ExecuteIntent(const FDCIntent& I)
 		ADCCrewMember* M = EnsureOperator(FindStation(I.Station, EDCSide::None), I.CrewName);
 		if (M)
 		{
-			Say(M->CrewName, I.Station == EDCStationType::Fire ? TEXT("Buckets! On it, Captain!") : TEXT("Aloft and mending, aye."));
+			Reply(M->CrewName, I.Station == EDCStationType::Fire ? TEXT("Buckets! On it, Captain!") : TEXT("Aloft and mending, aye."));
 		}
 		break;
 	}

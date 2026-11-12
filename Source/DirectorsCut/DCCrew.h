@@ -85,6 +85,8 @@ public:
 	const TArray<TObjectPtr<ADCCrewMember>>& GetCrew() const { return Crew; }
 
 	void Say(const FString& Speaker, const FString& Text);
+	/** A crew answer to the current order: goes through the voice loop when it is running. */
+	void Reply(const FString& Speaker, const FString& Text);
 
 	FDCOnCrewLine OnCrewLine;
 	/** Last few lines, newest last. Read by the HUD for subtitles. */
@@ -95,5 +97,6 @@ protected:
 	ADCCrewMember* EnsureOperator(int32 StationIdx, const FString& PreferredName);
 
 	TArray<FDCStation> Stations;
+	FString CurrentOrderText;
 	UPROPERTY() TArray<TObjectPtr<ADCCrewMember>> Crew;
 };

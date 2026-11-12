@@ -2,6 +2,7 @@
 #include "DCRideDirector.h"
 #include "DCTreadmill.h"
 #include "DCCrew.h"
+#include "DCVoice.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -58,6 +59,18 @@ void ADCPlayerCharacter::Tick(float DeltaSeconds)
 	AddMovementInput(Forward, F);
 	AddMovementInput(Right, R);
 	if (PC->WasInputKeyJustPressed(EKeys::SpaceBar)) { Jump(); }
+
+	// Quick orders for players without a microphone.
+	static const TPair<FKey, const TCHAR*> QuickOrders[] = {
+		{ EKeys::One, TEXT("Hard to port") }, { EKeys::Two, TEXT("Hard to starboard") }, { EKeys::Three, TEXT("Steady as she goes") },
+		{ EKeys::Four, TEXT("Port battery, fire") }, { EKeys::Five, TEXT("Starboard battery, fire") }, { EKeys::Six, TEXT("Hold fire") } };
+	for (const TPair<FKey, const TCHAR*>& Q : QuickOrders)
+	{
+		if (PC->WasInputKeyJustPressed(Q.Key))
+		{
+			if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>()) { Crew->ExecuteOrder(Q.Value); }
+		}
+	}
 }
 
 // ---------------------------------------------------------------- HUD
@@ -81,6 +94,16 @@ void ADCHUD::DrawHUD()
 	{
 		DrawText(FString::Printf(TEXT("Helm %+.1f   Lane %+.0f m   Hostiles %d"), T->GetSteer(), T->GetLaneOffset() / 100.f, T->NumHostiles()),
 			FLinearColor(0.7f, 0.8f, 0.9f), 40.f, 60.f, Font, 1.1f);
+	}
+	if (ADCVoice* V = ADCVoice::Get(this))
+	{
+		DrawText(FString::Printf(TEXT("Voice: speech-in %s  crew-mind %s  speech-out %s   [hold V to talk, 1-6 quick orders]"),
+			V->IsSTTReady() ? TEXT("on") : TEXT("off"), V->IsLLMReady() ? TEXT("on") : TEXT("off"), V->IsTTSReady() ? TEXT("on") : TEXT("off")),
+			FLinearColor(0.6f, 0.7f, 0.6f), 40.f, 84.f, Font, 1.f);
+		if (V->IsListening())
+		{
+			DrawText(TEXT("LISTENING..."), FLinearColor(1.f, 0.3f, 0.2f), Canvas->SizeX * 0.5f - 70.f, Canvas->SizeY - 110.f, Font, 1.8f);
+		}
 	}
 
 	if (UDCCrewSubsystem* Sub = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
@@ -159,6 +182,11 @@ void ADCGameMode::StartPlay()
 	Director = World->SpawnActor<ADCRideDirector>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
 	Director->SeaLevelZ = SeaLevelZ;
 	Treadmill = World->SpawnActor<ADCTreadmill>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
+	if (!FParse::Param(FCommandLine::Get(), TEXT("DCNoVoice")))
+	{
+		World->SpawnActor<ADCVoice>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
+	}
+	FParse::Value(FCommandLine::Get(), TEXT("DCTestWav="), TestWavPath, false);
 
 	FBox Bounds(FVector(-2000.f, -400.f, 0.f), FVector(2000.f, 400.f, 600.f));
 	if (Ship)
@@ -256,6 +284,16 @@ void ADCGameMode::StartPlay()
 void ADCGameMode::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	if (!TestWavPath.IsEmpty())
+	{
+		// Unattended voice test: once speech-to-text is up, feed it a recorded order.
+		ADCVoice* Voice = ADCVoice::Get(this);
+		if (Voice && Voice->IsSTTReady() && GetWorld()->GetTimeSeconds() > 3.f)
+		{
+			Voice->TranscribeWavFile(TestWavPath);
+			TestWavPath.Empty();
+		}
+	}
 	if (Ship && !Ship->GetActorLocation().Equals(ShipSpawnLocation, 1.f))
 	{
 		UE_LOG(LogDC, Verbose, TEXT("Ship drifted to %s; pinning"), *Ship->GetActorLocation().ToString());
