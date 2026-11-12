@@ -2,6 +2,17 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 21:40 — Dynamic Real Water trial (set 23); gunnery branch merged
+
+Review set: `taskboard/review/23-dynamic-real-water-trial/` (`a_bow_*` from the bow, `b_helm_*` from the helm). Trial only: run with `-DCDRW`.
+
+- **Dynamic Real Water is installed to the engine** (owner, via launcher; two missing launcher folders had to be created first). Enabled in the project as an optional plugin; it compiles and runs with our 5.8 build. Not in the repo.
+- **Its stock ocean under our ship works out of the box** and is clearly better than my sea in the open sea and Atlantis: real wave shapes with crests, sun glitter, reflections of sky and lanterns. With `-DCDRW` my sea is hidden outside the tunnel and maelstrom and shown again there.
+- Cost: Atlantis drops to 82 to 85 fps (from about 115) at 720p with DLSS in the editor build; open sea 134 to 139.
+- Not done yet: the water does not flow past the ship (the plugin's sea stands still while the scenery moves), wave strength is not driven by the ride, the ship does not ride its waves, statues and ruins do not meet it properly, and the switch to my sea at the slide is a hard cut. It warns that it expects sea level at Z = 0; ours is 230. Packaging with the plugin is untested.
+- **Merged `codex/deck-gunnery-ux`** (station tags, helm camera toggle on C, wheel turns, battery aiming, reload and hit feedback, muzzle effects). Builds and runs with the sky and water work; its hands-on checks are still open.
+- **Crew "vibrating" (owner report):** crew positions are measured perfectly still between frames, so it is a rendering fault, not movement. In frames taken straight after another screenshot the crew figures and name tags smear vertically while everything else is sharp; unclear whether that is the same fault or an artefact of the capture. Removed the stretched root and absolute scaling on the figures; no change in that test. Not fixed.
+
 ## Thu 12 Nov 21:08 — Ultra Dynamic Sky is working and is now the default sky (set 22)
 
 Review set: `taskboard/review/22-ultra-dynamic-sky/` (twelve helm frames through the voyage, 720p). Corrects the 20:25 entry: the pack was not broken, I was positioning its sun the wrong way (it wants a target point, not pitch and yaw).

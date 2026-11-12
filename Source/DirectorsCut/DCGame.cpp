@@ -626,7 +626,7 @@ void ADCGameMode::Tick(float DeltaSeconds)
 					const FBoxSphereBounds B = P->Bounds;
 					if (B.GetBox().ComputeSquaredDistanceToPoint(FVector(0.f, 0.f, 1000.f)) < FMath::Square(6000.f) && B.SphereRadius < 400000.f)
 					{
-						UE_LOG(LogDC, Display, TEXT("NEAR %s.%s origin %s extent %s"), *It->GetName(), *P->GetName(), *B.Origin.ToCompactString(), *B.BoxExtent.ToCompactString());
+						UE_LOG(LogDC, Display, TEXT("NEAR %s.%s origin %s extent %s actor %s rot %s"), *It->GetName(), *P->GetName(), *B.Origin.ToCompactString(), *B.BoxExtent.ToCompactString(), *It->GetActorLocation().ToString(), *It->GetActorRotation().ToCompactString());
 					}
 				}
 			}

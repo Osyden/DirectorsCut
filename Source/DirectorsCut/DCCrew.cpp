@@ -116,20 +116,19 @@ ADCCrewMember::ADCCrewMember()
 	Body->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> Mesh(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
 	if (Mesh.Succeeded()) { Body->SetStaticMesh(Mesh.Object); }
-	Body->SetRelativeScale3D(FVector(0.42f, 0.42f, 1.75f));
+	// The root is left unscaled: with a stretched root the figure under it was drawn with a false
+	// velocity every frame and smeared by motion blur and the upscaler.
 
 	Label = CreateDefaultSubobject<UTextRenderComponent>(TEXT("Label"));
 	Label->SetupAttachment(Body);
-	Label->SetRelativeLocation(FVector(0.f, 0.f, 70.f));
+	Label->SetRelativeLocation(FVector(0.f, 0.f, 122.f));
 	Label->SetHorizontalAlignment(EHTA_Center);
 	Label->SetWorldSize(16.f);
-	Label->SetUsingAbsoluteScale(true);
 
 	// Stand-in body: the mannequin that ships with the vessel asset, if present.
 	Figure = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Figure"));
 	Figure->SetupAttachment(Body);
-	Figure->SetUsingAbsoluteScale(true);
-	Figure->SetRelativeLocation(FVector(0.f, 0.f, -51.f));
+	Figure->SetRelativeLocation(FVector(0.f, 0.f, -89.f));
 	Figure->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));
 	Figure->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
@@ -148,7 +147,7 @@ void ADCCrewMember::Init(const FString& InName, const FLinearColor& Color)
 		Figure->SetAnimationMode(EAnimationMode::AnimationSingleNode);
 		if (IdleAnim) { Figure->PlayAnimation(IdleAnim, true); }
 		Body->SetVisibility(false);
-		Label->SetRelativeLocation(FVector(0.f, 0.f, 62.f));
+		Label->SetRelativeLocation(FVector(0.f, 0.f, 108.f));
 	}
 	Label->SetText(FText::FromString(InName));
 	Label->SetTextRenderColor(Color.ToFColor(true));
