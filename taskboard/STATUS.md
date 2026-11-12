@@ -2,6 +2,16 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 13:14 — storm bell and recorded sound (from Codex's shortlist)
+
+Picked up `AUDIO-SHORTLIST.md` from Codex, including the owner's request for a bell that rings by itself. (I committed that file and Codex's README row along with my own commit by accident; nothing private was in them.)
+
+- **Storm bell is in.** The ship's own bell (it has a mesh, a strike sound and a swing animation in the vessel asset) tolls by itself from the moment the fog closes in: one quiet strike, 15 to 25 seconds of silence, then strikes 8 to 14 seconds apart, quickening to 4 to 8 seconds in the slide, breach and maelstrom, and stopping in clear water. Each strike is a separate event, pitched down a little, varied in strength, and the wind dips for a moment so it reads. After the second strike a crew member says "The bell, Captain. Nobody is ringing it." I used the ship's bell sound, not the church bells: it needed no audition to be the right kind of bell. Swapping in a church-bell strike is a one-line change once someone has picked a clean one by ear.
+- **Ten recordings from the shortlist are in the game** (`Content/Sonniss`, git-ignored): calm and rough sea beds that crossfade with the weather, storm wind, rain, fire crackle, a long thunder roll mixed in with the synthesised cracks, a horn swell at the start of the slide, hell channel and maelstrom, a creature gurgle with each kraken roar, a pain yell when an arm is shot away, and a water impact under each hull strike. The synthesised versions remain as the fallback when the recordings are absent.
+- `Tools/wavprep.ps1` converts a recording to 48 kHz 16-bit, trims it and makes it loop; `Tools/import_audio.py` imports the results.
+- **None of this has been heard by anyone.** Levels are guesses. This is now the most useful thing for the owner to check.
+- Not used from the shortlist: the P2 and P3 items (rigging foley, ruin sounds, death whistle, extinguish). Say if any of them matter.
+
 ## Thu 12 Nov 13:06 — fixed: Odessa had no voice; packaged build verified
 
 - **Bug found and fixed: Odessa has never spoken until now.** Her voice file (the current revision of `en_GB-alba-medium`) does not load in the bundled Piper build, so her lines only ever appeared as subtitles. I missed the warning earlier because my log checks filtered on Finch. The original `v1.0.0` release of the same voice works; it is now in `Sidecars/` and in the packaged build, and she speaks in a test run. `SETUP.md` notes the version.

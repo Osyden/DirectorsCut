@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "DCTypes.h"
 #include "DCAudio.generated.h"
 
 class UAudioComponent;
@@ -53,6 +54,17 @@ protected:
 	int32 RoarsPlayed = 0;
 	void OnShipHit(float Amount);
 	void TickBell(float DeltaSeconds);
+
+	// Recorded sounds, when present in Content/Sonniss.
+	struct FRealBed { TWeakObjectPtr<UAudioComponent> Component; float Volume = 0.f; };
+	class USoundBase* FindReal(FName Name);
+	bool SetReal(FName Name, float Target, float DeltaSeconds);
+	bool PlayReal(FName Name, float Volume, float Pitch = 1.f);
+	UPROPERTY() TMap<FName, TObjectPtr<class USoundBase>> RealSounds;
+	TMap<FName, FRealBed> RealBeds;
+	TWeakObjectPtr<class ADCKraken> Kraken;
+	int32 LastArmsDestroyed = 0;
+	EDCPhase LastPhase = EDCPhase::OpenSea;
 	UPROPERTY() TObjectPtr<class USoundBase> BellSound;
 	UPROPERTY() TObjectPtr<class UAnimationAsset> BellAnim;
 	TWeakObjectPtr<class USkeletalMeshComponent> BellMesh;

@@ -22,6 +22,7 @@ Working notes for the itch.io entry. Rules here come from secondary write-ups fo
 - **NVIDIA DLSS 4.5 plugin** v8.7.2 for UE 5.8 (DLSS Super Resolution; Streamline).
 - **llama.cpp** (MIT) with the **Qwen3.5-4B** language model weights.
 - **whisper.cpp** (MIT) with OpenAI **Whisper base.en** weights.
+- **Sonniss GDC 2026 Game Audio Bundle** (royalty-free licence): sea, wind, rain, fire, thunder, horn swell, creature and water-impact recordings from Just Sound Effects, 344 Audio, InMotionAudio, Jake Fielding, Epic Stock Media and SoundBits. Exact files in `AUDIO-SHORTLIST.md`.
 - **Piper** text-to-speech (MIT) with the voices `en_GB-alan-medium`, `en_GB-northern_english_male-medium`, `en_GB-alba-medium` (check each voice's licence card before submitting).
 
 Owner: add any pirate crew or other art bought later.

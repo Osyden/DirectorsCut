@@ -3,6 +3,7 @@
 #include "DCTypes.h"
 #include "DCTroubles.h"
 #include "DCCrew.h"
+#include "DCKraken.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Animation/AnimationAsset.h"
 #include "Sound/SoundBase.h"
@@ -332,25 +333,56 @@ void ADCAudio::Tick(float DeltaSeconds)
 
 	const float Storm = FMath::Clamp(Env.WaveHeight / 320.f, 0.f, 1.2f);
 	TickBell(DeltaSeconds);
-	SetLayer(Wind, FMath::Clamp(0.12f + Storm * 0.55f + Env.Tube * 0.5f + Env.FogDensity * 1.2f, 0.f, 1.f) * (BellDuck > 0.f ? 0.55f : 1.f), DeltaSeconds);
-	SetLayer(Sea, FMath::Clamp(0.35f + Storm * 0.6f + Env.Tube * 0.4f, 0.f, 1.2f), DeltaSeconds);
-	SetLayer(Rain, Env.Rain * 0.7f, DeltaSeconds);
+
+	// Each bed prefers a recording when one has been imported (Content/Sonniss) and falls back to the
+	// synthesised layer otherwise, so the project still makes sound on a machine without the recordings.
+	const float WindTarget = FMath::Clamp(0.12f + Storm * 0.55f + Env.Tube * 0.5f + Env.FogDensity * 1.2f, 0.f, 1.f) * (BellDuck > 0.f ? 0.55f : 1.f);
+	const float SeaTarget = FMath::Clamp(0.35f + Storm * 0.6f + Env.Tube * 0.4f, 0.f, 1.2f);
+	const float Rough = FMath::Clamp((Storm - 0.3f) / 0.5f, 0.f, 1.f);
+	const ADCTroubles* Troubles = ADCTroubles::Get(this);
+	const float FireTarget = Troubles ? FMath::Min(Troubles->NumFires() * 0.4f, 0.9f) : 0.f;
+
+	const bool bRealWind = SetReal(TEXT("wind_storm"), WindTarget * 0.8f, DeltaSeconds);
+	const bool bRealCalm = SetReal(TEXT("sea_calm"), SeaTarget * (1.f - Rough) * 0.9f, DeltaSeconds);
+	const bool bRealRough = SetReal(TEXT("sea_rough"), SeaTarget * Rough * 0.9f, DeltaSeconds);
+	const bool bRealRain = SetReal(TEXT("rain_storm"), Env.Rain * 0.8f, DeltaSeconds);
+	const bool bRealFire = SetReal(TEXT("fire_loop"), FireTarget, DeltaSeconds);
+
+	SetLayer(Wind, bRealWind ? WindTarget * 0.25f : WindTarget, DeltaSeconds);
+	SetLayer(Sea, (bRealCalm && bRealRough) ? 0.f : SeaTarget, DeltaSeconds);
+	SetLayer(Rain, bRealRain ? 0.f : Env.Rain * 0.7f, DeltaSeconds);
 	SetLayer(Rumble, FMath::Clamp(FMath::Min(Env.SeaGlow.R, 1.f) * 0.9f + Env.Whirl * 0.5f + Env.Tube * 0.35f, 0.f, 1.f), DeltaSeconds);
 	SetLayer(Drone, FMath::Clamp(0.1f + Env.FogDensity * 1.5f + Env.Whirl * 0.3f + FMath::Min(Env.SeaGlow.R, 1.f) * 0.2f, 0.f, 0.38f), DeltaSeconds);
+	SetLayer(Crackle, bRealFire ? 0.f : FireTarget, DeltaSeconds);
+
+	// A horn swell marks each turn for the worse.
+	const EDCPhase Phase = Director->GetPhase();
+	if (Phase != LastPhase)
 	{
-		const ADCTroubles* Troubles = ADCTroubles::Get(this);
-		SetLayer(Crackle, Troubles ? FMath::Min(Troubles->NumFires() * 0.4f, 0.9f) : 0.f, DeltaSeconds);
+		LastPhase = Phase;
+		if (Phase == EDCPhase::Slide || Phase == EDCPhase::Hell || Phase == EDCPhase::Maelstrom) { PlayReal(TEXT("braam"), 0.7f); }
 	}
 
 	// The kraken announces itself as it rises, again when it is up, and at the end.
-	MaelstromTime = Director->GetPhase() == EDCPhase::Maelstrom ? MaelstromTime + DeltaSeconds : 0.f;
+	MaelstromTime = Phase == EDCPhase::Maelstrom ? MaelstromTime + DeltaSeconds : 0.f;
 	if (MaelstromTime <= 0.f) { RoarsPlayed = 0; }
 	static const float RoarTimes[] = { 27.f, 62.f, 110.f, 148.f };
 	if (RoarsPlayed < UE_ARRAY_COUNT(RoarTimes) && MaelstromTime > RoarTimes[RoarsPlayed])
 	{
 		++RoarsPlayed;
 		if (KrakenRoar.Num()) { PlayOneShot(KrakenRoar, 1.3f); }
+		PlayReal(TEXT("kraken_breath"), 1.f, 0.7f);
 		Director->Trauma = FMath::Min(1.f, Director->Trauma + 0.5f);
+	}
+	// It screams when an arm is shot away.
+	if (!Kraken.IsValid())
+	{
+		for (TActorIterator<ADCKraken> It(GetWorld()); It; ++It) { Kraken = *It; break; }
+	}
+	if (Kraken.IsValid() && Kraken->ArmsDestroyed != LastArmsDestroyed)
+	{
+		if (Kraken->ArmsDestroyed > LastArmsDestroyed) { PlayReal(TEXT("kraken_pain"), 0.9f, FMath::FRandRange(0.75f, 0.9f)); }
+		LastArmsDestroyed = Kraken->ArmsDestroyed;
 	}
 
 	const double Now = FPlatformTime::Seconds();
@@ -359,6 +391,8 @@ void ADCAudio::Tick(float DeltaSeconds)
 		if (Now >= PendingThunder[i])
 		{
 			PendingThunder.RemoveAtSwap(i);
+			// Mostly the synthesised cracks (short, varied); now and then the long recorded roll.
+			if (FMath::FRand() < 0.3f && PlayReal(TEXT("thunder_real"), FMath::FRandRange(0.7f, 1.f), FMath::FRandRange(0.9f, 1.05f))) { continue; }
 			if (Thunder.Num()) { PlayOneShot(Thunder[FMath::RandRange(0, Thunder.Num() - 1)], FMath::FRandRange(0.6f, 1.2f)); }
 		}
 	}
@@ -379,6 +413,8 @@ void ADCAudio::Tick(float DeltaSeconds)
 
 void ADCAudio::OnShipHit(float Amount)
 {
+	// Water and timber together: the recorded splash under the synthesised crunch.
+	PlayReal(TEXT("water_impact"), FMath::Clamp(0.4f + Amount * 0.1f, 0.4f, 0.9f), FMath::FRandRange(0.85f, 1.1f));
 	if (Impacts.Num())
 	{
 		PlayOneShot(Impacts[FMath::RandRange(0, Impacts.Num() - 1)], FMath::Clamp(0.5f + Amount * 0.15f, 0.5f, 1.3f));
@@ -437,4 +473,36 @@ void ADCAudio::TickBell(float DeltaSeconds)
 			Crew->Report(TEXT("The bell, Captain. Nobody is ringing it."), true);
 		}
 	}
+}
+
+USoundBase* ADCAudio::FindReal(FName Name)
+{
+	if (TObjectPtr<USoundBase>* Found = RealSounds.Find(Name)) { return Found->Get(); }
+	USoundBase* Sound = LoadObject<USoundBase>(nullptr, *FString::Printf(TEXT("/Game/Sonniss/%s.%s"), *Name.ToString(), *Name.ToString()), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	UE_LOG(LogDC, Log, TEXT("Audio: recording %s %s"), *Name.ToString(), Sound ? TEXT("loaded") : TEXT("not present, using synthesis"));
+	RealSounds.Add(Name, Sound); // remembers a miss too, so a missing file is only looked for once
+	return Sound;
+}
+
+bool ADCAudio::SetReal(FName Name, float Target, float DeltaSeconds)
+{
+	USoundBase* Sound = FindReal(Name);
+	if (!Sound) { return false; }
+	FRealBed& Bed = RealBeds.FindOrAdd(Name);
+	if (!Bed.Component.IsValid())
+	{
+		Bed.Component = UGameplayStatics::SpawnSound2D(this, Sound, 1.f, 1.f, FMath::FRandRange(0.f, 20.f), nullptr, false, false);
+		if (UAudioComponent* C = Bed.Component.Get()) { C->SetVolumeMultiplier(0.001f); }
+	}
+	Bed.Volume = FMath::FInterpTo(Bed.Volume, Target, DeltaSeconds, 1.2f);
+	if (UAudioComponent* C = Bed.Component.Get()) { C->SetVolumeMultiplier(FMath::Max(0.001f, Bed.Volume * MasterVolume)); }
+	return true;
+}
+
+bool ADCAudio::PlayReal(FName Name, float Volume, float Pitch)
+{
+	USoundBase* Sound = FindReal(Name);
+	if (!Sound) { return false; }
+	UGameplayStatics::PlaySound2D(this, Sound, Volume * MasterVolume, Pitch);
+	return true;
 }

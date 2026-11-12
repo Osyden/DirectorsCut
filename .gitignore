@@ -35,3 +35,6 @@ Sidecars/models/
 
 Sidecars/test/
 Build/
+
+# Licensed recordings (Sonniss GDC bundle): usable in the game, not shareable as assets
+Content/Sonniss/
