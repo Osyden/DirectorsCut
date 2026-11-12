@@ -441,7 +441,7 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 		if (FlashTimeLeft <= 0.f) { Bolt->SetVisibility(false); }
 		else if (BoltMID) { BoltMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.75f, 0.85f, 1.f) * FMath::FRandRange(40.f, 160.f)); }
 	}
-	else if (Env.LightningRate > 0.01f)
+	else if (Env.LightningRate > 0.01f && !bUDS)
 	{
 		NextFlashIn -= DeltaSeconds;
 		if (NextFlashIn <= 0.f)
@@ -544,7 +544,7 @@ void ADCRideDirector::AddLamp(const FVector& Location)
 	Lamp->SetLightColor(FLinearColor(1.f, 0.62f, 0.28f));
 	Lamp->SetAttenuationRadius(2600.f);
 	// Each lantern lights the mist round it: a warm halo in the fog.
-	Lamp->SetVolumetricScatteringIntensity(2.2f);
+	Lamp->SetVolumetricScatteringIntensity(0.8f);
 	Lamp->SetSourceRadius(12.f);
 	Lamp->SetIntensity(0.f);
 	// No shadows from the lanterns: four point lights re-rendering the whole rig every frame cost more than they showed.
@@ -565,7 +565,7 @@ void ADCRideDirector::TickLamps()
 	}
 	for (UMaterialInstanceDynamic* Glass : LampGlows)
 	{
-		Glass->SetVectorParameterValue(TEXT("Color"), FLinearColor(1.f, 0.5f, 0.14f) * (2.f + 24.f * Dark));
+		Glass->SetVectorParameterValue(TEXT("Color"), FLinearColor(1.f, 0.5f, 0.14f) * (0.2f + 24.f * Dark));
 	}
 }
 
@@ -683,7 +683,7 @@ void ADCRideDirector::SetupUDS()
 	UGameplayStatics::FinishSpawningActor(UDSSky, FTransform::Identity);
 
 	UDSWeather = GetWorld()->SpawnActorDeferred<AActor>(WeatherClass, FTransform::Identity);
-	for (const TCHAR* Name : { TEXT("Cloud Coverage - Manual Override"), TEXT("Rain - Manual Override"), TEXT("Thunder/Lightning - Manual Override"), TEXT("Wind Intensity - Manual Override"), TEXT("Fog - Manual Override") })
+	for (const TCHAR* Name : { TEXT("Cloud Coverage - Manual Override"), TEXT("Rain - Manual Override"), TEXT("Thunder/Lightning - Manual Override"), TEXT("Wind Intensity - Manual Override"), TEXT("Fog - Manual Override"), TEXT("Material Wetness - Manual Override") })
 	{
 		SkyFlag(UDSWeather, Name, true);
 	}
@@ -706,7 +706,9 @@ void ADCRideDirector::TickUDS()
 	SkyNum(UDSWeather, TEXT("Fog"), FMath::Clamp(Env.FogDensity * 250.0 + Env.Mist * 3.0, 0.0, 10.0));
 	SkyNum(UDSWeather, TEXT("Rain"), FMath::Clamp(Env.Rain * 10.0, 0.0, 10.0));
 	SkyNum(UDSWeather, TEXT("Wind Intensity"), FMath::Clamp(Env.WaveHeight / 30.0, 1.0, 10.0));
-	SkyNum(UDSWeather, TEXT("Thunder/Lightning"), 0.0);
+	// The pack's own lightning (bolts, flashes in the cloud, thunder) replaces the director's.
+	SkyNum(UDSWeather, TEXT("Thunder/Lightning"), FMath::Clamp(Env.LightningRate * 0.45, 0.0, 10.0));
+	SkyNum(UDSWeather, TEXT("Material Wetness"), FMath::Clamp(Env.Rain * 3.0, 0.0, 1.0));
 	SkyNum(UDSSky, TEXT("Sun Light Intensity"), Env.SunIntensity * 0.75 + 2.0);
 	SkyNum(UDSSky, TEXT("Sky Light Intensity"), Env.SkyIntensity);
 }

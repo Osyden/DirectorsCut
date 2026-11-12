@@ -551,7 +551,7 @@ void ADCTreadmill::SpawnAtlantis()
 			{ 5, 262000.f, 0.f, 9.f, 90.f }, { 4, 300000.f, -32000.f, 8.f, 80.f }, { 1, 318000.f, 30000.f, 8.f, 100.f } };
 		// Sanctuaries: whole complexes on platforms, set back on either hand and turned to face the course.
 		struct FSite { float X, Y, Scale; int32 Seed; };
-		const FSite Sites[] = { { 96000.f, -27000.f, 2.6f, 11 }, { 150000.f, 30000.f, 3.f, 23 }, { 215000.f, -33000.f, 3.4f, 37 }, { 285000.f, 38000.f, 4.f, 41 } };
+		const FSite Sites[] = { { 92000.f, -30000.f, 3.6f, 11 }, { 140000.f, 34000.f, 4.2f, 23 }, { 200000.f, -40000.f, 5.f, 37 }, { 262000.f, 46000.f, 6.f, 41 }, { 330000.f, -60000.f, 8.f, 53 } };
 		for (const FSite& S : Sites)
 		{
 			Register(DCRuins::SpawnComplex(World, S.Scale, S.Seed), FVector(S.X, S.Y, SeaZ), 2000.f, false, 1.f, S.Y > 0.f ? -90.f : 90.f, false);

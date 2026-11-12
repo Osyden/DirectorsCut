@@ -2,6 +2,17 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 22:47 — Kaiju import repaired; performance, lantern and sanctuary passes (set 25)
+
+Review set: `taskboard/review/25-performance-lanterns-sanctuaries/` (`a_bow_*`, `b_helm_*`, one quarterdeck view).
+
+- **Claw Kaiju (owner's boss asset) import fixed.** The Fab import left it mostly untextured: its seven-tile texture sets only showed the first tile, normal and roughness maps were 1x1 placeholders, and the slots used an untextured legacy material. `Tools/fix_kaiju.py` re-imports every tile from the Fab download cache (capped at 2K) and builds one material, `M_ClawKaiju`. It now renders fully textured and animates (`-DCKaiju` stands it off the bow). The game must put `M_ClawKaiju` on its slots when spawning it; the mesh asset would not take the reassignment from a script. Its Idle clip is a single frame; Attack, Intimidate, HitReact, Defeated and the crawls are full clips. It is about 47 x 59 x 37 m at scale 1. Not yet wired in as the boss.
+- **Performance:** the drop to about 72 fps in Atlantis was the four lanterns casting shadows, re-rendering the whole rig every frame. Lantern shadows off: Atlantis is back to 100 to 121 fps with the new water, sky and volumetric fog (open sea 139). Ruin shadows cost nothing measurable. The harness now logs game, render and GPU time per shot, and `-DCProfile` writes a GPU breakdown.
+- **Lanterns:** the lantern glass on the ship is now self-lit and blooms, driven with the lamp light, so the lanterns themselves glow where they hang; they light the mist round them a little. Off in daylight.
+- **Sanctuaries:** five now, larger (up to about 1.2 km across for the last) and closer to the course.
+- **Weather handed to the sky pack:** its lightning and thunder replace mine, and material wetness follows the rain. Not yet seen to make the deck wet; the ship's materials probably do not take the pack's wetness.
+- Still to do from the owner's list: a storm front on the open sea, banked fog, visible rain splashes. Also a full voyage and a package with the water plugin.
+
 ## Thu 12 Nov 22:06 — Atlantis lighting pass with the new sky and water (set 24)
 
 Owner's brief: open sea and early fog to AAA standard, ruin complexes, volumetric fog and light, god rays, glowing lanterns, ghost ships off. Review set `taskboard/review/24-atlantis-lighting-pass/` (`a_bow_*` from the bow, `b_helm_*` from the helm). Best frames: `a_bow_0130`, `a_bow_0150`, `b_helm_0130`.
