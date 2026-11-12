@@ -162,8 +162,9 @@ float a = sin(p.x * 0.0021 + sin(p.y * 0.0031 + T * 0.05) * 1.7);
 float b = sin(p.y * 0.0019 + sin(p.x * 0.0027 - T * 0.04) * 1.3);
 float c = abs(a * b);
 float fine = abs(sin(p.x * 0.007 + b * 4.0 + sin(p.y * 0.004) * 2.0) * sin(p.y * 0.0083 + a * 4.0 + sin(p.x * 0.005) * 2.0));
-float cracks = pow(saturate(1.0 - c * 4.5), 2.0) + 0.18 * pow(saturate(1.0 - fine * 5.0), 3.0);
-return (cracks + 0.02) * saturate(1.0 - Dist / 250000.0);
+float cracks = pow(saturate(1.0 - c * 9.0), 2.0) + 0.08 * pow(saturate(1.0 - fine * 7.0), 3.0);
+// Far lava sinks into the smoke, so the channel has depth and is not one bright sheet.
+return (cracks + 0.012) * (0.12 + 0.88 * saturate(1.0 - Dist / 45000.0));
 """
 
 

@@ -8,6 +8,7 @@
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Animation/AnimationAsset.h"
 
 namespace
 {
@@ -199,4 +200,37 @@ void DCHazards::SetGlow(AActor* Actor, const FLinearColor& Glow)
 			MID->SetVectorParameterValue(TEXT("Glow"), Glow);
 		}
 	}
+}
+
+AActor* DCHazards::SpawnSpecter(UWorld* World, float Height, const FLinearColor& Glow, bool bWading)
+{
+	// A see-through giant, walking on (or wading in) the sea. Uses the mannequin that ships with the
+	// vessel asset, in the ghost material, so it reads as a figure and nothing more.
+	AActor* Actor = SpawnEmpty(World);
+	USkeletalMesh* Body = LoadObject<USkeletalMesh>(nullptr, TEXT("/Game/Brigantine/Demo/Characters/Mannequins/Meshes/SKM_Manny_Simple.SKM_Manny_Simple"));
+	if (!Body) { return Actor; }
+
+	UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Ghost.M_Ghost"));
+	UMaterialInstanceDynamic* Mat = Base ? UMaterialInstanceDynamic::Create(Base, Actor) : nullptr;
+	if (Mat) { Mat->SetVectorParameterValue(TEXT("Glow"), Glow); }
+
+	USkeletalMeshComponent* C = NewObject<USkeletalMeshComponent>(Actor);
+	C->SetMobility(EComponentMobility::Movable);
+	C->SetSkeletalMeshAsset(Body);
+	C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	C->SetCastShadow(false);
+	if (Mat) { for (int32 i = 0; i < Body->GetMaterials().Num(); ++i) { C->SetMaterial(i, Mat); } }
+	C->SetupAttachment(Actor->GetRootComponent());
+	const float Scale = Height / 180.f;
+	// The mannequin faces +Y; turn it to face +X so the caller's yaw means what it says. Waders stand hip-deep.
+	C->SetRelativeTransform(FTransform(FRotator(0.f, -90.f, 0.f), FVector(0.f, 0.f, bWading ? -Height * 0.45f : 0.f), FVector(Scale)));
+	C->RegisterComponent();
+	C->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+	if (UAnimationAsset* Walk = LoadObject<UAnimationAsset>(nullptr, TEXT("/Game/Brigantine/Demo/Characters/Mannequins/Animations/Manny/MM_Walk_InPlace.MM_Walk_InPlace")))
+	{
+		C->PlayAnimation(Walk, true);
+		// Giants move slowly.
+		C->SetPlayRate(0.35f);
+	}
+	return Actor;
 }

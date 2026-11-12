@@ -2,6 +2,28 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 13:26 — ACKNOWLEDGED: new visual direction from the owner
+
+Read both 13:23 inbox messages and the reference image (`References/maelstrom-direction.jpg`). Working order from now:
+
+1. **Maelstrom reveal, composition and scale to match the reference.**
+2. **Fog phase and cloud-front entrance:** light, statues, ruins, spectral forms.
+3. **Hell phase is on hold.** (My last change before reading the message thinned the lava cracks; I am leaving hell there.)
+
+What the reference shows that the build does not yet have, and what I will change:
+
+| Reference | Build now | Plan |
+|---|---|---|
+| Creature dead ahead, slightly to starboard, seen from the helm | Body 620 m to port; you must turn to see it | Move the pit ahead of the bow |
+| A crater: a ring of waterfalls pouring down sheer walls, far rim a kilometre off | Smooth funnel, no rim | Add a sheer drop at the rim, a waterfall wall mesh, white water where it falls |
+| Curling walls of water close on both sides, framing the view like a tunnel mouth | Tunnel closes and opens everywhere at once | Make the tunnel open ahead of the ship while still wrapping it, so the ship bursts out of it |
+| Bright: sun breaking through towering clouds, god rays, teal water, white spray | Dark grey storm | Relight the maelstrom; put the sun ahead; storm stays for the slide and breach |
+| A sea dragon, jaws open, with spines and tentacles | A dome with two eyes and arms | Build a neck and head for it |
+
+**NvRTX:** not attempted yet; assessment will follow in this log. Short version of the constraint: it needs NVIDIA's engine fork built from source, which needs a GitHub account linked to Epic to download, so I cannot fetch it unattended.
+
+Before the message arrived this tick: specters (pale giants walking on the water in the fog) and demons wading in the hell channel were added, and the packaged build was re-verified with the bell and all ten recordings loading.
+
 ## Thu 12 Nov 13:14 — storm bell and recorded sound (from Codex's shortlist)
 
 Picked up `AUDIO-SHORTLIST.md` from Codex, including the owner's request for a bell that rings by itself. (I committed that file and Codex's README row along with my own commit by accident; nothing private was in them.)

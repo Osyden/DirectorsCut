@@ -122,7 +122,12 @@ void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
 		SceneryTimer = SceneryEvery * FMath::FRandRange(0.7f, 1.4f);
 		const float Side = FMath::RandBool() ? 1.f : -1.f;
 		const FVector Base(SpawnDistance, LaneOffset + Side * FMath::FRandRange(4500.f, 9000.f), SeaZ);
-		if (!bHell && FMath::FRand() < 0.45f)
+		if (!bHell && FMath::FRand() < 0.3f)
+		{
+			// Specters: pale giants walking on the water, turned toward the ship as it passes.
+			Register(DCHazards::SpawnSpecter(World, FMath::FRandRange(2200.f, 5000.f), FLinearColor(0.7f, 1.5f, 1.7f), false), Base, 800.f, false, 1.f, Side > 0.f ? -90.f : 90.f, false);
+		}
+		else if (!bHell && FMath::FRand() < 0.55f)
 		{
 			// Statues face the passing ship.
 			Register(DCHazards::SpawnStatue(World, FMath::FRandRange(5000.f, 9500.f), Stone), Base - FVector(0.f, 0.f, 600.f), 1500.f, false, 1.f, Side > 0.f ? -110.f : 110.f, false);
@@ -142,12 +147,25 @@ void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
 		HostileTimer = HostileEvery * FMath::FRandRange(0.7f, 1.3f);
 		const float Side = FMath::RandBool() ? 1.f : -1.f;
 		const FVector Base(SpawnDistance, Side * FMath::FRandRange(5000.f, 8500.f), SeaZ);
-		AActor* Ghost = DCHazards::SpawnGhostShip(World, bHell ? FLinearColor(1.f, 0.25f, 0.03f) : FLinearColor(0.15f, 0.9f, 0.75f));
-		if (UDCCrewSubsystem* Crew = World->GetSubsystem<UDCCrewSubsystem>())
+		if (bHell && FMath::RandBool())
 		{
-			Crew->Report(bHell ? (Side > 0.f ? TEXT("Burning ship to starboard!") : TEXT("Burning ship to port!")) : (Side > 0.f ? TEXT("Ghost ship to starboard!") : TEXT("Ghost ship to port!")));
+			// A demon wading in the burning sea, pacing the ship and hurling fire.
+			AActor* Demon = DCHazards::SpawnSpecter(World, FMath::FRandRange(2800.f, 3800.f), FLinearColor(1.8f, 0.32f, 0.03f), true);
+			if (UDCCrewSubsystem* Crew = World->GetSubsystem<UDCCrewSubsystem>())
+			{
+				Crew->Report(Side > 0.f ? TEXT("Demon in the fire to starboard!") : TEXT("Demon in the fire to port!"));
+			}
+			Register(Demon, FVector(SpawnDistance, Side * FMath::FRandRange(3800.f, 5500.f), SeaZ), 900.f, true, 6.f, Side > 0.f ? -90.f : 90.f, false);
 		}
-		Register(Ghost, Base, 1600.f, true, 6.f, FMath::FRandRange(-8.f, 8.f), false);
+		else
+		{
+			AActor* Ghost = DCHazards::SpawnGhostShip(World, bHell ? FLinearColor(1.f, 0.25f, 0.03f) : FLinearColor(0.15f, 0.9f, 0.75f));
+			if (UDCCrewSubsystem* Crew = World->GetSubsystem<UDCCrewSubsystem>())
+			{
+				Crew->Report(bHell ? (Side > 0.f ? TEXT("Burning ship to starboard!") : TEXT("Burning ship to port!")) : (Side > 0.f ? TEXT("Ghost ship to starboard!") : TEXT("Ghost ship to port!")));
+			}
+			Register(Ghost, Base, 1600.f, true, 6.f, FMath::FRandRange(-8.f, 8.f), false);
+		}
 	}
 }
 void ADCTreadmill::Tick(float DeltaSeconds)

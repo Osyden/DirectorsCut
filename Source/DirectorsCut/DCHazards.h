@@ -23,6 +23,9 @@ namespace DCHazards
 	/** A spectral copy of our own ship. */
 	AActor* SpawnGhostShip(UWorld* World, const FLinearColor& Glow);
 
+	/** A translucent giant figure. bWading sinks it to the hips (demons in the burning sea). */
+	AActor* SpawnSpecter(UWorld* World, float Height, const FLinearColor& Glow, bool bWading);
+
 	/** Light the cracks of anything built from the stone material. */
 	void SetGlow(AActor* Actor, const FLinearColor& Glow);
 }
