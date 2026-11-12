@@ -250,16 +250,12 @@ void ADCCrewMember::TickHelm(float DeltaSeconds, ADCTreadmill* Treadmill)
 		return;
 	}
 
-	// Autopilot: steer away from the nearest obstacle ahead, otherwise hold course.
-	float X = 0.f, Y = 0.f;
-	if (Treadmill->FindObstacleAhead(14000.f, X, Y))
-	{
-		Treadmill->SetSteer(Y >= 0.f ? -1.f : 1.f);
-	}
-	else
-	{
-		Treadmill->SetSteer(0.f);
-	}
+	// Autopilot: pick the clearest water within sight and ease toward it. In thick fog the helmsman
+	// sees less far ahead, so the captain and the lookout matter more.
+	const ADCRideDirector* Director = ADCRideDirector::Get(this);
+	const float Sight = Director ? FMath::Clamp(1600.f / FMath::Max(Director->GetEnv().FogDensity, 0.01f), 9000.f, 20000.f) : 15000.f;
+	const float Target = Treadmill->FindClearLane(Sight);
+	Treadmill->SetSteer(FMath::Clamp((Target - Treadmill->GetLaneOffset()) / 250.f, -1.f, 1.f));
 }
 
 void ADCCrewMember::TickCannons(float DeltaSeconds, ADCTreadmill* Treadmill, EDCSide Side)

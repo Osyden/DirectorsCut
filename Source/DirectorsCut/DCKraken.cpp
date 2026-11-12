@@ -119,7 +119,7 @@ void ADCKraken::TickTentacle(FDCTentacle& T, int32 Index, float Dt, bool bActive
 				if (Proxy)
 				{
 					Proxy->GetRootComponent()->SetMobility(EComponentMobility::Movable);
-					Treadmill->AddExternalHostile(Proxy, T.BaseRadius * 2.2f, 3.f);
+					Treadmill->AddExternalHostile(Proxy, T.BaseRadius * 2.2f, 9.f);
 					T.Proxy = Proxy;
 					T.bHasProxy = true;
 				}
@@ -131,7 +131,7 @@ void ADCKraken::TickTentacle(FDCTentacle& T, int32 Index, float Dt, bool bActive
 		T.Rise = FMath::InterpEaseOut(0.f, 1.f, Alpha, 2.2f);
 		T.TipTarget = FMath::Lerp(T.Base + FVector(0.f, 0.f, T.Length * 0.3f), SwayTarget, Alpha);
 		Stiffness = 22.f; Damping = 6.f;
-		if (Alpha >= 1.f) { SetState(T, EDCTentacleState::Sway, FMath::FRandRange(3.f, 7.f)); }
+		if (Alpha >= 1.f) { SetState(T, EDCTentacleState::Sway, FMath::FRandRange(6.f, 12.f)); }
 		break;
 
 	case EDCTentacleState::Sway:
@@ -175,7 +175,7 @@ void ADCKraken::TickTentacle(FDCTentacle& T, int32 Index, float Dt, bool bActive
 	case EDCTentacleState::Recoil:
 		T.TipTarget = FMath::Lerp(T.StrikePoint, SwayTarget, FMath::InterpEaseInOut(0.f, 1.f, Alpha, 2.f));
 		Stiffness = 26.f; Damping = 7.f;
-		if (Alpha >= 1.f) { SetState(T, EDCTentacleState::Sway, FMath::FRandRange(2.5f, 6.f)); }
+		if (Alpha >= 1.f) { SetState(T, EDCTentacleState::Sway, FMath::FRandRange(7.f, 13.f)); }
 		break;
 
 	case EDCTentacleState::Dying:

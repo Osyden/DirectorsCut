@@ -50,7 +50,7 @@ public:
 	float GetRiggingProgress() const { return RiggingProgress; }
 
 	UPROPERTY(EditAnywhere) int32 MaxFires = 3;
-	UPROPERTY(EditAnywhere) float FireDamagePerSecond = 0.5f;
+	UPROPERTY(EditAnywhere) float FireDamagePerSecond = 0.08f;
 
 protected:
 	UPROPERTY() TObjectPtr<ADCRideDirector> Director;

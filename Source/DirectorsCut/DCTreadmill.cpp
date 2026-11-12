@@ -213,7 +213,7 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 
 		if (!Obj.bHostile && Obj.bSolid && FMath::Abs(Local.X) < ShipHalfLength && FMath::Abs(Local.Y) < ShipHalfWidth + Obj.Radius)
 		{
-			Director->DamageShip(10.f);
+			Director->DamageShip(4.f);
 			if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>()) { Crew->Report(TEXT("We struck the rocks! Hull is breached!"), true); }
 			Actor->Destroy();
 			Objects.RemoveAtSwap(i);
@@ -323,4 +323,28 @@ void ADCTreadmill::AddExternalHostile(AActor* Actor, float Radius, float Health)
 	Obj.bHostile = true;
 	Obj.bExternal = true;
 	Obj.Health = Health;
+}
+
+float ADCTreadmill::FindClearLane(float Lookahead) const
+{
+	float Best = LaneOffset;
+	float BestCost = TNumericLimits<float>::Max();
+	for (float Candidate = -LaneLimit; Candidate <= LaneLimit; Candidate += 250.f)
+	{
+		// Prefer staying put, and drift back toward the middle when nothing is in the way.
+		float Cost = FMath::Abs(Candidate - LaneOffset) * 0.0005f + FMath::Abs(Candidate) * 0.00005f;
+		for (const FDCWorldObject& Obj : Objects)
+		{
+			if (Obj.bHostile || !Obj.bSolid) { continue; }
+			if (Obj.Base.X < -ShipHalfLength || Obj.Base.X > Lookahead) { continue; }
+			const float Gap = FMath::Abs(Obj.Base.Y - Candidate) - (ShipHalfWidth + Obj.Radius);
+			if (Gap < 500.f)
+			{
+				// Nearer obstacles count for more; overlapping the hull counts for much more than a tight squeeze.
+				Cost += (Gap < 0.f ? 10.f : 2.f) * (1.f + 8000.f / (Obj.Base.X + 2500.f));
+			}
+		}
+		if (Cost < BestCost) { BestCost = Cost; Best = Candidate; }
+	}
+	return Best;
 }

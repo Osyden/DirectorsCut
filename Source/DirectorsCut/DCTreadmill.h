@@ -52,6 +52,8 @@ public:
 
 	/** Nearest obstacle ahead of the bow. Returns false if the lane is clear. OutY is relative to the ship centreline. */
 	bool FindObstacleAhead(float MaxDistance, float& OutX, float& OutY) const;
+	/** The lane offset with the most room among the obstacles within Lookahead, close to the present course. */
+	float FindClearLane(float Lookahead) const;
 	/** Index of the best hostile on a side, or INDEX_NONE. */
 	int32 FindHostile(EDCSide Side, float MaxRange) const;
 	FVector GetObjectLocation(int32 Index) const;

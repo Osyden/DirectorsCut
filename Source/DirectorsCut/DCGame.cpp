@@ -25,6 +25,7 @@
 #include "Misc/Parse.h"
 #include "Misc/Paths.h"
 #include "HAL/IConsoleManager.h"
+#include "Kismet/GameplayStatics.h"
 
 // ---------------------------------------------------------------- HUD
 
@@ -311,7 +312,9 @@ void ADCGameMode::StartPlay()
 		}
 	}
 
-	FParse::Value(FCommandLine::Get(), TEXT("DCTimeScale="), Director->TimeScale);
+	// Test runs: speed the whole world up evenly so crew, guns and hazards stay in step.
+	float TestDilation = 1.f;
+	if (FParse::Value(FCommandLine::Get(), TEXT("DCTimeScale="), TestDilation)) { UGameplayStatics::SetGlobalTimeDilation(World, TestDilation); }
 	FString Shots;
 	if (FParse::Value(FCommandLine::Get(), TEXT("DCAutoShots="), Shots, false))
 	{
@@ -319,7 +322,7 @@ void ADCGameMode::StartPlay()
 		Shots.ParseIntoArray(Parts, TEXT(","));
 		for (const FString& P : Parts) { AutoShotTimes.Add(FCString::Atof(*P)); }
 		AutoShotWait = 6.f;
-		if (AutoShotTimes.Num()) { Director->Seek(AutoShotTimes[0]); }
+		if (AutoShotTimes.Num() && !FParse::Param(FCommandLine::Get(), TEXT("DCRunThrough"))) { Director->Seek(AutoShotTimes[0]); }
 
 		FString Cam;
 		if (FParse::Value(FCommandLine::Get(), TEXT("DCShotCam="), Cam, false))
@@ -361,8 +364,11 @@ void ADCGameMode::Tick(float DeltaSeconds)
 		return;
 	}
 
+	// -DCRunThrough plays the ride without seeking: each shot waits for the ride to reach its time.
+	const bool bRunThrough = FParse::Param(FCommandLine::Get(), TEXT("DCRunThrough"));
 	AutoShotWait -= DeltaSeconds;
-	if (AutoShotWait > 0.f) { return; }
+	if (bRunThrough ? (!bAutoShotTaken && Director->RideTime < AutoShotTimes[AutoShotIndex]) : (AutoShotWait > 0.f)) { return; }
+	if (bRunThrough && bAutoShotTaken && AutoShotWait > 0.f) { return; }
 
 	if (!bAutoShotTaken)
 	{
@@ -378,7 +384,7 @@ void ADCGameMode::Tick(float DeltaSeconds)
 	++AutoShotIndex;
 	if (AutoShotTimes.IsValidIndex(AutoShotIndex))
 	{
-		Director->Seek(AutoShotTimes[AutoShotIndex]);
+		if (!bRunThrough) { Director->Seek(AutoShotTimes[AutoShotIndex]); }
 		AutoShotWait = 5.f;
 	}
 	else
