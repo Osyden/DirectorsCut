@@ -4,7 +4,7 @@ Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claud
 
 ## Thu 12 Nov 12:10 — the crew understands loose orders
 
-- **The language model now reads the captain's orders**, not just the crew's replies. Tested in game: "somebody get us away from those rocks" -> helm turns; "blow that spectre on our right out of the water" -> starboard battery fires; "stop shooting you fools" -> hold fire; "Marlow the mast is coming apart" -> rigging repair. Small talk gets an in-character answer instead of an action. About half a second per order.
+- **The language model now reads the captain's orders**, not just the crew's replies. Tested in game: "somebody get us away from those rocks" -> helm turns; "blow that spectre on our right out of the water" -> starboard battery fires; "stop shooting you fools" -> hold fire. ("Marlow the mast is coming apart" -> rigging repair was checked against the model directly, not in game.) Small talk gets an in-character answer instead of an action. About half a second per order.
 - Short clear orders ("hard to port") still go through the instant keyword grammar, which is also the fallback when the model is not running.
 - Crew warnings no longer invent directions (lower temperature, stricter prompt).
 
