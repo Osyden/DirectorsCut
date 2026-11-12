@@ -79,9 +79,13 @@ protected:
 public:
 	UPROPERTY(EditAnywhere) float TubeRadius = 3200.f;
 	/** Maelstrom centre relative to the ship, cm. Negative Y is to port. */
-	UPROPERTY(EditAnywhere) FVector2D WhirlCenter = FVector2D(8000.f, -62000.f);
-	UPROPERTY(EditAnywhere) float WhirlDepth = 60000.f;
+	UPROPERTY(EditAnywhere) FVector2D WhirlCenter = FVector2D(62000.f, 22000.f);
+	UPROPERTY(EditAnywhere) float WhirlDepth = 45000.f;
 	UPROPERTY(EditAnywhere) float WhirlRadius = 35000.f;
+	/** The crater: a ring of falling water around the maelstrom. Radius, height and half-width of the wall, cm. */
+	UPROPERTY(EditAnywhere) float CraterRim = 110000.f;
+	UPROPERTY(EditAnywhere) float CraterCliff = 26000.f;
+	UPROPERTY(EditAnywhere) float CraterWidth = 5500.f;
 
 protected:
 

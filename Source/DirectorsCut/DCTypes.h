@@ -65,6 +65,12 @@ struct FDCEnvState
 	UPROPERTY(EditAnywhere) float Drop = 0.f;
 	/** 0..1: depth of the maelstrom funnel. */
 	UPROPERTY(EditAnywhere) float Whirl = 0.f;
+	/** 0..1: height of the wall of falling water around the maelstrom. */
+	UPROPERTY(EditAnywhere) float Crater = 0.f;
+	/** cm ahead of the ship where the tunnel opens out; 0 = tunnel runs on. */
+	UPROPERTY(EditAnywhere) float TubeMouth = 0.f;
+	/** Heading of the sunlight in degrees (the sun itself stands opposite). */
+	UPROPERTY(EditAnywhere) float SunYaw = 20.f;
 
 	static FDCEnvState Lerp(const FDCEnvState& A, const FDCEnvState& B, float T)
 	{
@@ -88,6 +94,9 @@ struct FDCEnvState
 		R.Tube = FMath::Lerp(A.Tube, B.Tube, T);
 		R.Drop = FMath::Lerp(A.Drop, B.Drop, T);
 		R.Whirl = FMath::Lerp(A.Whirl, B.Whirl, T);
+		R.Crater = FMath::Lerp(A.Crater, B.Crater, T);
+		R.TubeMouth = FMath::Lerp(A.TubeMouth, B.TubeMouth, T);
+		R.SunYaw = FMath::Lerp(A.SunYaw, B.SunYaw, T);
 		return R;
 	}
 };

@@ -12,7 +12,9 @@ Parameters
   Shape        x = tube amount 0..1 (sea wraps up and over the ship), y = tube radius (cm),
                z = drop (cm of fall 100 m ahead; the sea falls away in front and rises behind)
   Whirl        xy = whirlpool centre relative to the ship (cm), z = depth (cm), w = radius (cm)
-  DeepColor, FoamColor, FoamAmount, Roughness, GlowColor
+  Crater       x = rim radius (cm), y = height of the cliff of falling water at the rim (cm),
+               z = half-width of that cliff (cm), w = tunnel mouth distance ahead of the ship (cm, 0 = no mouth)
+  DeepColor, FoamColor, FoamAmount, Roughness, GlowColor (lava), ScatterColor (daylight inside the water)
 """
 import unreal
 
@@ -64,14 +66,25 @@ float r2 = dot(q.xy - Whirl.xy, q.xy - Whirl.xy) / (wr * wr);
 float r02 = dot(Whirl.xy, Whirl.xy) / (wr * wr);
 q.z -= Whirl.z * (1.0 / (1.0 + r2) - 1.0 / (1.0 + r02));
 
+// Crater rim: outside a ring around the same centre the sea stands a cliff's height above the bowl,
+// so the bowl is walled by falling water. The ship is inside the ring.
+float rr = sqrt(r2) * wr;
+float rr0 = sqrt(r02) * wr;
+float inRim = 1.0 - smoothstep(Crater.x - Crater.z, Crater.x + Crater.z, rr);
+float inRim0 = 1.0 - smoothstep(Crater.x - Crater.z, Crater.x + Crater.z, rr0);
+q.z -= Crater.y * (inRim - inRim0);
+
 // Drop: the sea falls away ahead and rises behind, like cresting a slide.
 float xn = clamp(q.x / 10000.0, -6.0, 6.0);
 q.z -= Shape.z * xn * abs(xn);
 
-// Tube: roll the sea up around the ship's fore-aft axis until it closes overhead.
-if (Shape.x > 0.001)
+// Tube: roll the sea up around the ship's fore-aft axis until it closes overhead. With a mouth
+// distance set, the tube opens out ahead of the ship: a tunnel the ship is bursting out of.
+float tube = Shape.x;
+if (Crater.w > 1.0) { tube *= 1.0 - smoothstep(Crater.w, Crater.w * 3.0 + 2500.0, q.x); }
+if (tube > 0.001)
 {
-    float Rt = Shape.y / Shape.x;
+    float Rt = Shape.y / tube;
     float th = clamp(q.y / Rt, -3.14159, 3.14159);
     float rad = Rt - q.z;
     q.y = rad * sin(th);
@@ -112,13 +125,19 @@ float wr = max(Whirl.w, 1.0);
 float2 rel = P.xy - Whirl.xy;
 float r2 = dot(rel, rel) / (wr * wr);
 g += rel * (Whirl.z * 2.0 / (wr * wr) / ((1.0 + r2) * (1.0 + r2)));
+// Slope of the crater wall: steep, facing the centre.
+float rr = sqrt(r2) * wr;
+float band = saturate(1.0 - abs(rr - Crater.x) / max(Crater.z, 1.0));
+g += normalize(rel + 0.001) * (Crater.y / max(2.0 * Crater.z, 1.0)) * 1.5 * band;
 // Slope of the drop.
 g.x -= Shape.z * 2.0 * abs(clamp(P.x / 10000.0, -6.0, 6.0)) / 10000.0;
 
 float3 n = normalize(float3(-g.x, -g.y, 1.0));
-if (Shape.x > 0.001)
+float tube = Shape.x;
+if (Crater.w > 1.0) { tube *= 1.0 - smoothstep(Crater.w, Crater.w * 3.0 + 2500.0, P.x); }
+if (tube > 0.001)
 {
-    float Rt = Shape.y / Shape.x;
+    float Rt = Shape.y / tube;
     float th = clamp(P.y / Rt, -3.14159, 3.14159);
     float s = sin(th);
     float c = cos(th);
@@ -152,7 +171,23 @@ float wr = max(Whirl.w, 1.0);
 float2 rel = P.xy - Whirl.xy;
 float funnel = saturate(Whirl.z / 20000.0) / (1.0 + dot(rel, rel) / (wr * wr));
 f = saturate(f + streak * saturate(Shape.x * 1.2 + funnel * 0.6));
-return f * saturate(0.75 + 0.25 * n) * saturate(1.0 - Dist / 150000.0);
+f = f * saturate(0.75 + 0.25 * n) * saturate(1.0 - Dist / 150000.0);
+
+// The maelstrom: white water pouring down the crater wall, churn where it lands, and spiral
+// arms of foam winding down the bowl toward the centre.
+if (Crater.y > 1.0)
+{
+    float rr = length(rel);
+    float ang = atan2(rel.y, rel.x);
+    float wall = saturate(1.0 - abs(rr - Crater.x) / (Crater.z * 1.25));
+    float falls = 0.55 + 0.45 * sin(ang * 380.0 + sin(ang * 61.0 + T * 0.7) * 3.0) * sin(ang * 97.0 - T * 1.3);
+    float churn = saturate(1.0 - abs(rr - (Crater.x - Crater.z * 1.8)) / (Crater.z * 1.2));
+    float inside = saturate((Crater.x - rr) / Crater.x);
+    float arms = saturate(sin(ang * 5.0 + log(max(rr, 100.0)) * 9.0 + T * 0.35) * 0.5 + 0.5 - 0.62) * 2.6;
+    float armNoise = 0.6 + 0.4 * sin(rr * 0.004 + ang * 23.0 + n2 * 3.0);
+    f = saturate(f + wall * falls * 1.3 + churn * (0.6 + 0.4 * n2) + arms * armNoise * inside * (0.35 + 0.65 * saturate(1.0 - rr / (Crater.x * 0.8))));
+}
+return f;
 """
 
 
@@ -218,6 +253,7 @@ def build():
     scroll = vector(mat, "Scroll", (0, 0, 0, 0), -1400, 650)
     shape = vector(mat, "Shape", (0, 3200, 0, 0), -1400, 850)
     whirl = vector(mat, "Whirl", (0, -70000, 0, 60000), -1400, 1050)
+    crater = vector(mat, "Crater", (100000, 0, 5000, 0), -1400, 1250)
 
     # Vector parameters output RGB on the first pin; the custom nodes need all four channels.
     def rgba(node, x, y):
@@ -229,6 +265,7 @@ def build():
     scroll4 = rgba(scroll, -1150, 650)
     shape4 = rgba(shape, -1150, 850)
     whirl4 = rgba(whirl, -1150, 1050)
+    crater4 = rgba(crater, -1150, 1250)
 
     def wire(node, with_chop):
         mel.connect_material_expressions(wp, "", node, "P")
@@ -238,10 +275,11 @@ def build():
         mel.connect_material_expressions(dist, "", node, "Dist")
         mel.connect_material_expressions(shape4, "", node, "Shape")
         mel.connect_material_expressions(whirl4, "", node, "Whirl")
+        mel.connect_material_expressions(crater4, "", node, "Crater")
         if with_chop:
             mel.connect_material_expressions(chop, "", node, "Chop")
 
-    names = ["P", "T", "Amp", "Scroll", "Dist", "Shape", "Whirl"]
+    names = ["P", "T", "Amp", "Scroll", "Dist", "Shape", "Whirl", "Crater"]
     disp = custom(mat, DISPLACE, unreal.CustomMaterialOutputType.CMOT_FLOAT3, names, -800, 0, "Wave displacement and sea shape")
     wire(disp, False)
     norm = custom(mat, NORMAL, unreal.CustomMaterialOutputType.CMOT_FLOAT3, names + ["Chop"], -800, 300, "Wave normal")
@@ -293,7 +331,12 @@ def build():
     mel.connect_material_expressions(lava, "", lava_mask, "A")
     mel.connect_material_expressions(one_minus, "", lava_mask, "B")
     mel.connect_material_expressions(lava_mask, "", glow, "B")
-    mel.connect_material_property(glow, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    # Scatter: light carried inside the water, so sunlit walls of water glow teal instead of going black.
+    scatter = vector(mat, "ScatterColor", (0, 0, 0, 1), -500, 1100)
+    emissive = mel.create_material_expression(mat, unreal.MaterialExpressionAdd, 0, 950)
+    mel.connect_material_expressions(glow, "", emissive, "A")
+    mel.connect_material_expressions(scatter, "", emissive, "B")
+    mel.connect_material_property(emissive, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
 
     mel.recompile_material(mat)
     ok = unreal.EditorAssetLibrary.save_asset(path, only_if_is_dirty=False)

@@ -116,13 +116,15 @@ void ADCRideDirector::BuildDefaultPhases()
 	{
 		FDCEnvState& E = Add(EDCPhase::Breach, 420.f, 5.f);
 		E.FogColor = FLinearColor(0.1f, 0.1f, 0.12f); E.FogDensity = 0.15f;
-		E.SunIntensity = 0.3f; E.SkyIntensity = 0.3f; E.SeaRoughness = 8.f; E.LightningRate = 20.f; E.ShipSpeed = 3500.f; E.WaveHeight = 200.f; E.Foam = 1.5f; E.Exposure = 1.5f; E.Tube = 0.7f; E.Drop = 150.f;
+		E.SunIntensity = 0.3f; E.SkyIntensity = 0.3f; E.SeaRoughness = 8.f; E.LightningRate = 20.f; E.ShipSpeed = 3500.f; E.WaveHeight = 200.f; E.Foam = 1.5f; E.Exposure = 1.5f; E.Tube = 0.9f; E.Drop = 120.f; E.TubeMouth = 3000.f; E.SunYaw = 195.f; E.Whirl = 0.5f; E.Crater = 1.f;
 	}
 	{
-		FDCEnvState& E = Add(EDCPhase::Maelstrom, 440.f, 12.f);
-		E.FogColor = FLinearColor(0.06f, 0.08f, 0.1f); E.FogDensity = 0.007f; E.FogHeightFalloff = 0.004f;
-		E.SunColor = FLinearColor(0.55f, 0.65f, 0.8f); E.SunIntensity = 0.9f; E.SunPitch = -28.f; E.SkyIntensity = 0.6f;
-		E.SeaColor = FLinearColor(0.004f, 0.015f, 0.02f); E.SeaRoughness = 6.f; E.Rain = 1.f; E.LightningRate = 14.f; E.ShipSpeed = 2200.f; E.WaveHeight = 300.f; E.Foam = 0.75f; E.Exposure = 0.9f; E.Whirl = 1.f;
+		// The reveal. The ship bursts out of the tunnel into daylight: a crater a kilometre across walled
+		// by falling water, the creature in the middle of it, sun breaking through towering cloud ahead.
+		FDCEnvState& E = Add(EDCPhase::Maelstrom, 440.f, 16.f);
+		E.FogColor = FLinearColor(0.35f, 0.5f, 0.68f); E.FogDensity = 0.002f; E.FogHeightFalloff = 0.003f;
+		E.SunColor = FLinearColor(1.f, 0.93f, 0.8f); E.SunIntensity = 9.f; E.SunPitch = -30.f; E.SunYaw = 195.f; E.SkyIntensity = 1.2f;
+		E.SeaColor = FLinearColor(0.004f, 0.05f, 0.065f); E.SeaRoughness = 3.f; E.Rain = 0.3f; E.LightningRate = 4.f; E.ShipSpeed = 2200.f; E.WaveHeight = 240.f; E.Foam = 1.3f; E.Exposure = -0.2f; E.Whirl = 1.f; E.Crater = 1.f; E.TubeMouth = 1200.f;
 	}
 	{
 		FDCEnvState& E = Add(EDCPhase::Ending, 600.f, 15.f);
@@ -264,7 +266,7 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 {
 	Sun->SetIntensity(Env.SunIntensity);
 	Sun->SetLightColor(Env.SunColor);
-	Sun->SetRelativeRotation(FRotator(Env.SunPitch, 20.f, 0.f));
+	Sun->SetRelativeRotation(FRotator(Env.SunPitch, Env.SunYaw, 0.f));
 	SkyLight->SetIntensity(Env.SkyIntensity);
 	// Tint ambient light toward the fog so the sea does not mirror a blue sky that is not there.
 	{
@@ -289,8 +291,11 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 		SeaMID->SetVectorParameterValue(TEXT("GlowColor"), Env.SeaGlow);
 		SeaMID->SetScalarParameterValue(TEXT("Roughness"), FMath::Lerp(0.06f, 0.65f, FMath::Clamp(Env.SeaGlow.R, 0.f, 1.f)));
 		SeaMID->SetVectorParameterValue(TEXT("Color"), Env.SeaColor);
-		SeaMID->SetVectorParameterValue(TEXT("Shape"), FLinearColor(Env.Tube, TubeRadius, Env.Drop, 0.f));
+		// The tunnel is wider in the maelstrom, where it frames the view and must not fill it.
+		SeaMID->SetVectorParameterValue(TEXT("Shape"), FLinearColor(Env.Tube, TubeRadius * (1.f + 0.9f * Env.Whirl), Env.Drop, 0.f));
+		SeaMID->SetVectorParameterValue(TEXT("ScatterColor"), FLinearColor(0.01f, 0.085f, 0.105f) * (Env.SunIntensity * 0.03f) * (1.f - FMath::Min(Env.SeaGlow.R, 1.f)));
 		SeaMID->SetVectorParameterValue(TEXT("Whirl"), FLinearColor(WhirlCenter.X, WhirlCenter.Y, Env.Whirl * WhirlDepth, WhirlRadius));
+		SeaMID->SetVectorParameterValue(TEXT("Crater"), FLinearColor(CraterRim, Env.Crater * CraterCliff, CraterWidth, Env.TubeMouth));
 	}
 	// Thrown clear of the maelstrom: the screen whites out, then the calm sea fades in.
 	WhiteOut = FMath::Max(0.f, WhiteOut - DeltaSeconds / 3.5f);
@@ -308,7 +313,9 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 	const float R0 = WhirlCenter.Size();
 	const float K = (R0 * R0) / (WhirlRadius * WhirlRadius);
 	const float Slope = Env.Whirl * WhirlDepth * 2.f * R0 / (WhirlRadius * WhirlRadius) / FMath::Square(1.f + K);
-	const FQuat Level = FRotator(0.f, 0.f, FMath::RadiansToDegrees(FMath::Atan(Slope)) * (WhirlCenter.Y < 0.f ? 1.f : -1.f)).Quaternion();
+	// Height falls toward the centre, so the untilted surface normal leans toward it; rotate that normal upright.
+	const FVector2D ToCentre = WhirlCenter.GetSafeNormal();
+	const FQuat Level = FQuat::FindBetweenNormals(FVector(ToCentre.X * Slope, ToCentre.Y * Slope, 1.f).GetSafeNormal(), FVector::UpVector);
 	Sea->SetRelativeTransform(FTransform(WorldRock.GetRotation() * Level, FVector(0.f, 0.f, SeaLevelZ + Heave)));
 
 	TickLamps();
@@ -363,10 +370,10 @@ void ADCRideDirector::BuildSeaMesh()
 {
 	// Polar grid centred on the ship: fine near the hull where waves are seen close up,
 	// coarse toward a horizon tens of kilometres out. The ship never moves, so neither does this.
-	const int32 Rings = 112;
-	const int32 Segments = 192;
+	const int32 Rings = 320;
+	const int32 Segments = 256;
 	const float R0 = 500.f;
-	const float Growth = 1.09f;
+	const float Growth = 1.03f;
 
 	TArray<FVector> Verts;
 	TArray<int32> Tris;

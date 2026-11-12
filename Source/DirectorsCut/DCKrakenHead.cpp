@@ -198,7 +198,9 @@ void ADCKrakenHead::Tick(float DeltaSeconds)
 	const FVector Floor = Director->GetWhirlFloorLocal();
 	const float Lift = FMath::InterpEaseInOut(-static_cast<float>(MantleRadii.Z) * 1.05f - 30000.f, 20000.f, Raised, 2.f) + 600.f * FMath::Sin(Clock * 0.6f);
 	SetActorRelativeLocation(Floor + FVector(0.f, 0.f, Lift));
-	SetActorRelativeRotation(FRotator(3.f * FMath::Sin(Clock * 0.23f), 0.f, 2.f * FMath::Sin(Clock * 0.31f)));
+	// Its face (local +Y) turns to the ship.
+	const float FaceYaw = FMath::RadiansToDegrees(FMath::Atan2(-Director->WhirlCenter.Y, -Director->WhirlCenter.X)) - 90.f;
+	SetActorRelativeRotation(FRotator(3.f * FMath::Sin(Clock * 0.23f), FaceYaw, 2.f * FMath::Sin(Clock * 0.31f)));
 
 	for (int32 i = 0; i < NumArms; ++i) { UpdateArm(i, false); }
 
