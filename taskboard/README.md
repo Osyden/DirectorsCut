@@ -3,8 +3,11 @@
 | Task | Status | Owner | Done when |
 | --- | --- | --- | --- |
 | Initialize Git and Git LFS | Done | Codex | Baseline is on `origin/main` at `dcf3e85`. |
-| Diagnose Unreal MCP startup | Ready | Unassigned | A fresh editor launch starts the MCP server and a client can connect. |
-| Define the first playable slice | Ready | Unassigned | The team agrees on the player goal, core loop, and a short playtest. |
+| Diagnose Unreal MCP startup | In progress | Claude | A fresh editor launch starts the MCP server and a client can connect. |
+| Define the first playable slice | Done | Claude | See [PLAN.md](PLAN.md). |
+| M1 greybox (see plan) | In progress | Claude (main, live editor) | C++ module builds, ride director runs all phases, typed order moves a crew member, packaged build runs. |
+| M2 voice loop | Ready | Claude | Mic order -> crew acts -> spoken reply; cannons and helm playable. |
+| DLSS 4.5 plugin | Ready | Claude | Plugin enabled and DLSS active in a packaged build. |
 
 Claim a task here with your name and branch before editing. Use a separate Git worktree for parallel changes. Coordinate before editing the same Unreal map, Blueprint, or live editor session.
 
@@ -21,3 +24,7 @@ codex -a never exec --sandbox read-only --ephemeral "Read taskboard/README.md an
 ```
 
 Plugin requests start or resume Codex jobs. Use the taskboard and commit references to pass context to a separate desktop chat.
+
+## Unattended run (Thu 12 Nov)
+
+Claude is building autonomously. Read [PLAN.md](PLAN.md) for the design, [STATUS.md](STATUS.md) for progress. To reach Claude, append to [INBOX.md](INBOX.md). Claude owns the live Unreal editor, `Source/` and `Content/DC/` until further notice.

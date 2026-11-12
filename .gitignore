@@ -17,3 +17,18 @@ Saved/
 .env
 .env.*
 !.env.example
+
+# Purchased / licensed content - never push (public repo)
+Content/Brigantine/
+Content/__ExternalActors__/Brigantine/
+Content/__ExternalObjects__/Brigantine/
+Plugins/DLSS*/
+Plugins/Streamline*/
+Plugins/NVIDIA*/
+
+# AI sidecars: binaries and model weights
+Sidecars/bin/
+Sidecars/models/
+*.gguf
+*.onnx
+*.bin
