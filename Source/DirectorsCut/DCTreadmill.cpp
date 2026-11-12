@@ -4,6 +4,7 @@
 #include "DCCrew.h"
 #include "DCTroubles.h"
 #include "DCCloudFace.h"
+#include "DCPortal.h"
 #include "Engine/StaticMeshActor.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
@@ -251,8 +252,9 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 
 		// Ships that pace us hold station on the ship itself; everything else is fixed in the sea and slides with the helm.
 		const bool bPacing = Obj.bHostile && !Obj.bExternal;
-		FVector Local(Obj.Base.X, bPacing ? Obj.Base.Y : Obj.Base.Y - LaneOffset, Obj.Base.Z);
-		if (!Obj.bHostile && !Obj.bSolid)
+		// Radius 0 marks a destination (the portal): it stays dead ahead whatever the helm does.
+		FVector Local(Obj.Base.X, (bPacing || Obj.Radius < 1.f) ? Obj.Base.Y : Obj.Base.Y - LaneOffset, Obj.Base.Z);
+		if (!Obj.bHostile && !Obj.bSolid && Obj.Radius > 1.f)
 		{
 			// Scenery cannot be hit, so never let the helm carry the ship through it: it keeps its distance.
 			const float MinY = ShipHalfWidth + Obj.Radius + 1500.f;
@@ -509,6 +511,17 @@ void ADCTreadmill::SpawnAtlantis()
 	Register(DCHazards::SpawnAqueduct(World, 7, 6000.f, Stone), FVector(275000.f, 24000.f, SeaZ - 200.f), 2000.f, false, 1.f, 62.f, false);
 
 	Register(DCHazards::SpawnTemple(World, 1.f, Stone), FVector(345000.f, 36000.f, SeaZ), 2000.f, false, 1.f, -14.f, false);
+
+	// The portal out of the city: on the ship's course, at the distance covered by the time the slide begins.
+	{
+		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		if (ADCPortal* Portal = World->SpawnActor<ADCPortal>(FVector::ZeroVector, FRotator::ZeroRotator, Params))
+		{
+			// Radius 0 marks it as something the ship is meant to sail into, so it is not pushed aside.
+			Register(Portal, FVector(PortalDistance, 0.f, SeaZ), 0.f, false, 1.f, 0.f, false);
+		}
+	}
 
 	// Faces in the clouds, high above the city, turned toward the ship and gazing down at it.
 	struct FFace { float X, Y, Z, Height, Yaw; bool bBearded; };

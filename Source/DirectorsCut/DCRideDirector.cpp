@@ -119,7 +119,7 @@ void ADCRideDirector::BuildDefaultPhases()
 		FDCEnvState& E = Add(EDCPhase::Fog, 78.f, 22.f);
 		E.FogColor = FLinearColor(0.2f, 0.26f, 0.33f); E.FogDensity = 0.011f; E.FogHeightFalloff = 0.0012f;
 		E.SunColor = FLinearColor(0.6f, 0.72f, 0.9f); E.SunIntensity = 1.6f; E.SunPitch = -24.f; E.SunYaw = 160.f; E.SkyIntensity = 0.55f;
-		E.SeaColor = FLinearColor(0.008f, 0.025f, 0.035f); E.SeaRoughness = 3.f; E.Rain = 0.35f; E.LightningRate = 10.f; E.ShipSpeed = 1500.f; E.WaveHeight = 190.f; E.Foam = 1.f; E.Exposure = 0.05f;
+		E.SeaColor = FLinearColor(0.012f, 0.019f, 0.025f); E.SeaRoughness = 3.f; E.Rain = 0.35f; E.LightningRate = 10.f; E.ShipSpeed = 1500.f; E.WaveHeight = 190.f; E.Foam = 1.f; E.Exposure = 0.05f;
 	}
 	{
 		FDCEnvState& E = Add(EDCPhase::Slide, 240.f, 6.f);
@@ -363,7 +363,7 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 	if (FlashTimeLeft > 0.f)
 	{
 		FlashTimeLeft -= DeltaSeconds;
-		Flash->SetIntensity(FlashTimeLeft > 0.f ? FMath::FRandRange(3.f, 11.f) : 0.f);
+		Flash->SetIntensity(FlashTimeLeft > 0.f ? FMath::FRandRange(2.f, 7.f) : 0.f);
 		if (FlashTimeLeft <= 0.f) { Bolt->SetVisibility(false); }
 		else if (BoltMID) { BoltMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.75f, 0.85f, 1.f) * FMath::FRandRange(40.f, 160.f)); }
 	}

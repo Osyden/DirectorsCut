@@ -2,6 +2,17 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 14:38 — the portal out of Atlantis
+
+Review set: `taskboard/review/09-portal/` (six helm frames over the last minute of the fog, ending inside the tunnel).
+
+- **There is now a portal ahead before the sea takes the ship** (`DCPortal.cpp`): eight rings of cloud billows with trailing arms, turning about the tunnel's axis at different rates, around a bright blue-white core that flares with the lightning. It stands on the ship's course at the distance covered by the time the slide begins, and it stays dead ahead whatever the helm does.
+- From the helm it first shows as a glow behind the ruins about a minute out, then as a lit, churning opening among the temple buildings; the sea rolls up into the tunnel as the ship reaches it.
+- Against the portal reference: light-at-the-end among ruins is there. The reference's clean concentric tunnel and the statues framing it left and right are not; the view is cluttered by whatever random rock or ruin is in the lane at that moment.
+- Also: lightning no longer turns the Atlantis sea bright blue (dimmer flash, greyer water).
+
+All four of the 14:03 references now have a first pass in the build: storm front (set 07), fog city and Atlantis (06), faces (08), portal (09). The maelstrom reference has had three (01 to 03).
+
 ## Thu 12 Nov 14:26 — packaged build runs the new route; cloud faces repaired
 
 - **Packaged build (5.3 GB) ran the whole new route** at 5x with the stand-in captain: sea, fog at 0:51, portal at 4:00, maelstrom at 4:50, ending at 7:30, no errors, 156 to 188 fps at 720p. The stand-in captain finished with **77% hull** ("She came through"); the route is shorter and the maelstrom has four near arms now, so the ride is gentler than before.

@@ -84,6 +84,8 @@ protected:
 	float SceneryTimer = 3.f;
 	void SpawnAtlantis();
 	bool bAtlantisBuilt = false;
+	/** How far ahead the portal stands when the city is laid out: the distance sailed before the slide starts. */
+	UPROPERTY(EditAnywhere) float PortalDistance = 287000.f;
 
 	UPROPERTY() TObjectPtr<ADCRideDirector> Director;
 	UPROPERTY() TObjectPtr<UStaticMesh> CubeMesh;
