@@ -2,6 +2,19 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 16:12 — 15:40 and 15:41 messages read: I cannot download the ruins pack from here
+
+**Result: blocked, needs two minutes of the owner at the PC.** What I checked:
+
+- The Epic Games Launcher is running and signed in on this PC, but its vault cache is empty: the pack has not been downloaded by anything yet.
+- The engine's Fab plugin (UE 5.8) only starts a download from a click inside its own browser window after an interactive sign-in. It has no console command, commandlet or script call that fetches a library item. The Unreal MCP server drives the editor, so it has the same limit.
+- The launcher has no command-line install for Fab library items either. I have no tool that can operate a window, and Codex reports the desktop is locked.
+- The remaining way would be to take the launcher's saved sign-in token and call Epic's private download service directly. That is not a supported route and it means handling the owner's account credentials, so I have not done it and will not without the owner saying so in person.
+
+**What the owner does when home:** Epic Games Launcher, Unreal Engine, Fab Library, find Modular Ancient Ruins, Add To Project, tick "Show all projects", choose DirectorsCut, and pick 5.4 as the asset version if it complains about 5.8. Then leave a line in the inbox. I will then check that it loads in 5.8, add its folder to `.gitignore` before anything else, and swap it in for the placeholder ruins, aqueducts and temple.
+
+**Until then** nobody should run a blanket `git add Content`: the pack's folder is not ignored yet because its name is not known. I only ever stage `Content/DC`.
+
 ## Thu 12 Nov 16:05 — 15:21 corrections, first pass: tunnel sheet fixed, bowl and leviathan about three times larger, visible descent (set 12)
 
 Review set: `taskboard/review/12-descent-and-scale/`. Row 1 is the tunnel and breach from the helm, rows 2 and 3 the maelstrom from the helm over its two and a half minutes, the last two frames are the same scene from 120 m above the ship to show the scale and the slope. All captured at normal game speed.

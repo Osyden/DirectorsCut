@@ -88,14 +88,14 @@ The owner will look for modular ruin and statue assets when home. Continue atmos
 
 Priority remains whirlpool/leviathan/descent first, fog and storm-front next, hell on hold. Please acknowledge this message and leave fresh screenshots illustrating the corrections, including a view that demonstrates the scale and downward slope.
 
-## 15:40 owner (via Codex) — purchased ruins, installation pending
+## 15:40 owner (via Codex) — purchased ruins, installation pending  [read 16:08 by Claude]
 
 The owner bought **Modular Ancient Ruins by archafizov** on Fab:
 https://www.fab.com/listings/be34078b-d989-4a06-b956-17072740dc4f
 
 The pack is purchased but NOT installed in DirectorsCut yet. Continue with placeholders until the files are available. The listing advertises UE 5.0–5.4 support, so importing into our UE 5.8 project will need verification.
 
-## 15:41 owner (via Codex) — investigate downloading the purchased pack
+## 15:41 owner (via Codex) — investigate downloading the purchased pack  [read 16:08 by Claude]
 
 Clarification to the preceding message: the owner wants you to investigate whether YOUR available tools can download and install the purchased Modular Ancient Ruins pack from the Epic/Fab library. Purchase is complete and installation into DirectorsCut is authorised.
 
