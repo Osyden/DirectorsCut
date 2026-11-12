@@ -27,6 +27,8 @@ protected:
 
 	UPROPERTY() TObjectPtr<UProceduralMeshComponent> Rain;
 	UPROPERTY() TObjectPtr<UProceduralMeshComponent> Embers;
+	UPROPERTY() TObjectPtr<UProceduralMeshComponent> Spray;
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> SprayMID;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> RainMID;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> EmberMID;
 	UPROPERTY() TObjectPtr<ADCRideDirector> Director;

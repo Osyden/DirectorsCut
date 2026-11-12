@@ -63,6 +63,10 @@ void ADCWeatherFX::BeginPlay()
 	RainMID = UMaterialInstanceDynamic::Create(Base, this);
 	Rain->SetMaterial(0, RainMID);
 
+	Spray = BuildStreaks(TEXT("Spray"), 2200);
+	SprayMID = UMaterialInstanceDynamic::Create(Base, this);
+	Spray->SetMaterial(0, SprayMID);
+
 	Embers = BuildStreaks(TEXT("Embers"), 900);
 	EmberMID = UMaterialInstanceDynamic::Create(Base, this);
 	Embers->SetMaterial(0, EmberMID);
@@ -83,6 +87,13 @@ void ADCWeatherFX::Tick(float DeltaSeconds)
 	// Unlit, so brightness follows the scene by hand: dim normally, bright in a lightning flash.
 	const float Light = 0.12f + 0.15f * Env.SkyIntensity + FlashBoost * 2.5f;
 	RainMID->SetVectorParameterValue(TEXT("Tint"), FLinearColor(0.55f * Light, 0.65f * Light, 0.8f * Light, 0.7f * RainAmount));
+
+	// Spray: white flecks torn off the wave tops and blown down the deck, wherever the water is wild.
+	const float SprayAmount = FMath::Clamp(Env.Whirl * 0.9f + Env.Tube * 0.6f * (1.f - FMath::Min(Env.SeaGlow.R, 1.f)), 0.f, 1.f);
+	Spray->SetVisibility(SprayAmount > 0.01f);
+	SprayMID->SetVectorParameterValue(TEXT("Motion"), FLinearColor(140.f, 22.f, 15.f, 3.4f));
+	const float SprayLight = 0.25f + 0.11f * Env.SunIntensity + FlashBoost * 1.5f;
+	SprayMID->SetVectorParameterValue(TEXT("Tint"), FLinearColor(0.9f * SprayLight, 0.95f * SprayLight, SprayLight, 0.5f * SprayAmount));
 
 	// Embers rise out of the burning sea.
 	const float EmberAmount = FMath::Clamp(Env.SeaGlow.R, 0.f, 1.f);

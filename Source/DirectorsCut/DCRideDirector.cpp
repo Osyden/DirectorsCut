@@ -29,6 +29,17 @@ ADCRideDirector::ADCRideDirector()
 	Sun->SetupAttachment(RootComponent);
 	Sun->SetMobility(EComponentMobility::Movable);
 
+	Sun->bEnableLightShaftBloom = true;
+	Sun->BloomThreshold = 0.05f;
+	Sun->BloomMaxBrightness = 6.f;
+	Sun->bEnableLightShaftOcclusion = true;
+	Sun->OcclusionMaskDarkness = 0.25f;
+	Sun->bCastCloudShadows = true;
+	Sun->CloudShadowStrength = 0.9f;
+	Sun->CloudShadowOnSurfaceStrength = 0.85f;
+	Sun->CloudShadowExtent = 60.f;
+	Sun->VolumetricScatteringIntensity = 2.f;
+
 	Flash = CreateDefaultSubobject<UDirectionalLightComponent>(TEXT("Flash"));
 	Flash->SetupAttachment(RootComponent);
 	Flash->SetMobility(EComponentMobility::Movable);
@@ -267,6 +278,9 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 	Sun->SetIntensity(Env.SunIntensity);
 	Sun->SetLightColor(Env.SunColor);
 	Sun->SetRelativeRotation(FRotator(Env.SunPitch, Env.SunYaw, 0.f));
+	// God rays and cloud shadows scale with how much sun there is.
+	Sun->SetBloomScale(0.32f * FMath::Clamp(Env.SunIntensity / 8.f, 0.f, 1.f));
+
 	SkyLight->SetIntensity(Env.SkyIntensity);
 	// Tint ambient light toward the fog so the sea does not mirror a blue sky that is not there.
 	{
