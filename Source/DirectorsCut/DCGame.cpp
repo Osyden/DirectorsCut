@@ -21,6 +21,8 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "Misc/FileHelper.h"
+#include "RenderTimer.h"
+#include "RHI.h"
 #include "Animation/SkeletalMeshActor.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Animation/AnimationAsset.h"
@@ -461,6 +463,7 @@ void ADCGameMode::StartPlay()
 	Crew->AddStation(EDCStationType::Rigging, EDCSide::None, DeckAt(GunS.X + 420.f, 120.f, MainTop));
 
 	// Light the ship's own lanterns.
+	Director->AdoptLampGlass(Ship);
 	Director->AddLamp(ShipPart(TEXT("SM_Lamp"), FVector(-2067.f, 0.f, 908.f)));
 	{
 		const FVector Mid = ShipPart(TEXT("SM_Lamp-brigantine1"), FVector(-618.f, 0.f, 826.f));
@@ -655,7 +658,9 @@ void ADCGameMode::Tick(float DeltaSeconds)
 			}
 		}
 		FScreenshotRequest::RequestScreenshot(File, false, false);
-		UE_LOG(LogDC, Log, TEXT("Auto shot %s at ride time %.1f, %.0f fps"), *FPaths::GetCleanFilename(File), Director->RideTime, SmoothedFps);
+		// -DCProfile also writes a GPU timing breakdown to the log at each shot.
+		if (FParse::Param(FCommandLine::Get(), TEXT("DCProfile")) && GEngine) { GEngine->Exec(GetWorld(), TEXT("ProfileGPU")); }
+		UE_LOG(LogDC, Log, TEXT("Auto shot %s at ride time %.1f, %.0f fps (game %.1f ms, render %.1f ms, gpu %.1f ms)"), *FPaths::GetCleanFilename(File), Director->RideTime, SmoothedFps, FPlatformTime::ToMilliseconds(GGameThreadTime), FPlatformTime::ToMilliseconds(GRenderThreadTime), FPlatformTime::ToMilliseconds(RHIGetGPUFrameCycles()));
 		bAutoShotTaken = true;
 		AutoShotWait = bTenths ? 0.05f : 1.f;
 		return;

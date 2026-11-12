@@ -92,6 +92,9 @@ ADCRideDirector::ADCRideDirector()
 	PostProcess->Settings.AutoExposureApplyPhysicalCameraExposure = false;
 	PostProcess->Settings.bOverride_AutoExposureBias = true;
 	PostProcess->Settings.AutoExposureBias = 0.f;
+	// Enough bloom for lanterns and sun glitter to flare without washing the frame.
+	PostProcess->Settings.bOverride_BloomIntensity = true;
+	PostProcess->Settings.BloomIntensity = 0.9f;
 	// Fast water close to the ship smeared into flat sheets at the default blur.
 	PostProcess->Settings.bOverride_MotionBlurAmount = true;
 	PostProcess->Settings.MotionBlurAmount = 0.18f;
@@ -541,10 +544,11 @@ void ADCRideDirector::AddLamp(const FVector& Location)
 	Lamp->SetLightColor(FLinearColor(1.f, 0.62f, 0.28f));
 	Lamp->SetAttenuationRadius(2600.f);
 	// Each lantern lights the mist round it: a warm halo in the fog.
-	Lamp->SetVolumetricScatteringIntensity(1.2f);
+	Lamp->SetVolumetricScatteringIntensity(2.2f);
 	Lamp->SetSourceRadius(12.f);
 	Lamp->SetIntensity(0.f);
-	Lamp->SetCastShadows(true);
+	// No shadows from the lanterns: four point lights re-rendering the whole rig every frame cost more than they showed.
+	Lamp->SetCastShadows(false);
 	Lamp->RegisterComponent();
 	Lamps.Add(Lamp);
 }
@@ -559,6 +563,33 @@ void ADCRideDirector::TickLamps()
 		const float Flicker = 0.85f + 0.15f * FMath::Sin(RideTime * 9.f + i * 2.1f) * FMath::Sin(RideTime * 5.3f + i);
 		Lamps[i]->SetIntensity(LampIntensity * Dark * Flicker);
 	}
+	for (UMaterialInstanceDynamic* Glass : LampGlows)
+	{
+		Glass->SetVectorParameterValue(TEXT("Color"), FLinearColor(1.f, 0.5f, 0.14f) * (2.f + 24.f * Dark));
+	}
+}
+
+void ADCRideDirector::AdoptLampGlass(AActor* Ship)
+{
+	// The lantern glass on the ship becomes the flame: every glass pane is given a self-lit material
+	// that the lamps drive, so the lanterns themselves glow and bloom exactly where they hang.
+	UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Bolt.M_Bolt"));
+	if (!Ship || !Base) { return; }
+	TInlineComponentArray<UStaticMeshComponent*> Parts(Ship);
+	for (UStaticMeshComponent* Part : Parts)
+	{
+		for (int32 s = 0; s < Part->GetNumMaterials(); ++s)
+		{
+			const UMaterialInterface* M = Part->GetMaterial(s);
+			if (M && M->GetName().Contains(TEXT("Lamp")) && M->GetName().Contains(TEXT("Glass")))
+			{
+				UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(Base, this);
+				Part->SetMaterial(s, MID);
+				LampGlows.Add(MID);
+			}
+		}
+	}
+	UE_LOG(LogDC, Log, TEXT("Lanterns: %d glass panes lit"), LampGlows.Num());
 }
 
 void ADCRideDirector::BuildBolt()

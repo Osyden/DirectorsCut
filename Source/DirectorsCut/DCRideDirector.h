@@ -39,6 +39,7 @@ public:
 	float GetRideLength() const;
 	/** The sea mesh component: attach to it to ride the rocking, tilted sea. */
 	class USceneComponent* GetSea() const;
+	void AdoptLampGlass(AActor* Ship);
 	/** Bottom of the maelstrom funnel, in the sea mesh component space. */
 	FVector GetWhirlFloorLocal() const;
 
@@ -74,6 +75,7 @@ protected:
 	UPROPERTY() TObjectPtr<class UProceduralMeshComponent> Bolt;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> BoltMID;
 	UPROPERTY() TArray<TObjectPtr<class UPointLightComponent>> Lamps;
+	UPROPERTY() TArray<TObjectPtr<UMaterialInstanceDynamic>> LampGlows;
 	FVector2D SeaScroll = FVector2D::ZeroVector;
 
 public:

@@ -42,6 +42,7 @@ namespace
 		C->SetStaticMesh(M);
 		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		C->SetupAttachment(Actor->GetRootComponent());
+		if (FParse::Param(FCommandLine::Get(), TEXT("DCNoRuinShadows"))) { C->SetCastShadow(false); }
 		C->SetRelativeTransform(FTransform(Rot, Where - Rot.RotateVector(Foot), Scale));
 		C->RegisterComponent();
 		return Box.GetSize() * Scale;
