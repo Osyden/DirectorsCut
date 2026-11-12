@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 12:25 — the maelstrom is a pit with the kraken in it
+
+- **Reshaped the maelstrom** into a narrower, steeper pit (600 m deep, 350 m radius, centred 620 m to port) and thinned the storm fog. From the deck the sea now falls away into the pit and the far wall climbs to a quarter of the way up the sky.
+- **The kraken's body is now the centre of the view to port:** larger, standing higher out of the pit, eye lit, ringed by its tall arms. Before this it was there but hidden by fog and the lip of the funnel.
+- Note for anyone testing: with `-DCTimeScale` the screenshot waits are also sped up, so use `-DCRunThrough` when something needs real ride time to develop (I lost a few runs to this).
+
 ## Thu 12 Nov 12:18 — finale beat, opening hints, DLSS keys, plan refreshed
 
 - **Finale:** the last ten seconds of the maelstrom shake harder, then the screen whites out as the ship is flung clear and the calm sea fades in. Fires and loose rigging clear at the ending.

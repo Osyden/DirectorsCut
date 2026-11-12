@@ -120,7 +120,7 @@ void ADCRideDirector::BuildDefaultPhases()
 	}
 	{
 		FDCEnvState& E = Add(EDCPhase::Maelstrom, 440.f, 12.f);
-		E.FogColor = FLinearColor(0.06f, 0.08f, 0.1f); E.FogDensity = 0.02f; E.FogHeightFalloff = 0.004f;
+		E.FogColor = FLinearColor(0.06f, 0.08f, 0.1f); E.FogDensity = 0.007f; E.FogHeightFalloff = 0.004f;
 		E.SunColor = FLinearColor(0.55f, 0.65f, 0.8f); E.SunIntensity = 0.9f; E.SunPitch = -28.f; E.SkyIntensity = 0.6f;
 		E.SeaColor = FLinearColor(0.004f, 0.015f, 0.02f); E.SeaRoughness = 6.f; E.Rain = 1.f; E.LightningRate = 14.f; E.ShipSpeed = 2200.f; E.WaveHeight = 300.f; E.Foam = 0.75f; E.Exposure = 0.9f; E.Whirl = 1.f;
 	}

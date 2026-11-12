@@ -77,9 +77,9 @@ protected:
 public:
 	UPROPERTY(EditAnywhere) float TubeRadius = 3200.f;
 	/** Maelstrom centre relative to the ship, cm. Negative Y is to port. */
-	UPROPERTY(EditAnywhere) FVector2D WhirlCenter = FVector2D(0.f, -80000.f);
-	UPROPERTY(EditAnywhere) float WhirlDepth = 50000.f;
-	UPROPERTY(EditAnywhere) float WhirlRadius = 70000.f;
+	UPROPERTY(EditAnywhere) FVector2D WhirlCenter = FVector2D(8000.f, -62000.f);
+	UPROPERTY(EditAnywhere) float WhirlDepth = 60000.f;
+	UPROPERTY(EditAnywhere) float WhirlRadius = 35000.f;
 
 protected:
 

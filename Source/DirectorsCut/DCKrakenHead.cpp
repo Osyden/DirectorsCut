@@ -11,7 +11,7 @@ namespace
 	const int32 ArmRings = 28;
 	const int32 ArmSides = 10;
 	// Everything below is in the head's own space: origin on the funnel floor, +Y toward the ship.
-	const FVector MantleRadii(12500.f, 10500.f, 17000.f);
+	const FVector MantleRadii(15500.f, 13000.f, 21000.f);
 }
 
 ADCKrakenHead::ADCKrakenHead()
@@ -196,7 +196,7 @@ void ADCKrakenHead::Tick(float DeltaSeconds)
 
 	// Rise out of the funnel floor, with a slow heave once up.
 	const FVector Floor = Director->GetWhirlFloorLocal();
-	const float Lift = FMath::InterpEaseInOut(-static_cast<float>(MantleRadii.Z) * 1.05f - 30000.f, 2000.f, Raised, 2.f) + 600.f * FMath::Sin(Clock * 0.6f);
+	const float Lift = FMath::InterpEaseInOut(-static_cast<float>(MantleRadii.Z) * 1.05f - 30000.f, 20000.f, Raised, 2.f) + 600.f * FMath::Sin(Clock * 0.6f);
 	SetActorRelativeLocation(Floor + FVector(0.f, 0.f, Lift));
 	SetActorRelativeRotation(FRotator(3.f * FMath::Sin(Clock * 0.23f), 0.f, 2.f * FMath::Sin(Clock * 0.31f)));
 
