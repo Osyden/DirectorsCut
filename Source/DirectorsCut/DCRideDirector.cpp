@@ -264,6 +264,7 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 		if (NextFlashIn <= 0.f)
 		{
 			FlashTimeLeft = FMath::FRandRange(0.08f, 0.35f);
+			OnLightning.Broadcast();
 			Flash->SetRelativeRotation(FRotator(FMath::FRandRange(-80.f, -30.f), FMath::FRandRange(0.f, 360.f), 0.f));
 			NextFlashIn = FMath::FRandRange(0.5f, 1.5f) * 60.f / Env.LightningRate;
 		}

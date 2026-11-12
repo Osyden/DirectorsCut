@@ -48,6 +48,8 @@ public:
 	UPROPERTY(BlueprintReadOnly) int32 Score = 0;
 
 	FDCOnPhaseChanged OnPhaseChanged;
+	/** Fired at the start of every lightning flash. */
+	FSimpleMulticastDelegate OnLightning;
 
 protected:
 	void BuildDefaultPhases();
