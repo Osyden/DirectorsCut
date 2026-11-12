@@ -32,7 +32,7 @@ public:
 	UPROPERTY(EditAnywhere) float RiseTime = 22.f;
 	UPROPERTY(EditAnywhere) int32 NumArms = 7;
 	/** Height of the head above the crater floor when fully risen, cm. */
-	UPROPERTY(EditAnywhere) float NeckLength = 27000.f;
+	UPROPERTY(EditAnywhere) float NeckLength = 33000.f;
 	/** 1 = a skull about 70 m long. */
 	UPROPERTY(EditAnywhere) float HeadScale = 1.25f;
 	/** The whole creature is built at one size and then scaled by this: 2.8 puts the head 750 m above the floor. */
@@ -42,6 +42,7 @@ protected:
 	void BuildMound();
 	void UpdateArm(int32 Index, bool bCreate);
 	void UpdateNeck(bool bCreate);
+	UProceduralMeshComponent* Loft(USceneComponent* Parent, const TArray<FVector4>& Stations, float CentreZ, float Scale, UMaterialInterface* Material);
 	UStaticMeshComponent* AddPart(USceneComponent* Parent, const TCHAR* Shape, const FVector& Location, const FRotator& Rotation, const FVector& Scale, UMaterialInterface* Material);
 
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Mesh;

@@ -169,7 +169,8 @@ void ADCKrakenHead::UpdateNeck(bool bCreate)
 	// Head: at the top of the neck, looking along it and down at the ship.
 	const FVector Top = NeckSpine.Last();
 	const FVector Along = (NeckSpine.Last() - NeckSpine[TubeRings - 3]).GetSafeNormal();
-	const FVector Look = (Along * 0.55f + FVector(0.f, 0.8f, -0.32f)).GetSafeNormal();
+	// Three-quarter view to the ship, so the long jaw shows in profile; thrown back and up for a roar.
+	const FVector Look = (Along * 0.5f + FVector(0.62f, 0.62f, -0.2f + 0.75f * JawOpen)).GetSafeNormal();
 	if (HeadRoot)
 	{
 		HeadRoot->SetRelativeLocationAndRotation(Top, FRotationMatrix::MakeFromXZ(Look, FVector::UpVector).Rotator());
@@ -225,19 +226,52 @@ void ADCKrakenHead::BeginPlay()
 	HeadRoot->SetupAttachment(Mesh);
 	HeadRoot->RegisterComponent();
 	const float K = HeadScale;
-	AddPart(HeadRoot, TEXT("Sphere"), FVector(1200.f, 0.f, 300.f) * K, FRotator::ZeroRotator, FVector(52.f, 40.f, 34.f) * K, HideMID);            // skull
-	AddPart(HeadRoot, TEXT("Cone"), FVector(5600.f, 0.f, 500.f) * K, FRotator(-90.f, 0.f, 0.f), FVector(30.f, 17.f, 62.f) * K, HideMID);          // upper jaw / snout
-	AddPart(HeadRoot, TEXT("Sphere"), FVector(3000.f, 0.f, 1500.f) * K, FRotator(-12.f, 0.f, 0.f), FVector(34.f, 22.f, 12.f) * K, HideMID);       // brow ridge
+	// Skull and snout as one lofted skin: narrow where it meets the neck, a wide cranium, a brow
+	// that overhangs the eyes, then a long muzzle with a swelling at the nose. x, half width, height
+	// above the centre line, depth below it.
+	const TArray<FVector4> Upper = {
+		FVector4(-2400.f, 700.f, 700.f, 600.f), FVector4(-1200.f, 1700.f, 1500.f, 900.f), FVector4(300.f, 2300.f, 1900.f, 950.f),
+		FVector4(1800.f, 2300.f, 1750.f, 850.f), FVector4(2900.f, 2050.f, 1500.f, 700.f), FVector4(3800.f, 1650.f, 950.f, 600.f),
+		FVector4(5200.f, 1350.f, 780.f, 560.f), FVector4(6800.f, 1150.f, 700.f, 540.f), FVector4(8000.f, 1000.f, 760.f, 520.f),
+		FVector4(8900.f, 600.f, 480.f, 400.f), FVector4(9300.f, 80.f, 80.f, 80.f) };
+	const TArray<FVector4> Lower = {
+		FVector4(-300.f, 1500.f, 200.f, 700.f), FVector4(1200.f, 1750.f, 220.f, 850.f), FVector4(3000.f, 1550.f, 200.f, 750.f),
+		FVector4(5000.f, 1250.f, 180.f, 600.f), FVector4(6800.f, 1000.f, 170.f, 520.f), FVector4(7900.f, 700.f, 160.f, 420.f),
+		FVector4(8500.f, 80.f, 60.f, 80.f) };
+	auto Sample = [](const TArray<FVector4>& S, float X)
+	{
+		for (int32 i = 0; i + 1 < S.Num(); ++i)
+		{
+			if (X <= S[i + 1].X) { return FMath::Lerp(S[i], S[i + 1], FMath::Clamp((X - S[i].X) / (S[i + 1].X - S[i].X), 0.f, 1.f)); }
+		}
+		return S.Last();
+	};
+	const float UpperZ = 200.f;
+	Loft(HeadRoot, Upper, UpperZ, K, Skin);
 	for (int32 Side = -1; Side <= 1; Side += 2)
 	{
-		// Eyes under the brow, horns sweeping back, a row of teeth along the upper jaw.
-		AddPart(HeadRoot, TEXT("Sphere"), FVector(3300.f, Side * 1500.f, 950.f) * K, FRotator::ZeroRotator, FVector(8.f, 5.f, 6.f) * K, EyeMID);
-		AddPart(HeadRoot, TEXT("Cone"), FVector(-1200.f, Side * 1300.f, 2300.f) * K, FRotator(55.f, Side * 18.f, 0.f), FVector(9.f, 9.f, 50.f) * K, HideMID);
-		AddPart(HeadRoot, TEXT("Cone"), FVector(-600.f, Side * 2100.f, 1300.f) * K, FRotator(70.f, Side * 40.f, 0.f), FVector(7.f, 7.f, 34.f) * K, HideMID);
-		for (int32 t = 0; t < 6; ++t)
+		// Eyes under the brow, horns sweeping back, fins behind the jaw, teeth along the upper jaw.
+		AddPart(HeadRoot, TEXT("Sphere"), FVector(3350.f, Side * 1480.f, 880.f) * K, FRotator(0.f, Side * 25.f, 0.f), FVector(7.f, 4.f, 4.5f) * K, EyeMID);
+		AddPart(HeadRoot, TEXT("Cone"), FVector(-1500.f, Side * 1300.f, 2500.f) * K, FRotator(58.f, Side * 16.f, 0.f), FVector(9.f, 9.f, 70.f) * K, HideMID);
+		AddPart(HeadRoot, TEXT("Cone"), FVector(-900.f, Side * 2200.f, 1500.f) * K, FRotator(72.f, Side * 38.f, 0.f), FVector(7.f, 7.f, 46.f) * K, HideMID);
+		for (int32 j = 0; j < 3; ++j)
 		{
-			AddPart(HeadRoot, TEXT("Cone"), FVector(3200.f + t * 900.f, Side * (1250.f - t * 150.f), -350.f) * K, FRotator(180.f, 0.f, 0.f), FVector(3.2f, 3.2f, 9.f - t * 0.6f) * K, nullptr);
+			AddPart(HeadRoot, TEXT("Cone"), FVector(-700.f - j * 500.f, Side * 2100.f, 100.f - j * 380.f) * K, FRotator(72.f, Side * (58.f + j * 10.f), 0.f), FVector(3.f, 11.f, 40.f - j * 6.f) * K, HideMID);
 		}
+		for (int32 t = 0; t < 9; ++t)
+		{
+			const float X = 3300.f + t * 640.f;
+			const FVector4 S = Sample(Upper, X);
+			const bool bFang = t == 7;
+			AddPart(HeadRoot, TEXT("Cone"), FVector(X, Side * S.Y * 0.8f, UpperZ - S.W * 0.75f - (bFang ? 500.f : 250.f)) * K, FRotator(180.f, 0.f, 0.f), FVector(bFang ? 5.f : 3.4f, bFang ? 5.f : 3.4f, bFang ? 17.f : 10.f - t * 0.4f) * K, nullptr);
+		}
+	}
+	// A crest of flat spines down the middle of the skull.
+	for (int32 i = 0; i < 6; ++i)
+	{
+		const float X = 2500.f - i * 850.f;
+		const FVector4 S = Sample(Upper, X);
+		AddPart(HeadRoot, TEXT("Cone"), FVector(X - 300.f, 0.f, UpperZ + S.Z + 500.f) * K, FRotator(38.f + i * 5.f, 0.f, 0.f), FVector(6.f, 2.f, 24.f - i * 2.f) * K, HideMID);
 	}
 	// Lower jaw on a hinge at the back of the skull, so it can drop open. The maw is dark red inside.
 	JawRoot = NewObject<USceneComponent>(this, TEXT("JawRoot"));
@@ -245,13 +279,16 @@ void ADCKrakenHead::BeginPlay()
 	JawRoot->SetupAttachment(HeadRoot);
 	JawRoot->SetRelativeLocation(FVector(600.f, 0.f, -700.f) * K);
 	JawRoot->RegisterComponent();
-	AddPart(JawRoot, TEXT("Cone"), FVector(4300.f, 0.f, -300.f) * K, FRotator(-90.f, 0.f, 0.f), FVector(24.f, 11.f, 56.f) * K, HideMID);
-	AddPart(JawRoot, TEXT("Sphere"), FVector(2800.f, 0.f, 150.f) * K, FRotator::ZeroRotator, FVector(46.f, 20.f, 5.f) * K, MawMID);
+	Loft(JawRoot, Lower, 0.f, K, Skin);
+	AddPart(JawRoot, TEXT("Sphere"), FVector(3600.f, 0.f, 230.f) * K, FRotator::ZeroRotator, FVector(60.f, 22.f, 3.f) * K, MawMID);
+	AddPart(HeadRoot, TEXT("Sphere"), FVector(4300.f, 0.f, UpperZ - 620.f) * K, FRotator::ZeroRotator, FVector(64.f, 22.f, 3.f) * K, MawMID);
 	for (int32 Side = -1; Side <= 1; Side += 2)
 	{
-		for (int32 t = 0; t < 5; ++t)
+		for (int32 t = 0; t < 8; ++t)
 		{
-			AddPart(JawRoot, TEXT("Cone"), FVector(3000.f + t * 850.f, Side * (950.f - t * 120.f), 350.f) * K, FRotator::ZeroRotator, FVector(2.8f, 2.8f, 7.5f - t * 0.5f) * K, nullptr);
+			const float X = 2600.f + t * 700.f;
+			const FVector4 S = Sample(Lower, X);
+			AddPart(JawRoot, TEXT("Cone"), FVector(X, Side * S.Y * 0.8f, S.Z + 250.f) * K, FRotator::ZeroRotator, FVector(3.f, 3.f, 9.f - t * 0.4f) * K, nullptr);
 		}
 	}
 	// Spines for the neck; placed every frame in UpdateNeck.
@@ -335,7 +372,7 @@ void ADCKrakenHead::Tick(float DeltaSeconds)
 		if (Since > -0.4f && Since < 4.5f) { Roaring = FMath::Clamp(FMath::Min((Since + 0.4f) / 0.6f, (4.5f - Since) / 1.2f), 0.f, 1.f); }
 	}
 	JawOpen = FMath::FInterpTo(JawOpen, Roaring, DeltaSeconds, 4.f);
-	if (JawRoot) { JawRoot->SetRelativeRotation(FRotator(-(9.f + 30.f * JawOpen + 2.f * FMath::Sin(Clock * 1.3f)), 0.f, 0.f)); }
+	if (JawRoot) { JawRoot->SetRelativeRotation(FRotator(-(10.f + 38.f * JawOpen + 2.f * FMath::Sin(Clock * 1.3f)), 0.f, 0.f)); }
 
 	// Rise out of the crater floor, with a slow heave once up. Its face (local +Y) turns to the ship.
 	const FVector Floor = Director->GetWhirlFloorLocal();
@@ -366,4 +403,68 @@ void ADCKrakenHead::Tick(float DeltaSeconds)
 		const float Pulse = 5.f + 1.5f * FMath::Sin(Clock * 1.7f) + EyeFlare * 10.f + JawOpen * 8.f;
 		EyeMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(1.f, 0.6f, 0.1f) * Pulse);
 	}
+}
+
+UProceduralMeshComponent* ADCKrakenHead::Loft(USceneComponent* Parent, const TArray<FVector4>& Stations, float CentreZ, float Scale, UMaterialInterface* Material)
+{
+	// A skin stretched over a row of cross-sections. Each station is (x, half width, height above
+	// the centre line, depth below it); the top is rounded and the underside flatter. Stations are
+	// subdivided with a smooth curve so the profile has no corners.
+	const int32 Sides = 20;
+	const int32 Sub = 5;
+	TArray<FVector> Verts, Normals;
+	TArray<FVector2D> UVs;
+	TArray<FColor> Colors;
+	TArray<int32> Tris;
+	const int32 Rings = (Stations.Num() - 1) * Sub + 1;
+	for (int32 r = 0; r < Rings; ++r)
+	{
+		const int32 i = FMath::Min(r / Sub, Stations.Num() - 2);
+		const float T = static_cast<float>(r - i * Sub) / Sub;
+		const FVector4& P0 = Stations[FMath::Max(i - 1, 0)];
+		const FVector4& P1 = Stations[i];
+		const FVector4& P2 = Stations[i + 1];
+		const FVector4& P3 = Stations[FMath::Min(i + 2, Stations.Num() - 1)];
+		FVector4 S;
+		for (int32 c = 0; c < 4; ++c) { S[c] = FMath::CubicCRSplineInterp(P0[c], P1[c], P2[c], P3[c], 0.f, 1.f, 2.f, 3.f, 1.f + T); }
+		S.X = FMath::Lerp(P1.X, P2.X, T);
+		for (int32 s = 0; s <= Sides; ++s)
+		{
+			const float A = 2.f * UE_PI * s / Sides;
+			const float C = FMath::Cos(A), Sn = FMath::Sin(A);
+			const float Y = FMath::Max(S.Y, 10.f) * FMath::Sign(C) * FMath::Pow(FMath::Abs(C), 0.8f);
+			const float Z = Sn >= 0.f ? FMath::Max(S.Z, 10.f) * FMath::Pow(Sn, 0.9f) : -FMath::Max(S.W, 10.f) * FMath::Pow(-Sn, 0.6f);
+			Verts.Add(FVector(S.X, Y, CentreZ + Z) * Scale);
+			UVs.Add(FVector2D(S.X * Scale / 400.f, static_cast<float>(s) / Sides * 6.f));
+			Colors.Add(FLinearColor(FMath::Clamp(-Sn * 2.f, 0.f, 1.f), 0.5f + 0.5f * C, static_cast<float>(r) / (Rings - 1), 1.f).ToFColor(false));
+		}
+	}
+	Normals.SetNum(Verts.Num());
+	auto At = [&](int32 r, int32 s) { return Verts[FMath::Clamp(r, 0, Rings - 1) * (Sides + 1) + ((s % Sides) + Sides) % Sides]; };
+	for (int32 r = 0; r < Rings; ++r)
+	{
+		for (int32 s = 0; s <= Sides; ++s)
+		{
+			FVector N = FVector::CrossProduct(At(r, s + 1) - At(r, s - 1), At(r + 1, s) - At(r - 1, s)).GetSafeNormal();
+			const FVector Out = At(r, s) - FVector(At(r, s).X, 0.f, CentreZ * Scale);
+			if (FVector::DotProduct(N, Out) < 0.f) { N = -N; }
+			Normals[r * (Sides + 1) + s] = N;
+		}
+	}
+	for (int32 r = 0; r < Rings - 1; ++r)
+	{
+		for (int32 s = 0; s < Sides; ++s)
+		{
+			const int32 A = r * (Sides + 1) + s, B = A + Sides + 1;
+			Tris.Append({ A, B, A + 1, A + 1, B, B + 1 });
+		}
+	}
+	UProceduralMeshComponent* Part = NewObject<UProceduralMeshComponent>(this);
+	Part->SetMobility(EComponentMobility::Movable);
+	Part->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Part->SetupAttachment(Parent);
+	Part->RegisterComponent();
+	Part->CreateMeshSection(0, Verts, Tris, Normals, UVs, Colors, TArray<FProcMeshTangent>(), false);
+	if (Material) { Part->SetMaterial(0, Material); }
+	return Part;
 }

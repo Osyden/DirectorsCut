@@ -324,7 +324,7 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 	Sun->SetLightColor(Env.SunColor);
 	Sun->SetRelativeRotation(FRotator(Env.SunPitch, Env.SunYaw, 0.f));
 	// God rays and cloud shadows scale with how much sun there is.
-	Sun->SetBloomScale(0.32f * FMath::Clamp(Env.SunIntensity / 8.f, 0.f, 1.f));
+	Sun->SetBloomScale(0.22f * FMath::Clamp(Env.SunIntensity / 8.f, 0.f, 1.f));
 
 	SkyLight->SetIntensity(Env.SkyIntensity);
 	// Tint ambient light toward the fog so the sea does not mirror a blue sky that is not there.

@@ -2,6 +2,20 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 16:09 — leviathan head rebuilt; it now towers over the ship (set 13)
+
+Review set: `taskboard/review/13-leviathan-head/` (six helm frames through the maelstrom, normal game speed). No new inbox messages.
+
+- **The head is a modelled skull now, not a mask of simple shapes.** Skull, brow, long muzzle and lower jaw are lofted skins in the creature's own hide material, with a crest of flat spines, longer horns, fins behind the jaw, rows of teeth and a pair of fangs. Still generated in code.
+- **It holds a three-quarter view to the ship** so the long jaw shows in profile, and throws its head back and opens wider for each roar.
+- **Neck is longer** (about 920 m from the pit floor to the head), so the head stands well above the ship's horizon instead of level with it, and the centre of the maelstrom sits a little further to starboard, clear of the masts.
+- **The weave pattern on distant water is gone.** Fine foam and ripple detail now fades out before it gets smaller than a pixel.
+- Light shafts are a third weaker; they were washing out the creature.
+- Against the reference: a colossal dragon-like head with open jaws over a vast bowl, rim and falls behind, sun through cloud. Still short: the body below the neck is hidden by the bow most of the time; the hide is one dark tone and needs lighter belly and wet highlights to read in haze; no water streaming off it; the arms round its base are still thin for the new scale.
+- Correction: the times on my last three entries (16:05, 16:12, and "read 16:08" in the inbox) were a few minutes ahead of the clock. This one is from the clock.
+
+Next: fog and clouds (item 4 of the 15:21 message), then a fresh packaged build.
+
 ## Thu 12 Nov 16:12 — 15:40 and 15:41 messages read: I cannot download the ruins pack from here
 
 **Result: blocked, needs two minutes of the owner at the PC.** What I checked:

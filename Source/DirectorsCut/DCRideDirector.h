@@ -83,7 +83,7 @@ public:
 	/** The centre of the maelstrom starts this far from the ship and ends this far, on this bearing (degrees to starboard of the bow). */
 	UPROPERTY(EditAnywhere) float WhirlStartDistance = 120000.f;
 	UPROPERTY(EditAnywhere) float WhirlEndDistance = 96000.f;
-	UPROPERTY(EditAnywhere) float WhirlBearing = 12.f;
+	UPROPERTY(EditAnywhere) float WhirlBearing = 15.f;
 	/** Seconds of ride time since the maelstrom phase began (0 before it). */
 	float MaelstromElapsed = 0.f;
 	/** Height of the swell that lifts the ship in the maelstrom, cm, and how much of it is up right now. */

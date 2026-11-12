@@ -194,10 +194,16 @@ float2 q = p * 0.004;
 float n = sin(q.x * 1.7 + sin(q.y * 2.3 + T * 0.4)) * sin(q.y * 1.3 - sin(q.x * 2.9 - T * 0.3));
 float n2 = sin(p.x * 0.011 + n * 2.0) * sin(p.y * 0.013 - T * 0.6) * 0.5 + 0.5;
 float n3 = sin(p.x * 0.031 - p.y * 0.017 + T) * sin(p.y * 0.037 + p.x * 0.009) * 0.5 + 0.5;
+// Past a few hundred metres these patterns are finer than a pixel and only alias into a weave,
+// so they fade to their averages with distance.
+float nearFade = saturate(1.0 - Dist / 30000.0);
+n *= nearFade;
+n2 = lerp(0.5, n2, nearFade);
+n3 = lerp(0.5, n3, nearFade);
 float crest = saturate((h - 1.5) * 1.6 + sharp * 0.3 - 0.1);
 float f = saturate(crest * 1.6 - (0.35 + 0.45 * n2 + 0.35 * n3) * (1.2 - crest));
 // Streaks that follow the flow: strong inside the tube and on the funnel wall.
-float streak = saturate(sin(p.y * 0.006 + n * 3.0) * sin(p.x * 0.0007 + n2 * 2.0) - 0.55) * 2.2;
+float streak = saturate(sin(p.y * 0.006 + n * 3.0) * sin(p.x * 0.0007 + n2 * 2.0) - 0.55) * 2.2 * nearFade;
 float wr = max(Whirl.w, 1.0);
 float2 rel = P.xy - Whirl.xy;
 float funnel = saturate(Whirl.z / 20000.0) / (1.0 + dot(rel, rel) / (wr * wr));
@@ -215,7 +221,7 @@ if (Crater.y > 1.0)
     float churn = saturate(1.0 - abs(rr - (Crater.x - Crater.z * 1.8)) / (Crater.z * 1.2));
     float inside = saturate((Crater.x - rr) / Crater.x);
     float arms = saturate(sin(ang * 5.0 + log(max(rr, 100.0)) * 9.0 + T * 0.35) * 0.5 + 0.5 - 0.62) * 2.6;
-    float armNoise = 0.6 + 0.4 * sin(rr * 0.004 + ang * 23.0 + n2 * 3.0);
+    float armNoise = 0.62 + 0.38 * sin(log(max(rr, 100.0)) * 17.0 - ang * 9.0 + T * 0.2) * sin(ang * 13.0 + log(max(rr, 100.0)) * 5.0);
     f = saturate(f + wall * falls * 1.3 + churn * (0.6 + 0.4 * n2) + arms * armNoise * inside * (0.35 + 0.65 * saturate(1.0 - rr / (Crater.x * 0.8))));
 }
 return f;
