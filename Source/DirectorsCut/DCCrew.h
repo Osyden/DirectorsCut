@@ -60,6 +60,9 @@ protected:
 	UPROPERTY() TObjectPtr<class UAnimationAsset> WalkAnim;
 	bool bWalking = false;
 	void SetWalking(bool bWalk);
+	bool MoveToward(const FVector& Target, float DeltaSeconds);
+	void TickTroubles(float DeltaSeconds, struct FDCStation* Station);
+	float WorkTime = 0.f;
 
 	float MoveSpeed = 350.f;
 	EDCAction HelmOrder = EDCAction::Steady;

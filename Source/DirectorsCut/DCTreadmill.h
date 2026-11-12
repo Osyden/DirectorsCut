@@ -68,6 +68,8 @@ public:
 	UPROPERTY(EditAnywhere) float DespawnDistance = 12000.f;
 	UPROPERTY(EditAnywhere) float LaneLimit = 5000.f;
 	UPROPERTY(EditAnywhere) float LaneSpeed = 900.f;
+	/** 1 = full helm response; lowered while the rigging is loose. */
+	float SteerAuthority = 1.f;
 	UPROPERTY(EditAnywhere) float ShipHalfLength = 2200.f;
 	UPROPERTY(EditAnywhere) float ShipHalfWidth = 500.f;
 

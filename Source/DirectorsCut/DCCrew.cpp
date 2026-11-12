@@ -3,6 +3,7 @@
 #include "DCRideDirector.h"
 #include "DCVoice.h"
 #include "DCGunnery.h"
+#include "DCTroubles.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -235,7 +236,7 @@ void ADCCrewMember::Tick(float DeltaSeconds)
 		{
 		case EDCStationType::Helm: TickHelm(DeltaSeconds, Treadmill); break;
 		case EDCStationType::Cannons: TickCannons(DeltaSeconds, Treadmill, Station->Side); break;
-		default: break;
+		default: TickTroubles(DeltaSeconds, Station); break;
 		}
 	}
 }
@@ -510,5 +511,64 @@ void UDCCrewSubsystem::Report(const FString& Text, bool bUrgent)
 	else
 	{
 		Say(Speaker->CrewName, Text);
+	}
+}
+
+bool ADCCrewMember::MoveToward(const FVector& Target, float DeltaSeconds)
+{
+	const FVector Here = GetActorLocation();
+	if (FVector::DistSquared(Here, Target) < 25.f)
+	{
+		SetWalking(false);
+		return true;
+	}
+	SetActorLocation(FMath::VInterpConstantTo(Here, Target, DeltaSeconds, MoveSpeed));
+	const FVector Dir = (Target - Here).GetSafeNormal2D();
+	if (!Dir.IsNearlyZero()) { SetActorRotation(FRotator(0.f, Dir.Rotation().Yaw, 0.f)); }
+	SetWalking(true);
+	return false;
+}
+
+void ADCCrewMember::TickTroubles(float DeltaSeconds, FDCStation* Station)
+{
+	ADCTroubles* Troubles = ADCTroubles::Get(this);
+	UDCCrewSubsystem* Sub = GetWorld()->GetSubsystem<UDCCrewSubsystem>();
+	if (!Troubles || !Sub) { return; }
+
+	if (Station->Type == EDCStationType::Rigging)
+	{
+		// Six seconds of hauling makes the sail fast again.
+		if (Troubles->IsRiggingLoose() && Troubles->RepairRigging(DeltaSeconds / 6.f))
+		{
+			Sub->Report(TEXT("Sail is made fast again, Captain."), true);
+		}
+		return;
+	}
+
+	// Fire watch: go to the nearest fire, work on it, come back to the buckets when the deck is clear.
+	FVector Fire;
+	if (Troubles->NearestFire(GetActorLocation(), Fire))
+	{
+		FVector Away = (GetActorLocation() - Fire).GetSafeNormal2D();
+		if (Away.IsNearlyZero()) { Away = FVector(-1.f, 0.f, 0.f); }
+		if (MoveToward(Fire + Away * 120.f + FVector(0.f, 0.f, 90.f), DeltaSeconds))
+		{
+			SetActorRotation(FRotator(0.f, (-Away).Rotation().Yaw, 0.f));
+			WorkTime += DeltaSeconds;
+			if (WorkTime > 3.f)
+			{
+				WorkTime = 0.f;
+				Troubles->ExtinguishNear(Fire);
+				Sub->Report(Troubles->NumFires() ? TEXT("That one is out! More still burning!") : TEXT("Fire is out, Captain!"), true);
+			}
+		}
+		else
+		{
+			WorkTime = 0.f;
+		}
+	}
+	else
+	{
+		MoveToward(Station->Location + FVector(0.f, 0.f, 90.f), DeltaSeconds);
 	}
 }

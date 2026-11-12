@@ -3,6 +3,7 @@
 #include "DCTreadmill.h"
 #include "DCGunnery.h"
 #include "DCRideDirector.h"
+#include "DCTroubles.h"
 #include "Camera/CameraComponent.h"
 #include "Camera/CameraActor.h"
 #include "Components/CapsuleComponent.h"
@@ -86,6 +87,35 @@ void ADCPlayerCharacter::TickOnFoot(APlayerController* PC)
 	AddMovementInput(YawRot.Vector(), F);
 	AddMovementInput(FRotationMatrix(YawRot).GetUnitAxis(EAxis::Y), R);
 	if (PC->WasInputKeyJustPressed(EKeys::SpaceBar)) { Jump(); }
+
+	// Troubles the captain can deal with by hand.
+	Prompt.Reset();
+	if (ADCTroubles* Troubles = ADCTroubles::Get(this))
+	{
+		const float Dt = GetWorld()->GetDeltaSeconds();
+		FVector Fire;
+		if (Troubles->NearestFire(GetActorLocation(), Fire) && FVector::Dist2D(Fire, GetActorLocation()) < 280.f)
+		{
+			Prompt = TEXT("Hold E   beat out the flames");
+			HoldTime = PC->IsInputKeyDown(EKeys::E) ? HoldTime + Dt : 0.f;
+			if (HoldTime > 1.8f) { HoldTime = 0.f; Troubles->ExtinguishNear(Fire, 350.f); }
+			return;
+		}
+		if (Troubles->IsRiggingLoose())
+		{
+			if (UDCCrewSubsystem* CrewSub = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
+			{
+				const FDCStation* Rig = CrewSub->GetStation(CrewSub->FindStation(EDCStationType::Rigging, EDCSide::None));
+				if (Rig && FVector::Dist2D(Rig->Location, GetActorLocation()) < InteractRange)
+				{
+					Prompt = FString::Printf(TEXT("Hold E   haul the sail in   %d%%"), FMath::RoundToInt(Troubles->GetRiggingProgress() * 100.f));
+					if (PC->IsInputKeyDown(EKeys::E)) { Troubles->RepairRigging(Dt / 4.f); }
+					return;
+				}
+			}
+		}
+	}
+	HoldTime = 0.f;
 
 	// Nearest station the captain can take personally.
 	Prompt.Reset();

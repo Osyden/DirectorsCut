@@ -30,7 +30,7 @@ public:
 	virtual void Tick(float DeltaSeconds) override;
 
 	UFUNCTION(BlueprintCallable) void Seek(float NewTime);
-	UFUNCTION(BlueprintCallable) void DamageShip(float Amount);
+	UFUNCTION(BlueprintCallable) void DamageShip(float Amount, bool bQuiet = false);
 
 	EDCPhase GetPhase() const { return CurrentPhase; }
 	const FDCEnvState& GetEnv() const { return Env; }

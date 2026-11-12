@@ -8,6 +8,7 @@
 #include "DCKraken.h"
 #include "DCAudio.h"
 #include "DCWeatherFX.h"
+#include "DCTroubles.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -54,6 +55,19 @@ void ADCHUD::DrawHUD()
 		if (V->IsListening())
 		{
 			DrawText(TEXT("LISTENING..."), FLinearColor(1.f, 0.3f, 0.2f), Canvas->SizeX * 0.5f - 70.f, Canvas->SizeY - 110.f, Font, 1.8f);
+		}
+	}
+	if (ADCTroubles* Troubles = ADCTroubles::Get(this))
+	{
+		float AlertY = 112.f;
+		if (Troubles->NumFires() > 0)
+		{
+			DrawText(FString::Printf(TEXT("FIRE ON DECK  x%d"), Troubles->NumFires()), FLinearColor(1.f, 0.45f, 0.1f), 40.f, AlertY, Font, 1.5f);
+			AlertY += 30.f;
+		}
+		if (Troubles->IsRiggingLoose())
+		{
+			DrawText(TEXT("RIGGING LOOSE  -  helm sluggish"), FLinearColor(1.f, 0.85f, 0.3f), 40.f, AlertY, Font, 1.5f);
 		}
 	}
 	if (ADCPlayerCharacter* Captain = Cast<ADCPlayerCharacter>(GetOwningPawn()))
@@ -210,6 +224,14 @@ void ADCGameMode::StartPlay()
 	Crew->AddStation(EDCStationType::Cannons, EDCSide::Starboard, DeckAt(GunS.X, GunS.Y - 150.f, MainTop));
 	Crew->AddStation(EDCStationType::Fire, EDCSide::None, DeckAt(GunS.X - 200.f, 60.f, MainTop));
 	Crew->AddStation(EDCStationType::Rigging, EDCSide::None, DeckAt(GunS.X + 420.f, 120.f, MainTop));
+
+	// Troubles: where fires may start (main deck and quarterdeck, clear of the stations).
+	ADCTroubles* Troubles = World->SpawnActor<ADCTroubles>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
+	for (const FVector2D& P : { FVector2D(GunS.X + 250.f, -120.f), FVector2D(GunS.X - 80.f, 140.f), FVector2D(GunS.X + 520.f, 60.f), FVector2D(GunS.X - 330.f, -150.f) })
+	{
+		Troubles->DeckPoints.Add(DeckAt(P.X, P.Y, MainTop));
+	}
+	Troubles->DeckPoints.Add(DeckAt(Wheel.X - 330.f, -170.f, Wheel.Z + 120.f));
 
 	Crew->SpawnCrew(TEXT("Finch"), FLinearColor(0.9f, 0.7f, 0.2f), DeckAt(Wheel.X - 60.f, -180.f, Wheel.Z + 120.f));
 	Crew->SpawnCrew(TEXT("Marlow"), FLinearColor(0.3f, 0.7f, 0.9f), DeckAt(GunS.X + 150.f, 80.f, MainTop));

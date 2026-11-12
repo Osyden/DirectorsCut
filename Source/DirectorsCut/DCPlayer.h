@@ -56,6 +56,7 @@ protected:
 	TSharedPtr<class SWidget> OrderRoot;
 	TSharedPtr<class SEditableTextBox> OrderBox;
 	bool bTyping = false;
+	float HoldTime = 0.f;
 
 public:
 	virtual void EndPlay(const EEndPlayReason::Type Reason) override;

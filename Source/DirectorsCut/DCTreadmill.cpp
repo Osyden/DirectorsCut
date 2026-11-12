@@ -161,7 +161,7 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 	const FDCEnvState& Env = Director->GetEnv();
 	const float Speed = Env.ShipSpeed * Director->TimeScale;
 
-	LaneOffset = FMath::Clamp(LaneOffset + Steer * LaneSpeed * DeltaSeconds, -LaneLimit, LaneLimit);
+	LaneOffset = FMath::Clamp(LaneOffset + Steer * LaneSpeed * SteerAuthority * DeltaSeconds, -LaneLimit, LaneLimit);
 
 	SpawnForPhase(Director->GetPhase(), DeltaSeconds * Director->TimeScale);
 

@@ -99,7 +99,7 @@ void ADCRideDirector::BuildDefaultPhases()
 	}
 	{
 		FDCEnvState& E = Add(EDCPhase::Hell, 270.f, 8.f);
-		E.FogColor = FLinearColor(0.5f, 0.09f, 0.02f); E.FogDensity = 0.07f; E.FogHeightFalloff = 0.03f;
+		E.FogColor = FLinearColor(0.35f, 0.06f, 0.015f); E.FogDensity = 0.06f; E.FogHeightFalloff = 0.003f;
 		E.SunColor = FLinearColor(1.f, 0.3f, 0.1f); E.SunIntensity = 2.5f; E.SunPitch = -35.f; E.SkyIntensity = 0.5f;
 		E.SeaColor = FLinearColor(0.02f, 0.006f, 0.003f); E.SeaRoughness = 3.5f; E.ShipSpeed = 1600.f; E.WaveHeight = 170.f; E.Foam = 1.2f; E.SeaGlow = FLinearColor(10.f, 1.5f, 0.1f); E.Exposure = 0.3f; E.Tube = 0.3f;
 	}
@@ -163,10 +163,10 @@ void ADCRideDirector::Seek(float NewTime)
 	RideTime = FMath::Max(0.f, NewTime);
 }
 
-void ADCRideDirector::DamageShip(float Amount)
+void ADCRideDirector::DamageShip(float Amount, bool bQuiet)
 {
 	ShipHealth = FMath::Max(0.f, ShipHealth - Amount);
-	UE_LOG(LogDC, Log, TEXT("Ship hit for %.0f, health %.0f"), Amount, ShipHealth);
+	if (!bQuiet) { UE_LOG(LogDC, Log, TEXT("Ship hit for %.0f, health %.0f"), Amount, ShipHealth); }
 }
 
 void ADCRideDirector::Tick(float DeltaSeconds)

@@ -101,3 +101,25 @@ mel.connect_material_property(rgb, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR
 mel.connect_material_property(alpha, "", unreal.MaterialProperty.MP_OPACITY)
 mel.recompile_material(mat)
 unreal.log_warning("DC_RESULT M_Ghost saved=%s" % unreal.EditorAssetLibrary.save_asset(path, only_if_is_dirty=False))
+
+# ---- M_Flame: glowing tongue of fire for a stretched cone. Hot at the root, fading to nothing at the tip.
+mat, path = new_material("M_Flame")
+mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_ADDITIVE)
+mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+mat.set_editor_property("two_sided", True)
+lp = mel.create_material_expression(mat, unreal.MaterialExpressionLocalPosition, -900, 0)
+time = mel.create_material_expression(mat, unreal.MaterialExpressionTime, -900, 200)
+wp = mel.create_material_expression(mat, unreal.MaterialExpressionWorldPosition, -900, 300)
+FLAME = """
+float h = saturate(L.z / 100.0 + 0.5);
+float flick = 0.7 + 0.3 * sin(T * 13.0 + P.x * 0.05) * sin(T * 9.0 + P.y * 0.07);
+float3 hot = lerp(float3(9.0, 3.2, 0.5), float3(3.0, 0.35, 0.02), h);
+return hot * pow(1.0 - h, 1.5) * flick;
+"""
+f = custom(mat, FLAME, unreal.CustomMaterialOutputType.CMOT_FLOAT3, ["L", "T", "P"], -500, 100)
+mel.connect_material_expressions(lp, "", f, "L")
+mel.connect_material_expressions(time, "", f, "T")
+mel.connect_material_expressions(wp, "", f, "P")
+mel.connect_material_property(f, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+mel.recompile_material(mat)
+unreal.log_warning("DC_RESULT M_Flame saved=%s" % unreal.EditorAssetLibrary.save_asset(path, only_if_is_dirty=False))
