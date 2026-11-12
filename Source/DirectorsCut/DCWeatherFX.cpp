@@ -81,7 +81,7 @@ void ADCWeatherFX::Tick(float DeltaSeconds)
 
 	// Rain; inside the water tunnel the same streaks read as spray.
 	const float RainAmount = FMath::Clamp(Env.Rain + Env.Tube * 0.6f * (1.f - FMath::Min(Env.SeaGlow.R, 1.f)), 0.f, 1.f);
-	Rain->SetVisibility(RainAmount > 0.01f);
+	Rain->SetVisibility(RainAmount > 0.01f && !Director->bUDS);   // the sky pack brings its own rain
 	const float Wind = FMath::Clamp(Env.WaveHeight / 300.f, 0.2f, 1.3f);
 	RainMID->SetVectorParameterValue(TEXT("Motion"), FLinearColor(2400.f + 900.f * Wind, 110.f + 60.f * Wind, 1.5f, Wind));
 	// Unlit, so brightness follows the scene by hand: dim normally, bright in a lightning flash.

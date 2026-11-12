@@ -2,6 +2,16 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 20:25 — Atlantis rebuilt from the ruins pack (set 21); Ultra Dynamic Sky wired in but not working yet
+
+Owner's first playtest is in `PLAYTEST-1.md`. Fab packs in the project and ignored by git: AncientRuins, Kraken, UltraDynamicSky.
+
+- **Atlantis is now built from Modular Ancient Ruins** (`DCRuins.cpp`): gateways across the course, the pack's four monumental arches, temples, colonnades, statues on plinths, broken columns and crags as lane obstacles. Review set `taskboard/review/21-atlantis-ruins-pack/`; best frames `a_bow_0100`, `a_bow_0125`. Falls back to the old placeholder shapes if the pack is missing.
+- **Ultra Dynamic Sky:** the ride director can spawn the pack's sky and weather and drive sun position, cloud cover, fog, rain and wind from the ride phases. **It does not look right yet**: the sky comes up as a purple dusk with no clouds, and the sea glows bright cyan under the pack's auto exposure. So it is off by default; `-DCUDS` turns it on. With it on, the storm front, portal and cloud faces are not drawn (they live in the old cloud layer).
+- Next on the sky: find why sun position and clouds do not apply (likely the sun/time settings need the pack's own update call), fix the sea's brightness under auto exposure, then decide how the front, portal and faces coexist with the pack's clouds.
+- Not started from the playtest list: wheel camera, ship turning and momentum, cannon feedback, station markers, wetness.
+- The packaged build is still the 19:02 one (no ruins).
+
 ## Thu 12 Nov 19:05 — packaged build current (includes faces and portal)
 
 `E:\projects\directorscut\Builds\Windows\DirectorsCut.exe` (built 19:02) contains everything up to commit `f20e631`. Full unattended voyage in the packaged build at 5x with crew AI and stand-in captain: all phases in order, no errors, servers shut down on exit, 78% hull at the end, 132 to 168 fps at 720p with DLSS. Sound, microphone and hands-on play not verified.

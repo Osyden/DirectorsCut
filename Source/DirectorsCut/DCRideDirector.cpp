@@ -8,6 +8,7 @@
 #include "Components/PointLightComponent.h"
 #include "Components/VolumetricCloudComponent.h"
 #include "Engine/Texture.h"
+#include "Kismet/GameplayStatics.h"
 #include "ProceduralMeshComponent.h"
 #include "DCTreadmill.h"
 #include "DCCrew.h"
@@ -247,6 +248,7 @@ void ADCRideDirector::BeginPlay()
 		CurrentPhase = Phases[0].Phase;
 	}
 	ApplyEnv(0.f);
+	SetupUDS();
 }
 
 void ADCRideDirector::Seek(float NewTime)
@@ -401,7 +403,8 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 	}
 	// Thrown clear of the maelstrom: the screen whites out, then the calm sea fades in.
 	WhiteOut = FMath::Max(0.f, WhiteOut - DeltaSeconds / 3.5f);
-	PostProcess->Settings.AutoExposureBias = Env.Exposure + 7.f * WhiteOut * WhiteOut;
+	PostProcess->Settings.AutoExposureBias = (bUDS ? 0.f : Env.Exposure) + 7.f * WhiteOut * WhiteOut;
+	if (bUDS) { TickUDS(); }
 
 	// Sea motion: the world rocks, the ship does not.
 	const float T = RideTime;
@@ -593,4 +596,73 @@ void ADCRideDirector::BuildBolt()
 	Bolt->ClearAllMeshSections();
 	Bolt->CreateMeshSection(0, Verts, Tris, Normals, TArray<FVector2D>(), TArray<FColor>(), TArray<FProcMeshTangent>(), false);
 	if (BoltMID) { Bolt->SetMaterial(0, BoltMID); }
+}
+
+namespace
+{
+	void SkyNum(UObject* Obj, const TCHAR* Name, double Value)
+	{
+		if (!Obj) { return; }
+		if (FDoubleProperty* P = FindFProperty<FDoubleProperty>(Obj->GetClass(), Name)) { P->SetPropertyValue_InContainer(Obj, Value); }
+		else if (FIntProperty* I = FindFProperty<FIntProperty>(Obj->GetClass(), Name)) { I->SetPropertyValue_InContainer(Obj, static_cast<int32>(Value)); }
+		else { UE_LOG(LogDC, Warning, TEXT("UDS: no number '%s' on %s"), Name, *Obj->GetClass()->GetName()); }
+	}
+	void SkyFlag(UObject* Obj, const TCHAR* Name, bool bValue)
+	{
+		if (!Obj) { return; }
+		if (FBoolProperty* P = FindFProperty<FBoolProperty>(Obj->GetClass(), Name)) { P->SetPropertyValue_InContainer(Obj, bValue); }
+		else { UE_LOG(LogDC, Warning, TEXT("UDS: no flag '%s' on %s"), Name, *Obj->GetClass()->GetName()); }
+	}
+}
+
+void ADCRideDirector::SetupUDS()
+{
+	// Ultra Dynamic Sky (Content/UltraDynamicSky, a Fab pack that is not in the repo). When it is
+	// installed it takes over the sun, sky light, atmosphere, height fog, clouds and weather, and
+	// the ride drives it. Without it, or with -DCNoUDS, the director's own sky is used.
+	// Not working yet (sky comes up as dusk with no clouds, sea over-bright), so it is opt-in: -DCUDS.
+	if (!FParse::Param(FCommandLine::Get(), TEXT("DCUDS"))) { return; }
+	UClass* SkyClass = LoadClass<AActor>(nullptr, TEXT("/Game/UltraDynamicSky/Blueprints/Ultra_Dynamic_Sky.Ultra_Dynamic_Sky_C"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	UClass* WeatherClass = LoadClass<AActor>(nullptr, TEXT("/Game/UltraDynamicSky/Blueprints/Ultra_Dynamic_Weather.Ultra_Dynamic_Weather_C"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	if (!SkyClass || !WeatherClass) { return; }
+
+	// The engine renders one sky atmosphere and one cloud layer: the director's must be gone, not
+	// just hidden, before the pack's are registered.
+	Sun->UnregisterComponent();
+	SkyLight->UnregisterComponent();
+	Atmosphere->UnregisterComponent();
+	Fog->UnregisterComponent();
+	Clouds->UnregisterComponent();
+	UDSSky = GetWorld()->SpawnActorDeferred<AActor>(SkyClass, FTransform::Identity);
+	SkyFlag(UDSSky, TEXT("Manually Position Sun Target"), true);
+	SkyFlag(UDSSky, TEXT("Use Volumetric Fog"), true);
+	SkyFlag(UDSSky, TEXT("Enable Sun Light Shaft Bloom"), true);
+	SkyNum(UDSSky, TEXT("Time of Day"), 1300.0);
+	UGameplayStatics::FinishSpawningActor(UDSSky, FTransform::Identity);
+
+	UDSWeather = GetWorld()->SpawnActorDeferred<AActor>(WeatherClass, FTransform::Identity);
+	for (const TCHAR* Name : { TEXT("Cloud Coverage - Manual Override"), TEXT("Rain - Manual Override"), TEXT("Thunder/Lightning - Manual Override"), TEXT("Wind Intensity - Manual Override"), TEXT("Fog - Manual Override") })
+	{
+		SkyFlag(UDSWeather, Name, true);
+	}
+	SkyFlag(UDSWeather, TEXT("Enable Screen Droplets"), true);
+	UGameplayStatics::FinishSpawningActor(UDSWeather, FTransform::Identity);
+
+	bUDS = true;
+	// Exposure is the pack's from here; the director keeps only the white-out at the end.
+	PostProcess->Settings.bOverride_AutoExposureMethod = false;
+	PostProcess->Settings.bOverride_AutoExposureApplyPhysicalCameraExposure = false;
+	UE_LOG(LogDC, Log, TEXT("Sky: Ultra Dynamic Sky in use"));
+}
+
+void ADCRideDirector::TickUDS()
+{
+	// The director's light points down along its pitch; the pack wants where the sun stands.
+	SkyNum(UDSSky, TEXT("Sun Pitch"), -Env.SunPitch);
+	SkyNum(UDSSky, TEXT("Sun Yaw"), Env.SunYaw + 180.0);
+	SkyNum(UDSWeather, TEXT("Cloud Coverage"), FMath::Clamp(2.0 + 8.0 * Env.CloudCover, 0.0, 10.0));
+	SkyNum(UDSWeather, TEXT("Fog"), FMath::Clamp(Env.FogDensity * 250.0 + Env.Mist * 3.0, 0.0, 10.0));
+	SkyNum(UDSWeather, TEXT("Rain"), FMath::Clamp(Env.Rain * 10.0, 0.0, 10.0));
+	SkyNum(UDSWeather, TEXT("Wind Intensity"), FMath::Clamp(Env.WaveHeight / 30.0, 1.0, 10.0));
+	SkyNum(UDSWeather, TEXT("Thunder/Lightning"), 0.0);
 }

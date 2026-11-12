@@ -86,6 +86,8 @@ public:
 	UPROPERTY(EditAnywhere) float WhirlBearing = 15.f;
 	/** Seconds of ride time since the maelstrom phase began (0 before it). */
 	float MaelstromElapsed = 0.f;
+	/** True when Ultra Dynamic Sky is installed and has taken over sky, light, fog and weather. */
+	bool bUDS = false;
 	/** The storm front in the cloud volume: world X of its face, strength 0..1, radius of its tunnel mouth. Set by ADCFogFront. */
 	float StormFrontX = 400000.f;
 	float StormFrontStrength = 0.f;
@@ -117,6 +119,10 @@ protected:
 	UPROPERTY(VisibleAnywhere) TObjectPtr<class UProceduralMeshComponent> Sea;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> SeaMID;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> CloudMID;
+	UPROPERTY() TObjectPtr<AActor> UDSSky;
+	UPROPERTY() TObjectPtr<AActor> UDSWeather;
+	void SetupUDS();
+	void TickUDS();
 	UPROPERTY() TArray<TObjectPtr<class UTexture>> CloudNoise;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<class UPostProcessComponent> PostProcess;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<class UVolumetricCloudComponent> Clouds;
