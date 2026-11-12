@@ -7,7 +7,7 @@
 | Define the first playable slice | Done | Claude | See [PLAN.md](PLAN.md). |
 | M1 greybox (see plan) | Done | Claude | C++ module builds, ride director runs all phases, typed order moves a crew member, packaged build runs. |
 | M2 voice loop | In progress | Claude | Voice loop works in an unattended test; live mic untested; player-operated cannons and helm still to do. |
-| DLSS 4.5 plugin | In progress | Claude | Enabled and active in the editor build; still to confirm in a packaged build. |
+| DLSS 4.5 plugin | Done | Claude | Active in the packaged build (log shows DLSS-SR=1 and feature creation). |
 
 Claim a task here with your name and branch before editing. Use a separate Git worktree for parallel changes. Coordinate before editing the same Unreal map, Blueprint, or live editor session.
 

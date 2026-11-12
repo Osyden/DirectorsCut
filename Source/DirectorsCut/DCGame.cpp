@@ -7,6 +7,7 @@
 #include "DCGunnery.h"
 #include "DCKraken.h"
 #include "DCAudio.h"
+#include "DCWeatherFX.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -155,6 +156,7 @@ void ADCGameMode::StartPlay()
 	Director->SeaLevelZ = SeaLevelZ;
 	Treadmill = World->SpawnActor<ADCTreadmill>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
 	World->SpawnActor<ADCAudio>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
+	World->SpawnActor<ADCWeatherFX>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
 	if (!FParse::Param(FCommandLine::Get(), TEXT("DCNoVoice")))
 	{
 		World->SpawnActor<ADCVoice>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
