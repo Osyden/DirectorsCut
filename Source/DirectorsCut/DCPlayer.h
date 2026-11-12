@@ -38,6 +38,7 @@ protected:
 	void TickHelm(APlayerController* PC);
 	void TickCannons(APlayerController* PC);
 	void Look(APlayerController* PC);
+	void TickMeta(APlayerController* PC);
 	void EnterStation(APlayerController* PC, int32 Index);
 	void LeaveStation(APlayerController* PC);
 

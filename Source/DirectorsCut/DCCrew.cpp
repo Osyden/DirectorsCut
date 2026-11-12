@@ -366,6 +366,7 @@ ADCCrewMember* UDCCrewSubsystem::EnsureOperator(int32 StationIdx, const FString&
 
 FString UDCCrewSubsystem::ExecuteOrder(const FString& Text)
 {
+	++OrdersGiven;
 	TArray<FString> Names;
 	for (ADCCrewMember* M : Crew) { if (M) { Names.Add(M->CrewName); } }
 	const FDCIntent Intent = DCIntentParser::Parse(Text, Names);

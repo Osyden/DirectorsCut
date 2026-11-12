@@ -351,3 +351,14 @@ void ADCRideDirector::BuildSeaMesh()
 	// Waves move vertices in the material, so give culling generous bounds.
 	Sea->SetBoundsScale(1.5f);
 }
+
+USceneComponent* ADCRideDirector::GetSea() const
+{
+	return Sea;
+}
+
+FVector ADCRideDirector::GetWhirlFloorLocal() const
+{
+	const float K = WhirlCenter.SizeSquared() / (WhirlRadius * WhirlRadius);
+	return FVector(WhirlCenter.X, WhirlCenter.Y, -Env.Whirl * WhirlDepth * (1.f - 1.f / (1.f + K)));
+}

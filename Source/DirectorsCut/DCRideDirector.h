@@ -37,6 +37,10 @@ public:
 	/** Rotation and heave applied to everything that is "the world" (sea, hazards). */
 	FTransform GetWorldRock() const { return WorldRock; }
 	float GetRideLength() const;
+	/** The sea mesh component: attach to it to ride the rocking, tilted sea. */
+	class USceneComponent* GetSea() const;
+	/** Bottom of the maelstrom funnel, in the sea mesh component space. */
+	FVector GetWhirlFloorLocal() const;
 
 	static ADCRideDirector* Get(const UObject* WorldContext);
 

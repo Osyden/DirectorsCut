@@ -101,6 +101,7 @@ public:
 	FDCOnCrewLine OnCrewLine;
 	/** Last few lines, newest last. Read by the HUD for subtitles. */
 	TArray<FString> RecentLines;
+	int32 OrdersGiven = 0;
 
 protected:
 	ADCCrewMember* PickCrew(const FString& Name, int32 ForStation);

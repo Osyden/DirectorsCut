@@ -6,6 +6,7 @@
 #include "DCPlayer.h"
 #include "DCGunnery.h"
 #include "DCKraken.h"
+#include "DCKrakenHead.h"
 #include "DCAudio.h"
 #include "DCWeatherFX.h"
 #include "DCTroubles.h"
@@ -57,6 +58,42 @@ void ADCHUD::DrawHUD()
 			DrawText(TEXT("LISTENING..."), FLinearColor(1.f, 0.3f, 0.2f), Canvas->SizeX * 0.5f - 70.f, Canvas->SizeY - 110.f, Font, 1.8f);
 		}
 	}
+	// Title card at the start, score card at the end.
+	if (D)
+	{
+		UFont* Big = GEngine ? GEngine->GetLargeFont() : Font;
+		auto Centered = [this](const FString& Text, float Y, UFont* F, float Scale, const FLinearColor& Color)
+		{
+			float TW = 0.f, TH = 0.f;
+			GetTextSize(Text, TW, TH, F, Scale);
+			DrawText(Text, Color, (Canvas->SizeX - TW) * 0.5f, Y, F, Scale);
+		};
+		const float H = Canvas->SizeY;
+		if (D->RideTime < 14.f)
+		{
+			const float A = FMath::Clamp((14.f - D->RideTime) / 3.f, 0.f, 1.f);
+			const FLinearColor Gold(1.f, 0.85f, 0.5f, A), White(1.f, 1.f, 1.f, A);
+			DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.62f * A), Canvas->SizeX * 0.12f, H * 0.2f - 30.f, Canvas->SizeX * 0.76f, 290.f);
+			Centered(TEXT("DIRECTOR'S CUT"), H * 0.2f, Big, 4.f, Gold);
+			Centered(TEXT("You are the captain. You cannot do it all yourself. Give the orders."), H * 0.2f + 90.f, Font, 1.6f, White);
+			Centered(TEXT("Hold V and speak  -  or press Enter and type  -  or keys 1 to 6"), H * 0.2f + 135.f, Font, 1.4f, White);
+			Centered(TEXT("\"Finch, hard to starboard\"     \"Port battery, fire\"     \"Odessa, put out the fire\"     \"Repair the rigging\""), H * 0.2f + 170.f, Font, 1.2f, White);
+			Centered(TEXT("WASD walk    E take a station yourself"), H * 0.2f + 205.f, Font, 1.2f, White);
+		}
+		if (D->GetPhase() == EDCPhase::Ending)
+		{
+			const float A = FMath::Clamp((D->RideTime - D->GetRideLength() + 14.f) / 3.f, 0.f, 1.f);
+			const FLinearColor Gold(1.f, 0.85f, 0.5f, A), White(1.f, 1.f, 1.f, A);
+			DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.62f * A), Canvas->SizeX * 0.12f, H * 0.2f - 30.f, Canvas->SizeX * 0.76f, 290.f);
+			int32 Orders = 0;
+			if (UDCCrewSubsystem* Sub = GetWorld()->GetSubsystem<UDCCrewSubsystem>()) { Orders = Sub->OrdersGiven; }
+			const int32 Hull = FMath::RoundToInt(D->ShipHealth);
+			Centered(Hull > 60 ? TEXT("SHE CAME THROUGH") : (Hull > 20 ? TEXT("BATTERED, BUT AFLOAT") : TEXT("BARELY AFLOAT")), H * 0.22f, Big, 3.5f, Gold);
+			Centered(FString::Printf(TEXT("Hull %d%%      Score %d      Orders given %d"), Hull, D->Score, Orders), H * 0.22f + 90.f, Font, 1.8f, White);
+			Centered(TEXT("R  sail again        Esc  quit"), H * 0.22f + 140.f, Font, 1.4f, White);
+		}
+	}
+
 	if (ADCTroubles* Troubles = ADCTroubles::Get(this))
 	{
 		float AlertY = 112.f;
@@ -196,6 +233,7 @@ void ADCGameMode::StartPlay()
 		ADCGunnery* Guns = World->SpawnActor<ADCGunnery>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
 		Guns->Init(Ship, SeaLevelZ);
 		World->SpawnActor<ADCKraken>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
+		World->SpawnActor<ADCKrakenHead>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
 		{
 			TArray<UPrimitiveComponent*> Prims;
 			Ship->GetComponents(Prims);

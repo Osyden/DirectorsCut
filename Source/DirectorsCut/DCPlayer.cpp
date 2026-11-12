@@ -19,6 +19,8 @@
 #include "Framework/Application/SlateApplication.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/Engine.h"
+#include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 ADCPlayerCharacter::ADCPlayerCharacter()
 {
@@ -42,6 +44,7 @@ void ADCPlayerCharacter::Tick(float DeltaSeconds)
 
 	if (bTyping) { return; }
 	if (PC->WasInputKeyJustPressed(EKeys::Enter)) { OpenOrderBox(PC); return; }
+	TickMeta(PC);
 
 	switch (ActiveType)
 	{
@@ -338,4 +341,18 @@ void ADCPlayerCharacter::EndPlay(const EEndPlayReason::Type Reason)
 {
 	CloseOrderBox();
 	Super::EndPlay(Reason);
+}
+
+void ADCPlayerCharacter::TickMeta(APlayerController* PC)
+{
+	// Restart or quit from the score card (and quit at any time).
+	ADCRideDirector* Director = ADCRideDirector::Get(this);
+	if (Director && Director->GetPhase() == EDCPhase::Ending && PC->WasInputKeyJustPressed(EKeys::R))
+	{
+		UGameplayStatics::OpenLevel(this, FName(*UGameplayStatics::GetCurrentLevelName(this)));
+	}
+	if (PC->WasInputKeyJustPressed(EKeys::Escape))
+	{
+		UKismetSystemLibrary::QuitGame(this, PC, EQuitPreference::Quit, false);
+	}
 }
