@@ -172,11 +172,15 @@ float3 col = lerp(Bottom.rgb, Top.rgb, h * h * h) * churn + Flash.rgb * core * c
 // Ragged edges and mottled bodies, so a billow never shows as a clean ball.
 float n1 = sin(P.x * 0.00021 + sin(P.y * 0.00033) * 2.0) * sin(P.y * 0.00027 + sin(P.z * 0.0004) * 2.0) * sin(P.z * 0.00031 + P.x * 0.0002 + T * 0.05);
 float n2 = sin(P.x * 0.0009 + P.z * 0.0007 + T * 0.1) * sin(P.y * 0.0011 - P.z * 0.0005);
-col *= 0.78 + 0.3 * n1 + 0.12 * n2;
-float alpha = saturate(pow(core, 1.9) * 1.9 * (0.55 + 0.6 * n1 + 0.35 * n2)) * Flash.a;
+col *= lerp(1.0, 0.78 + 0.3 * n1 + 0.12 * n2, Erode);
+float alpha = saturate(lerp(pow(core, 1.4) * 1.5, pow(core, 1.9) * 1.9 * (0.55 + 0.6 * n1 + 0.35 * n2), Erode)) * Flash.a;
 return float4(col, alpha);
 """
-c = custom(mat, CLOUD, unreal.CustomMaterialOutputType.CMOT_FLOAT4, ["F", "P", "T", "Top", "Bottom", "Flash"], -500, 200)
+erode = mel.create_material_expression(mat, unreal.MaterialExpressionScalarParameter, -900, 1000)
+erode.set_editor_property("parameter_name", "Erode")
+erode.set_editor_property("default_value", 1.0)
+c = custom(mat, CLOUD, unreal.CustomMaterialOutputType.CMOT_FLOAT4, ["F", "P", "T", "Top", "Bottom", "Flash", "Erode"], -500, 200)
+mel.connect_material_expressions(erode, "", c, "Erode")
 flash4 = mel.create_material_expression(mat, unreal.MaterialExpressionAppendVector, -700, 400)
 mel.connect_material_expressions(flash, "", flash4, "A")
 mel.connect_material_expressions(flash, "A", flash4, "B")

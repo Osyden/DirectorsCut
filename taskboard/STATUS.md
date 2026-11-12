@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 14:26 — packaged build runs the new route; cloud faces repaired
+
+- **Packaged build (5.3 GB) ran the whole new route** at 5x with the stand-in captain: sea, fog at 0:51, portal at 4:00, maelstrom at 4:50, ending at 7:30, no errors, 156 to 188 fps at 720p. The stand-in captain finished with **77% hull** ("She came through"); the route is shorter and the maelstrom has four near arms now, so the ride is gentler than before.
+- **Fixed a regression I caused:** roughening the cloud billows for the storm front also dissolved the faces in the clouds into speckle. The roughness is now a setting; the faces keep their modelling. Checked from the deck with lightning held on: a pale face with eye sockets and nose looks down from the upper right. Frames in `taskboard/review/08-cloud-faces/`.
+- That packaged build was made before this fix, so its faces are speckled. Next package picks it up.
+
 ## Thu 12 Nov 14:20 — faces in the clouds; the storm front has a mouth and real cloud texture
 
 Review set: `taskboard/review/07-storm-front/` (two exterior views like the storm-front reference, then helm views of the approach). Open `ext_shot_0046.jpg` first.

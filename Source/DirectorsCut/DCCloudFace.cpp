@@ -34,6 +34,10 @@ void ADCCloudFace::Build(float Height, bool bBearded, float PitchDown)
 	Dark = UMaterialInstanceDynamic::Create(Base, this);
 	Eye = UMaterialInstanceDynamic::Create(Base, this);
 	K = Height / 10000.f;
+	// Faces need their modelling kept: only a little of the cloud raggedness.
+	Light->SetScalarParameterValue(TEXT("Erode"), 0.2f);
+	Dark->SetScalarParameterValue(TEXT("Erode"), 0.f);
+	Eye->SetScalarParameterValue(TEXT("Erode"), 0.f);
 
 	// The face looks along +X. It is tipped forward so it gazes down at the sea.
 	FaceRoot = NewObject<USceneComponent>(this, TEXT("FaceRoot"));
