@@ -234,3 +234,139 @@ AActor* DCHazards::SpawnSpecter(UWorld* World, float Height, const FLinearColor&
 	}
 	return Actor;
 }
+
+// ---------------------------------------------------------------- Atlantis
+
+AActor* DCHazards::SpawnSentinel(UWorld* World, float Height, bool bTrident, const FLinearColor& Color)
+{
+	// A colossal guardian: robed, helmeted, one hand on a spear (or a crowned sea-king with a trident),
+	// shield at the other side. Authored at 100 m; faces +X.
+	AActor* Actor = SpawnEmpty(World);
+	UMaterialInstanceDynamic* Mat = Solid(Actor, Color);
+	const float K = Height / 10000.f;
+	auto Part = [&](const TCHAR* Shape, const FVector& Loc, const FRotator& Rot, const FVector& Scale) { AddShape(Actor, Shape, Loc * K, Rot, Scale * K, Mat); };
+
+	Part(TEXT("Cone"), FVector(0.f, 0.f, 2500.f), FRotator::ZeroRotator, FVector(30.f, 25.f, 54.f));          // robe
+	Part(TEXT("Cube"), FVector(0.f, 0.f, 150.f), FRotator::ZeroRotator, FVector(36.f, 32.f, 4.f));            // plinth
+	Part(TEXT("Cylinder"), FVector(0.f, 0.f, 5900.f), FRotator::ZeroRotator, FVector(21.f, 14.5f, 27.f));     // torso
+	Part(TEXT("Sphere"), FVector(0.f, 0.f, 7250.f), FRotator::ZeroRotator, FVector(33.f, 16.f, 10.f));         // shoulders
+	Part(TEXT("Cylinder"), FVector(0.f, 0.f, 7850.f), FRotator::ZeroRotator, FVector(5.5f, 5.5f, 5.f));       // neck
+	Part(TEXT("Sphere"), FVector(60.f, 0.f, 8480.f), FRotator::ZeroRotator, FVector(8.2f, 7.6f, 9.6f));       // head
+	// Spear arm: upper arm down from the shoulder, forearm reaching forward to grip the shaft.
+	Part(TEXT("Cylinder"), FVector(150.f, 1650.f, 6350.f), FRotator(12.f, 0.f, 0.f), FVector(5.5f, 5.5f, 19.f));
+	Part(TEXT("Cylinder"), FVector(800.f, 1650.f, 5450.f), FRotator(62.f, 0.f, 0.f), FVector(3.6f, 3.6f, 15.f));
+	Part(TEXT("Cylinder"), FVector(1450.f, 1700.f, 5600.f), FRotator::ZeroRotator, FVector(1.3f, 1.3f, 110.f)); // shaft
+	// Shield arm.
+	Part(TEXT("Cylinder"), FVector(0.f, -1650.f, 6000.f), FRotator(0.f, 0.f, -5.f), FVector(5.5f, 5.5f, 24.f));
+	Part(TEXT("Cylinder"), FVector(500.f, -1500.f, 5000.f), FRotator(0.f, 0.f, 90.f), FVector(22.f, 22.f, 2.5f));
+
+	if (bTrident)
+	{
+		// Trident head and a crown.
+		Part(TEXT("Cube"), FVector(1450.f, 1700.f, 11150.f), FRotator::ZeroRotator, FVector(1.3f, 13.f, 1.5f));
+		for (int32 i = -1; i <= 1; ++i) { Part(TEXT("Cone"), FVector(1450.f, 1700.f + i * 600.f, 11750.f), FRotator::ZeroRotator, FVector(2.2f, 2.2f, 11.f)); }
+		for (int32 i = 0; i < 7; ++i)
+		{
+			const float A = 2.f * UE_PI * i / 7.f;
+			Part(TEXT("Cone"), FVector(60.f + 330.f * FMath::Cos(A), 330.f * FMath::Sin(A), 9150.f), FRotator::ZeroRotator, FVector(1.6f, 1.6f, 5.f));
+		}
+		Part(TEXT("Cone"), FVector(420.f, 0.f, 7700.f), FRotator(180.f, 0.f, 0.f), FVector(6.f, 5.f, 12.f));   // beard
+	}
+	else
+	{
+		// Spear point, and a crested helmet.
+		Part(TEXT("Cone"), FVector(1450.f, 1700.f, 11500.f), FRotator::ZeroRotator, FVector(4.f, 4.f, 10.f));
+		Part(TEXT("Cone"), FVector(60.f, 0.f, 9000.f), FRotator::ZeroRotator, FVector(9.4f, 9.f, 6.5f));
+		Part(TEXT("Cube"), FVector(-120.f, 0.f, 9250.f), FRotator(-18.f, 0.f, 0.f), FVector(11.f, 0.9f, 5.5f)); // crest
+	}
+	return Actor;
+}
+
+AActor* DCHazards::SpawnAqueduct(UWorld* World, int32 Arches, float Height, const FLinearColor& Color)
+{
+	// A run of arches on tall piers with a smaller arcade on top, broken off at one end.
+	// Runs along local +X from the origin; Height in cm to the top of the lower tier.
+	AActor* Actor = SpawnEmpty(World);
+	UMaterialInstanceDynamic* Mat = Solid(Actor, Color);
+	const float Span = Height * 0.62f;
+	const float Pier = Span * 0.2f;
+	const int32 Missing = FMath::RandRange(Arches / 2, Arches - 2); // one span has fallen
+	for (int32 i = 0; i <= Arches; ++i)
+	{
+		const float X = i * Span;
+		const bool bStump = i == Arches;   // the last pier is a broken stump
+		const float H = bStump ? Height * FMath::FRandRange(0.35f, 0.6f) : Height;
+		AddShape(Actor, TEXT("Cube"), FVector(X, 0.f, H * 0.5f - 300.f), FRotator(0.f, 0.f, bStump ? 4.f : 0.f), FVector(Pier / 100.f, Pier * 1.5f / 100.f, H / 100.f), Mat);
+		if (i == Arches || i == Missing) { continue; }
+		// Deck over the span, with angled haunches under it so the opening reads as an arch.
+		AddShape(Actor, TEXT("Cube"), FVector(X + Span * 0.5f, 0.f, Height - Height * 0.06f), FRotator::ZeroRotator, FVector(Span / 100.f, Pier * 1.6f / 100.f, Height * 0.12f / 100.f), Mat);
+		for (int32 Side = -1; Side <= 1; Side += 2)
+		{
+			AddShape(Actor, TEXT("Cube"), FVector(X + Span * 0.5f + Side * Span * 0.3f, 0.f, Height * 0.82f), FRotator(Side * 38.f, 0.f, 0.f),
+				FVector(Span * 0.3f / 100.f, Pier * 1.45f / 100.f, Height * 0.1f / 100.f), Mat);
+		}
+		// Upper arcade: two small openings per span.
+		for (int32 j = 0; j < 3; ++j)
+		{
+			AddShape(Actor, TEXT("Cube"), FVector(X + j * Span * 0.5f, 0.f, Height * 1.14f), FRotator::ZeroRotator, FVector(Pier * 0.6f / 100.f, Pier * 1.2f / 100.f, Height * 0.28f / 100.f), Mat);
+		}
+		AddShape(Actor, TEXT("Cube"), FVector(X + Span * 0.5f, 0.f, Height * 1.3f), FRotator::ZeroRotator, FVector(Span / 100.f, Pier * 1.3f / 100.f, Height * 0.05f / 100.f), Mat);
+	}
+	return Actor;
+}
+
+AActor* DCHazards::SpawnTemple(UWorld* World, float Scale, const FLinearColor& Color)
+{
+	// The high temple: stepped terraces rising out of the sea, a colonnade on each step, waterfalls
+	// pouring down the faces, towers at the corners, and a domed, pillared hall on top.
+	// Authored about 700 m wide and 380 m tall; front faces -X (toward a ship approaching along +X).
+	AActor* Actor = SpawnEmpty(World);
+	UMaterialInstanceDynamic* Mat = Solid(Actor, Color);
+	UMaterialInterface* GlowBase = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Bolt.M_Bolt"));
+	UMaterialInstanceDynamic* Water = GlowBase ? UMaterialInstanceDynamic::Create(GlowBase, Actor) : Mat;
+	// Falling water catches what light there is: pale, so it reads through the haze.
+	Water->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.2f, 0.25f, 0.3f));
+	const float S = Scale;
+	auto Part = [&](const TCHAR* Shape, const FVector& Loc, const FRotator& Rot, const FVector& Sc, UMaterialInterface* M) { AddShape(Actor, Shape, Loc * S, Rot, Sc * S, M); };
+
+	const int32 Tiers = 5;
+	float Z = -1000.f;
+	for (int32 t = 0; t < Tiers; ++t)
+	{
+		const float W = FMath::Lerp(70000.f, 26000.f, static_cast<float>(t) / (Tiers - 1));
+		const float D = W * 0.7f;
+		const float H = t == 0 ? 9000.f : 6000.f;
+		Part(TEXT("Cube"), FVector(0.f, 0.f, Z + H * 0.5f), FRotator::ZeroRotator, FVector(D / 100.f, W / 100.f, H / 100.f), Mat);
+		// Colonnade along the front edge of this step.
+		const int32 Cols = 9 + (Tiers - t) * 2;
+		for (int32 c = 0; c < Cols; ++c)
+		{
+			const float Y = (static_cast<float>(c) / (Cols - 1) - 0.5f) * W * 0.9f;
+			Part(TEXT("Cylinder"), FVector(-D * 0.5f + 900.f, Y, Z + H + 1500.f), FRotator::ZeroRotator, FVector(5.f, 5.f, 30.f), Mat);
+		}
+		Part(TEXT("Cube"), FVector(-D * 0.5f + 900.f, 0.f, Z + H + 3150.f), FRotator::ZeroRotator, FVector(9.f, W * 0.93f / 100.f, 3.f), Mat);
+		// Waterfalls down the front face.
+		for (int32 f = 0; f < 3; ++f)
+		{
+			const float Y = (f - 1) * W * 0.28f + FMath::FRandRange(-0.05f, 0.05f) * W;
+			Part(TEXT("Cube"), FVector(-D * 0.5f - 120.f, Y, Z + H * 0.5f), FRotator::ZeroRotator, FVector(1.f, W * 0.035f / 100.f, H / 100.f), Water);
+		}
+		Z += H;
+	}
+	// The hall on top: a block, pillars across the front, a pediment and a dome.
+	Part(TEXT("Cube"), FVector(1500.f, 0.f, Z + 3500.f), FRotator::ZeroRotator, FVector(110.f, 190.f, 70.f), Mat);
+	for (int32 c = 0; c < 8; ++c)
+	{
+		Part(TEXT("Cylinder"), FVector(-4800.f, (c - 3.5f) * 2500.f, Z + 3000.f), FRotator::ZeroRotator, FVector(7.f, 7.f, 60.f), Mat);
+	}
+	Part(TEXT("Cone"), FVector(-4300.f, 0.f, Z + 7400.f), FRotator::ZeroRotator, FVector(30.f, 215.f, 30.f), Mat);       // pediment
+	Part(TEXT("Sphere"), FVector(2500.f, 0.f, Z + 7600.f), FRotator::ZeroRotator, FVector(90.f, 90.f, 70.f), Mat);       // dome
+	Part(TEXT("Cone"), FVector(2500.f, 0.f, Z + 11800.f), FRotator::ZeroRotator, FVector(8.f, 8.f, 30.f), Mat);          // finial
+	// Corner towers.
+	for (int32 Side = -1; Side <= 1; Side += 2)
+	{
+		Part(TEXT("Cylinder"), FVector(-14000.f, Side * 39000.f, 9000.f), FRotator::ZeroRotator, FVector(40.f, 40.f, 200.f), Mat);
+		Part(TEXT("Cone"), FVector(-14000.f, Side * 39000.f, 21000.f), FRotator::ZeroRotator, FVector(46.f, 46.f, 50.f), Mat);
+	}
+	return Actor;
+}

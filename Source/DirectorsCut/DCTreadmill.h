@@ -82,6 +82,8 @@ protected:
 	void SpawnForPhase(EDCPhase Phase, float DeltaSeconds);
 	void Register(AActor* Actor, const FVector& Base, float Radius, bool bHostile, float Health, float Yaw, bool bSolid);
 	float SceneryTimer = 3.f;
+	void SpawnAtlantis();
+	bool bAtlantisBuilt = false;
 
 	UPROPERTY() TObjectPtr<ADCRideDirector> Director;
 	UPROPERTY() TObjectPtr<UStaticMesh> CubeMesh;

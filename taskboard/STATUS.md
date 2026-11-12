@@ -2,6 +2,16 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 14:13 — Atlantis in the fog; new route without the hell channel
+
+Review set: `taskboard/review/06-atlantis-route/` (twelve helm frames from entering the cloud front to the maelstrom, plus `_contact.jpg`). `shot_0115.jpg` and `shot_0190.jpg` are the ones to open first.
+
+- **The route now follows the owner's progression:** calm sea -> cloud front (closes over the bow at 1:00) -> Atlantis in the fog (to 4:00) -> portal tunnel (4:00 to 4:50) -> maelstrom (4:50 to 7:30) -> clear water. The hell channel is out of the default ride; `-DCHell` restores it. Verified by a full run-through.
+- **The fog is staged:** thick and blind for the first half minute inside the front, then it thins to layered blue-grey haze you can see a kilometre or two into.
+- **The drowned city is laid out along the course** (`ADCTreadmill::SpawnAtlantis`): six guardian colossi 110 to 160 m tall with spear and shield or trident and crown, flanking the course in pairs and turned toward the ship; three broken aqueducts crossing behind them; a terraced temple 700 m wide with colonnades, waterfalls, corner towers and a domed hall, far ahead to starboard and about 450 m off by the time the portal opens; three figures a kilometre tall standing in the cloud beyond.
+- Lightning is more frequent here and lands bolts among the ruins.
+- Against the references: the layering, scale, cold haze against warm lanterns, sentinels and temple are there. **Not there:** actual faces in the clouds (the cloud figures are faceless giants); the statues and temple are built from simple shapes and look like chess pieces close up; the temple's waterfalls are plain strips; flashes turn the sea too blue.
+
 ## Thu 12 Nov 14:07 — ACKNOWLEDGED: four more references (storm front, fog city, Atlantis, portal)
 
 Read the 14:03 message and looked at all four images. The route the owner describes is: calm sea -> immense storm front -> fog-shrouded ruined Atlantis with faces and ghostly forms -> portal -> maelstrom.

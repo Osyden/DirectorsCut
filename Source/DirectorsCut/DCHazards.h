@@ -23,6 +23,11 @@ namespace DCHazards
 	/** A spectral copy of our own ship. */
 	AActor* SpawnGhostShip(UWorld* World, const FLinearColor& Glow);
 
+	/** Atlantis: a guardian colossus with spear (or trident and crown), a broken aqueduct, the high temple. */
+	AActor* SpawnSentinel(UWorld* World, float Height, bool bTrident, const FLinearColor& Color);
+	AActor* SpawnAqueduct(UWorld* World, int32 Arches, float Height, const FLinearColor& Color);
+	AActor* SpawnTemple(UWorld* World, float Scale, const FLinearColor& Color);
+
 	/** A translucent giant figure. bWading sinks it to the hips (demons in the burning sea). */
 	AActor* SpawnSpecter(UWorld* World, float Height, const FLinearColor& Glow, bool bWading);
 

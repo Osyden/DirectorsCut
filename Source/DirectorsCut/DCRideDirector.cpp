@@ -108,9 +108,18 @@ void ADCRideDirector::BuildDefaultPhases()
 	}
 	{
 		FDCEnvState& E = Add(EDCPhase::Fog, 51.f, 9.f); // dark by the time the cloud front (DCFogFront, arrival 60 s) closes over the bow
-		E.FogColor = FLinearColor(0.12f, 0.17f, 0.2f); E.FogDensity = 0.16f; E.FogHeightFalloff = 0.002f;
+		// First the inside of the cloud front: close, dark, nothing to see.
+		E.FogColor = FLinearColor(0.1f, 0.14f, 0.18f); E.FogDensity = 0.11f; E.FogHeightFalloff = 0.002f;
 		E.SunColor = FLinearColor(0.5f, 0.7f, 0.8f); E.SunIntensity = 0.6f; E.SunPitch = -20.f; E.SkyIntensity = 0.35f;
-		E.SeaColor = FLinearColor(0.01f, 0.03f, 0.035f); E.SeaRoughness = 2.5f; E.LightningRate = 3.f; E.ShipSpeed = 1100.f; E.WaveHeight = 110.f; E.Foam = 0.6f; E.Exposure = 0.6f;
+		E.SeaColor = FLinearColor(0.01f, 0.03f, 0.035f); E.SeaRoughness = 2.5f; E.LightningRate = 5.f; E.ShipSpeed = 1500.f; E.WaveHeight = 130.f; E.Foam = 0.7f; E.Exposure = 0.6f;
+	}
+	{
+		// Then it thins, and the drowned city stands in layered blue-grey haze out to a couple of kilometres:
+		// cold moonlight from behind the statues, lightning to pick out their outlines, warm lanterns on deck.
+		FDCEnvState& E = Add(EDCPhase::Fog, 78.f, 22.f);
+		E.FogColor = FLinearColor(0.2f, 0.26f, 0.33f); E.FogDensity = 0.011f; E.FogHeightFalloff = 0.0012f;
+		E.SunColor = FLinearColor(0.6f, 0.72f, 0.9f); E.SunIntensity = 1.6f; E.SunPitch = -24.f; E.SunYaw = 160.f; E.SkyIntensity = 0.55f;
+		E.SeaColor = FLinearColor(0.008f, 0.025f, 0.035f); E.SeaRoughness = 3.f; E.Rain = 0.35f; E.LightningRate = 10.f; E.ShipSpeed = 1500.f; E.WaveHeight = 190.f; E.Foam = 1.f; E.Exposure = 0.05f;
 	}
 	{
 		FDCEnvState& E = Add(EDCPhase::Slide, 240.f, 6.f);
@@ -126,7 +135,7 @@ void ADCRideDirector::BuildDefaultPhases()
 	}
 	{
 		FDCEnvState& E = Add(EDCPhase::Breach, 420.f, 5.f);
-		E.FogColor = FLinearColor(0.1f, 0.1f, 0.12f); E.FogDensity = 0.15f;
+		E.FogColor = FLinearColor(0.3f, 0.38f, 0.5f); E.FogDensity = 0.03f; // the portal: light at the end of the tunnel
 		E.SunIntensity = 0.3f; E.SkyIntensity = 0.3f; E.SeaRoughness = 8.f; E.LightningRate = 20.f; E.ShipSpeed = 3500.f; E.WaveHeight = 200.f; E.Foam = 1.5f; E.Exposure = 1.5f; E.Tube = 0.9f; E.Drop = 120.f; E.TubeMouth = 3000.f; E.SunYaw = 195.f; E.Whirl = 0.5f; E.Crater = 1.f;
 	}
 	{
@@ -165,6 +174,21 @@ ADCRideDirector* ADCRideDirector::Get(const UObject* WorldContext)
 void ADCRideDirector::BeginPlay()
 {
 	Super::BeginPlay();
+	// The route is sea -> storm front -> Atlantis in the fog -> portal -> maelstrom. The hell channel is
+	// off that route and is skipped unless asked for with -DCHell; later phases close up the gap.
+	if (!FParse::Param(FCommandLine::Get(), TEXT("DCHell")))
+	{
+		for (int32 i = 0; i + 1 < Phases.Num(); ++i)
+		{
+			if (Phases[i].Phase == EDCPhase::Hell)
+			{
+				const float Gap = Phases[i + 1].StartTime - Phases[i].StartTime;
+				Phases.RemoveAt(i);
+				for (int32 j = i; j < Phases.Num(); ++j) { Phases[j].StartTime -= Gap; }
+				break;
+			}
+		}
+	}
 	if (UMaterialInterface* GlowBase = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Bolt.M_Bolt")))
 	{
 		BoltMID = UMaterialInstanceDynamic::Create(GlowBase, this);

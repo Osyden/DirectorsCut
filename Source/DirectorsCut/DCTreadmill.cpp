@@ -86,7 +86,7 @@ void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
 	float ObstacleEvery = 0.f, HostileEvery = 0.f, SceneryEvery = 0.f;
 	switch (Phase)
 	{
-	case EDCPhase::Fog: ObstacleEvery = 7.f; HostileEvery = 14.f; SceneryEvery = 9.f; break;
+	case EDCPhase::Fog: ObstacleEvery = 8.f; HostileEvery = 16.f; SceneryEvery = 15.f; break;
 	case EDCPhase::Hell: ObstacleEvery = 3.5f; HostileEvery = 9.f; SceneryEvery = 5.f; break;
 	default: break; // the kraken owns the maelstrom
 	}
@@ -130,7 +130,7 @@ void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
 		else if (!bHell && FMath::FRand() < 0.55f)
 		{
 			// Statues face the passing ship.
-			Register(DCHazards::SpawnStatue(World, FMath::FRandRange(5000.f, 9500.f), Stone), Base - FVector(0.f, 0.f, 600.f), 1500.f, false, 1.f, Side > 0.f ? -110.f : 110.f, false);
+			Register(DCHazards::SpawnSentinel(World, FMath::FRandRange(5000.f, 8000.f), FMath::RandBool(), Stone), Base - FVector(0.f, 0.f, 300.f), 1500.f, false, 1.f, Side > 0.f ? 205.f : 155.f, false);
 		}
 		else
 		{
@@ -182,6 +182,11 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 
 	LaneOffset = FMath::Clamp(LaneOffset + Steer * LaneSpeed * SteerAuthority * DeltaSeconds, -LaneLimit, LaneLimit);
 
+	if (!bAtlantisBuilt && Director->GetPhase() == EDCPhase::Fog)
+	{
+		bAtlantisBuilt = true;
+		SpawnAtlantis();
+	}
 	SpawnForPhase(Director->GetPhase(), DeltaSeconds * Director->TimeScale);
 	TickIncoming(DeltaSeconds);
 	for (int32 w = Wrecks.Num() - 1; w >= 0; --w)
@@ -273,7 +278,8 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 			continue;
 		}
 
-		if (Local.X < -DespawnDistance)
+		// Scenery is big and seen from far off, so it is kept until it is well astern.
+		if (Local.X < -(DespawnDistance + ((Obj.bSolid || Obj.bHostile) ? 0.f : 90000.f)))
 		{
 			Actor->Destroy();
 			Objects.RemoveAtSwap(i);
@@ -474,4 +480,38 @@ void ADCTreadmill::TickIncoming(float DeltaSeconds)
 		P.Z += FMath::Sin(In.T * UE_PI) * 1400.f;
 		Shot->SetActorLocation(P);
 	}
+}
+
+void ADCTreadmill::SpawnAtlantis()
+{
+	// The drowned city, laid out once along the two or three kilometres the ship covers in the fog.
+	// Positions are in sea space (cm ahead of the ship now, cm to starboard), so each landmark comes
+	// up out of the haze in its turn: sentinels flanking the course, aqueducts crossing behind them,
+	// the high temple far ahead to starboard, and vast figures standing in the cloud beyond.
+	UWorld* World = GetWorld();
+	const float SeaZ = Director ? Director->SeaLevelZ : 0.f;
+	const FLinearColor Stone(0.085f, 0.1f, 0.11f);
+
+	struct FSentinel { float X, Y, Height; bool bTrident; };
+	const FSentinel Sentinels[] = {
+		{ 70000.f, -12000.f, 11000.f, false }, { 76000.f, 13000.f, 11500.f, false },
+		{ 150000.f, 17000.f, 15000.f, true }, { 160000.f, -16000.f, 13000.f, false },
+		{ 240000.f, -14000.f, 14000.f, true }, { 252000.f, 15000.f, 16000.f, false } };
+	for (const FSentinel& S : Sentinels)
+	{
+		// Turned to watch the ship come.
+		Register(DCHazards::SpawnSentinel(World, S.Height, S.bTrident, Stone), FVector(S.X, S.Y, SeaZ - 300.f), 2000.f, false, 1.f, S.Y > 0.f ? 205.f : 155.f, false);
+	}
+
+	Register(DCHazards::SpawnAqueduct(World, 8, 5500.f, Stone), FVector(95000.f, 21000.f, SeaZ - 200.f), 2000.f, false, 1.f, 18.f, false);
+	Register(DCHazards::SpawnAqueduct(World, 10, 7000.f, Stone), FVector(185000.f, -27000.f, SeaZ - 200.f), 2000.f, false, 1.f, -22.f, false);
+	Register(DCHazards::SpawnAqueduct(World, 7, 6000.f, Stone), FVector(275000.f, 24000.f, SeaZ - 200.f), 2000.f, false, 1.f, 62.f, false);
+
+	Register(DCHazards::SpawnTemple(World, 1.f, Stone), FVector(345000.f, 36000.f, SeaZ), 2000.f, false, 1.f, -14.f, false);
+
+	// Presences in the cloud: figures a kilometre tall, seen only as pale shapes far off.
+	const FLinearColor Pale(0.22f, 0.3f, 0.38f);
+	Register(DCHazards::SpawnSpecter(World, 95000.f, Pale, false), FVector(310000.f, -120000.f, SeaZ - 30000.f), 2000.f, false, 1.f, 150.f, false);
+	Register(DCHazards::SpawnSpecter(World, 110000.f, Pale, false), FVector(430000.f, 95000.f, SeaZ - 35000.f), 2000.f, false, 1.f, 215.f, false);
+	Register(DCHazards::SpawnSpecter(World, 80000.f, Pale, false), FVector(230000.f, 140000.f, SeaZ - 25000.f), 2000.f, false, 1.f, 240.f, false);
 }
