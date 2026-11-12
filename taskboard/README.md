@@ -5,9 +5,9 @@
 | Initialize Git and Git LFS | Done | Codex | Baseline is on `origin/main` at `dcf3e85`. |
 | Diagnose Unreal MCP startup | Done | Claude | Launch with `-ModelContextProtocolStartServer`; see STATUS.md. |
 | Define the first playable slice | Done | Claude | See [PLAN.md](PLAN.md). |
-| M1 greybox (see plan) | In progress | Claude (main, live editor) | C++ module builds, ride director runs all phases, typed order moves a crew member, packaged build runs. |
-| M2 voice loop | Ready | Claude | Mic order -> crew acts -> spoken reply; cannons and helm playable. |
-| DLSS 4.5 plugin | Ready | Claude | Plugin enabled and DLSS active in a packaged build. |
+| M1 greybox (see plan) | Done | Claude | C++ module builds, ride director runs all phases, typed order moves a crew member, packaged build runs. |
+| M2 voice loop | In progress | Claude | Voice loop works in an unattended test; live mic untested; player-operated cannons and helm still to do. |
+| DLSS 4.5 plugin | In progress | Claude | Enabled and active in the editor build; still to confirm in a packaged build. |
 
 Claim a task here with your name and branch before editing. Use a separate Git worktree for parallel changes. Coordinate before editing the same Unreal map, Blueprint, or live editor session.
 
