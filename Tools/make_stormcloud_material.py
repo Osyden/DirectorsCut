@@ -10,6 +10,7 @@ Parameters
   Front   x = world X of the face of the storm front (cm), y = strength 0..1 (0 = no front),
           z = radius of the tunnel mouth bored into it along the ship's course (cm, 0 = none),
           w = lightning 0..1 (lights the mouth and the inside of the wall)
+  Mist    x = amount of sea mist 0..1, y = height of its top (cm), z = how thick it is next to full cloud
 """
 import unreal
 
@@ -18,108 +19,110 @@ NAME = "M_StormCloud"
 mel = unreal.MaterialEditingLibrary
 
 DENSITY = """
-// Noise is computed, not sampled: the engine noise volumes came through as plain white here.
-struct FNoise
-{
-    float Hash(float3 p) { p = frac(p * 0.3183099 + 0.1); p *= 17.0; return frac(p.x * p.y * p.z * (p.x + p.y + p.z)); }
-    float3 Hash3(float3 p)
-    {
-        p = float3(dot(p, float3(127.1, 311.7, 74.7)), dot(p, float3(269.5, 183.3, 246.1)), dot(p, float3(113.5, 271.9, 124.6)));
-        return frac(sin(p) * 43758.5453);
-    }
-    float Value(float3 x)
-    {
-        float3 i = floor(x); float3 f = frac(x); f = f * f * (3.0 - 2.0 * f);
-        return lerp(lerp(lerp(Hash(i), Hash(i + float3(1, 0, 0)), f.x), lerp(Hash(i + float3(0, 1, 0)), Hash(i + float3(1, 1, 0)), f.x), f.y),
-                    lerp(lerp(Hash(i + float3(0, 0, 1)), Hash(i + float3(1, 0, 1)), f.x), lerp(Hash(i + float3(0, 1, 1)), Hash(i + float3(1, 1, 1)), f.x), f.y), f.z);
-    }
-    // Distance to the nearest of a scatter of points, one per cell: 0 at a point, about 0.9 at most.
-    // One minus this is a field of round heads, which is what a cumulus tower is made of.
-    float Worley(float3 x)
-    {
-        float3 i = floor(x - 0.5); float3 f = x - i; float d = 8.0;
-        for (int a = 0; a < 2; a++) { for (int b = 0; b < 2; b++) { for (int c = 0; c < 2; c++)
-        {
-            float3 g = float3(a, b, c);
-            float3 o = g + 0.25 + 0.5 * Hash3(i + g) - f;
-            d = min(d, dot(o, o));
-        } } }
-        return sqrt(d);
-    }
-};
-FNoise Noise;
+// All the shapes come from one engine noise volume read at several scales. Its red channel sits
+// in a narrow band (measured: about 0.83 to 0.96, half of it above 0.895), so it is stretched to 0..1
+// here, which puts the median near 0.5.
+#define NZ(p) saturate((Texture3DSampleLevel(Shape, ShapeSampler, (p), 0.0).r - 0.835) / 0.125)
 float alt = P.z;
 
 // Most of the volume is empty air: find that out before paying for any noise.
 float h = (alt - Sky.y) / max(Sky.z - Sky.y, 1.0);
 bool inDeck = h > 0.0 && h < 1.0 && Sky.x > 0.01;
-// The front leans out over the ship higher up, like a breaking wave.
-float lean = 140000.0 * smoothstep(0.0, 1.0, alt / 450000.0);
+bool inMist = Mist.x > 0.001 && alt < Mist.y;
+// The front leans out over the ship higher up, like a breaking wave, and its foot runs ahead of it
+// along the water as a skirt of rain and spray.
+float lean = 150000.0 * smoothstep(0.0, 1.0, alt / 450000.0) + 40000.0 * exp(-alt / 20000.0);
 float face = P.x - Front.x + lean;
-bool inWall = Front.y > 0.001 && face > -130000.0 && face < 380000.0 && alt < 800000.0;
-if (!inDeck && !inWall) { return float4(0.0, 0.0, 0.0, 0.0); }
+bool inWall = Front.y > 0.001 && face > -260000.0 && face < 640000.0 && alt < 900000.0;
+if (!inDeck && !inWall && !inMist) { return float4(0.0, 0.0, 0.0, 0.0); }
 
+float3 km = P * 0.00001;
+float3 wind = float3(T * 0.0002, T * 0.00008, 0.0);
 float deck = 0.0;
 float wall = 0.0;
 float glow = 0.0;
 if (inDeck)
 {
-    // The deck: flat-bottomed, heaped on top, as much of the sky as Sky.x says.
-    float3 km = P * 0.00001;
-    float3 wind = float3(T * 0.004, T * 0.0015, 0.0);
-    float big = Noise.Value(km * 0.22 + wind * 30.0);
-    float mid = Noise.Value(km * 0.75 + wind * 60.0 + 7.3);
-    float w1 = 1.0 - Noise.Worley(km * 0.9 + wind * 80.0);
-    float n = big * 0.5 + mid * 0.22 + w1 * 0.28;
-    float need = 1.0 - Sky.x + 0.2 * h;
-    deck = saturate((n - need) * 4.0) * saturate(h * 8.0) * saturate((1.0 - h) * 4.0);
-    float er = Noise.Value(km * 3.1 + wind * 150.0) * 0.6 + Noise.Value(km * 8.7 - wind * 200.0) * 0.4;
-    deck = saturate(deck - er * 0.4 * (1.0 - deck));
+    // The deck: flat-bottomed, heaped on top, as much of the sky as Sky.x says. Masses 10 km and
+    // more across carry heads of 3 km and 800 m, and the thin parts are eaten into wisps.
+    float big = NZ(km * 0.04 + wind);
+    float mid = NZ(km * 0.15 + wind * 3.0 + 0.37);
+    float det = NZ(km * 0.6 + wind * 9.0 + 0.71);
+    float n = big * 0.55 + mid * 0.3 + det * 0.15;
+    float need = lerp(0.72, 0.2, Sky.x) + 0.12 * h;
+    deck = saturate((n - need) * 5.0) * saturate(h * 9.0) * saturate((1.0 - h) * 3.0);
+    float fine = NZ(km * 2.3 - wind * 20.0);
+    deck = saturate(deck - (0.15 + fine * 0.7) * (1.0 - deck) * 0.8);
 }
 if (inWall)
 {
-    // The front. Its noise travels with it, or the face would boil as it came on.
+    // The front. Its noise travels with it, or the face would boil as it came on; it turns over
+    // slowly instead, rising up the face.
     float3 q = float3(P.x - Front.x, P.y, alt) * 0.00001;
-    float churn = T * 0.012;
-    float wb = Noise.Value(q * 0.2 + float3(0.0, 0.0, -churn));
-    float w1 = 1.0 - Noise.Worley(q * 0.7 + float3(churn, 0.0, -churn * 2.0));
-    float w2 = 1.0 - Noise.Worley(q * 2.1 + 3.7 + float3(0.0, churn, -churn * 3.0));
-    float billow = w1 * 0.65 + w2 * 0.35;
-    // How far inside the surface of the cloud this point is, cm: towers 5 km across, heads of 1.4 km and 500 m on them.
-    float surf = face + (wb - 0.5) * 260000.0 + (billow - 0.55) * 150000.0;
+    float churn = T * 0.0006;
+    float big = NZ(q * 0.035 + float3(0.0, 0.0, -churn));
+    float mid = NZ(q * 0.13 + float3(churn, 0.0, -churn * 3.0) + 0.21);
+    float det = NZ(q * 0.5 + float3(0.0, churn * 2.0, -churn * 8.0) + 0.63);
+    float fine = NZ(q * 1.9 + float3(churn * 5.0, 0.0, -churn * 20.0));
+    // How far inside the surface of the cloud this point is, cm. Towers kilometres across, heads
+    // of a kilometre on them, knuckles of a few hundred metres on those.
+    float surf = face + (big - 0.5) * 300000.0 + (mid - 0.5) * 130000.0 + (det - 0.5) * 45000.0;
     float bore = 1.0;
     if (Front.z > 1.0)
     {
-        // The mouth: a tunnel along the ship's course, narrowing as it goes in. The face of the front
-        // is drawn back into it like a funnel, and spiral arms of cloud wind down into the hole.
-        float R = Front.z * lerp(1.0, 0.45, saturate((face - 80000.0) / 240000.0));
-        float2 m = float2(P.y, alt - R * 0.45);
+        // The mouth: a tunnel along the ship's course, narrowing as it goes in and closing in the
+        // dark a kilometre and a half inside. The face of the front is drawn back into it like a
+        // funnel, and spiral arms of cloud wind down into the hole.
+        float R = Front.z * lerp(1.0, 0.4, saturate((face - 60000.0) / 200000.0));
+        float2 m = float2(P.y, alt - Front.z * 0.4);
         float rr = length(m) / R;
-        float near = saturate(1.0 - (rr - 1.0) / 6.0);
-        float spiral = sin(atan2(m.y, m.x) * 3.0 + log(max(rr, 0.3)) * 5.0 + T * 0.4 - q.x * 2.5);
-        surf += (spiral * 30000.0 - near * 80000.0) * near;
-        float edge = rr - 1.0 - 0.15 * spiral - (w2 - 0.5) * 0.35;
-        bore = saturate(edge / 0.25);
-        // Cold light in the walls of the tunnel, brighter with each stroke of lightning.
-        glow = (0.1 + Front.w) * exp(-max(edge, 0.0) * 3.0) * saturate(face / 60000.0 + 0.5);
+        float near = saturate(1.0 - (rr - 1.0) / 4.0);
+        float ang = atan2(m.y, m.x);
+        float spiral = sin(ang * 3.0 + log(max(rr, 0.3)) * 6.0 + T * 0.35 - q.x * 3.0);
+        float arms = spiral * 0.6 + 0.4 * sin(ang * 5.0 - log(max(rr, 0.3)) * 9.0 - T * 0.2);
+        surf += (arms * 80000.0 - near * near * 50000.0) * near;
+        float edge = rr - 1.0 - 0.22 * spiral - (det - 0.5) * 0.5;
+        bore = lerp(saturate(edge / 0.3), 1.0, saturate((face - 330000.0) / 120000.0));
+        // Cold light in the walls of the tunnel: faint, and bright with each stroke of lightning.
+        glow = (0.02 + 0.9 * Front.w) * exp(-max(edge, 0.0) * 2.5) * saturate(face / 60000.0 + 0.5) * (0.5 + 0.5 * arms);
     }
-    float topAlt = 380000.0 + wb * 280000.0 + (billow - 0.55) * 120000.0;
-    wall = saturate(surf / 15000.0) * saturate((topAlt - alt) / 50000.0) * saturate((330000.0 - face) / 90000.0) * bore * Front.y;
+    float topAlt = 300000.0 + big * 380000.0 + (mid - 0.5) * 150000.0;
+    // Density builds up over half a kilometre in from the surface. A hard-edged cloud renders flat
+    // and unlit: the marcher's first step inside is already too deep for the sun to reach.
+    float body = smoothstep(0.0, 1.0, saturate(surf / 55000.0));
+    // Behind the towers the front is solid, so the bays between them are dark cloud, not sky.
+    body = max(body, smoothstep(0.0, 1.0, saturate((face - 190000.0 + (mid - 0.5) * 60000.0) / 90000.0)));
+    // A veil ahead of the solid face: thin scud and rain that the towers stand behind.
+    float veil = saturate(1.0 + surf / 35000.0) * 0.1 * fine * fine * (1.0 - body);
+    wall = (body + veil) * saturate((topAlt - alt) / 60000.0) * saturate((600000.0 - face) / 120000.0) * bore * Front.y;
+    wall = saturate(wall - fine * 0.6 * (1.0 - wall) * 0.5);
     // Sheet lightning inside the cloud: now and then one stretch of the wall lights from within.
-    float cell = floor(P.y / 500000.0);
+    float cell = floor(P.y / 500000.0 + 0.37);
     float slot = floor(T / 0.6 + cell * 0.37);
-    if (Noise.Hash(float3(cell * 1.7 + 0.3, slot * 0.37, 2.1)) > 0.9 && Noise.Hash(float3(floor(T * 14.0), cell, 4.0)) > 0.35)
+    float pick = frac(sin(cell * 12.9898 + slot * 78.233) * 43758.5453);
+    float flick = frac(sin(floor(T * 14.0) * 3.17 + cell) * 9631.7);
+    if (pick > 0.9 && flick > 0.35)
     {
-        float3 c = float3(70000.0, (cell + 0.5 + 0.6 * (Noise.Hash(float3(cell, slot, 5.0)) - 0.5)) * 500000.0, 90000.0 + 260000.0 * Noise.Hash(float3(slot, cell, 9.0)));
+        float3 c = float3(70000.0, (cell + 0.13 + 0.5 * (frac(pick * 37.0) - 0.5)) * 500000.0, 90000.0 + 260000.0 * frac(pick * 91.0));
         float3 dd = float3(face, P.y, alt) - c;
-        glow += 1.6 / (1.0 + dot(dd, dd) / (60000.0 * 60000.0));
+        // Faded out toward the edge of its stretch, so the light never ends in a straight line.
+        float within = saturate((250000.0 - abs(P.y - (cell + 0.13) * 500000.0)) / 150000.0);
+        glow += 0.1 * within / (1.0 + dot(dd, dd) / (45000.0 * 45000.0));
     }
-    float erw = Noise.Value(q * 3.1 + churn * 4.0) * 0.6 + Noise.Value(q * 8.7 - churn * 6.0) * 0.4;
-    wall = saturate(wall - erw * 0.35 * (1.0 - wall));
 }
 float d = max(deck, wall);
+if (inMist)
+{
+    // Sea mist: torn banks lying on the water, thick in places and open in others, so that things
+    // stand in it at different depths instead of fading evenly into haze.
+    float mh = saturate(1.0 - alt / max(Mist.y, 1.0));
+    float mn = NZ(km * 0.33 + wind * 6.0 + 0.11) * 0.6 + NZ(km * 1.1 - wind * 15.0 + 0.47) * 0.4;
+    float bank = saturate((mn - (0.8 - Mist.x * 0.5)) * 3.5) * mh * (0.35 + 0.65 * mh);
+    bank = saturate(bank - NZ(km * 3.7 + wind * 40.0) * 0.5 * (1.0 - bank));
+    d = max(d, bank * Mist.z);
+}
 float mask = saturate(wall * 3.0);
-return float4(d * Sky.w * lerp(1.0, 3.0, mask), glow * wall, mask, 0.0);
+return float4(d * Sky.w * lerp(1.0, 1.5, mask), glow * wall, mask, 0.0);
 """
 
 
@@ -152,23 +155,29 @@ wp = mel.create_material_expression(mat, unreal.MaterialExpressionWorldPosition,
 time = mel.create_material_expression(mat, unreal.MaterialExpressionTime, -1400, 150)
 sky = vector(mat, "Sky", (0.4, 150000, 550000, 0.02), -1400, 700)
 front = vector(mat, "Front", (400000, 0, 0, 0), -1400, 900)
+mist = vector(mat, "Mist", (0, 40000, 0.35, 0), -1400, 1000)
 albedo = colour(mat, "Albedo", (0.9, 0.9, 0.9, 1), -1400, 1100)
-storm = colour(mat, "StormAlbedo", (0.5, 0.56, 0.66, 1), -1400, 1300)
+storm = colour(mat, "StormAlbedo", (0.74, 0.78, 0.84, 1), -1400, 1300)
 flash = colour(mat, "FlashColor", (0.16, 0.22, 0.4, 1), -1400, 1500)
 
 node = mel.create_material_expression(mat, unreal.MaterialExpressionCustom, -800, 300)
 node.set_editor_property("code", DENSITY)
 node.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT4)
 inputs = []
-for n in ["P", "T", "Sky", "Front"]:
+for n in ["P", "T", "Shape", "Sky", "Front", "Mist"]:
     ci = unreal.CustomInput()
     ci.set_editor_property("input_name", n)
     inputs.append(ci)
 node.set_editor_property("inputs", inputs)
+shape = mel.create_material_expression(mat, unreal.MaterialExpressionTextureObject, -1400, 300)
+shape.set_editor_property("texture", unreal.load_asset("/Engine/EngineSky/VolumetricClouds/T_VolumeNoiseShape128"))
+shape.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_MASKS)
+mel.connect_material_expressions(shape, "", node, "Shape")
 mel.connect_material_expressions(wp, "", node, "P")
 mel.connect_material_expressions(time, "", node, "T")
 mel.connect_material_expressions(sky, "", node, "Sky")
 mel.connect_material_expressions(front, "", node, "Front")
+mel.connect_material_expressions(mist, "", node, "Mist")
 
 
 def channel(r, g, b, y):

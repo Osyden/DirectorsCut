@@ -7,6 +7,7 @@
 #include "Components/PostProcessComponent.h"
 #include "Components/PointLightComponent.h"
 #include "Components/VolumetricCloudComponent.h"
+#include "Engine/Texture.h"
 #include "ProceduralMeshComponent.h"
 #include "DCTreadmill.h"
 #include "DCCrew.h"
@@ -35,6 +36,8 @@ ADCRideDirector::ADCRideDirector()
 	Sun->bEnableLightShaftOcclusion = true;
 	Sun->OcclusionMaskDarkness = 0.25f;
 	Sun->bCastCloudShadows = true;
+	// Sunlit cloud flanks blew out to plain white at full strength.
+	Sun->CloudScatteredLuminanceScale = FLinearColor(0.6f, 0.6f, 0.6f);
 	Sun->CloudShadowStrength = 0.9f;
 	Sun->CloudShadowOnSurfaceStrength = 0.85f;
 	Sun->CloudShadowExtent = 60.f;
@@ -63,8 +66,8 @@ ADCRideDirector::ADCRideDirector()
 	Clouds->LayerHeight = 9.f;
 	Clouds->TracingStartMaxDistance = 350.f;
 	Clouds->TracingMaxDistance = 60.f;
-	Clouds->ViewSampleCountScale = 1.6f;
-	Clouds->ShadowViewSampleCountScale = 1.4f;
+	Clouds->ViewSampleCountScale = 2.4f;
+	Clouds->ShadowViewSampleCountScale = 1.6f;
 	Clouds->ShadowTracingDistance = 8.f; // shorter than the default 15 km: finer steps, so the hollows between cloud heads hold their shadow
 
 	Fog = CreateDefaultSubobject<UExponentialHeightFogComponent>(TEXT("Fog"));
@@ -115,8 +118,8 @@ void ADCRideDirector::BuildDefaultPhases()
 
 	{
 		FDCEnvState& E = Add(EDCPhase::OpenSea, 0.f, 0.f);
-		E.FogColor = FLinearColor(0.75f, 0.55f, 0.4f); E.FogDensity = 0.0009f; E.CloudCover = 0.24f; E.CloudBase = 400000.f;
-		E.SunColor = FLinearColor(1.f, 0.72f, 0.45f); E.SunIntensity = 7.f; E.SunPitch = -20.f; E.SunYaw = 300.f; // low behind the port quarter, so the face of the storm front ahead is lit
+		E.FogColor = FLinearColor(0.75f, 0.55f, 0.4f); E.FogDensity = 0.0009f; E.CloudCover = 0.16f; E.CloudBase = 520000.f;
+		E.SunColor = FLinearColor(1.f, 0.72f, 0.45f); E.SunIntensity = 7.f; E.SunPitch = -24.f; E.SunYaw = 330.f; // low behind the port quarter, so the face of the storm front ahead is lit
 		E.SeaColor = FLinearColor(0.03f, 0.09f, 0.13f); E.SeaRoughness = 1.2f; E.ShipSpeed = 1000.f; E.WaveHeight = 70.f; E.Foam = 0.5f; E.Exposure = 1.0f;
 	}
 	{
@@ -130,13 +133,13 @@ void ADCRideDirector::BuildDefaultPhases()
 		// Then it thins, and the drowned city stands in layered blue-grey haze out to a couple of kilometres:
 		// cold moonlight from behind the statues, lightning to pick out their outlines, warm lanterns on deck.
 		FDCEnvState& E = Add(EDCPhase::Fog, 78.f, 22.f);
-		E.FogColor = FLinearColor(0.2f, 0.26f, 0.33f); E.FogDensity = 0.011f; E.FogHeightFalloff = 0.0012f; E.CloudCover = 0.8f; E.CloudBase = 110000.f;
+		E.FogColor = FLinearColor(0.2f, 0.26f, 0.33f); E.FogDensity = 0.006f; E.FogHeightFalloff = 0.0012f; E.CloudCover = 0.8f; E.CloudBase = 110000.f; E.Mist = 0.75f;
 		E.SunColor = FLinearColor(0.6f, 0.72f, 0.9f); E.SunIntensity = 1.6f; E.SunPitch = -24.f; E.SunYaw = 160.f; E.SkyIntensity = 0.55f;
 		E.SeaColor = FLinearColor(0.012f, 0.019f, 0.025f); E.SeaRoughness = 3.f; E.Rain = 0.35f; E.LightningRate = 10.f; E.ShipSpeed = 1500.f; E.WaveHeight = 190.f; E.Foam = 1.f; E.Exposure = 0.05f;
 	}
 	{
 		FDCEnvState& E = Add(EDCPhase::Slide, 240.f, 6.f);
-		E.FogColor = FLinearColor(0.05f, 0.1f, 0.14f); E.FogDensity = 0.05f; E.FogHeightFalloff = 0.002f; E.CloudCover = 1.f; E.CloudBase = 60000.f;
+		E.FogColor = FLinearColor(0.05f, 0.1f, 0.14f); E.FogDensity = 0.05f; E.FogHeightFalloff = 0.002f; E.CloudCover = 1.f; E.CloudBase = 60000.f; E.Mist = 0.4f;
 		E.SunIntensity = 0.2f; E.SunPitch = -30.f; E.SkyIntensity = 0.2f;
 		E.SeaColor = FLinearColor(0.0f, 0.05f, 0.08f); E.SeaRoughness = 9.f; E.LightningRate = 12.f; E.ShipSpeed = 4000.f; E.WaveHeight = 150.f; E.Foam = 1.4f; E.Exposure = 1.5f; E.Tube = 1.f; E.Drop = 260.f;
 	}
@@ -187,6 +190,18 @@ ADCRideDirector* ADCRideDirector::Get(const UObject* WorldContext)
 void ADCRideDirector::BeginPlay()
 {
 	Super::BeginPlay();
+	// The cloud material samples the engine's noise volumes. Nothing on screen "uses" a volume
+	// texture in the way the streamer measures, so left alone only their smallest mips stay loaded
+	// and every sample returns the same grey. Keep them fully resident.
+	for (const TCHAR* NoisePath : { TEXT("/Engine/EngineSky/VolumetricClouds/T_VolumeNoiseShape128.T_VolumeNoiseShape128"), TEXT("/Engine/EngineSky/VolumetricClouds/T_VolumeNoiseErosion32.T_VolumeNoiseErosion32") })
+	{
+		if (UTexture* Noise = LoadObject<UTexture>(nullptr, NoisePath))
+		{
+			Noise->SetForceMipLevelsToBeResident(100000.f);
+			Noise->WaitForStreaming();
+			CloudNoise.Add(Noise);
+		}
+	}
 	// The route is sea -> storm front -> Atlantis in the fog -> portal -> maelstrom. The hell channel is
 	// off that route and is skipped unless asked for with -DCHell; later phases close up the gap.
 	if (!FParse::Param(FCommandLine::Get(), TEXT("DCHell")))
@@ -351,7 +366,8 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 	}
 	if (CloudMID)
 	{
-		CloudMID->SetVectorParameterValue(TEXT("Sky"), FLinearColor(Env.CloudCover, Env.CloudBase, Env.CloudBase + 380000.f, 0.02f));
+		CloudMID->SetVectorParameterValue(TEXT("Sky"), FLinearColor(Env.CloudCover, Env.CloudBase, Env.CloudBase + 380000.f, 0.012f));
+		CloudMID->SetVectorParameterValue(TEXT("Mist"), FLinearColor(Env.Mist, 45000.f, 0.3f, 0.f));
 		CloudMID->SetVectorParameterValue(TEXT("Front"), FLinearColor(StormFrontX, StormFrontStrength, StormMouthRadius, FlashTimeLeft > 0.f ? 1.f : 0.f));
 	}
 	Fog->SetFogDensity(Env.FogDensity);

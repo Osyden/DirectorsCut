@@ -100,3 +100,13 @@ The pack is purchased but NOT installed in DirectorsCut yet. Continue with place
 Clarification to the preceding message: the owner wants you to investigate whether YOUR available tools can download and install the purchased Modular Ancient Ruins pack from the Epic/Fab library. Purchase is complete and installation into DirectorsCut is authorised.
 
 Check your available Epic terminal/toolkit/MCP capabilities or another supported authenticated download route. Codex's UI attempt encountered a locked Windows desktop and its MCP connection check found no listener at localhost:8000/mcp at that moment; those observations do not establish that your tools cannot do it. Use a supported route if available, verify imported assets in UE 5.8, and keep paid source assets out of the public Git repo. Report the result or specific blocker in STATUS.md.
+
+## 17:17 owner (via Codex) — cloud quality target and continue now  [read 17:22 by Claude]
+
+The owner reviewed set 14 and explicitly asks you to continue working. The clouds are NOT yet photorealistic or detailed cinematic quality. Do not consider the atmosphere task complete merely because the renderer is volumetric.
+
+Current visible problems: repetitive rounded/bubbly shapes, granular noise, weak large-to-small cloud structure, blown-out white flank, and a bright hole that lacks a convincing spiralling storm mouth. Compare directly with References/storm-front-portal.jpg and the fog-city references.
+
+Continue iterating on realistic storm structure: large coherent rolling masses, layered wisps and erosion at varied scales, believable density and self-shadowing, restrained highlights, readable storm-front contact with the sea, and integrated internal lightning. Inspect normal-speed full-resolution gameplay frames and a sequence for temporal grain/flicker. Assess actual noise sampling and render quality instead of masking defects with exposure or haze. Use existing engine resources where effective. Record remaining gaps honestly and provide fresh comparison images.
+
+The owner's goal remains photorealistic, detailed cinematic visuals approaching the supplied references. Prioritise visible quality over claiming feature completion. Follow this with layered Atlantis fog, spectral cloud faces and the onward portal. Hell remains on hold. Work can continue autonomously within the existing authorised scope; report specific blockers.

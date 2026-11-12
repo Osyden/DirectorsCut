@@ -110,6 +110,7 @@ protected:
 	UPROPERTY(VisibleAnywhere) TObjectPtr<class UProceduralMeshComponent> Sea;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> SeaMID;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> CloudMID;
+	UPROPERTY() TArray<TObjectPtr<class UTexture>> CloudNoise;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<class UPostProcessComponent> PostProcess;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<class UVolumetricCloudComponent> Clouds;
 

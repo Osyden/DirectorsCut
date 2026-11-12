@@ -43,6 +43,8 @@ struct FDCEnvState
 	/** Volumetric cloud deck: how much of the sky it covers (0..1) and its base height above the sea (cm). */
 	UPROPERTY(EditAnywhere) float CloudCover = 0.35f;
 	UPROPERTY(EditAnywhere) float CloudBase = 180000.f;
+	/** Banks of mist lying on the sea, 0..1. */
+	UPROPERTY(EditAnywhere) float Mist = 0.f;
 	UPROPERTY(EditAnywhere) FLinearColor SunColor = FLinearColor(1.f, 0.9f, 0.8f);
 	UPROPERTY(EditAnywhere) float SunIntensity = 6.f;
 	UPROPERTY(EditAnywhere) float SunPitch = -25.f;
@@ -83,6 +85,7 @@ struct FDCEnvState
 		R.FogHeightFalloff = FMath::Lerp(A.FogHeightFalloff, B.FogHeightFalloff, T);
 		R.CloudCover = FMath::Lerp(A.CloudCover, B.CloudCover, T);
 		R.CloudBase = FMath::Lerp(A.CloudBase, B.CloudBase, T);
+		R.Mist = FMath::Lerp(A.Mist, B.Mist, T);
 		R.SunColor = FMath::Lerp(A.SunColor, B.SunColor, T);
 		R.SunIntensity = FMath::Lerp(A.SunIntensity, B.SunIntensity, T);
 		R.SunPitch = FMath::Lerp(A.SunPitch, B.SunPitch, T);

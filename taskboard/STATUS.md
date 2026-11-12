@@ -2,6 +2,34 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 17:44 — 17:17 message read; clouds pass 2 (set 15). Better, not there yet
+
+**Acknowledged: the 17:17 cloud quality message.** Agreed that set 14 was not at the level of the references. This entry is a second pass, and by my own reading of the frames it is still short of them. I am continuing on the clouds; not moving on.
+
+Review set: `taskboard/review/15-storm-clouds-pass-2/`. `a_sky_*` look ahead from above the masts as the front closes, `b_helm_*` are the helm through the whole voyage. Normal game speed, 720p.
+
+What changed, against the list of problems in the message:
+- **Bubbly repeated shapes and weak large-to-small structure:** found the real cause of the earlier dead end. The engine's cloud noise volume is fine; its values sit in a narrow band (about 0.83 to 0.96), so thresholding it at 0.5 gave plain white. I measured its range in game and now read it at four scales (masses of 10 km and more, towers of 3 km, heads of 800 m, wisps of 200 m). The computed ball noise that made the bubbles is gone. Shapes are now irregular, soft-edged cumulus rather than rows of spheres.
+- **Density and self-shadowing:** density now builds up over about half a kilometre in from the surface. With a hard edge the sun never reached inside and the front rendered as flat dark slate. The front has lit masses standing in front of a solid dark core, so the bays between towers are dark cloud.
+- **Blown-out white flank:** that was sheet lightning inside the cloud adding up along the whole line of sight. It is five times weaker and fades at the edges. Sunlit cloud is also held to 60% of the engine default. One bright patch of lightning still shows in `a_sky_0024`.
+- **Storm mouth:** the hole now has spiral arms of cloud winding into it and closes in the dark further in, instead of a bright hole. It reads as a small swirl at the foot of the front, visible in `a_sky_0044` and `b_helm_0044`.
+- **Grain:** cloud sample count raised by half. Still visibly grainy in the full-size frames, especially on thin cloud. Not solved.
+- **Atlantis:** banks of sea mist from the same volume (new `Mist` value per phase) and a textured overcast replace some of the flat haze. First step only.
+
+Remaining gaps, as I see them in the frames:
+- The front does not yet read as one towering wall with a clear top and a hard line where it meets the sea. It reads as a field of cumulus in front of a dark mass. Scale is weaker than in set 14 from the helm.
+- Grain and softness: the clouds look low-resolution next to the ship. I have not yet checked a frame sequence for flicker.
+- The mouth is too small and too pale to be the centrepiece the storm-front reference shows; no warm-against-cold light contrast yet.
+- Lightning lights patches, but does not reveal structure inside the cloud.
+- Open-sea clouds are all one warm tan; no cool shadow sides.
+- Cloud faces and the portal out of Atlantis are still sphere-built.
+
+Checks this tick:
+- **Full unattended voyage at 5x with crew AI and stand-in captain (before the cloud changes, after the maelstrom enlargement):** all phases in order, no errors, hull 78% at the end. The language model handled orders and reports throughout.
+- Frame rate now: 163 to 179 fps open sea, 95 to 107 in the front and Atlantis, 133 to 153 in the maelstrom (720p, DLSS, editor build). Atlantis is the tightest.
+
+The packaged build is still the 14:44 one.
+
 ## Thu 12 Nov 17:02 — storm front is now a real volumetric cloud (set 14), first part of item 4
 
 Review set: `taskboard/review/14-volumetric-storm-front/`. Row 1 looks ahead from above the masts as the front closes; rows 2 and 3 are the helm through the approach, the inside of the front, Atlantis, and two maelstrom frames. Normal game speed. No new inbox messages.
