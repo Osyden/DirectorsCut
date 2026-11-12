@@ -72,7 +72,7 @@ void ADCWaveCurl::BuildSide(int32 Index, float Sign, float Height)
 			if (ip == 0)
 			{
 				// A skirt well under the surface, so the heaving sea never shows the wall's foot.
-				V = FVector(X, Sign * (Distance - R * 2.2f), -5000.f);
+				V = FVector(X, Sign * (Distance - R * 2.2f), -9000.f);
 				Foam = 0.f; Thin = 0.f;
 			}
 			else
@@ -136,7 +136,7 @@ void ADCWaveCurl::Tick(float DeltaSeconds)
 		const float Heave = 1.f + 0.07f * FMath::Sin(T * 0.45f + i * 2.4f);
 		const float Sway = 500.f * FMath::Sin(T * 0.3f + i * 1.3f);
 		Walls[i]->SetRelativeScale3D(FVector(1.f, 1.f, FMath::Max(0.01f, Rise * Heave)));
-		Walls[i]->SetRelativeLocation(FVector(1500.f * FMath::Sin(T * 0.21f + i), (i == 0 ? 1.f : -1.f) * Sway, Director->SeaLevelZ - 600.f * (1.f - Rise)));
+		Walls[i]->SetRelativeLocation(FVector(1500.f * FMath::Sin(T * 0.21f + i), (i == 0 ? 1.f : -1.f) * Sway, Director->SeaLevelZ - 600.f * (1.f - Rise) - 0.15f * Director->SwellLift));
 	}
 	if (SprayMID)
 	{

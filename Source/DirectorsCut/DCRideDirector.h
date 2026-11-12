@@ -77,15 +77,24 @@ protected:
 	FVector2D SeaScroll = FVector2D::ZeroVector;
 
 public:
-	UPROPERTY(EditAnywhere) float TubeRadius = 3200.f;
+	UPROPERTY(EditAnywhere) float TubeRadius = 6000.f;
 	/** Maelstrom centre relative to the ship, cm. Negative Y is to port. */
-	UPROPERTY(EditAnywhere) FVector2D WhirlCenter = FVector2D(52000.f, 15000.f);
-	UPROPERTY(EditAnywhere) float WhirlDepth = 38000.f;
-	UPROPERTY(EditAnywhere) float WhirlRadius = 35000.f;
+	UPROPERTY(EditAnywhere) FVector2D WhirlCenter = FVector2D(186000.f, 40000.f);
+	/** The centre of the maelstrom starts this far from the ship and ends this far, on this bearing (degrees to starboard of the bow). */
+	UPROPERTY(EditAnywhere) float WhirlStartDistance = 120000.f;
+	UPROPERTY(EditAnywhere) float WhirlEndDistance = 96000.f;
+	UPROPERTY(EditAnywhere) float WhirlBearing = 12.f;
+	/** Seconds of ride time since the maelstrom phase began (0 before it). */
+	float MaelstromElapsed = 0.f;
+	/** Height of the swell that lifts the ship in the maelstrom, cm, and how much of it is up right now. */
+	UPROPERTY(EditAnywhere) float SwellHeight = 11000.f;
+	float SwellLift = 0.f;
+	UPROPERTY(EditAnywhere) float WhirlDepth = 100000.f;
+	UPROPERTY(EditAnywhere) float WhirlRadius = 60000.f;
 	/** The crater: a ring of falling water around the maelstrom. Radius, height and half-width of the wall, cm. */
-	UPROPERTY(EditAnywhere) float CraterRim = 110000.f;
-	UPROPERTY(EditAnywhere) float CraterCliff = 26000.f;
-	UPROPERTY(EditAnywhere) float CraterWidth = 5500.f;
+	UPROPERTY(EditAnywhere) float CraterRim = 330000.f;
+	UPROPERTY(EditAnywhere) float CraterCliff = 30000.f;
+	UPROPERTY(EditAnywhere) float CraterWidth = 16000.f;
 
 protected:
 

@@ -249,6 +249,34 @@ void ADCGameMode::StartPlay()
 		}
 	}
 
+	// Test hook: -DCHide=Name hides every ship component whose name contains Name.
+	{
+		FString Hide;
+		if (Ship && FParse::Value(FCommandLine::Get(), TEXT("DCHide="), Hide))
+		{
+			for (UActorComponent* C : Ship->GetComponents())
+			{
+				USceneComponent* SC = Cast<USceneComponent>(C);
+				if (SC && SC->GetName().Contains(Hide)) { SC->SetVisibility(false, true); }
+			}
+		}
+	}
+
+	// Test hook: -DCExec=cmd~arg;cmd~arg runs console commands at start ("~" stands for a space).
+	{
+		FString Cmds;
+		if (FParse::Value(FCommandLine::Get(), TEXT("DCExec="), Cmds, false))
+		{
+			TArray<FString> List;
+			Cmds.ParseIntoArray(List, TEXT(";"));
+			for (FString& Cmd : List)
+			{
+				Cmd.ReplaceInline(TEXT("~"), TEXT(" "));
+				if (GEngine) { GEngine->Exec(World, *Cmd); }
+			}
+		}
+	}
+
 	Director = World->SpawnActor<ADCRideDirector>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
 	Director->SeaLevelZ = SeaLevelZ;
 	Treadmill = World->SpawnActor<ADCTreadmill>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
@@ -486,6 +514,23 @@ void ADCGameMode::Tick(float DeltaSeconds)
 	if (!bAutoShotTaken)
 	{
 		const FString File = FPaths::ProjectSavedDir() / TEXT("Screenshots/Auto") / FString::Printf(TEXT("shot_%04d.png"), FMath::RoundToInt(AutoShotTimes[AutoShotIndex]));
+		if (FParse::Param(FCommandLine::Get(), TEXT("DCDumpNear")))
+		{
+			// Test hook: list everything visible whose bounds come within 60 m of the ship.
+			for (TActorIterator<AActor> It(GetWorld()); It; ++It)
+			{
+				TInlineComponentArray<UPrimitiveComponent*> Prims(*It);
+				for (UPrimitiveComponent* P : Prims)
+				{
+					if (!P->IsVisible() || P->GetOwner() == Ship) { continue; }
+					const FBoxSphereBounds B = P->Bounds;
+					if (B.GetBox().ComputeSquaredDistanceToPoint(FVector(0.f, 0.f, 1000.f)) < FMath::Square(6000.f) && B.SphereRadius < 400000.f)
+					{
+						UE_LOG(LogDC, Display, TEXT("NEAR %s.%s origin %s extent %s"), *It->GetName(), *P->GetName(), *B.Origin.ToCompactString(), *B.BoxExtent.ToCompactString());
+					}
+				}
+			}
+		}
 		FScreenshotRequest::RequestScreenshot(File, false, false);
 		UE_LOG(LogDC, Log, TEXT("Auto shot %s at ride time %.1f, %.0f fps"), *FPaths::GetCleanFilename(File), Director->RideTime, SmoothedFps);
 		bAutoShotTaken = true;

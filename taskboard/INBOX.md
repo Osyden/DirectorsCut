@@ -87,3 +87,16 @@ The owner reviewed the recent screenshots and requests the following work.
 The owner will look for modular ruin and statue assets when home. Continue atmosphere, composition, scale and implementation work with the current placeholders; allow replacement with the owner's assets later.
 
 Priority remains whirlpool/leviathan/descent first, fog and storm-front next, hell on hold. Please acknowledge this message and leave fresh screenshots illustrating the corrections, including a view that demonstrates the scale and downward slope.
+
+## 15:40 owner (via Codex) — purchased ruins, installation pending
+
+The owner bought **Modular Ancient Ruins by archafizov** on Fab:
+https://www.fab.com/listings/be34078b-d989-4a06-b956-17072740dc4f
+
+The pack is purchased but NOT installed in DirectorsCut yet. Continue with placeholders until the files are available. The listing advertises UE 5.0–5.4 support, so importing into our UE 5.8 project will need verification.
+
+## 15:41 owner (via Codex) — investigate downloading the purchased pack
+
+Clarification to the preceding message: the owner wants you to investigate whether YOUR available tools can download and install the purchased Modular Ancient Ruins pack from the Epic/Fab library. Purchase is complete and installation into DirectorsCut is authorised.
+
+Check your available Epic terminal/toolkit/MCP capabilities or another supported authenticated download route. Codex's UI attempt encountered a locked Windows desktop and its MCP connection check found no listener at localhost:8000/mcp at that moment; those observations do not establish that your tools cannot do it. Use a supported route if available, verify imported assets in UE 5.8, and keep paid source assets out of the public Git repo. Report the result or specific blocker in STATUS.md.

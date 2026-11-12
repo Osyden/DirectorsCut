@@ -2,6 +2,24 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 16:05 — 15:21 corrections, first pass: tunnel sheet fixed, bowl and leviathan about three times larger, visible descent (set 12)
+
+Review set: `taskboard/review/12-descent-and-scale/`. Row 1 is the tunnel and breach from the helm, rows 2 and 3 the maelstrom from the helm over its two and a half minutes, the last two frames are the same scene from 120 m above the ship to show the scale and the slope. All captured at normal game speed.
+
+**1. The flat sheet on the left of the tunnel: found and fixed.** Codex's pointer was the right area. The sea mesh is a fan of triangles around the ship, so a few hundred metres ahead it has only one or two points across the width of the tunnel, and the rolled-up sea collapsed there into a flat wall standing on the ship's centre line. The helm is to starboard of that line, so the wall covered the port half of the view ahead. Now the tunnel opens out with distance before the mesh gets that coarse, the bowl no longer squeezes one side of it, and the tunnel is 60 m in radius instead of 32 m. The breach opens the two sides like a pair of doors (frames `a_helm_0274`, `0284`). Checked from the helm through the whole transition and from astern.
+- Also found on the way: ghost ships and Atlantis scenery used to follow the ship into the tunnel. Ghost ships now founder when the slide begins and the city sinks behind the closing walls.
+- Motion blur was smearing fast water near the ship into flat colour; it is now about a third of the engine default.
+- My earlier screenshots of the tunnel were taken at six times game speed, which multiplied that blur. Sets from now on use normal speed for anything that moves fast.
+
+**2. Leviathan.** The whole creature is 2.8 times larger: the head stands about 750 m above the floor of the pit and the skull is about 250 m long, five ship lengths. It rises out of the pit ahead of the bow with haze between it and the ship (`b_helm_0382`, `0400`, `0430`). Not done: the head is still built from simple shapes and reads as a mask; silhouette, jaw and body are the next job. The arms round its base did not scale well and are hard to pick out.
+
+**3. Maelstrom.** The crater is 6.6 km across (was 2.2), the wall of falling water is 300 m high, and the centre is a funnel about 1 km deep. The ship now starts 1.2 km from the centre on a 15 degree slope and is drawn in to under 1 km on a 23 degree slope, so through the phase the far wall and the rim climb up the view and the creature comes up from below the bow. A mountainous swell lifts the ship about 100 m every half minute, which is when the deck sees furthest down the funnel. The frames from above (`c_above_0382`, `0430`) show what is there: spiral arms of foam winding into the pit and the creature standing in it.
+- Against the reference: immense bowl, towering far rim, creature dominating the centre, sun and rays, water walls beside the ship are all there. Still short: from the helm the bow hides the steepest part of the view down, so the depth is clearer from the main deck rail than from the wheel; the water close to the ship is pale and flat; a faint weave pattern shows on distant water in the sun; the wave walls beside the ship still look a little like ice.
+
+**4. Fog and clouds** not started; next after one more pass on the creature.
+
+Not yet repackaged; the packaged build is still the 14:44 one.
+
 ## Thu 12 Nov 15:25 — 15:21 message read; water walls beside the ship (set 11)
 
 **Acknowledged: the 15:21 corrections** (tunnel's flat left sheet, much larger leviathan, much larger maelstrom with a visible descent, cinematic fog and clouds). Working on them now in the owner's order: descent, bowl and leviathan scale first, with the tunnel sheet; fog and clouds after. Thanks to Codex for the seam pointer in `make_sea_material.py`; I will check it at the helm camera.

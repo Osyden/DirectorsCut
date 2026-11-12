@@ -207,6 +207,8 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 		Hulk->AddActorLocalRotation(FRotator(-9.f * DeltaSeconds, 0.f, 14.f * DeltaSeconds));
 	}
 
+	const EDCPhase Now = Director->GetPhase();
+	const bool bLeavingAtlantis = Now == EDCPhase::Slide || Now == EDCPhase::Breach || Now == EDCPhase::Maelstrom || Now == EDCPhase::Ending;
 	const FTransform Rock = Director->GetWorldRock();
 	for (int32 i = Objects.Num() - 1; i >= 0; --i)
 	{
@@ -223,6 +225,30 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 			// Owned and moved elsewhere; just keep our sea-space copy of its position current.
 			Obj.Base = Actor->GetActorLocation() + FVector(0.f, LaneOffset, 0.f);
 			continue;
+		}
+
+
+		// Once the sea rolls up, nothing from Atlantis follows the ship in. Ghost ships founder at
+		// once (alongside in the tunnel they filled half the view from the helm); the rest goes under
+		// as the walls close, so the breach opens on an empty bowl.
+		if (bLeavingAtlantis)
+		{
+			if (Obj.bHostile)
+			{
+				Wrecks.Add({ Actor, 0.f });
+				Objects.RemoveAtSwap(i);
+				continue;
+			}
+			if (Env.Tube > 0.5f || Director->GetPhase() != EDCPhase::Slide)
+			{
+				Obj.Base.Z -= 30000.f * DeltaSeconds * Director->TimeScale;
+				if (Obj.Base.Z < -160000.f)
+				{
+					Actor->Destroy();
+					Objects.RemoveAtSwap(i);
+					continue;
+				}
+			}
 		}
 
 		// Hostiles pace the ship once alongside; obstacles sweep past.

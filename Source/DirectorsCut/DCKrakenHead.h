@@ -35,6 +35,8 @@ public:
 	UPROPERTY(EditAnywhere) float NeckLength = 27000.f;
 	/** 1 = a skull about 70 m long. */
 	UPROPERTY(EditAnywhere) float HeadScale = 1.25f;
+	/** The whole creature is built at one size and then scaled by this: 2.8 puts the head 750 m above the floor. */
+	UPROPERTY(EditAnywhere) float BodyScale = 2.8f;
 
 protected:
 	void BuildMound();

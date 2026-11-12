@@ -61,10 +61,17 @@ d.z -= 600.0 * smoothstep(0.0, 0.2, saturate(1.0 - dot(e, e)));
 float3 q = float3(P.x + d.x, P.y + d.y, d.z);
 
 // Whirlpool: a funnel centred away from the ship; height is zero at the ship itself.
+// Inside the tube the bowl is measured along the keel line only. Otherwise the uphill side of the
+// funnel pushes one wall of the tube in through its own axis and it shows as a flat sheet.
+float tube = Shape.x;
+if (Crater.w > 1.0) { tube *= 1.0 - smoothstep(Crater.w, Crater.w * 3.0 + 2500.0, q.x); }
+float2 bp = float2(q.x, q.y * (1.0 - saturate(tube * 4.0)));
 float wr = max(Whirl.w, 1.0);
-float r2 = dot(q.xy - Whirl.xy, q.xy - Whirl.xy) / (wr * wr);
+float r2 = dot(bp - Whirl.xy, bp - Whirl.xy) / (wr * wr);
 float r02 = dot(Whirl.xy, Whirl.xy) / (wr * wr);
-q.z -= Whirl.z * (1.0 / (1.0 + r2) - 1.0 / (1.0 + r02));
+// Bowl and drop move the water bodily; they are added after the tube is rolled, so they shift the
+// tube instead of squeezing it.
+float shift = -Whirl.z * (1.0 / (1.0 + r2) - 1.0 / (1.0 + r02));
 
 // Crater rim: outside a ring around the same centre the sea stands a cliff's height above the bowl,
 // so the bowl is walled by falling water. The ship is inside the ring.
@@ -72,25 +79,41 @@ float rr = sqrt(r2) * wr;
 float rr0 = sqrt(r02) * wr;
 float inRim = 1.0 - smoothstep(Crater.x - Crater.z, Crater.x + Crater.z, rr);
 float inRim0 = 1.0 - smoothstep(Crater.x - Crater.z, Crater.x + Crater.z, rr0);
-q.z -= Crater.y * (inRim - inRim0);
+shift -= Crater.y * (inRim - inRim0);
 
 // Drop: the sea falls away ahead and rises behind, like cresting a slide.
 float xn = clamp(q.x / 10000.0, -6.0, 6.0);
-q.z -= Shape.z * xn * abs(xn);
+shift -= Shape.z * xn * abs(xn);
 
 // Tube: roll the sea up around the ship's fore-aft axis until it closes overhead. With a mouth
 // distance set, the tube opens out ahead of the ship: a tunnel the ship is bursting out of.
-float tube = Shape.x;
-if (Crater.w > 1.0) { tube *= 1.0 - smoothstep(Crater.w, Crater.w * 3.0 + 2500.0, q.x); }
 if (tube > 0.001)
 {
-    float Rt = Shape.y / tube;
-    float th = clamp(q.y / Rt, -3.14159, 3.14159);
+    // The sea within reach is rolled onto a cylinder; "tube" is how far round it goes (1 = closed
+    // overhead). Past the end of the roll the sea carries straight on along the tangent, so a
+    // half-closed tube has walls of water standing up from its lips and an opening one peels back
+    // flat like a flower. Nearly closed, the two sides meet in a ridge over the masts.
+    float Rt = Shape.y / lerp(0.45, 1.0, tube);
+    // The sea mesh is a fan around the ship, so far ahead it has too few points across to hold a
+    // closed tube: there the roll would collapse into a flat wall standing on the keel line. Open
+    // the tube out with distance instead, into a canyon and then a wide trough.
+    float coarse = Dist * 0.0245 / Rt;
+    float wrap = 3.14159 * tube * (1.0 - 0.5 * smoothstep(0.3, 0.7, coarse) - 0.3 * smoothstep(0.7, 3.0, coarse));
+    float a = q.y / Rt;
+    float th = clamp(a, -wrap, wrap);
+    float ex = max(abs(a) - wrap, 0.0) * Rt;
     float rad = Rt - q.z;
-    q.y = rad * sin(th);
-    q.z = Rt - rad * cos(th);
+    float sn = sin(th);
+    float cs = cos(th);
+    if (abs(th) > 1.5708) { ex = min(ex, rad * abs(sn / min(cs, -0.0001))); }
+    float sg = a < 0.0 ? -1.0 : 1.0;
+    q.y = rad * sn + sg * ex * cs;
+    q.z = Rt - rad * cs + sg * ex * sn;
 }
-return float3(q.x - P.x, q.y - P.y, q.z);
+// Swell under the ship: Shape.w lifts the ship on a mountain of water 260 m across. The ship is
+// the fixed point, so in practice everything away from it sinks by that much.
+shift += Shape.w * (exp(-dot(P.xy, P.xy) / (26000.0 * 26000.0)) - 1.0);
+return float3(q.x - P.x, q.y - P.y, q.z + shift);
 """
 
 NORMAL = WAVES + """
@@ -101,7 +124,8 @@ for (int i = 0; i < 7; i++)
     float k = 6.28318 / Waves[i].z;
     float w = sqrt(980.0 * k);
     float ph = k * dot(D, p) - w * T;
-    g += D * (Waves[i].w * Amp * k * cos(ph));
+    // Short waves fade out with distance: past a few hundred wavelengths they only alias into a weave.
+    g += D * (Waves[i].w * Amp * k * cos(ph)) * saturate(1.5 - Dist / (Waves[i].z * 20.0));
 }
 // Small ripples, pixel only, faded with distance so they do not shimmer.
 const float4 Ripples[5] = {
@@ -121,24 +145,31 @@ for (int j = 0; j < 5; j++)
     g += D * (Ripples[j].w * rf * k * cos(ph));
 }
 // Slope of the whirlpool funnel.
+float tube = Shape.x;
+if (Crater.w > 1.0) { tube *= 1.0 - smoothstep(Crater.w, Crater.w * 3.0 + 2500.0, P.x); }
 float wr = max(Whirl.w, 1.0);
-float2 rel = P.xy - Whirl.xy;
+float2 rel = float2(P.x, P.y * (1.0 - saturate(tube * 4.0))) - Whirl.xy;
 float r2 = dot(rel, rel) / (wr * wr);
 g += rel * (Whirl.z * 2.0 / (wr * wr) / ((1.0 + r2) * (1.0 + r2)));
 // Slope of the crater wall: steep, facing the centre.
 float rr = sqrt(r2) * wr;
 float band = saturate(1.0 - abs(rr - Crater.x) / max(Crater.z, 1.0));
 g += normalize(rel + 0.001) * (Crater.y / max(2.0 * Crater.z, 1.0)) * 1.5 * band;
+// Slope of the swell under the ship.
+g -= P.xy * (2.0 * Shape.w / (26000.0 * 26000.0) * exp(-dot(P.xy, P.xy) / (26000.0 * 26000.0)));
 // Slope of the drop.
 g.x -= Shape.z * 2.0 * abs(clamp(P.x / 10000.0, -6.0, 6.0)) / 10000.0;
 
 float3 n = normalize(float3(-g.x, -g.y, 1.0));
-float tube = Shape.x;
-if (Crater.w > 1.0) { tube *= 1.0 - smoothstep(Crater.w, Crater.w * 3.0 + 2500.0, P.x); }
 if (tube > 0.001)
 {
-    float Rt = Shape.y / tube;
-    float th = clamp(P.y / Rt, -3.14159, 3.14159);
+    float Rt = Shape.y / lerp(0.45, 1.0, tube);
+    // The sea mesh is a fan around the ship, so far ahead it has too few points across to hold a
+    // closed tube: there the roll would collapse into a flat wall standing on the keel line. Open
+    // the tube out with distance instead, into a canyon and then a wide trough.
+    float coarse = Dist * 0.0245 / Rt;
+    float wrap = 3.14159 * tube * (1.0 - 0.5 * smoothstep(0.3, 0.7, coarse) - 0.3 * smoothstep(0.7, 3.0, coarse));
+    float th = clamp(P.y / Rt, -wrap, wrap);
     float s = sin(th);
     float c = cos(th);
     n = float3(n.x, n.y * c - n.z * s, n.y * s + n.z * c);

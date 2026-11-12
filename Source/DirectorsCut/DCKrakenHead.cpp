@@ -270,7 +270,7 @@ void ADCKrakenHead::BeginPlay()
 		MistRoot->SetupAttachment(Mesh);
 		MistRoot->RegisterComponent();
 		FRandomStream MistRng(99);
-		const float RimRadius = Director ? Director->CraterRim - Director->CraterWidth * 1.6f : 100000.f;
+		const float RimRadius = (Director ? Director->CraterRim - Director->CraterWidth * 1.6f : 100000.f) / BodyScale;
 		for (int32 i = 0; i < 84; ++i)
 		{
 			const float A = 2.f * UE_PI * i / 84.f + MistRng.FRandRange(-0.03f, 0.03f);
@@ -318,9 +318,10 @@ void ADCKrakenHead::Tick(float DeltaSeconds)
 
 	Clock += DeltaSeconds;
 	const bool bMaelstrom = Director->GetPhase() == EDCPhase::Maelstrom;
-	MaelstromTime = bMaelstrom ? MaelstromTime + DeltaSeconds * Director->TimeScale : 0.f;
+	MaelstromTime = bMaelstrom ? Director->MaelstromElapsed : 0.f;
 	const float Target = (bMaelstrom && MaelstromTime > RiseDelay) ? 1.f : 0.f;
-	Raised = FMath::FInterpConstantTo(Raised, Target, DeltaSeconds * Director->TimeScale, 1.f / RiseTime);
+	// Taken from the ride clock, so jumping to a time in the ride shows the creature as it would be then.
+	Raised = bMaelstrom ? FMath::Clamp((MaelstromTime - RiseDelay) / RiseTime, 0.f, 1.f) : FMath::FInterpConstantTo(Raised, Target, DeltaSeconds * Director->TimeScale, 1.f / RiseTime);
 
 	const bool bVisible = Raised > 0.001f;
 	Mesh->SetVisibility(bVisible, true);
@@ -338,17 +339,18 @@ void ADCKrakenHead::Tick(float DeltaSeconds)
 
 	// Rise out of the crater floor, with a slow heave once up. Its face (local +Y) turns to the ship.
 	const FVector Floor = Director->GetWhirlFloorLocal();
-	const float Lift = FMath::InterpEaseInOut(-NeckLength * 1.15f, 0.f, Raised, 2.f) + 500.f * FMath::Sin(Clock * 0.6f);
+	const float Lift = BodyScale * (FMath::InterpEaseInOut(-NeckLength * 1.15f, 0.f, Raised, 2.f) + 500.f * FMath::Sin(Clock * 0.35f));
 	SetActorRelativeLocation(Floor + FVector(0.f, 0.f, Lift));
 	const float FaceYaw = FMath::RadiansToDegrees(FMath::Atan2(-Director->WhirlCenter.Y, -Director->WhirlCenter.X)) - 90.f;
 	SetActorRelativeRotation(FRotator(0.f, FaceYaw, 0.f));
+	SetActorRelativeScale3D(FVector(BodyScale));
 
 	// Keep the ring of mist at the foot of the wall while the creature itself rises through the floor.
 	if (MistRoot && MistMID)
 	{
 		const float RimRatio = Director->CraterRim / Director->WhirlRadius;
 		const float BowlAtRim = Director->GetEnv().Whirl * Director->WhirlDepth * (1.f - 1.f / (1.f + RimRatio * RimRatio));
-		MistRoot->SetRelativeLocation(FVector(0.f, 0.f, BowlAtRim - Lift));
+		MistRoot->SetRelativeLocation(FVector(0.f, 0.f, (BowlAtRim - Lift) / BodyScale));
 		const float SunLit = FMath::Clamp(Director->GetEnv().SunIntensity / 9.f, 0.1f, 1.f);
 		MistMID->SetVectorParameterValue(TEXT("Top"), FLinearColor(0.8f, 0.88f, 0.95f) * SunLit);
 		MistMID->SetVectorParameterValue(TEXT("Bottom"), FLinearColor(0.5f, 0.62f, 0.72f) * SunLit);

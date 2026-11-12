@@ -79,6 +79,11 @@ ADCRideDirector::ADCRideDirector()
 	PostProcess->Settings.AutoExposureApplyPhysicalCameraExposure = false;
 	PostProcess->Settings.bOverride_AutoExposureBias = true;
 	PostProcess->Settings.AutoExposureBias = 0.f;
+	// Fast water close to the ship smeared into flat sheets at the default blur.
+	PostProcess->Settings.bOverride_MotionBlurAmount = true;
+	PostProcess->Settings.MotionBlurAmount = 0.18f;
+	PostProcess->Settings.bOverride_MotionBlurMax = true;
+	PostProcess->Settings.MotionBlurMax = 1.5f;
 
 	Bolt = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("Bolt"));
 	Bolt->SetupAttachment(RootComponent);
@@ -142,7 +147,7 @@ void ADCRideDirector::BuildDefaultPhases()
 		// The reveal. The ship bursts out of the tunnel into daylight: a crater a kilometre across walled
 		// by falling water, the creature in the middle of it, sun breaking through towering cloud ahead.
 		FDCEnvState& E = Add(EDCPhase::Maelstrom, 440.f, 16.f);
-		E.FogColor = FLinearColor(0.35f, 0.5f, 0.68f); E.FogDensity = 0.002f; E.FogHeightFalloff = 0.003f;
+		E.FogColor = FLinearColor(0.35f, 0.5f, 0.68f); E.FogDensity = 0.0013f; E.FogHeightFalloff = 0.003f;
 		E.SunColor = FLinearColor(1.f, 0.93f, 0.8f); E.SunIntensity = 9.f; E.SunPitch = -30.f; E.SunYaw = 195.f; E.SkyIntensity = 1.2f;
 		E.SeaColor = FLinearColor(0.004f, 0.05f, 0.065f); E.SeaRoughness = 3.f; E.Rain = 0.3f; E.LightningRate = 4.f; E.ShipSpeed = 2200.f; E.WaveHeight = 240.f; E.Foam = 1.3f; E.Exposure = -0.2f; E.Whirl = 1.f; E.Crater = 1.f; E.TubeMouth = 1200.f;
 	}
@@ -299,6 +304,22 @@ void ADCRideDirector::Tick(float DeltaSeconds)
 
 void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 {
+	// The ship is drawn down the bowl: the centre comes closer for as long as the maelstrom lasts,
+	// so the slope under the ship steepens and the creature grows.
+	{
+		float Start = -1.f, End = -1.f;
+		for (int32 i = 0; i < Phases.Num(); ++i)
+		{
+			if (Phases[i].Phase == EDCPhase::Maelstrom) { Start = Phases[i].StartTime; End = Phases.IsValidIndex(i + 1) ? Phases[i + 1].StartTime : Start + 160.f; }
+		}
+		const float Approach = Start >= 0.f ? FMath::SmoothStep(0.f, 1.f, FMath::Clamp((RideTime - Start) / FMath::Max(End - Start, 1.f), 0.f, 1.f)) : 0.f;
+		MaelstromElapsed = Start >= 0.f ? FMath::Max(0.f, RideTime - Start) : 0.f;
+		// A mountainous swell lifts the ship every half minute. From its crest the deck looks down the
+		// slope into the pit; in the trough the walls tower. Not inside the tunnel.
+		SwellLift = Env.Whirl * FMath::Clamp(1.f - Env.Tube * 3.f, 0.f, 1.f) * SwellHeight * (0.62f + 0.38f * FMath::Sin(RideTime * 0.21f));
+		const float Bearing = FMath::DegreesToRadians(WhirlBearing);
+		WhirlCenter = FVector2D(FMath::Cos(Bearing), FMath::Sin(Bearing)) * FMath::Lerp(WhirlStartDistance, WhirlEndDistance, Approach);
+	}
 	Sun->SetIntensity(Env.SunIntensity);
 	Sun->SetLightColor(Env.SunColor);
 	Sun->SetRelativeRotation(FRotator(Env.SunPitch, Env.SunYaw, 0.f));
@@ -330,7 +351,7 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 		SeaMID->SetScalarParameterValue(TEXT("Roughness"), FMath::Lerp(0.06f, 0.65f, FMath::Clamp(Env.SeaGlow.R, 0.f, 1.f)));
 		SeaMID->SetVectorParameterValue(TEXT("Color"), Env.SeaColor);
 		// The tunnel is wider in the maelstrom, where it frames the view and must not fill it.
-		SeaMID->SetVectorParameterValue(TEXT("Shape"), FLinearColor(Env.Tube, TubeRadius * (1.f + 0.9f * Env.Whirl), Env.Drop, 0.f));
+		SeaMID->SetVectorParameterValue(TEXT("Shape"), FLinearColor(Env.Tube, TubeRadius * (1.f + 0.9f * Env.Whirl), Env.Drop, SwellLift));
 		SeaMID->SetVectorParameterValue(TEXT("ScatterColor"), FLinearColor(0.01f, 0.085f, 0.105f) * (Env.SunIntensity * 0.03f) * (1.f - FMath::Min(Env.SeaGlow.R, 1.f)));
 		SeaMID->SetVectorParameterValue(TEXT("Whirl"), FLinearColor(WhirlCenter.X, WhirlCenter.Y, Env.Whirl * WhirlDepth, WhirlRadius));
 		SeaMID->SetVectorParameterValue(TEXT("Crater"), FLinearColor(CraterRim, Env.Crater * CraterCliff, CraterWidth, Env.TubeMouth));
@@ -341,7 +362,8 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 
 	// Sea motion: the world rocks, the ship does not.
 	const float T = RideTime;
-	const float A = Env.SeaRoughness;
+	// Inside the tunnel the walls are close, so the sea rocks less there: a hard roll swings one wall in against the rail.
+	const float A = Env.SeaRoughness * (1.f - 0.6f * Env.Tube);
 	const float Roll = A * (FMath::Sin(T * 0.55f) + 0.35f * FMath::Sin(T * 1.3f + 1.f));
 	const float Pitch = A * 0.45f * (FMath::Sin(T * 0.4f + 2.f) + 0.3f * FMath::Sin(T * 1.1f));
 	const float Heave = A * 18.f * FMath::Sin(T * 0.7f + 0.5f);
@@ -458,7 +480,7 @@ USceneComponent* ADCRideDirector::GetSea() const
 FVector ADCRideDirector::GetWhirlFloorLocal() const
 {
 	const float K = WhirlCenter.SizeSquared() / (WhirlRadius * WhirlRadius);
-	return FVector(WhirlCenter.X, WhirlCenter.Y, -Env.Whirl * WhirlDepth * (1.f - 1.f / (1.f + K)));
+	return FVector(WhirlCenter.X, WhirlCenter.Y, -Env.Whirl * WhirlDepth * (1.f - 1.f / (1.f + K)) - SwellLift);
 }
 
 void ADCRideDirector::AddLamp(const FVector& Location)
