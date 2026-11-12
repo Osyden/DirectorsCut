@@ -4,6 +4,10 @@
 #include "Components/PrimitiveComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
+#include "Engine/PointLight.h"
+#include "Components/PointLightComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "EngineUtils.h"
 #include "UObject/ConstructorHelpers.h"
 
@@ -17,6 +21,18 @@ ADCGunnery::ADCGunnery()
 	Balls->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> Sphere(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
 	if (Sphere.Succeeded()) { Balls->SetStaticMesh(Sphere.Object); }
+	Trails = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("ShotStreaks"));
+	Trails->SetupAttachment(Balls);
+	Trails->SetMobility(EComponentMobility::Movable);
+	Trails->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Trails->SetCastShadow(false);
+	if (Sphere.Succeeded()) { Trails->SetStaticMesh(Sphere.Object); }
+	Spray = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("ImpactSpray"));
+	Spray->SetupAttachment(Balls);
+	Spray->SetMobility(EComponentMobility::Movable);
+	Spray->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Spray->SetCastShadow(false);
+	if (Sphere.Succeeded()) { Spray->SetStaticMesh(Sphere.Object); }
 }
 
 ADCGunnery* ADCGunnery::Get(const UObject* WorldContext)
@@ -31,6 +47,13 @@ ADCGunnery* ADCGunnery::Get(const UObject* WorldContext)
 void ADCGunnery::Init(AActor* Ship, float InSeaLevelZ)
 {
 	SeaLevelZ = InSeaLevelZ;
+	GunShip = Ship;
+	if (UMaterialInterface* Base = Trails->GetMaterial(0))
+	{
+		UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(Base, Trails);
+		Material->SetVectorParameterValue(TEXT("Color"), FLinearColor(1.f, 0.57f, 0.23f));
+		Trails->SetMaterial(0, Material);
+	}
 	Muzzles[0].Reset();
 	Muzzles[1].Reset();
 	if (Ship)
@@ -40,11 +63,12 @@ void ADCGunnery::Init(AActor* Ship, float InSeaLevelZ)
 		for (UPrimitiveComponent* P : Prims)
 		{
 			// Broadside guns only: named "...Cannon..." and sitting well off the centreline.
-			if (!P->GetName().Contains(TEXT("Cannon"))) { continue; }
+			if (!Cast<USkeletalMeshComponent>(P) || !P->IsVisible() || P->bHiddenInGame
+				|| !P->GetName().Contains(TEXT("Cannon"))) { continue; }
 			const FVector Loc = P->Bounds.Origin;
-			if (FMath::Abs(Loc.Y) < 200.f) { continue; }
+			if (FMath::Abs(Loc.Y) < 200.f || P->Bounds.BoxExtent.Y <= P->Bounds.BoxExtent.X) { continue; }
 			const int32 SideIdx = Loc.Y < 0.f ? 0 : 1;
-			Muzzles[SideIdx].Add(Loc + FVector(0.f, Loc.Y < 0.f ? -140.f : 140.f, 20.f));
+			Muzzles[SideIdx].Add(Loc + FVector(0.f, FMath::Sign(Loc.Y) * P->Bounds.BoxExtent.Y, 20.f));
 		}
 	}
 	UE_LOG(LogDC, Log, TEXT("Gunnery: %d port guns, %d starboard guns"), Muzzles[0].Num(), Muzzles[1].Num());
@@ -52,24 +76,72 @@ void ADCGunnery::Init(AActor* Ship, float InSeaLevelZ)
 	// Effects that ship with the vessel asset; optional.
 	MuzzleEffectClass = LoadClass<AActor>(nullptr, TEXT("/Game/Brigantine/BP/Cannon/BP_EffectExplosionStartCannon.BP_EffectExplosionStartCannon_C"));
 	ImpactEffectClass = LoadClass<AActor>(nullptr, TEXT("/Game/Brigantine/BP/Cannon/BP_EffectExplosionEnd.BP_EffectExplosionEnd_C"));
+	UE_LOG(LogDC, Log, TEXT("Gunnery effects: muzzle=%s, impact=%s"),
+		*GetNameSafe(MuzzleEffectClass.Get()), *GetNameSafe(ImpactEffectClass.Get()));
 }
 
-bool ADCGunnery::FireBroadside(EDCSide Side, const FVector& Target, int32 MaxGuns)
+bool ADCGunnery::ResolveAim(EDCSide Side, const FVector& Origin, const FVector& Direction, FVector& OutTarget) const
+{
+	constexpr float MinRange = 650.f;
+	constexpr float MaxRange = 18000.f;
+	const float Sign = Side == EDCSide::Port ? -1.f : 1.f;
+	float Distance = MaxRange;
+	bool bSurface = false;
+	if (Direction.Z < -UE_SMALL_NUMBER && Origin.Z > SeaLevelZ)
+	{
+		const float WaterDistance = (SeaLevelZ - Origin.Z) / Direction.Z;
+		bSurface = WaterDistance <= MaxRange;
+		Distance = FMath::Min(Distance, WaterDistance);
+	}
+
+	FCollisionQueryParams Query(SCENE_QUERY_STAT(DCGunAim), false, this);
+	if (GunShip.IsValid()) { Query.AddIgnoredActor(GunShip.Get()); }
+	FHitResult Hit;
+	if (GetWorld()->LineTraceSingleByChannel(Hit, Origin, Origin + Direction * Distance, ECC_Visibility, Query))
+	{
+		OutTarget = Hit.ImpactPoint;
+		Distance = Hit.Distance;
+		bSurface = true;
+	}
+	else
+	{
+		OutTarget = Origin + Direction * Distance;
+	}
+	return bSurface && Distance >= MinRange && Sign * OutTarget.Y >= 1000.f;
+}
+
+FString ADCGunnery::GetPlayerImpactLabel(EDCSide Side) const
+{
+	const int32 Index = Side == EDCSide::Port ? 0 : 1;
+	if (GetWorld()->GetTimeSeconds() >= ImpactUntil[Index]) { return FString(); }
+	return bImpactHit[Index] ? TEXT("HIT") : TEXT("SPLASH");
+}
+
+bool ADCGunnery::FireBroadside(EDCSide Side, const FVector& Target, int32 MaxGuns, bool bPlayerVolley)
 {
 	const int32 SideIdx = Side == EDCSide::Port ? 0 : 1;
-	if (ReloadLeft[SideIdx] > 0.f || Muzzles[SideIdx].Num() == 0) { return false; }
+	if (Side == EDCSide::None || MaxGuns <= 0 || ReloadLeft[SideIdx] > 0.f || Muzzles[SideIdx].Num() == 0) { return false; }
 	ReloadLeft[SideIdx] = ReloadTime;
+	UE_LOG(LogDC, Verbose, TEXT("Broadside %s (%s) at %s"), SideIdx == 0 ? TEXT("port") : TEXT("starboard"),
+		bPlayerVolley ? TEXT("player") : TEXT("crew"), *Target.ToCompactString());
 
 	// Use the guns nearest the target along the hull, and spread their fall of shot a little.
 	TArray<FVector> Guns = Muzzles[SideIdx];
-	Guns.Sort([&Target](const FVector& A, const FVector& B) { return FMath::Abs(A.X - Target.X) < FMath::Abs(B.X - Target.X); });
+	Guns.Sort([&Target, bPlayerVolley](const FVector& A, const FVector& B)
+	{
+		// Let the captain see the deck battery fire before the lower-deck guns join in.
+		if (bPlayerVolley && (A.Z > 470.f) != (B.Z > 470.f)) { return A.Z > B.Z; }
+		return FMath::Abs(A.X - Target.X) < FMath::Abs(B.X - Target.X);
+	});
 	const int32 N = FMath::Min(MaxGuns, Guns.Num());
 	for (int32 i = 0; i < N; ++i)
 	{
 		FPendingShot S;
 		S.Muzzle = Guns[i];
-		S.Target = Target + FVector(FMath::FRandRange(-250.f, 250.f), FMath::FRandRange(-250.f, 250.f), 0.f);
-		S.Delay = i * FMath::FRandRange(0.08f, 0.18f);
+		const float Spread = bPlayerVolley ? 120.f : 250.f;
+		S.Target = i == 0 ? Target : Target + FVector(FMath::FRandRange(-Spread, Spread), FMath::FRandRange(-Spread, Spread), 0.f);
+		S.Delay = i * 0.12f;
+		S.PlayerSide = bPlayerVolley ? Side : EDCSide::None;
 		Pending.Add(S);
 	}
 	return true;
@@ -96,12 +168,23 @@ void ADCGunnery::Tick(float DeltaSeconds)
 		FShot S;
 		S.Pos = P.Muzzle;
 		S.Vel = Delta / FlightTime + FVector(0.f, 0.f, 0.5f * Gravity * FlightTime);
-		S.Life = FlightTime + 1.f;
+		S.Life = FlightTime + 0.8f;
+		S.PlayerSide = P.PlayerSide;
 		Shots.Add(S);
 
+		if (APointLight* Flash = GetWorld()->SpawnActor<APointLight>(P.Muzzle, FRotator::ZeroRotator, Params))
+		{
+			UPointLightComponent* Light = Cast<UPointLightComponent>(Flash->GetLightComponent());
+			Light->SetMobility(EComponentMobility::Movable);
+			Light->SetCastShadows(false);
+			Light->SetLightColor(FLinearColor(1.f, 0.54f, 0.19f));
+			Light->SetIntensity(45000.f);
+			Light->SetAttenuationRadius(700.f);
+			Flash->SetLifeSpan(0.075f);
+		}
 		if (MuzzleEffectClass)
 		{
-			if (AActor* Fx = GetWorld()->SpawnActor<AActor>(MuzzleEffectClass, P.Muzzle, FRotator(0.f, P.Muzzle.Y < 0.f ? -90.f : 90.f, 0.f), Params))
+			if (AActor* Fx = GetWorld()->SpawnActor<AActor>(MuzzleEffectClass, P.Muzzle, S.Vel.Rotation(), Params))
 			{
 				Fx->SetLifeSpan(4.f);
 			}
@@ -113,15 +196,46 @@ void ADCGunnery::Tick(float DeltaSeconds)
 	for (int32 i = Shots.Num() - 1; i >= 0; --i)
 	{
 		FShot& S = Shots[i];
-		S.Vel.Z -= Gravity * DeltaSeconds;
-		S.Pos += S.Vel * DeltaSeconds;
-		S.Life -= DeltaSeconds;
+		bool bHitTarget = false;
+		bool bSplash = false;
+		FCollisionQueryParams Query(SCENE_QUERY_STAT(DCGunShot), false, this);
+		if (GunShip.IsValid()) { Query.AddIgnoredActor(GunShip.Get()); }
+		// Limit step length so fast shots cannot skip small targets at low frame rates.
+		float Remaining = FMath::Min(DeltaSeconds, S.Life);
+		while (Remaining > UE_SMALL_NUMBER && !bHitTarget && !bSplash)
+		{
+			const float Step = FMath::Min(Remaining, 0.025f);
+			const FVector Previous = S.Pos;
+			S.Pos += S.Vel * Step - FVector(0.f, 0.f, 0.5f * Gravity * Step * Step);
+			S.Vel.Z -= Gravity * Step;
+			Remaining -= Step;
 
-		const bool bHitTarget = Treadmill && Treadmill->DamageNear(S.Pos, 250.f, 1.f, true) > 0;
-		const bool bSplash = S.Pos.Z <= SeaLevelZ && S.Vel.Z < 0.f;
+			bSplash = S.Pos.Z <= SeaLevelZ && S.Vel.Z < 0.f;
+			if (bSplash && Previous.Z > SeaLevelZ)
+			{
+				S.Pos = FMath::Lerp(Previous, S.Pos, (Previous.Z - SeaLevelZ) / (Previous.Z - S.Pos.Z));
+			}
+			FHitResult Hit;
+			const bool bGeometry = GetWorld()->LineTraceSingleByChannel(Hit, Previous, S.Pos, ECC_Visibility, Query);
+			if (bGeometry) { S.Pos = Hit.ImpactPoint; }
+			bHitTarget = (Treadmill && Treadmill->DamageNear(S.Pos, 250.f, 1.f, true) > 0) || bGeometry;
+			if (bGeometry && S.Pos.Z > SeaLevelZ + 10.f) { bSplash = false; }
+		}
+		S.Life -= DeltaSeconds;
 		if (bHitTarget || bSplash || S.Life <= 0.f)
 		{
-			if (bSplash && Treadmill) { Treadmill->DamageNear(S.Pos, HitRadius, 1.f, false); }
+			if (bSplash && !bHitTarget && Treadmill)
+			{
+				bHitTarget = Treadmill->DamageNear(S.Pos, HitRadius, 1.f, false) > 0;
+			}
+			if (S.PlayerSide != EDCSide::None && (bHitTarget || bSplash))
+			{
+				const int32 Index = S.PlayerSide == EDCSide::Port ? 0 : 1;
+				const float Now = GetWorld()->GetTimeSeconds();
+				bImpactHit[Index] = bHitTarget || (bImpactHit[Index] && Now < ImpactUntil[Index]);
+				ImpactUntil[Index] = Now + 1.15f;
+			}
+			if (bSplash) { Splashes.Add({S.Pos, 0.f}); }
 			if (ImpactEffectClass && (bHitTarget || bSplash))
 			{
 				if (AActor* Fx = GetWorld()->SpawnActor<AActor>(ImpactEffectClass, S.Pos, FRotator::ZeroRotator, Params))
@@ -135,8 +249,35 @@ void ADCGunnery::Tick(float DeltaSeconds)
 
 	// Redraw the cannonballs.
 	Balls->ClearInstances();
+	Trails->ClearInstances();
 	for (const FShot& S : Shots)
 	{
+		const FVector Direction = S.Vel.GetSafeNormal();
+		Trails->AddInstance(FTransform(Direction.Rotation(), S.Pos - Direction * 135.f, FVector(2.5f, 0.13f, 0.13f)), true);
 		Balls->AddInstance(FTransform(FQuat::Identity, S.Pos, FVector(0.35f)), true);
+	}
+
+	// A brief fan of water above the smoke, large enough to read from the deck.
+	Spray->ClearInstances();
+	for (int32 Index = Splashes.Num() - 1; Index >= 0; --Index)
+	{
+		FSplash& Splash = Splashes[Index];
+		Splash.Age += DeltaSeconds;
+		const float T = Splash.Age;
+		const float Fade = FMath::Clamp(1.f - T / 0.8f, 0.f, 1.f);
+		if (Fade <= 0.f) { Splashes.RemoveAtSwap(Index); continue; }
+
+		for (int32 Jet = 0; Jet < 7; ++Jet)
+		{
+			const float Angle = Jet * UE_TWO_PI / 7.f;
+			const float Up = Jet == 0 ? 900.f : 650.f + 32.f * Jet;
+			const FVector Initial(Jet == 0 ? 0.f : 230.f * FMath::Cos(Angle),
+				Jet == 0 ? 0.f : 230.f * FMath::Sin(Angle), Up);
+			const float Z = Up * T - 1150.f * T * T;
+			if (Z <= 0.f) { continue; }
+			const FVector Position = Splash.Position + FVector(Initial.X * T, Initial.Y * T, Z);
+			const FVector Velocity = Initial - FVector(0.f, 0.f, 2300.f * T);
+			Spray->AddInstance(FTransform(Velocity.Rotation(), Position, FVector(1.35f, 0.23f, 0.23f) * Fade), true);
+		}
 	}
 }

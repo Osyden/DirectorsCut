@@ -7,13 +7,9 @@
 #include "Camera/CameraComponent.h"
 #include "Camera/CameraActor.h"
 #include "Components/CapsuleComponent.h"
-#include "Components/StaticMeshComponent.h"
-#include "Engine/StaticMeshActor.h"
-#include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
-#include "Materials/MaterialInstanceDynamic.h"
 #include "Widgets/Input/SEditableTextBox.h"
 #include "Widgets/Layout/SBox.h"
 #include "Framework/Application/SlateApplication.h"
@@ -35,7 +31,10 @@ ADCPlayerCharacter::ADCPlayerCharacter()
 	Camera->bUsePawnControlRotation = true;
 
 	bUseControllerRotationYaw = true;
-	GetCharacterMovement()->MaxWalkSpeed = 450.f;
+	GetCharacterMovement()->MaxWalkSpeed = 420.f;
+	GetCharacterMovement()->MaxAcceleration = 2400.f;
+	GetCharacterMovement()->BrakingDecelerationWalking = 2200.f;
+	GetCharacterMovement()->AirControl = 0.35f;
 }
 
 void ADCPlayerCharacter::Tick(float DeltaSeconds)
@@ -53,7 +52,7 @@ void ADCPlayerCharacter::Tick(float DeltaSeconds)
 
 	switch (ActiveType)
 	{
-	case EDCStationType::Helm: TickHelm(PC); break;
+	case EDCStationType::Helm: TickHelm(PC, DeltaSeconds); break;
 	case EDCStationType::Cannons: TickCannons(PC); break;
 	default: TickOnFoot(PC); break;
 	}
@@ -92,17 +91,20 @@ void ADCPlayerCharacter::TickOnFoot(APlayerController* PC)
 	if (PC->IsInputKeyDown(EKeys::S)) { F -= 1.f; }
 	if (PC->IsInputKeyDown(EKeys::D)) { R += 1.f; }
 	if (PC->IsInputKeyDown(EKeys::A)) { R -= 1.f; }
-	AddMovementInput(YawRot.Vector(), F);
-	AddMovementInput(FRotationMatrix(YawRot).GetUnitAxis(EAxis::Y), R);
+	GetCharacterMovement()->MaxWalkSpeed = PC->IsInputKeyDown(EKeys::LeftShift) ? 610.f : 420.f;
+	const FVector Move = YawRot.Vector() * F + FRotationMatrix(YawRot).GetUnitAxis(EAxis::Y) * R;
+	AddMovementInput(Move.GetClampedToMaxSize(1.f));
 	if (PC->WasInputKeyJustPressed(EKeys::SpaceBar)) { Jump(); }
+	if (PC->WasInputKeyJustReleased(EKeys::SpaceBar)) { StopJumping(); }
 
+	NearbyStation = INDEX_NONE;
 	// Troubles the captain can deal with by hand.
 	Prompt.Reset();
 	if (ADCTroubles* Troubles = ADCTroubles::Get(this))
 	{
 		const float Dt = GetWorld()->GetDeltaSeconds();
 		FVector Fire;
-		if (Troubles->NearestFire(GetActorLocation(), Fire) && FVector::Dist2D(Fire, GetActorLocation()) < 280.f)
+		if (Troubles->NearestFire(GetActorLocation(), Fire) && FVector::Dist(Fire, GetActorLocation()) < 280.f)
 		{
 			Prompt = TEXT("Hold E   beat out the flames");
 			HoldTime = PC->IsInputKeyDown(EKeys::E) ? HoldTime + Dt : 0.f;
@@ -114,7 +116,7 @@ void ADCPlayerCharacter::TickOnFoot(APlayerController* PC)
 			if (UDCCrewSubsystem* CrewSub = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
 			{
 				const FDCStation* Rig = CrewSub->GetStation(CrewSub->FindStation(EDCStationType::Rigging, EDCSide::None));
-				if (Rig && FVector::Dist2D(Rig->Location, GetActorLocation()) < InteractRange)
+				if (Rig && FVector::Dist(Rig->Location, GetActorLocation()) < InteractRange)
 				{
 					Prompt = FString::Printf(TEXT("Hold E   haul the sail in   %d%%"), FMath::RoundToInt(Troubles->GetRiggingProgress() * 100.f));
 					if (PC->IsInputKeyDown(EKeys::E)) { Troubles->RepairRigging(Dt / 4.f); }
@@ -129,24 +131,27 @@ void ADCPlayerCharacter::TickOnFoot(APlayerController* PC)
 	Prompt.Reset();
 	UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>();
 	if (!Crew) { return; }
-	int32 Best = INDEX_NONE;
+	ADCGunnery* Guns = ADCGunnery::Get(this);
 	float BestDist = InteractRange;
 	const TArray<FDCStation>& Stations = Crew->GetStations();
 	for (int32 i = 0; i < Stations.Num(); ++i)
 	{
 		if (Stations[i].Type != EDCStationType::Helm && Stations[i].Type != EDCStationType::Cannons) { continue; }
-		const FVector D = Stations[i].Location - GetActorLocation();
-		if (FMath::Abs(D.Z) < 250.f && D.Size2D() < BestDist)
+		if (Stations[i].Type == EDCStationType::Cannons && (!Guns || Guns->NumGuns(Stations[i].Side) == 0)) { continue; }
+		const FVector Feet = GetActorLocation() - FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
+		const FVector D = Stations[i].Location - Feet;
+		if (FMath::Abs(D.Z) < 115.f && D.Size() < BestDist)
 		{
-			BestDist = D.Size2D(); Best = i;
+			BestDist = D.Size();
+			NearbyStation = i;
 		}
 	}
-	if (Best != INDEX_NONE)
+	if (NearbyStation != INDEX_NONE)
 	{
-		const FDCStation& S = Stations[Best];
+		const FDCStation& S = Stations[NearbyStation];
 		Prompt = S.Type == EDCStationType::Helm ? TEXT("E   take the helm")
 			: (S.Side == EDCSide::Port ? TEXT("E   man the port guns") : TEXT("E   man the starboard guns"));
-		if (PC->WasInputKeyJustPressed(EKeys::E)) { EnterStation(PC, Best); }
+		if (PC->WasInputKeyJustPressed(EKeys::E)) { EnterStation(PC, NearbyStation); }
 	}
 }
 
@@ -155,6 +160,11 @@ void ADCPlayerCharacter::EnterStation(APlayerController* PC, int32 Index)
 	UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>();
 	FDCStation* S = Crew ? Crew->GetStation(Index) : nullptr;
 	if (!S) { return; }
+	if (S->Type == EDCStationType::Cannons)
+	{
+		const ADCGunnery* Guns = ADCGunnery::Get(this);
+		if (!Guns || Guns->NumGuns(S->Side) == 0) { return; }
+	}
 
 	// Whoever was here steps aside.
 	if (ADCCrewMember* Old = S->Operator.Get())
@@ -167,6 +177,8 @@ void ADCPlayerCharacter::EnterStation(APlayerController* PC, int32 Index)
 	ActiveType = S->Type;
 	ActiveSide = S->Side;
 	GetCharacterMovement()->StopMovementImmediately();
+	ConsumeMovementInputVector();
+	StopJumping();
 
 	if (ActiveType == EDCStationType::Cannons)
 	{
@@ -179,38 +191,35 @@ void ADCPlayerCharacter::EnterStation(APlayerController* PC, int32 Index)
 			GunCamera->GetCameraComponent()->bConstrainAspectRatio = false;
 			GunCamera->GetCameraComponent()->SetFieldOfView(80.f);
 		}
-		// Just outboard of the shrouds and above the rail, so no rigging hides the field of fire.
-		GunCamera->SetActorLocationAndRotation(FVector(S->Location.X - 100.f, Sign * 720.f, S->Location.Z + 620.f), FRotator(-20.f, Sign * 90.f, 0.f));
+		// Look over the barrel from the deck, keeping the rail in view for orientation.
+		GunCamera->SetActorLocationAndRotation(S->Location + FVector(0.f, -Sign * 80.f, 250.f), FRotator(-11.f, Sign * 90.f, 0.f));
 		PC->SetViewTargetWithBlend(GunCamera, 0.35f);
 
-		if (!AimMarker)
-		{
-			AimMarker = GetWorld()->SpawnActor<AStaticMeshActor>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
-			UStaticMeshComponent* Comp = AimMarker->GetStaticMeshComponent();
-			Comp->SetMobility(EComponentMobility::Movable);
-			Comp->SetStaticMesh(LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cylinder.Cylinder")));
-			Comp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			Comp->SetCastShadow(false);
-			AimMarker->SetActorScale3D(FVector(5.f, 5.f, 0.03f));
-			if (UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial")))
-			{
-				UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(Base, AimMarker);
-				MID->SetVectorParameterValue(TEXT("Color"), FLinearColor(1.f, 0.25f, 0.05f));
-				Comp->SetMaterial(0, MID);
-			}
-		}
-		AimMarker->SetActorHiddenInGame(false);
-
-		FInputModeGameAndUI Mode;
-		Mode.SetHideCursorDuringCapture(false);
-		Mode.SetLockMouseToViewportBehavior(EMouseLockMode::LockAlways);
-		PC->SetInputMode(Mode);
-		PC->bShowMouseCursor = true;
+		bGunSolution = false;
+		PC->SetInputMode(FInputModeGameOnly());
+		PC->bShowMouseCursor = false;
 	}
 	else if (ActiveType == EDCStationType::Helm)
 	{
 		SetActorLocation(S->Location + FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight() + 5.f), false, nullptr, ETeleportType::TeleportPhysics);
 		PC->SetControlRotation(FRotator(-5.f, 0.f, 0.f));
+		const ADCGunnery* Guns = ADCGunnery::Get(this);
+		if (AActor* Ship = Guns ? Guns->GetGunShip() : nullptr)
+		{
+			TArray<USceneComponent*> Parts;
+			Ship->GetComponents(Parts);
+			for (USceneComponent* Part : Parts)
+			{
+				if (Part->GetFName() != FName(TEXT("SK_Wheel"))) { continue; }
+				HelmWheel = Part;
+				WheelRestRotation = Part->GetRelativeRotation().Quaternion();
+				const USceneComponent* Parent = Part->GetAttachParent();
+				WheelAxisInParent = Parent
+					? Parent->GetComponentTransform().InverseTransformVectorNoScale(Ship->GetActorForwardVector())
+					: Ship->GetActorForwardVector();
+				break;
+			}
+		}
 	}
 }
 
@@ -222,6 +231,7 @@ void ADCPlayerCharacter::LeaveStation(APlayerController* PC)
 	}
 	if (ActiveType == EDCStationType::Helm)
 	{
+		RestoreWheel();
 		if (ADCTreadmill* Treadmill = ADCTreadmill::Get(this)) { Treadmill->SetSteer(0.f); }
 	}
 	if (ActiveType == EDCStationType::Cannons)
@@ -229,50 +239,61 @@ void ADCPlayerCharacter::LeaveStation(APlayerController* PC)
 		PC->SetViewTargetWithBlend(this, 0.3f);
 		PC->SetInputMode(FInputModeGameOnly());
 		PC->bShowMouseCursor = false;
-		if (AimMarker) { AimMarker->SetActorHiddenInGame(true); }
+		bGunSolution = false;
 	}
+	bClearHelmView = false;
+	Prompt.Reset();
 	ActiveStation = INDEX_NONE;
 	ActiveType = EDCStationType::None;
 	ActiveSide = EDCSide::None;
 }
 
-void ADCPlayerCharacter::TickHelm(APlayerController* PC)
+void ADCPlayerCharacter::RestoreWheel()
+{
+	if (USceneComponent* Wheel = HelmWheel.Get()) { Wheel->SetRelativeRotation(WheelRestRotation); }
+	HelmWheel.Reset();
+	WheelAngle = 0.f;
+}
+
+void ADCPlayerCharacter::TickHelm(APlayerController* PC, float DeltaSeconds)
 {
 	Look(PC);
 	float Steer = 0.f;
 	if (PC->IsInputKeyDown(EKeys::D)) { Steer += 1.f; }
 	if (PC->IsInputKeyDown(EKeys::A)) { Steer -= 1.f; }
 	if (ADCTreadmill* Treadmill = ADCTreadmill::Get(this)) { Treadmill->SetSteer(Steer); }
-	Prompt = TEXT("A / D   steer        E   step away");
+	if (USceneComponent* Wheel = HelmWheel.Get())
+	{
+		WheelAngle = FMath::FInterpTo(WheelAngle, Steer * 65.f, DeltaSeconds, 5.f);
+		Wheel->SetRelativeRotation(FQuat(WheelAxisInParent, FMath::DegreesToRadians(WheelAngle)) * WheelRestRotation);
+	}
+	if (PC->WasInputKeyJustPressed(EKeys::C)) { bClearHelmView = !bClearHelmView; }
+	Prompt = bClearHelmView ? TEXT("A/D  steer     C  wheel view     E  leave helm")
+		: TEXT("A/D  steer     C  clear view     E  leave helm");
 	if (PC->WasInputKeyJustPressed(EKeys::E)) { LeaveStation(PC); }
 }
 
 void ADCPlayerCharacter::TickCannons(APlayerController* PC)
 {
-	const float Sign = ActiveSide == EDCSide::Port ? -1.f : 1.f;
-	ADCRideDirector* Director = ADCRideDirector::Get(this);
-	const float SeaZ = Director ? Director->SeaLevelZ : 0.f;
+	if (PC->WasInputKeyJustPressed(EKeys::E)) { LeaveStation(PC); return; }
 
-	// Cursor ray onto the sea, kept on this side of the ship and inside gun range.
-	FVector Origin, Dir;
-	FVector Aim(0.f, Sign * 5000.f, SeaZ);
-	if (PC->DeprojectMousePositionToWorld(Origin, Dir) && Dir.Z < -0.01f)
-	{
-		Aim = Origin + Dir * ((SeaZ - Origin.Z) / Dir.Z);
-	}
-	Aim.Y = Sign * FMath::Clamp(Sign * Aim.Y, 1200.f, 14000.f);
-	Aim.X = FMath::Clamp(Aim.X, -9000.f, 12000.f);
-	Aim.Z = SeaZ + 10.f;
-	if (AimMarker) { AimMarker->SetActorLocation(Aim); }
+	const float SideYaw = ActiveSide == EDCSide::Port ? -90.f : 90.f;
+	float DX = 0.f, DY = 0.f;
+	PC->GetInputMouseDelta(DX, DY);
+	FRotator AimRotation = GunCamera->GetActorRotation();
+	AimRotation.Yaw = SideYaw + FMath::Clamp(FMath::FindDeltaAngleDegrees(SideYaw, AimRotation.Yaw) + DX * LookSensitivity * 10.f, -62.f, 62.f);
+	AimRotation.Pitch = FMath::Clamp(AimRotation.Pitch + DY * LookSensitivity * 10.f, -62.f, 12.f);
+	GunCamera->SetActorRotation(AimRotation);
 
 	ADCGunnery* Guns = ADCGunnery::Get(this);
-	const bool bReady = Guns && Guns->IsReady(ActiveSide);
-	if (bReady && (PC->IsInputKeyDown(EKeys::LeftMouseButton) || FParse::Param(FCommandLine::Get(), TEXT("DCAutoFire"))))
+	FVector Target;
+	bGunSolution = Guns && Guns->ResolveAim(ActiveSide, GunCamera->GetActorLocation(), AimRotation.Vector(), Target);
+	const bool bAutoFire = FParse::Param(FCommandLine::Get(), TEXT("DCAutoFire"));
+	if (bGunSolution && Guns->IsReady(ActiveSide) && (PC->WasInputKeyJustPressed(EKeys::LeftMouseButton) || bAutoFire))
 	{
-		Guns->FireBroadside(ActiveSide, Aim, 6);
+		Guns->FireBroadside(ActiveSide, Target, 6, true);
 	}
-	Prompt = bReady ? TEXT("Mouse   aim        Click   fire        E   step away") : TEXT("Reloading...        E   step away");
-	if (PC->WasInputKeyJustPressed(EKeys::E)) { LeaveStation(PC); }
+	Prompt = TEXT("Mouse  aim     LMB  fire broadside     E  leave guns");
 }
 
 void ADCPlayerCharacter::DebugTakeStation(EDCStationType Type, EDCSide Side)
@@ -333,11 +354,7 @@ void ADCPlayerCharacter::CloseOrderBox()
 	OrderBox.Reset();
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
-		// The gun station keeps its cursor; everywhere else goes back to mouse-look.
-		if (ActiveType != EDCStationType::Cannons)
-		{
-			PC->SetInputMode(FInputModeGameOnly());
-		}
+		PC->SetInputMode(FInputModeGameOnly());
 		FSlateApplication::Get().SetAllUserFocusToGameViewport();
 	}
 }
@@ -345,6 +362,8 @@ void ADCPlayerCharacter::CloseOrderBox()
 void ADCPlayerCharacter::EndPlay(const EEndPlayReason::Type Reason)
 {
 	CloseOrderBox();
+	RestoreWheel();
+	if (GunCamera) { GunCamera->Destroy(); }
 	Super::EndPlay(Reason);
 }
 
@@ -376,7 +395,12 @@ void ADCPlayerCharacter::TickCameraFeel(float DeltaSeconds)
 		Shake * 1.6f * FMath::PerlinNoise1D(T * 15.f + 40.f),
 		Shake * 3.5f * FMath::PerlinNoise1D(T * 13.f + 80.f));
 	Camera->SetRelativeRotation(Jitter);
-	Camera->SetRelativeLocation(FVector(0.f, 0.f, 64.f) + FVector(0.f, Shake * 6.f * FMath::PerlinNoise1D(T * 19.f + 7.f), Shake * 8.f * FMath::PerlinNoise1D(T * 21.f + 3.f)));
+	const FVector Eye = bClearHelmView
+		? GetActorTransform().InverseTransformPosition(GetActorLocation() + FVector(0.f, 320.f, 125.f))
+		: FVector(0.f, 0.f, 64.f);
+	const FVector Bob(0.f, 0.f, IsAtStation() ? 0.f : FMath::Sin(T * 10.f) * FMath::Min(1.f, GetVelocity().Size2D() / 420.f) * 2.f);
+	const FVector Offset(0.f, Shake * 6.f * FMath::PerlinNoise1D(T * 19.f + 7.f), Shake * 8.f * FMath::PerlinNoise1D(T * 21.f + 3.f));
+	Camera->SetRelativeLocation(FMath::VInterpTo(Camera->GetRelativeLocation(), Eye + Bob + Offset, DeltaSeconds, 12.f));
 	Camera->SetFieldOfView(FMath::FInterpTo(Camera->FieldOfView, 90.f + 16.f * Rush, DeltaSeconds, 2.f));
 }
 

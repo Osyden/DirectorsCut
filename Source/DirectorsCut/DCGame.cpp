@@ -137,12 +137,73 @@ void ADCHUD::DrawHUD()
 		}
 	}
 
-	// What E does right now.
+	// Station names are drawn in screen space so weather and lighting cannot wash them out.
 	if (ADCPlayerCharacter* Captain = Cast<ADCPlayerCharacter>(GetOwningPawn()))
 	{
-		if (!Captain->GetPrompt().IsEmpty())
+		APlayerController* PC = GetOwningPlayerController();
+		ADCGunnery* Guns = ADCGunnery::Get(this);
+		if (!Captain->IsTypingOrder() && !Captain->IsAtStation() && PC)
 		{
-			Centered(Captain->GetPrompt(), H * 0.74f, 1.5f, FLinearColor(1.f, 0.95f, 0.8f), Font);
+			if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
+			{
+				const TArray<FDCStation>& Stations = Crew->GetStations();
+				for (int32 Index = 0; Index < Stations.Num(); ++Index)
+				{
+					const FDCStation& Station = Stations[Index];
+					const bool bGun = Station.Type == EDCStationType::Cannons && Guns && Guns->NumGuns(Station.Side) > 0;
+					if (!bGun && Station.Type != EDCStationType::Helm) { continue; }
+					const FVector Spot = Station.Location + FVector(0.f, 0.f, 150.f);
+					if (FVector::DistSquared(Spot, Captain->GetActorLocation()) > FMath::Square(3600.f)) { continue; }
+					FVector2D Screen;
+					if (!PC->ProjectWorldLocationToScreen(Spot, Screen) ||
+						Screen.X < 75.f * S || Screen.X > W - 75.f * S || Screen.Y < 115.f * S || Screen.Y > H * 0.72f) { continue; }
+
+					const bool bNear = Index == Captain->GetNearbyStation();
+					const TCHAR* Name = !bGun ? TEXT("HELM") : Station.Side == EDCSide::Port ? TEXT("PORT GUNS") : TEXT("STARBOARD GUNS");
+					const FString Text = bNear ? FString::Printf(TEXT("[E]  %s"), Name) : FString(Name);
+					float TW, TH;
+					GetTextSize(Text, TW, TH, Font, S);
+					const float X = Screen.X - TW * 0.5f;
+					DrawRect(FLinearColor(0.015f, 0.02f, 0.025f, 0.85f), X - 8.f * S, Screen.Y - 3.f * S, TW + 16.f * S, TH + 6.f * S);
+					Label(Text, X, Screen.Y, 1.f, bNear ? Gold : White, Font);
+					DrawLine(Screen.X, Screen.Y + TH + 4.f * S, Screen.X, Screen.Y + TH + 14.f * S, Gold, 2.f * S);
+				}
+			}
+		}
+
+		const EDCSide Side = Captain->GetGunSide();
+		if (!Captain->IsTypingOrder() && Guns && Side != EDCSide::None)
+		{
+			const float X = W * 0.5f, Y = H * 0.5f;
+			const bool bInRange = Captain->HasGunSolution();
+			const bool bReady = Guns->IsReady(Side);
+			const FLinearColor Sight = !bInRange ? Dim : (bReady ? Gold : FLinearColor(0.98f, 0.52f, 0.24f));
+			for (const FVector2D& Axis : { FVector2D(1, 0), FVector2D(-1, 0), FVector2D(0, 1), FVector2D(0, -1) })
+			{
+				const FVector2D Center(X, Y);
+				const FVector2D Inner = Center + Axis * 7.f * S, Outer = Center + Axis * 21.f * S;
+				DrawLine(Inner.X, Inner.Y, Outer.X, Outer.Y, FLinearColor::Black, 5.f * S);
+				DrawLine(Inner.X, Inner.Y, Outer.X, Outer.Y, Sight, 2.f * S);
+			}
+			DrawRect(Sight, X - S, Y - S, 2.f * S, 2.f * S);
+
+			FString State = Side == EDCSide::Port ? TEXT("PORT BATTERY") : TEXT("STARBOARD BATTERY");
+			if (!bReady) { State += FString::Printf(TEXT("   RELOADING %.1fs"), Guns->GetReloadSeconds(Side)); }
+			else { State += bInRange ? TEXT("   READY") : TEXT("   AIM AT WATER OR A TARGET"); }
+
+			DrawRect(FLinearColor(0.015f, 0.02f, 0.025f, 0.85f), X - 230.f * S, H * 0.68f, 460.f * S, 52.f * S);
+			Centered(State, H * 0.68f + 8.f * S, 1.f, Sight, Font);
+			const float Bar = 1.f - Guns->GetReloadFraction(Side);
+			DrawRect(FLinearColor(0.15f, 0.17f, 0.19f), X - 95.f * S, H * 0.68f + 36.f * S, 190.f * S, 4.f * S);
+			DrawRect(Sight, X - 95.f * S, H * 0.68f + 36.f * S, 190.f * S * Bar, 4.f * S);
+
+			const FString Impact = Guns->GetPlayerImpactLabel(Side);
+			if (!Impact.IsEmpty()) { Centered(Impact, Y + 29.f * S, 1.2f, Impact == TEXT("HIT") ? Gold : White, Font); }
+		}
+
+		if (!Captain->IsTypingOrder() && !Captain->GetPrompt().IsEmpty())
+		{
+			Centered(Captain->GetPrompt(), H * (Side == EDCSide::None ? 0.74f : 0.77f), 1.25f, Gold, Font);
 		}
 	}
 
@@ -158,7 +219,7 @@ void ADCHUD::DrawHUD()
 			Centered(TEXT("You are the captain. You cannot do it all yourself. Give the orders."), H * 0.17f + 118.f * S, 1.6f, Wh, Font);
 			Centered(TEXT("Hold V and speak   or press Enter and type   or use keys 1 to 6"), H * 0.17f + 162.f * S, 1.4f, Wh, Font);
 			Centered(TEXT("\"Finch, hard to starboard\"    \"Port battery, fire\"    \"Odessa, put out the fire\"    \"Repair the rigging\""), H * 0.17f + 202.f * S, 1.2f, Wh, Font);
-			Centered(TEXT("WASD  walk the deck        E  take the helm or a gun battery yourself"), H * 0.17f + 240.f * S, 1.2f, Wh, Font);
+			Centered(TEXT("WASD  move     Shift  sprint     Space  jump     E  take a marked station"), H * 0.17f + 240.f * S, 1.2f, Wh, Font);
 		}
 		if (D->GetPhase() == EDCPhase::Ending)
 		{
