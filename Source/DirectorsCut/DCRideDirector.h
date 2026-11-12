@@ -94,6 +94,9 @@ public:
 	FVector PortalLocation = FVector::ZeroVector;
 	float PortalRadius = 21000.f;
 	float PortalStrength = 0.f;
+	/** Faces in the clouds, drawn in the cloud volume: xyz centre, w half-height of the head (0 = none). Set by ADCCloudFace. */
+	FVector4 CloudFaces[3] = { FVector4(0, 0, 0, 0), FVector4(0, 0, 0, 0), FVector4(0, 0, 0, 0) };
+	int32 NumCloudFaces = 0;
 	/** Height of the swell that lifts the ship in the maelstrom, cm, and how much of it is up right now. */
 	UPROPERTY(EditAnywhere) float SwellHeight = 11000.f;
 	float SwellLift = 0.f;

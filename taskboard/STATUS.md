@@ -2,6 +2,19 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Thu 12 Nov 18:39 — cloud faces are volumetric now (set 19), but the helm does not see them yet
+
+Review set: `taskboard/review/19-cloud-faces-volumetric/`. `a_bow_*` look up from just ahead of the bow; `b_helm_*` are the helm at the same stretch. Best frame: `a_bow_0150`. No new inbox messages.
+
+- **The three faces over Atlantis are no longer built from spheres.** Each is a head about 500 to 700 m tall shaped out of the same volumetric cloud as the sky (skull, brow, nose, cheekbones, jaw, hollow eyes, parted mouth, hair and shoulders tearing away into cloud), looking down toward the ship, with cold burning eyes and a faint glow from inside that rises with the lightning.
+- From the bow they read as pale spectral heads with lit eyes hanging in the overcast above the statues, with the portal's light below. That is close in spirit to the fog-city reference.
+- **Problem: from the helm they are not in view.** In all four helm frames the faces are above the top of the frame or behind the sails. They need to sit lower and further off so the playable viewpoint sees them. Next job.
+- The modelling is soft: the head reads as a smooth pale oval with eyes; nose and mouth do not show at this distance.
+- The slide frame that came out electric blue in set 18 was a lightning flash; six consecutive frames of the slide are normal.
+- Frame rate in Atlantis from the helm: 89 to 96 fps (720p, DLSS, editor build).
+
+The packaged build (18:21) does not include the faces change.
+
 ## Thu 12 Nov 18:23 — packaged build is current again
 
 `E:\projects\directorscut\Builds\Windows\DirectorsCut.exe` (5.3 GB) now contains everything up to commit `895ace0`: enlarged maelstrom with the descent, rebuilt leviathan head, water walls, volumetric storm front, sky, Atlantis mist and portal.

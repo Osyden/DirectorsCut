@@ -12,6 +12,8 @@ Parameters
           w = lightning 0..1 (lights the mouth and the inside of the wall)
   Mist    x = amount of sea mist 0..1, y = height of its top (cm), z = how thick it is next to full cloud
   Portal  xy = where the portal out of Atlantis stands (cm), z = radius of its tunnel (cm), w = strength 0..1
+  Face0..2  xyz = centre of a face in the clouds (cm), w = its size (half the height of the head, cm; 0 = none)
+  Mist.w  = how solid the faces are, 0..1
 """
 import unreal
 
@@ -31,13 +33,14 @@ float alt = P.z;
 float h = (alt - Sky.y) / max(Sky.z - Sky.y, 1.0);
 bool inDeck = h > 0.0 && h < 1.0 && Sky.x > 0.01;
 bool inMist = Mist.x > 0.001 && alt < Mist.y;
+bool inFace = Mist.w > 0.001 && (Face0.w > 1.0 || Face1.w > 1.0 || Face2.w > 1.0) && alt < 400000.0;
 bool inPortal = Portal.w > 0.001 && P.x > Portal.x - Portal.z * 2.5 && P.x < Portal.x + Portal.z * 7.0 && abs(P.y - Portal.y) < Portal.z * 6.5 && alt < Portal.z * 6.5;
 // The front leans out over the ship higher up, like a breaking wave, and its foot runs ahead of it
 // along the water as a skirt of rain and spray.
 float lean = 50000.0 * smoothstep(0.0, 1.0, alt / 450000.0) + 60000.0 * exp(-alt / 15000.0);
 float face = P.x - Front.x + lean;
 bool inWall = Front.y > 0.001 && face > -260000.0 && face < 640000.0 && alt < 900000.0;
-if (!inDeck && !inWall && !inMist && !inPortal) { return float4(0.0, 0.0, 0.0, 0.0); }
+if (!inDeck && !inWall && !inMist && !inPortal && !inFace) { return float4(0.0, 0.0, 0.0, 0.0); }
 
 float3 km = P * 0.00001;
 float3 wind = float3(T * 0.0002, T * 0.00008, 0.0);
@@ -140,6 +143,50 @@ if (inPortal)
     glow = max(glow, (0.05 + 0.35 * Front.w) * rim * (0.5 + 0.5 * arms) * along + core * 0.9);
     wall = max(wall, pd);
 }
+if (inFace)
+{
+    // Faces in the cloud: heads half a kilometre tall, modelled as cloud. Each looks toward the
+    // ship and a little down at it. Dim until lightning lights them from inside.
+    float4 FaceSet[3] = { Face0, Face1, Face2 };
+    for (int fi = 0; fi < 3; fi++)
+    {
+        float S = FaceSet[fi].w;
+        if (S < 1.0) { continue; }
+        float3 rel = float3(P.x, P.y, alt) - FaceSet[fi].xyz;
+        if (dot(rel, rel) > S * S * 7.3) { continue; }
+        float2 toShip = normalize(-FaceSet[fi].xy);
+        float3 fwd = normalize(float3(toShip * 0.96, -0.28));
+        float3 rgt = float3(-toShip.y, toShip.x, 0.0);
+        float3 up = cross(fwd, rgt);
+        float3 p = float3(dot(rel, fwd), dot(rel, rgt), dot(rel, up)) / S;
+        float sy = abs(p.y);
+        #define ELL(c, r) (1.0 - length((float3(p.x, sy, p.z) - (c)) / (r)))
+        float k = ELL(float3(-0.10, 0.0, 0.15), float3(0.75, 0.68, 0.90));           // skull
+        k = max(k, ELL(float3(0.08, 0.0, -0.45), float3(0.55, 0.50, 0.50)));         // jaw
+        k = max(k, ELL(float3(0.52, 0.0, 0.30), float3(0.22, 0.62, 0.13)));          // brow
+        k = max(k, ELL(float3(0.66, 0.0, -0.02), float3(0.18, 0.12, 0.30)));         // nose
+        k = max(k, ELL(float3(0.44, 0.36, -0.10), float3(0.26, 0.22, 0.26)));        // cheekbones
+        k = max(k, ELL(float3(0.50, 0.0, -0.70), float3(0.20, 0.24, 0.18)));         // chin
+        k = max(k, ELL(float3(0.58, 0.0, -0.40), float3(0.13, 0.26, 0.09)));         // lips
+        float fd = saturate(k * 5.0);
+        fd *= 1.0 - saturate(ELL(float3(0.64, 0.30, 0.13), float3(0.17, 0.19, 0.11)) * 6.0);   // eye sockets
+        fd *= 1.0 - saturate(ELL(float3(0.70, 0.0, -0.47), float3(0.12, 0.20, 0.035)) * 6.0);  // parted mouth
+        // Hair and shoulders: torn cloud streaming back and down from the head.
+        float tear = NZ(rel * 0.0000035 + float3(T * 0.002, 0.0, 0.0));
+        float hair = ELL(float3(-0.55, 0.0, 0.25), float3(1.25, 1.15, 1.25)) + (tear - 0.5) * 0.9;
+        float neck = ELL(float3(-0.35, 0.0, -1.45), float3(1.5, 1.9, 0.9)) + (tear - 0.5) * 0.9;
+        float soft = saturate(max(hair, neck) * 2.5) * saturate(0.55 - p.x) * 0.7;
+        float eye = saturate(ELL(float3(0.57, 0.30, 0.13), float3(0.06, 0.08, 0.05)) * 8.0);
+        fd = max(max(fd, soft), eye);
+        fd = saturate(fd - NZ(rel * 0.000012) * 0.35 * (1.0 - fd));
+        if (fd > 0.0)
+        {
+            // Lit from inside by the storm; the eyes burn cold all the time.
+            glow = max(glow, (0.006 + 0.07 * Front.w) * saturate(k * 3.0 + 0.3) * (1.0 - soft) + eye * 0.6);
+            wall = max(wall, fd * Mist.w);
+        }
+    }
+}
 float d = max(deck, wall);
 if (inMist)
 {
@@ -187,6 +234,7 @@ sky = vector(mat, "Sky", (0.4, 150000, 550000, 0.02), -1400, 700)
 front = vector(mat, "Front", (400000, 0, 0, 0), -1400, 900)
 mist = vector(mat, "Mist", (0, 40000, 0.35, 0), -1400, 1000)
 portal = vector(mat, "Portal", (0, 0, 21000, 0), -1400, 1050)
+faces = [vector(mat, "Face%d" % i, (0, 0, 0, 0), -1400, 1600 + i * 120) for i in range(3)]
 albedo = colour(mat, "Albedo", (0.9, 0.9, 0.9, 1), -1400, 1100)
 storm = colour(mat, "StormAlbedo", (0.4, 0.43, 0.5, 1), -1400, 1300)
 flash = colour(mat, "FlashColor", (0.16, 0.22, 0.4, 1), -1400, 1500)
@@ -195,7 +243,7 @@ node = mel.create_material_expression(mat, unreal.MaterialExpressionCustom, -800
 node.set_editor_property("code", DENSITY)
 node.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT4)
 inputs = []
-for n in ["P", "T", "Shape", "Sky", "Front", "Mist", "Portal"]:
+for n in ["P", "T", "Shape", "Sky", "Front", "Mist", "Portal", "Face0", "Face1", "Face2"]:
     ci = unreal.CustomInput()
     ci.set_editor_property("input_name", n)
     inputs.append(ci)
@@ -210,6 +258,8 @@ mel.connect_material_expressions(sky, "", node, "Sky")
 mel.connect_material_expressions(front, "", node, "Front")
 mel.connect_material_expressions(mist, "", node, "Mist")
 mel.connect_material_expressions(portal, "", node, "Portal")
+for i in range(3):
+    mel.connect_material_expressions(faces[i], "", node, "Face%d" % i)
 
 
 def channel(r, g, b, y):

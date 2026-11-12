@@ -368,7 +368,9 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 	{
 		CloudMID->SetVectorParameterValue(TEXT("Sky"), FLinearColor(Env.CloudCover, Env.CloudBase, Env.CloudBase + 380000.f, 0.012f));
 		CloudMID->SetVectorParameterValue(TEXT("Portal"), FLinearColor(PortalLocation.X, PortalLocation.Y, PortalRadius, PortalStrength));
-		CloudMID->SetVectorParameterValue(TEXT("Mist"), FLinearColor(Env.Mist, 45000.f, 0.3f, 0.f));
+		CloudMID->SetVectorParameterValue(TEXT("Mist"), FLinearColor(Env.Mist, 45000.f, 0.3f, 1.f));
+		static const TCHAR* FaceNames[3] = { TEXT("Face0"), TEXT("Face1"), TEXT("Face2") };
+		for (int32 f = 0; f < 3; ++f) { CloudMID->SetVectorParameterValue(FaceNames[f], FLinearColor(CloudFaces[f].X, CloudFaces[f].Y, CloudFaces[f].Z, CloudFaces[f].W)); }
 		CloudMID->SetVectorParameterValue(TEXT("Front"), FLinearColor(StormFrontX, StormFrontStrength, StormMouthRadius, FlashTimeLeft > 0.f ? 1.f : 0.f));
 	}
 	Fog->SetFogDensity(Env.FogDensity);

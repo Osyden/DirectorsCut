@@ -28,6 +28,11 @@ void ADCCloudFace::Part(const TCHAR* Shape, const FVector& Location, const FRota
 
 void ADCCloudFace::Build(float Height, bool bBearded, float PitchDown)
 {
+	HeadSize = Height * 0.6f;
+	BaseZ = GetActorLocation().Z;
+	if (ADCRideDirector* D = ADCRideDirector::Get(this)) { Slot = D->NumCloudFaces++; }
+	// The face itself is drawn by the volumetric cloud layer (M_StormCloud); the old sphere build is kept behind a switch.
+	if (!bBillows) { return; }
 	UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Cloud.M_Cloud"));
 	if (!Base) { return; }
 	Light = UMaterialInstanceDynamic::Create(Base, this);
@@ -97,7 +102,15 @@ void ADCCloudFace::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	if (!Director) { Director = ADCRideDirector::Get(this); }
-	if (!Director || !Light) { return; }
+	if (!Director) { return; }
+	if (Slot >= 0 && Slot < 3)
+	{
+		// Gone once the city sinks behind the ship.
+		if (!bPlaced) { bPlaced = true; BaseZ = GetActorLocation().Z; }
+		const FVector L = GetActorLocation();
+		Director->CloudFaces[Slot] = FVector4(L.X, L.Y, L.Z, L.Z > BaseZ - 20000.f ? HeadSize : 0.f);
+	}
+	if (!Light) { return; }
 	if (!bHooked)
 	{
 		bHooked = true;

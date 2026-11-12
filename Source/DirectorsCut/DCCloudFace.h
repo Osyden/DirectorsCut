@@ -34,6 +34,12 @@ protected:
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> Dark;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> Eye;
 	UPROPERTY() TObjectPtr<ADCRideDirector> Director;
+	/** Also build the old face of billow meshes. */
+	UPROPERTY(EditAnywhere) bool bBillows = false;
+	float HeadSize = 0.f;
+	float BaseZ = 0.f;
+	int32 Slot = -1;
+	bool bPlaced = false;
 	float K = 1.f;
 	float Flash = 0.f;
 	float Seed = 0.f;
