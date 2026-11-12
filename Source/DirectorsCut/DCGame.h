@@ -62,4 +62,7 @@ protected:
 	float AutoShotWait = 0.f;
 	bool bAutoShotTaken = false;
 	FString TestWavPath;
+	/** -DCOrdersLate=a_b;c_d : orders given one at a time once the language model is up. */
+	TArray<FString> LateOrders;
+	float LateOrderWait = 0.f;
 };

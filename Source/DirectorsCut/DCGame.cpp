@@ -353,6 +353,8 @@ void ADCGameMode::StartPlay()
 		OrderList.ParseIntoArray(Orders, TEXT(";"));
 		for (const FString& O : Orders) { Crew->ExecuteOrder(O.Replace(TEXT("_"), TEXT(" "))); }
 	}
+	FString Late;
+	if (FParse::Value(FCommandLine::Get(), TEXT("DCOrdersLate="), Late, false)) { Late.ParseIntoArray(LateOrders, TEXT(";")); }
 	FString StationName;
 	if (FParse::Value(FCommandLine::Get(), TEXT("DCStation="), StationName))
 	{
@@ -395,6 +397,17 @@ void ADCGameMode::StartPlay()
 void ADCGameMode::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	if (LateOrders.Num())
+	{
+		ADCVoice* Voice = ADCVoice::Get(this);
+		LateOrderWait -= DeltaSeconds;
+		if (Voice && Voice->IsLLMReady() && LateOrderWait <= 0.f)
+		{
+			GetWorld()->GetSubsystem<UDCCrewSubsystem>()->ExecuteOrder(LateOrders[0].Replace(TEXT("_"), TEXT(" ")));
+			LateOrders.RemoveAt(0);
+			LateOrderWait = 4.f;
+		}
+	}
 	if (!TestWavPath.IsEmpty())
 	{
 		// Unattended voice test: once speech-to-text is up, feed it a recorded order.

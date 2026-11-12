@@ -36,6 +36,8 @@ public:
 	void CrewReply(const FString& Speaker, const FString& Fallback, const FString& Context);
 	/** Speak a finished line (no LLM). */
 	void Speak(const FString& Speaker, const FString& Text);
+	/** Asks the language model to make sense of an order the keyword grammar could not, then carries it out. */
+	void ResolveOrder(const FString& Text);
 	/** Transcribe a wav file from disk as if it had been spoken. For unattended tests. */
 	void TranscribeWavFile(const FString& Path);
 

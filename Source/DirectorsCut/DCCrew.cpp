@@ -47,7 +47,7 @@ FDCIntent DCIntentParser::Parse(const FString& InText, const TArray<FString>& Cr
 	if (HasAny(T, { TEXT("starboard"), TEXT(" right") })) { I.Side = EDCSide::Starboard; }
 	else if (HasAny(T, { TEXT(" port"), TEXT("larboard"), TEXT(" left") })) { I.Side = EDCSide::Port; }
 
-	const bool bExtinguish = HasAny(T, { TEXT("put out"), TEXT("extinguish"), TEXT("douse"), TEXT("bucket"), TEXT("water"), TEXT("flames"), TEXT("burning") });
+	const bool bExtinguish = HasAny(T, { TEXT("put out"), TEXT("extinguish"), TEXT("douse"), TEXT("bucket"), TEXT("flames"), TEXT("burning"), TEXT("on fire") });
 	const bool bHelmWord = HasAny(T, { TEXT("helm"), TEXT("wheel"), TEXT("steer"), TEXT("rudder") });
 	const bool bGunWord = HasAny(T, { TEXT("cannon"), TEXT("gun"), TEXT("battery"), TEXT("broadside") });
 	const bool bRigWord = HasAny(T, { TEXT("sail"), TEXT("rigging"), TEXT("rope"), TEXT("mast"), TEXT("repair"), TEXT("mend"), TEXT("fix") });
@@ -77,7 +77,7 @@ FDCIntent DCIntentParser::Parse(const FString& InText, const TArray<FString>& Cr
 		I.Action = (I.Side == EDCSide::Port) ? EDCAction::TurnPort : (I.Side == EDCSide::Starboard ? EDCAction::TurnStarboard : EDCAction::Man);
 		if (bManWord) { I.Action = EDCAction::Man; I.Side = EDCSide::None; }
 	}
-	else if (HasAny(T, { TEXT(" fire"), TEXT("shoot"), TEXT("blast"), TEXT("sink") }) || (bGunWord && !bManWord))
+	else if (HasAny(T, { TEXT(" fire"), TEXT("shoot"), TEXT("blast"), TEXT("sink"), TEXT("blow ") }) || (bGunWord && !bManWord))
 	{
 		I.Station = EDCStationType::Cannons; I.Action = EDCAction::Fire;
 	}
@@ -93,7 +93,7 @@ FDCIntent DCIntentParser::Parse(const FString& InText, const TArray<FString>& Cr
 	{
 		I.Action = EDCAction::Report;
 	}
-	else if (I.Side != EDCSide::None)
+	else if (I.Side != EDCSide::None && InText.Len() < 24)
 	{
 		// A bare "starboard!" is a helm order.
 		I.Station = EDCStationType::Helm;
@@ -367,7 +367,19 @@ FString UDCCrewSubsystem::ExecuteOrder(const FString& Text)
 	for (ADCCrewMember* M : Crew) { if (M) { Names.Add(M->CrewName); } }
 	const FDCIntent Intent = DCIntentParser::Parse(Text, Names);
 	Say(TEXT("Captain"), Text);
-	ExecuteIntent(Intent);
+	// With the language model up it reads every order (it copes with loose phrasing); the keyword
+	// grammar is the instant fallback when it is not running or cannot make sense of the words.
+	ADCVoice* Voice = ADCVoice::Get(this);
+	// Short, clear orders (a helm call in a hurry) go straight through; anything wordier goes to the model.
+	const bool bQuick = Intent.bValid && Text.Len() < 30;
+	if (Voice && Voice->IsLLMReady() && !bQuick)
+	{
+		Voice->ResolveOrder(Text); // answers a moment later
+	}
+	else
+	{
+		ExecuteIntent(Intent);
+	}
 	return RecentLines.Num() ? RecentLines.Last() : FString();
 }
 

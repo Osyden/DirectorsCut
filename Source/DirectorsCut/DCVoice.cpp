@@ -447,7 +447,7 @@ void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const 
 		case EDCPhase::Maelstrom: Situation = TEXT("a giant whirlpool, a kraken's tentacles rising around the ship"); break;
 		default: break;
 		}
-		Situation += FString::Printf(TEXT("; hull at %d percent"), FMath::RoundToInt(D->ShipHealth));
+		if (!Context.IsEmpty()) { Situation += FString::Printf(TEXT("; hull at %d percent"), FMath::RoundToInt(D->ShipHealth)); }
 	}
 
 	// An empty Context means nobody asked: the crew member is reporting something they have seen.
@@ -455,7 +455,7 @@ void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const 
 	const FString System = bReport
 		? FString::Printf(
 			TEXT("You are %s, crew on a pirate brigantine. You have just seen something the captain must know. ")
-			TEXT("Shout it in one short urgent line, in character. At most 8 words. Keep any direction given (port, starboard, ahead). Spoken words only: no quotes, no actions, no narration."),
+			TEXT("Shout it in one short urgent line, in character. At most 8 words. Repeat any direction exactly as given (port, starboard, ahead) and add no other direction or order. Spoken words only: no quotes, no actions, no narration."),
 			*PersonaFor(Speaker))
 		: FString::Printf(
 			TEXT("You are %s, crew on a pirate brigantine. The captain has given an order and you are already carrying it out. ")
@@ -478,7 +478,7 @@ void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const 
 	Msg(TEXT("user"), User);
 	Root->SetArrayField(TEXT("messages"), Messages);
 	Root->SetNumberField(TEXT("max_tokens"), 32);
-	Root->SetNumberField(TEXT("temperature"), 0.9);
+	Root->SetNumberField(TEXT("temperature"), 0.6);
 	TSharedRef<FJsonObject> Kwargs = MakeShared<FJsonObject>();
 	Kwargs->SetBoolField(TEXT("enable_thinking"), false);
 	Root->SetObjectField(TEXT("chat_template_kwargs"), Kwargs);
@@ -623,3 +623,127 @@ static FAutoConsoleCommandWithWorldAndArgs GDCVoiceTestWav(
 			if (Args.Num()) { V->TranscribeWavFile(FString::Join(Args, TEXT(" "))); }
 		}
 	}));
+
+void ADCVoice::ResolveOrder(const FString& Text)
+{
+	// The keyword grammar did not recognise this. Ask the language model to turn it into the same
+	// structured intent, so loose phrasing ("somebody get on that wheel!") still works.
+	const FString System =
+		TEXT("You turn a ship captain's spoken order into JSON for the crew. The crew are Finch, Marlow and Odessa. ")
+		TEXT("Reply with JSON only, with exactly these keys: ")
+		TEXT("\"crew\" (Finch, Marlow, Odessa, or empty if nobody is named), ")
+		TEXT("\"station\" (helm, cannons, fire, rigging, none), ")
+		TEXT("\"side\" (port, starboard, none; left means port, right means starboard), ")
+		TEXT("\"action\" (man, fire, hold_fire, turn_port, turn_starboard, steady, extinguish, repair, report, none). ")
+		TEXT("helm: steering, the wheel, dodging, turning. cannons: guns, shooting, attacking ships or the monster. ")
+		TEXT("fire: putting out flames on deck (action extinguish). rigging: sails, ropes, mast (action repair). ")
+		TEXT("report: any question about the condition of the ship, the hull or the damage. Use action none if the words are not an order for the crew.");
+
+	TSharedRef<FJsonObject> Root = MakeShared<FJsonObject>();
+	TArray<TSharedPtr<FJsonValue>> Messages;
+	auto Msg = [&Messages](const TCHAR* InRole, const FString& Content)
+	{
+		TSharedRef<FJsonObject> M = MakeShared<FJsonObject>();
+		M->SetStringField(TEXT("role"), InRole);
+		M->SetStringField(TEXT("content"), Content);
+		Messages.Add(MakeShared<FJsonValueObject>(M));
+	};
+	Msg(TEXT("system"), System);
+	Msg(TEXT("user"), Text);
+	Root->SetArrayField(TEXT("messages"), Messages);
+	Root->SetNumberField(TEXT("max_tokens"), 80);
+	Root->SetNumberField(TEXT("temperature"), 0.0);
+	TSharedRef<FJsonObject> Format = MakeShared<FJsonObject>();
+	Format->SetStringField(TEXT("type"), TEXT("json_object"));
+	Root->SetObjectField(TEXT("response_format"), Format);
+	TSharedRef<FJsonObject> Kwargs = MakeShared<FJsonObject>();
+	Kwargs->SetBoolField(TEXT("enable_thinking"), false);
+	Root->SetObjectField(TEXT("chat_template_kwargs"), Kwargs);
+
+	FString BodyStr;
+	const TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&BodyStr);
+	FJsonSerializer::Serialize(Root, Writer);
+
+	TWeakObjectPtr<ADCVoice> Weak(this);
+	const double Sent = FPlatformTime::Seconds();
+	auto Req = FHttpModule::Get().CreateRequest();
+	Req->SetURL(FString::Printf(TEXT("http://127.0.0.1:%d/v1/chat/completions"), LLMPort));
+	Req->SetVerb(TEXT("POST"));
+	Req->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+	Req->SetContentAsString(BodyStr);
+	Req->SetTimeout(4.f);
+	Req->OnProcessRequestComplete().BindLambda([Weak, Text, Sent](FHttpRequestPtr, FHttpResponsePtr Resp, bool bOk)
+	{
+		ADCVoice* V = Weak.Get();
+		if (!V) { return; }
+		FDCIntent Intent;
+		Intent.RawText = Text;
+
+		FString Content;
+		if (bOk && Resp.IsValid() && Resp->GetResponseCode() == 200)
+		{
+			TSharedPtr<FJsonObject> Json;
+			const TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(Resp->GetContentAsString());
+			if (FJsonSerializer::Deserialize(Reader, Json) && Json.IsValid())
+			{
+				const TArray<TSharedPtr<FJsonValue>>* Choices = nullptr;
+				if (Json->TryGetArrayField(TEXT("choices"), Choices) && Choices && Choices->Num())
+				{
+					const TSharedPtr<FJsonObject>* MsgObj = nullptr;
+					if ((*Choices)[0]->AsObject()->TryGetObjectField(TEXT("message"), MsgObj) && MsgObj)
+					{
+						(*MsgObj)->TryGetStringField(TEXT("content"), Content);
+					}
+				}
+			}
+		}
+		// The model's answer is itself JSON.
+		TSharedPtr<FJsonObject> Parsed;
+		const int32 Brace = Content.Find(TEXT("{"));
+		if (Brace != INDEX_NONE)
+		{
+			const TSharedRef<TJsonReader<>> Inner = TJsonReaderFactory<>::Create(Content.Mid(Brace));
+			FJsonSerializer::Deserialize(Inner, Parsed);
+		}
+		if (Parsed.IsValid())
+		{
+			FString CrewName, Station, Side, Action;
+			Parsed->TryGetStringField(TEXT("crew"), CrewName);
+			Parsed->TryGetStringField(TEXT("station"), Station);
+			Parsed->TryGetStringField(TEXT("side"), Side);
+			Parsed->TryGetStringField(TEXT("action"), Action);
+			Station = Station.ToLower(); Side = Side.ToLower(); Action = Action.ToLower();
+
+			if (CrewName == TEXT("Finch") || CrewName == TEXT("Marlow") || CrewName == TEXT("Odessa")) { Intent.CrewName = CrewName; }
+			Intent.Side = Side == TEXT("port") ? EDCSide::Port : (Side == TEXT("starboard") ? EDCSide::Starboard : EDCSide::None);
+			Intent.Station = Station == TEXT("helm") ? EDCStationType::Helm : Station == TEXT("cannons") ? EDCStationType::Cannons
+				: Station == TEXT("fire") ? EDCStationType::Fire : Station == TEXT("rigging") ? EDCStationType::Rigging : EDCStationType::None;
+			Intent.Action = Action == TEXT("man") ? EDCAction::Man : Action == TEXT("fire") ? EDCAction::Fire : Action == TEXT("hold_fire") ? EDCAction::HoldFire
+				: Action == TEXT("turn_port") ? EDCAction::TurnPort : Action == TEXT("turn_starboard") ? EDCAction::TurnStarboard : Action == TEXT("steady") ? EDCAction::Steady
+				: Action == TEXT("extinguish") ? EDCAction::Extinguish : Action == TEXT("repair") ? EDCAction::Repair : Action == TEXT("report") ? EDCAction::Report : EDCAction::None;
+
+			// Fill the obvious gaps so a half-specified answer still does something sensible.
+			if (Intent.Action == EDCAction::TurnPort || Intent.Action == EDCAction::TurnStarboard || Intent.Action == EDCAction::Steady) { Intent.Station = EDCStationType::Helm; }
+			if (Intent.Action == EDCAction::Extinguish) { Intent.Station = EDCStationType::Fire; }
+			if (Intent.Action == EDCAction::Repair) { Intent.Station = EDCStationType::Rigging; }
+			if (Intent.Action == EDCAction::Fire || Intent.Action == EDCAction::HoldFire) { Intent.Station = EDCStationType::Cannons; }
+			if (Intent.Station == EDCStationType::Fire && Intent.Action == EDCAction::Man) { Intent.Action = EDCAction::Extinguish; }
+			if (Intent.Station == EDCStationType::Rigging && Intent.Action == EDCAction::Man) { Intent.Action = EDCAction::Repair; }
+			Intent.bValid = Intent.Action != EDCAction::None && (Intent.Station != EDCStationType::None || Intent.Action == EDCAction::Report);
+		}
+		UDCCrewSubsystem* CrewSub = V->GetWorld()->GetSubsystem<UDCCrewSubsystem>();
+		if (!Intent.bValid && CrewSub)
+		{
+			// Second opinion from the keyword grammar before giving up.
+			TArray<FString> Names;
+			for (ADCCrewMember* M : CrewSub->GetCrew()) { if (M) { Names.Add(M->CrewName); } }
+			Intent = DCIntentParser::Parse(Text, Names);
+		}
+		UE_LOG(LogDC, Log, TEXT("Voice: language model read \"%s\" as %s (%.0f ms)"), *Text, Intent.bValid ? *Content.Replace(TEXT("\n"), TEXT(" ")) : TEXT("not an order"), (FPlatformTime::Seconds() - Sent) * 1000.0);
+		if (UDCCrewSubsystem* Crew = V->GetWorld()->GetSubsystem<UDCCrewSubsystem>())
+		{
+			Crew->ExecuteIntent(Intent);
+		}
+	});
+	Req->ProcessRequest();
+}
