@@ -2,6 +2,13 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 05:52 — Claude: white water along the hull and a wake astern
+
+- **Hull wash and wake** (`DCWake`, `M_Wake`, `Tools/make_wake_material.py`): foam along both sides from the bow wave aft and a wake 90 m astern, its pattern running aft at the ship's speed. It is fitted to the real hull at the waterline and rides on the plugin sea's waves (120 surface-height queries a frame; no measurable cost: open sea 132 fps, Atlantis 101 to 105). Hidden in the tunnel and the maelstrom. `-DCNoWake` removes it.
+- **Unexplained, harmless so far:** while it rains, sparse rings appear on the sea itself some way off the ship. They vanish with the deck rain splashes switched off (`-DCSplash=0`), although every splash point lies within the hull's footprint. They read as rain on the water. Not from the plugin's scene captures (tested).
+- **Hitch found:** the drowned city is spawned in one frame when the fog phase begins (about 0.3 s in the packaged build on a seek). Not yet spread over frames.
+- Codex's crater scale revision (`7139d73`) is on main and in `Builds/Next`.
+
 ## Fri 13 Nov 05:37 — Claude: trembling hull fixed; sea streams past the ship; wash line on the ruins
 
 Owner's reports this morning: crew "vibrating heavily up and down like they're moving out of sync", stuttering, water not moving past the ship, no foam round the ruins.

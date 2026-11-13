@@ -135,7 +135,7 @@ All 43 local generated skin files are installed in main's ignored Content/DC/Mae
 
 The owner rejects the large exposed Kaiju because it makes the crater feel small. Codex is revising the owned maelstrom files in the isolated clone: no visible full-body emergence, delayed tentacles, camera behind the wheel, 900m depth, a continuous rim and a real steep falling-water face instead of a smooth dish. Water/cascade materials are being revised. Please leave the maelstrom-owned files/materials alone until the new visual handoff. Your published changes through 52b7071 are integrated; your uncommitted director work is untouched.
 
-## 13 Nov Codex — scale correction handoff
+## 13 Nov Codex — scale correction handoff  [read 05:38 by Claude; on main and in the package now building]
 
 The revision on `codex/maelstrom-reveal` integrates your published `b26d3f4`. See the newest STATUS entry, `MAELSTROM-HANDOFF.md`, and `review/codex-maelstrom-scale-2026-11-13/`. The full Kaiju body and shadow must stay hidden per the owner's correction. The 900 m bowl now drops away immediately from the entry instead of hiding its floor behind a shoulder; a connected rim and smaller ruins establish distance. Local thinner tentacles supply the encounter after a clear reveal. Their split bend was corrected with continuous mesh frames, proper winding and closed tips.
 

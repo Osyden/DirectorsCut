@@ -159,10 +159,13 @@ void ADCWeatherFX::BuildSplashes()
 	Splashes->SetMobility(EComponentMobility::Movable);
 	Splashes->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Splashes->SetCastShadow(false);
+	// The water plugin photographs the scene from above for its own effects; bright rings on the deck came back stamped across the sea.
+	Splashes->SetHiddenInSceneCapture(true);
 	Splashes->SetupAttachment(RootComponent);
 	Splashes->RegisterComponent();
 	Splashes->CreateMeshSection(0, Verts, Tris, Normals, UVs, Colors, TArray<FProcMeshTangent>(), false);
 	SplashMID = UMaterialInstanceDynamic::Create(Base, this);
 	Splashes->SetMaterial(0, SplashMID);
 	UE_LOG(LogDC, Log, TEXT("WeatherFX: %d rain splash points on the ship"), Verts.Num() / 4);
+	{ FBox Box(Verts); int32 Low = 0; for (const FVector& V : Verts) { if (V.Z < Director->SeaLevelZ + 150.f) { ++Low; } } UE_LOG(LogDC, Log, TEXT("WeatherFX: splash bounds %s to %s, %d corners within 1.5 m of the sea"), *Box.Min.ToString(), *Box.Max.ToString(), Low); }
 }

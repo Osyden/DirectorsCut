@@ -34,6 +34,8 @@ public:
 
 	EDCPhase GetPhase() const { return CurrentPhase; }
 	const FDCEnvState& GetEnv() const { return Env; }
+	/** True when the plugin sea (Dynamic Real Water) is in use. */
+	bool HasPluginSea() const { return Ocean != nullptr; }
 	/** Rotation and heave applied to everything that is "the world" (sea, hazards). */
 	FTransform GetWorldRock() const { return WorldRock; }
 	float GetRideLength() const;
