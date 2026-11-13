@@ -2,6 +2,15 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 11:14 — Claude: fog banks that glow and flare; veined storm ceiling; cloud faces tried and parked
+
+- **Banks read from the deck now.** They were dim grey in the dim light, so the fog itself was dull. Each bank now gives off light in proportion to its density: the sky's glow all the time (`Director->FogGlow`), and a blue-white flare while the sky pack's lightning light is on. That light also scatters in the volumetric fog now (it did not before). Result: pale billowing banks on the water to either hand with dark ruins standing out of them. 139 to 144 fps at 1600x900 through the city. Review set 32.
+- **Deck wisps** are streaks with clear air between (new `Wisp` threshold in `M_FogVolume`) instead of a general haze. Visible round the lanterns; still subtle.
+- **Storm ceiling:** under full cloud the pack drew one flat pale sheet. Its overcast floor variation (0.8 to 4) and turbulence (0.8 to 3) are up: the ceiling is broken and veined with light. It is still pale rather than black.
+- **Cloud faces: found broken, attempt parked.** Since the sky pack went in, the faces have not been drawn at all (they were drawn by the old cloud layer). New attempt: a statue's head from the ruins pack enlarged to 800 m and drawn as cloud (`M_CloudFace`, `Tools/make_cloudface_material.py`), always turned to the ship. From the air with the fog off it reads as a face. From the deck it does not: the cloud deck (base about 200 m) lies between the ship and a head that high, so only a pale dome shows. Off by default; `-DCFaces` turns it on. Ways forward: a far smaller head hung below the cloud base, or drawing after the clouds with a hand-made depth test.
+- Helper switches added: `-DCCloud=` (pack cloud coverage), `-DCFogCutoff=`, `-DCFogMaxOpacity=`, `-DCFogGlow=`, `-DCFaceReach=`.
+- Next: foam on the water round ruins and hull (water material), rain splash look, whitecaps in the city, then the half-pipe sea and ship handling.
+
 ## Fri 13 Nov 10:38 — Claude: the storm front grows from nothing; open sea lit from ahead
 
 - **The front comes from nothing.** The pack's radial storm now starts as a smudge (12% of its radius, no strength) six seconds in and swells to the full 14 km wall by 44 s as it closes (`-DCStormGrowFrom=`, `-DCStormGrowTo=`). Its strength now holds almost to its edge (inner radius fraction 0.4 to 0.92), so it has a face instead of a slow thickening of the sky, and its edge is at the front's face, no longer 2 km ahead of it.

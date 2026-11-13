@@ -116,6 +116,8 @@ public:
 	float StormFrontX = 400000.f;
 	/** Light that thick fog gives off per unit of density this frame: the glow of the sky in it, and lightning. Read by the fog banks. */
 	FLinearColor FogGlow = FLinearColor::Black;
+	/** 0..3: how bright the lightning is this instant (the sky pack's flash light). */
+	float LightningNow = 0.f;
 	/** 0..1: how far the storm front has grown from a smudge on the horizon into the full wall. */
 	float StormGrowth = 1.f;
 	float StormFrontStrength = 0.f;

@@ -31,7 +31,36 @@ void ADCCloudFace::Build(float Height, bool bBearded, float PitchDown)
 	HeadSize = Height * 0.6f;
 	BaseZ = GetActorLocation().Z;
 	if (ADCRideDirector* D = ADCRideDirector::Get(this)) { Slot = D->NumCloudFaces++; }
-	// The face itself is drawn by the volumetric cloud layer (M_StormCloud); the old sphere build is kept behind a switch.
+	// Under the sky pack the face is a statue's head from the ruins, hundreds of metres tall, drawn as cloud.
+	ADCRideDirector* Dir = ADCRideDirector::Get(this);
+	// Off for now (-DCFaces): the cloud deck lies between the ship and a head this high, so what shows is a pale dome, not a face.
+	if (Dir && Dir->bUDS && FParse::Param(FCommandLine::Get(), TEXT("DCFaces")))
+	{
+		UStaticMesh* Head = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/AncientRuins/Meshes/Arch/SM_Statue_01_head_01.SM_Statue_01_head_01"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+		UMaterialInterface* Cloud = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_CloudFace.M_CloudFace"));
+		if (Head && Cloud)
+		{
+			const FBox Box = Head->GetBoundingBox();
+			const float S = Height * 1.6f / FMath::Max(1.f, Box.GetSize().Z);
+			UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
+			C->SetMobility(EComponentMobility::Movable);
+			C->SetStaticMesh(Head);
+			C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			C->SetCastShadow(false);
+			C->SetForceDisableNanite(true);   // translucent
+			HeadMID = UMaterialInstanceDynamic::Create(Cloud, this);
+			C->SetMaterial(0, HeadMID);
+			C->SetupAttachment(RootComponent);
+			C->SetRelativeScale3D(FVector(S));
+			HeadComp = C;
+			HeadCentre = Box.GetCenter() * S;
+			HeadPitch = PitchDown;
+			C->SetBoundsScale(2.f);
+			C->RegisterComponent();
+			HeadMID->SetVectorParameterValue(TEXT("Tint"), FLinearColor(0.62f, 0.68f, 0.78f, 0.f));
+		}
+	}
+	// The old drawing in the director's own cloud layer (M_StormCloud), and the older sphere build behind a switch.
 	if (!bBillows) { return; }
 	UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Cloud.M_Cloud"));
 	if (!Base) { return; }
@@ -109,6 +138,23 @@ void ADCCloudFace::Tick(float DeltaSeconds)
 		if (!bPlaced) { bPlaced = true; BaseZ = GetActorLocation().Z; }
 		const FVector L = GetActorLocation();
 		Director->CloudFaces[Slot] = FVector4(L.X, L.Y, L.Z, L.Z > BaseZ - 20000.f ? HeadSize : 0.f);
+	}
+	if (HeadMID)
+	{
+		// It is there when the ship is within a few kilometres, breathing a little; lightning lights it from inside.
+		const FVector L = GetActorLocation();
+		const float Dist = FVector2D(L.X, L.Y).Size();
+		// It watches the ship: turned to her wherever she is, and bowed to look down at her. (The statue's head looks along +Y in its own space.)
+		const FQuat Q = FRotator(0.f, FMath::RadiansToDegrees(FMath::Atan2(-L.Y, -L.X)), 0.f).Quaternion() * FRotator(-HeadPitch, 0.f, 0.f).Quaternion() * FRotator(0.f, 270.f, 0.f).Quaternion();
+		HeadComp->SetWorldLocationAndRotation(L - Q.RotateVector(HeadCentre), Q);
+		static float Reach = 420000.f; static bool bReachRead = false;
+		if (!bReachRead) { bReachRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCFaceReach="), Reach); }
+		const float Want = FMath::Clamp((Reach - Dist) / 120000.f, 0.f, 1.f) * FMath::Clamp(Director->GetEnv().Mist / 0.5f, 0.f, 1.f) * (L.Z > BaseZ - 20000.f ? 1.f : 0.f);
+		HeadShown = FMath::FInterpTo(HeadShown, Want, DeltaSeconds, 0.6f);
+		HeadFlash = FMath::Max(FMath::Max(0.f, HeadFlash - DeltaSeconds * 1.5f), Director->LightningNow);
+		const float Breath = 0.8f + 0.2f * FMath::Sin((Director->RideTime + Seed) * 0.45f);
+		HeadMID->SetVectorParameterValue(TEXT("Tint"), FLinearColor(0.62f, 0.68f, 0.78f, HeadShown * Breath * 0.75f));
+		HeadMID->SetVectorParameterValue(TEXT("Flash"), FLinearColor(0.55f, 0.7f, 1.f) * (HeadFlash * 1.2f));
 	}
 	if (!Light) { return; }
 	if (!bHooked)

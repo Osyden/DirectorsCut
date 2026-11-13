@@ -796,6 +796,9 @@ void ADCRideDirector::SetupUDS()
 	SkyNum(UDSSky, TEXT("Fog Noise Scale"), 15000.0);
 	SkyNum(UDSSky, TEXT("Fog Noise Intensity"), 12.0);
 	SkyNum(UDSSky, TEXT("Fog Noise Outer Distance"), 40000.0);
+	// Under full cloud the deck of it is broken and veined with light instead of one flat sheet.
+	SkyNum(UDSSky, TEXT("Overcast Floor Variation"), 4.0);
+	SkyNum(UDSSky, TEXT("2D Overcast Turbulence"), 3.0);
 	SkyOverrides(UDSSky, TEXT("DCSky="));
 	UGameplayStatics::FinishSpawningActor(UDSSky, FTransform::Identity);
 
@@ -848,7 +851,11 @@ void ADCRideDirector::TickUDS()
 		const FVector ToSun = -FRotator(TestPitch, TestYaw, 0.f).Vector();
 		*Target->ContainerPtrToValuePtr<FVector>(UDSSky.Get()) = ToSun * 1000000.0;
 	}
-	SkyNum(UDSWeather, TEXT("Cloud Coverage"), FMath::Clamp(2.0 + 8.0 * Env.CloudCover, 0.0, 10.0));
+	{
+		static float ForcedCloud = -1.f;   // test hook: -DCCloud=6 fixes the pack's cloud coverage (0..10)
+		static const bool bForcedCloud = FParse::Value(FCommandLine::Get(), TEXT("DCCloud="), ForcedCloud);
+		SkyNum(UDSWeather, TEXT("Cloud Coverage"), bForcedCloud ? ForcedCloud : FMath::Clamp(2.0 + 8.0 * Env.CloudCover, 0.0, 10.0));
+	}
 	{
 		// Test hook: -DCFog=8 fixes the pack's fog amount (0..10).
 		static float ForcedFog = -1.f;
@@ -864,6 +871,20 @@ void ADCRideDirector::TickUDS()
 		SkyNum(UDSSky, TEXT("Foggy Height Fog Falloff"), FMath::Lerp(0.015, (double)Falloff, K));
 		SkyNum(UDSSky, TEXT("Overcast Brightness Day"), FMath::Lerp(0.2, 1.0, K));
 		SkyNum(UDSSky, TEXT("Fog Color Intensity Scale"), FMath::Lerp(1.0, 3.0, K));
+		// Test hooks on the pack's own height fog: -DCFogCutoff= (cm; nothing further than this is fogged, so the sky is not) and -DCFogMaxOpacity=.
+		{
+			static float Cutoff = -1.f, MaxOpacity = -1.f; static bool bFogHooks = false;
+			if (!bFogHooks) { bFogHooks = true; FParse::Value(FCommandLine::Get(), TEXT("DCFogCutoff="), Cutoff); FParse::Value(FCommandLine::Get(), TEXT("DCFogMaxOpacity="), MaxOpacity); }
+			if (Cutoff >= 0.f || MaxOpacity >= 0.f)
+			{
+				TInlineComponentArray<UExponentialHeightFogComponent*> Fogs(UDSSky);
+				for (UExponentialHeightFogComponent* F : Fogs)
+				{
+					if (Cutoff >= 0.f) { F->SetFogCutoffDistance(Cutoff * K); }
+					if (MaxOpacity >= 0.f) { F->SetFogMaxOpacity(FMath::Lerp(1.f, MaxOpacity, (float)K)); }
+				}
+			}
+		}
 		// The banks of fog glow with the sky's light, and flare blue-white while the pack's lightning light is on.
 		{
 			static float GlowScale = 1.f; static bool bGlowRead = false;   // test hook: -DCFogGlow=
@@ -874,6 +895,7 @@ void ADCRideDirector::TickUDS()
 				for (UDirectionalLightComponent* L : Lights) { if (L->GetName().Contains(TEXT("Lightning"))) { UDSLightning = L; L->SetVolumetricScatteringIntensity(6.f); } }
 			}
 			const float Struck = UDSLightning.IsValid() && UDSLightning->IsVisible() ? FMath::Clamp(UDSLightning->Intensity / 5.f, 0.f, 3.f) : 0.f;
+			LightningNow = Struck;
 			FogGlow = (FLinearColor(0.5f, 0.62f, 0.8f) * (0.35f * Env.SkyIntensity) + FLinearColor(0.6f, 0.75f, 1.f) * (2.5f * Struck)) * GlowScale;
 		}
 		// Looking into the sun on the open sea, strong scattering in the air whites the picture out; in the mist of the city it is what makes the shafts.

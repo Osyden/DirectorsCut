@@ -34,6 +34,13 @@ protected:
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> Dark;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> Eye;
 	UPROPERTY() TObjectPtr<ADCRideDirector> Director;
+	/** Under the sky pack: a statue's head enlarged and drawn as cloud (M_CloudFace). */
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> HeadMID;
+	UPROPERTY() TObjectPtr<class UStaticMeshComponent> HeadComp;
+	FVector HeadCentre = FVector::ZeroVector;
+	float HeadPitch = 0.f;
+	float HeadShown = 0.f;
+	float HeadFlash = 0.f;
 	/** Also build the old face of billow meshes. */
 	UPROPERTY(EditAnywhere) bool bBillows = false;
 	float HeadSize = 0.f;
