@@ -186,6 +186,11 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 
 	LaneOffset = FMath::Clamp(LaneOffset + Steer * LaneSpeed * SteerAuthority * DeltaSeconds, -LaneLimit, LaneLimit);
 
+	if (!bOutliersBuilt)
+	{
+		bOutliersBuilt = true;
+		SpawnOutliers();
+	}
 	if (!bAtlantisBuilt && Director->GetPhase() == EDCPhase::Fog)
 	{
 		bAtlantisBuilt = true;
@@ -511,6 +516,23 @@ void ADCTreadmill::TickIncoming(float DeltaSeconds)
 		P.Z += FMath::Sin(In.T * UE_PI) * 1400.f;
 		Shot->SetActorLocation(P);
 	}
+}
+
+void ADCTreadmill::SpawnOutliers()
+{
+	// The first sign of the drowned city, out on the open sea in full sun before the storm closes in:
+	// a broken arch, a lone statue, a run of columns, passed close on either hand in the first minute.
+	if (!DCRuins::Available() || FParse::Param(FCommandLine::Get(), TEXT("DCNoOutliers"))) { return; }
+	UWorld* World = GetWorld();
+	const float SeaZ = Director ? Director->SeaLevelZ : 0.f;
+	Register(DCRuins::SpawnArch(World, 3, 2.6f), FVector(21000.f, -10500.f, SeaZ - 250.f), 2000.f, false, 1.f, 70.f, false);
+	Register(DCRuins::SpawnColossus(World, 11000.f), FVector(33000.f, 9000.f, SeaZ - 300.f), 2000.f, false, 1.f, 215.f, false);
+	Register(DCRuins::SpawnBrokenColumns(World, 1500.f), FVector(27000.f, 5200.f, SeaZ), 2000.f, false, 1.f, 30.f, false);
+	Register(DCRuins::SpawnColonnade(World, 6, 7000.f), FVector(47000.f, -13000.f, SeaZ - 200.f), 2000.f, false, 1.f, 25.f, false);
+	Register(DCRuins::SpawnBrokenColumns(World, 1800.f), FVector(52000.f, 8000.f, SeaZ), 2000.f, false, 1.f, -15.f, false);
+	Register(DCRuins::SpawnCrag(World, 1600.f, 5200.f), FVector(40000.f, -22000.f, SeaZ), 2000.f, false, 1.f, 40.f, false);
+	Register(DCRuins::SpawnArch(World, 1, 2.2f), FVector(63000.f, -9500.f, SeaZ - 250.f), 2000.f, false, 1.f, 100.f, false);
+	Register(DCRuins::SpawnColonnade(World, 5, 8000.f), FVector(72000.f, 12500.f, SeaZ - 200.f), 2000.f, false, 1.f, -20.f, false);
 }
 
 void ADCTreadmill::SpawnAtlantis()
