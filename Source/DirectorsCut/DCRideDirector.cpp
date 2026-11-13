@@ -124,7 +124,7 @@ void ADCRideDirector::BuildDefaultPhases()
 	{
 		FDCEnvState& E = Add(EDCPhase::OpenSea, 0.f, 0.f);
 		E.FogColor = FLinearColor(0.75f, 0.55f, 0.4f); E.FogDensity = 0.0004f; E.CloudCover = 0.05f; E.CloudBase = 520000.f;
-		E.SunColor = FLinearColor(1.f, 0.86f, 0.68f); E.SunIntensity = 7.f; E.SunPitch = -30.f; E.SunYaw = 262.f; // low on the port beam: the towers of the storm front ahead are lit on one side and dark on the other
+		E.SunColor = FLinearColor(1.f, 0.86f, 0.68f); E.SunIntensity = 7.f; E.SunPitch = -16.f; E.SunYaw = 150.f; // low and ahead to port, behind the storm front: the wall stands dark against the light with silver edges, and shafts fall across the deck
 		E.SeaColor = FLinearColor(0.03f, 0.09f, 0.13f); E.SeaRoughness = 1.2f; E.ShipSpeed = 1000.f; E.WaveHeight = 70.f; E.Foam = 0.5f; E.Exposure = 1.0f;
 	}
 	{
@@ -821,6 +821,8 @@ void ADCRideDirector::SetupUDS()
 			SkyNum(UDSStorm, TEXT("Outer Radius"), StormRadius);
 			SkyNum(UDSStorm, TEXT("Lightning Spawn Rate"), 1.5);
 			SkyNum(UDSStorm, TEXT("Cloud Altitude Offset"), -1.0);
+			// Full strength almost to its edge: a face that stands up like a wall, not a slow thickening of the sky.
+			SkyNum(UDSStorm, TEXT("Inner Radius Fraction"), 0.92);
 			SkyOverrides(UDSStorm, TEXT("DCStorm="));
 			UGameplayStatics::FinishSpawningActor(UDSStorm, At);
 		}
@@ -862,6 +864,8 @@ void ADCRideDirector::TickUDS()
 		SkyNum(UDSSky, TEXT("Foggy Height Fog Falloff"), FMath::Lerp(0.015, (double)Falloff, K));
 		SkyNum(UDSSky, TEXT("Overcast Brightness Day"), FMath::Lerp(0.2, 1.0, K));
 		SkyNum(UDSSky, TEXT("Fog Color Intensity Scale"), FMath::Lerp(1.0, 3.0, K));
+		// Looking into the sun on the open sea, strong scattering in the air whites the picture out; in the mist of the city it is what makes the shafts.
+		SkyNum(UDSSky, TEXT("Sun Volumetric Scattering Intensity"), FMath::Lerp(0.6, 3.0, K));
 	}
 	SkyNum(UDSWeather, TEXT("Rain"), FMath::Clamp(Env.Rain * 10.0, 0.0, 10.0));
 	SkyNum(UDSWeather, TEXT("Wind Intensity"), FMath::Clamp(Env.WaveHeight / 30.0, 1.0, 10.0));
@@ -875,7 +879,16 @@ void ADCRideDirector::TickUDS()
 		// Its edge is at the front's face. Once it has closed over the ship it draws off astern at
 		// more than a kilometre a second, so the drowned city beyond it stands in broken light.
 		const float Face = StormFrontX - FMath::Max(0.f, RideTime - 66.f) * 130000.f;
-		SkyCall(UDSStorm, TEXT("Set Storm Location"), FVector(Face + StormRadius * 0.85f, 0.f, SeaLevelZ));
+		// It comes from nothing: a smudge of cloud far ahead a few seconds into the voyage, which swells
+		// as it closes until it is the wall that fills the sky. Both its size and its strength grow.
+		static float GrowFrom = 6.f, GrowTo = 44.f; static bool bGrowRead = false;   // test hooks: -DCStormGrowFrom= -DCStormGrowTo=
+		if (!bGrowRead) { bGrowRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCStormGrowFrom="), GrowFrom); FParse::Value(FCommandLine::Get(), TEXT("DCStormGrowTo="), GrowTo); }
+		const float G = FMath::SmoothStep(0.f, 1.f, FMath::Clamp((RideTime - GrowFrom) / FMath::Max(1.f, GrowTo - GrowFrom), 0.f, 1.f));
+		StormGrowth = G;
+		const float Radius = StormRadius * FMath::Lerp(0.12f, 1.f, G);
+		SkyNum(UDSStorm, TEXT("Outer Radius"), Radius);
+		SkyNum(UDSStorm, TEXT("Storm Alpha"), FMath::Clamp(G * 1.6f, 0.f, 1.f));
+		SkyCall(UDSStorm, TEXT("Set Storm Location"), FVector(Face + Radius, 0.f, SeaLevelZ));
 	}
 }
 

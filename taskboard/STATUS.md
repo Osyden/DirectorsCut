@@ -2,11 +2,19 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 10:38 — Claude: the storm front grows from nothing; open sea lit from ahead
+
+- **The front comes from nothing.** The pack's radial storm now starts as a smudge (12% of its radius, no strength) six seconds in and swells to the full 14 km wall by 44 s as it closes (`-DCStormGrowFrom=`, `-DCStormGrowTo=`). Its strength now holds almost to its edge (inner radius fraction 0.4 to 0.92), so it has a face instead of a slow thickening of the sky, and its edge is at the front's face, no longer 2 km ahead of it.
+- **Open sea lit from ahead to port** (sun heading 262 to 150, 30 to 16 degrees up): the growing towers stand dark-based against the light with silver edges, the sea glitters toward the sun, and shafts fall through the rigging. This was tried and rejected last night because it whited the picture out; the cause was the strong scattering in the air, which is now 0.6 on the open sea and 3 only in the city's mist.
+- Tried and dropped: lower cloud multiple scattering to darken the wall (turned the sky to flat milk).
+- Still short of `storm-front-portal.jpg`: the front is towers, not one curling black wall; no lightning in it from outside; sea needs whitecaps. 110 to 135 fps at 1600x900. Review set 31.
+
 ## Fri 13 Nov 10:22 — Claude: volumetric fog banks; Codex's cinematic maelstrom merged
 
 - **Fog that is really in the air.** New `ADCFogBank` + `M_FogVolume` (volume-domain material, made by `Tools/make_fogvolume_material.py`): ellipsoids filled by the engine's volumetric fog, with drifting billows and ragged edges, lit and shadowed like the rest of the air. The treadmill carries them like ruins. In the drowned city: low thick walls to either hand that leave a way through, tall curtains before each great figure and temple that part when the ship is within a few hundred metres, thin veils across the course, and a fast thin layer round the ship for wisps over the deck. The old analytic banks are gone. Base fog lowered (pack fog 7 to 4.5) so the banks do the hiding. Volumetric fog range 400 m to 700 m. 128 to 137 fps at 1600x900 in the city.
 - **The helmsman avoids the ruins**, now that they are solid: three lines look ahead on every lane a few times a second. A full run with Finch at the wheel has no strikes.
 - **Codex's cinematic maelstrom pass (`0c4785d`) reviewed and merged** at the owner's request via INBOX. Its sun and fog changes are scoped to the stage and restored on exit. Built and run to the ending at 3x with the bot captain: no errors. Not packaged yet.
+- **Owner, 10:25 (in passing, for when the visual list runs dry):** make the sea in the fog slope up to either hand like a shallow half-pipe, with the ship steering on it and drawn back to the middle if she climbs a side too far; and ship physics, collision, controls, smoothness and gameplay in general.
 - Next: judge the banks at normal speed from the deck and tune; dark structured cloud; storm front that grows from nothing; lightning in the fog.
 
 ## Fri 13 Nov 09:35 — Claude: owner's play-test notes, first batch; fog toward the reference pictures

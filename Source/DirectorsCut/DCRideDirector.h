@@ -114,6 +114,8 @@ public:
 	bool bUDS = false;
 	/** The storm front in the cloud volume: world X of its face, strength 0..1, radius of its tunnel mouth. Set by ADCFogFront. */
 	float StormFrontX = 400000.f;
+	/** 0..1: how far the storm front has grown from a smudge on the horizon into the full wall. */
+	float StormGrowth = 1.f;
 	float StormFrontStrength = 0.f;
 	float StormMouthRadius = 0.f;
 	/** The portal out of Atlantis, drawn in the cloud volume. Set by ADCPortal. */
@@ -150,6 +152,7 @@ protected:
 	/** The pack's rain and lightning effects, loaded before they are needed. */
 	UPROPERTY() TArray<TObjectPtr<UObject>> UDSPreloaded;
 	float StormRadius = 1400000.f;
+
 	void SetupUDS();
 	void SetupOcean();
 	UPROPERTY() TObjectPtr<AActor> Ocean;

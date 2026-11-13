@@ -138,7 +138,8 @@ void ADCFogFront::Tick(float DeltaSeconds)
 			if (ULocalFogVolumeComponent* C = B.Component.Get())
 			{
 				C->SetWorldLocation(FVector(Director->StormFrontX, 0.f, Director->SeaLevelZ) + B.Offset);
-				C->SetVisibility(Gone < 1.f);
+				// The skirt of fog under the front comes with the front itself.
+				C->SetVisibility(Gone < 1.f && Director->StormGrowth > 0.55f);
 			}
 		}
 	}
