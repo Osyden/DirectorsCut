@@ -190,7 +190,7 @@ void ADCHUD::DrawHUD()
 					const FDCStation& Station = Stations[Index];
 					const bool bGun = Station.Type == EDCStationType::Cannons && Guns && Guns->NumGuns(Station.Side) > 0;
 					if (!bGun && Station.Type != EDCStationType::Helm) { continue; }
-					const FVector Spot = Station.Location + FVector(0.f, 0.f, 150.f);
+					const FVector Spot = (D ? D->DeckToWorld(Station.Location) : Station.Location) + FVector(0.f, 0.f, 150.f);   // the ship moves on the sea; stations are kept for the ship at rest
 					if (FVector::DistSquared(Spot, Captain->GetActorLocation()) > FMath::Square(3600.f)) { continue; }
 					FVector2D Screen;
 					if (!PC->ProjectWorldLocationToScreen(Spot, Screen) ||

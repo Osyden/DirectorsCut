@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 06:22 — Claude: Builds/Next rebuilt with wake and ship motion
+
+- `Builds/Next` now has the hull wash, wake, ship motion and the storm-front freeze fix (source at `04f6b43`), with voice sidecars. Continuous run of the package: no slow frames to 110 s apart from the test screenshots; 113 fps open sea, 98 in the front, 89 in Atlantis at 720p.
+- After that package: deck fires and the HUD's station markers also follow the moving deck (built in the editor target, not yet in a package, not yet seen in play).
+
 ## Fri 13 Nov 06:19 — Claude: the ship rides the sea
 
 - **Ship motion** (the playtest's "ship needs bobbing"): the hull now heaves, pitches and rolls with the plugin sea's waves. The wake already asks for the water height down both sides of the hull; the ship is leaned and lifted toward that plane, eased and scaled down (0.8). Measured on the open sea: heave about 10 cm either way, pitch 0.75 degrees, roll 0.6; more in the storm. Off in the tunnel and the maelstrom, where Codex's stage moves the world instead. `-DCNoShipMotion` keeps her still, `-DCShipMotion=1.0` sets the amount.

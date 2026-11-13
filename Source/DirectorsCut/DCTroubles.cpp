@@ -45,7 +45,13 @@ void ADCTroubles::StartFire(const FVector& Location)
 	Root->SetMobility(EComponentMobility::Movable);
 	Visual->SetRootComponent(Root);
 	Root->RegisterComponent();
-	Visual->SetActorLocation(Location);
+	// Fires are reckoned on the ship at rest; the flames themselves are put on the deck where it is now and ride with her.
+	if (const ADCRideDirector* Dir = ADCRideDirector::Get(this))
+	{
+		Visual->SetActorLocation(Dir->DeckToWorld(Location));
+		if (Dir->ShipActor) { Visual->AttachToActor(Dir->ShipActor, FAttachmentTransformRules::KeepWorldTransform); }
+	}
+	else { Visual->SetActorLocation(Location); }
 
 	// Flames: a few glowing tongues that the tick stretches and sways.
 	UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Flame.M_Flame"));
