@@ -2,7 +2,7 @@
 
 | Task | Status | Owner | Done when |
 | --- | --- | --- | --- |
-| Maelstrom crater, tunnel exit and submerged boss encounter | Merged into main by Claude 13 Nov (`0c4785d`), see [note for Codex](FOR-CODEX-13NOV.md); visual polish resumes after reset | Codex, `codex/maelstrom-reveal` | [Current handoff](MAELSTROM-CINEMATIC-PASS.md), [current frames](review/codex-maelstrom-cinematic-2026-11-13/README.md); build, live FFT shader and normal-speed victory/sea return pass. Unmerged and not packaged. |
+| Maelstrom crater, tunnel exit and timed naval boss encounter | Prior pass merged; new owner design queued | Codex; Claude authorised to take the pass when current work runs out—claim files in STATUS | [New owner direction](MAELSTROM-TIMED-BOSS-DESIGN.md): larger fog-covered half-pipe, rollercoaster reveal, slow orbit, phased hazards, timed death and damage-based score. [Prior implementation](MAELSTROM-CINEMATIC-PASS.md) is a baseline, not completion of this design. |
 | Initialize Git and Git LFS | Done | Codex | Baseline is on `origin/main` at `dcf3e85`. |
 | Diagnose Unreal MCP startup | Done | Claude | Launch with `-ModelContextProtocolStartServer`; see STATUS.md. |
 | Define the first playable slice | Done | Claude | See [PLAN.md](PLAN.md). |

@@ -812,6 +812,7 @@ void ADCTreadmill::SpawnAtlantis()
 					D.Size = Rng.FRandRange(3500.f, 5500.f);
 					D.Erode = Rng.FRandRange(0.45f, 0.65f);
 					D.Drift = FVector(Rng.FRandRange(-500.f, -250.f), -Across * 120.f, Rng.FRandRange(-40.f, 60.f));
+					D.bHero = true;   // sharp, self-shadowed cloud: the fog grid could not hold this shape
 					Lay(D, X + Rng.FRandRange(-1200.f, 1200.f), -Across * Rng.FRandRange(6200.f, 7600.f), SeaZ + 800.f + FMath::Max(0.f, Up) * Rng.FRandRange(5200.f, 6400.f));
 				}
 			}

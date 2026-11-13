@@ -97,6 +97,13 @@ void ADCFogBank::Tick(float DeltaSeconds)
 	// A revealing curtain parts in a few seconds; everything else comes and goes slowly.
 	Amount = FMath::FInterpConstantTo(Amount, bRevealed ? 0.f : 1.f, DeltaSeconds, bRevealed ? 0.22f : 0.5f);
 	const float Now = Amount * Weather * Scale;
+	if (Now > 0.f && HeroMID)
+	{
+		// Coming out of the front the light is still flat and bright, and these banks stood out stark white
+		// against it like cut paper: they are dimmer until the city's dusk has settled.
+		const float Settled = FMath::Clamp((Director->GetEnv().Mist - 0.5f) / 0.25f, 0.f, 1.f);
+		HeroMID->SetVectorParameterValue(TEXT("Tint"), FLinearColor(0.3f, 0.34f, 0.42f) * FMath::Lerp(0.3f, 1.f, Settled));
+	}
 	if (Now > 0.f && HeroMID) { static float HG = 0.25f; static bool bHG = false; if (!bHG) { bHG = true; FParse::Value(FCommandLine::Get(), TEXT("DCHeroGlow="), HG); } HeroMID->SetVectorParameterValue(TEXT("Glow"), (Director->FogGlow + Director->FogFlare * 0.25f) * HG); }
 	else if (Now > 0.f) { MID->SetVectorParameterValue(TEXT("Glow"), Director->FogGlow + Director->FogFlare * (Desc.bOnDeck ? 0.12f : 1.f)); }
 	if (FMath::Abs(Now - Shown) > 0.002f || (Now == 0.f) != (Shown == 0.f))

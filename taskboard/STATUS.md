@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 16:25 — Claude: sharp banks on leaving the front; tunnel tried again with them
+
+- Leaving the front (66 to 92 s) the new banks stood out stark white against the flat grey light, like cut paper. They are now dimmer until the city's dusk has settled. The stretch reads as towering banks of cloud on a storm sea with the first ruins behind them. Review set 42.
+- The tunnel inside the front (`-DCTunnel`) was tried again with the sharp banks: still nothing to see, because the front's own thick fog hides anything more than a few tens of metres off. A tunnel there needs that fog thinned and the city held back by other means. Left off; this remains the job for the owner's tunnel pack or a rework of the front's interior.
+
 ## Fri 13 Nov 16:10 — Claude: sixth build has the sharp banks and they survive the cook; billows enlarged
 
 - **Build:** `Builds/2026-11-13_1602_2c8fffe_sharp-banks` runs: 130 fps open sea, 124 in the city at 1600x900, and its own screenshot shows the cloud walls to either hand with the channel between. The heterogeneous-volume material cooks.
