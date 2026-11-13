@@ -17,6 +17,11 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/Canvas.h"
+#include "CanvasItem.h"
+#include "Engine/Font.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Fonts/FontMeasure.h"
+#include "Rendering/SlateRenderer.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -38,6 +43,33 @@
 
 // ---------------------------------------------------------------- HUD
 
+namespace
+{
+	FSlateFontInfo HudFont(UFont* Vector, UFont* SizeOf, float Scale)
+	{
+		// The same height on screen as the bitmap font it replaces, at the scale asked for.
+		const float Pixels = (SizeOf ? SizeOf->GetMaxCharHeight() : 16.f) * Scale;
+		const bool bLarge = GEngine && SizeOf == GEngine->GetLargeFont();
+		return FSlateFontInfo(Vector, FMath::Max(6, FMath::RoundToInt(Pixels / 1.55f)), bLarge ? FName(TEXT("Bold")) : FName(TEXT("Regular")));
+	}
+}
+
+void ADCHUD::CrispText(const FString& Str, FLinearColor Color, float X, float Y, UFont* SizeOf, float Scale)
+{
+	if (!VectorFont) { VectorFont = LoadObject<UFont>(nullptr, TEXT("/Engine/EngineFonts/Roboto.Roboto")); }
+	if (!VectorFont || !Canvas || !FSlateApplication::IsInitialized()) { DrawText(Str, Color, X, Y, SizeOf, Scale); return; }
+	FCanvasTextItem Item(FVector2D(X, Y), FText::FromString(Str), HudFont(VectorFont, SizeOf, Scale), Color);
+	Canvas->DrawItem(Item);
+}
+
+void ADCHUD::CrispSize(const FString& Str, float& OutWidth, float& OutHeight, UFont* SizeOf, float Scale)
+{
+	if (!VectorFont) { VectorFont = LoadObject<UFont>(nullptr, TEXT("/Engine/EngineFonts/Roboto.Roboto")); }
+	if (!VectorFont || !FSlateApplication::IsInitialized()) { GetTextSize(Str, OutWidth, OutHeight, SizeOf, Scale); return; }
+	const FVector2D Size = FSlateApplication::Get().GetRenderer()->GetFontMeasureService()->Measure(Str, HudFont(VectorFont, SizeOf, Scale));
+	OutWidth = Size.X; OutHeight = Size.Y;
+}
+
 void ADCHUD::DrawHUD()
 {
 	Super::DrawHUD();
@@ -53,13 +85,13 @@ void ADCHUD::DrawHUD()
 	// Text with a drop shadow so it reads over fog, fire and sea alike.
 	auto Label = [this, S](const FString& Str, float X, float Y, float Scale, const FLinearColor& Color, UFont* F)
 	{
-		DrawText(Str, FLinearColor(0.f, 0.f, 0.f, 0.85f * Color.A), X + 2.f * S, Y + 2.f * S, F, Scale * S);
-		DrawText(Str, Color, X, Y, F, Scale * S);
+		CrispText(Str, FLinearColor(0.f, 0.f, 0.f, 0.85f * Color.A), X + 2.f * S, Y + 2.f * S, F, Scale * S);
+		CrispText(Str, Color, X, Y, F, Scale * S);
 	};
 	auto Centered = [this, W, S, &Label](const FString& Str, float Y, float Scale, const FLinearColor& Color, UFont* F)
 	{
 		float TW = 0.f, TH = 0.f;
-		GetTextSize(Str, TW, TH, F, Scale * S);
+		CrispSize(Str, TW, TH, F, Scale * S);
 		Label(Str, (W - TW) * 0.5f, Y, Scale, Color, F);
 	};
 	const FLinearColor Gold(1.f, 0.85f, 0.5f), White(1.f, 1.f, 1.f), Dim(0.75f, 0.8f, 0.85f);
@@ -78,7 +110,7 @@ void ADCHUD::DrawHUD()
 
 		const FString Score = FString::Printf(TEXT("SCORE  %d"), D->Score);
 		float TW = 0.f, TH = 0.f;
-		GetTextSize(Score, TW, TH, Font, 1.4f * S);
+		CrispSize(Score, TW, TH, Font, 1.4f * S);
 		Label(Score, W - TW - 40.f * S, Y - 6.f * S, 1.4f, White, Font);
 	}
 
@@ -119,7 +151,7 @@ void ADCHUD::DrawHUD()
 			}
 		}
 		float TW = 0.f, TH = 0.f;
-		GetTextSize(Help, TW, TH, Font, 1.f * S);
+		CrispSize(Help, TW, TH, Font, 1.f * S);
 		Label(Help, W - TW - 40.f * S, H - 34.f * S, 1.f, Dim, Font);
 	}
 
@@ -133,7 +165,7 @@ void ADCHUD::DrawHUD()
 		{
 			const FString& Line = Sub->RecentLines[i];
 			float TW = 0.f, TH = 0.f;
-			GetTextSize(Line, TW, TH, Font, 1.3f * S);
+			CrispSize(Line, TW, TH, Font, 1.3f * S);
 			DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.45f), 34.f * S, Y - 2.f * S, TW + 16.f * S, LineH - 2.f * S);
 			// The newest line is brightest.
 			const float A = i == Sub->RecentLines.Num() - 1 ? 1.f : 0.7f;
@@ -167,7 +199,7 @@ void ADCHUD::DrawHUD()
 					const TCHAR* Name = !bGun ? TEXT("HELM") : Station.Side == EDCSide::Port ? TEXT("PORT GUNS") : TEXT("STARBOARD GUNS");
 					const FString Text = bNear ? FString::Printf(TEXT("[E]  %s"), Name) : FString(Name);
 					float TW, TH;
-					GetTextSize(Text, TW, TH, Font, S);
+					CrispSize(Text, TW, TH, Font, S);
 					const float X = Screen.X - TW * 0.5f;
 					DrawRect(FLinearColor(0.015f, 0.02f, 0.025f, 0.85f), X - 8.f * S, Screen.Y - 3.f * S, TW + 16.f * S, TH + 6.f * S);
 					Label(Text, X, Screen.Y, 1.f, bNear ? Gold : White, Font);

@@ -19,6 +19,12 @@ class ADCHUD : public AHUD
 
 public:
 	virtual void DrawHUD() override;
+
+protected:
+	/** Text drawn from the engine's vector font at the size it is shown, so it stays sharp at any resolution (the stock HUD fonts are small bitmaps stretched up). */
+	void CrispText(const FString& Str, FLinearColor Color, float X, float Y, UFont* SizeOf, float Scale);
+	void CrispSize(const FString& Str, float& OutWidth, float& OutHeight, UFont* SizeOf, float Scale);
+	UPROPERTY() TObjectPtr<UFont> VectorFont;
 };
 
 /**
