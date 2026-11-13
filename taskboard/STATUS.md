@@ -2,6 +2,17 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 13 Nov 23:10 Claude: cloud tunnel on the course as the mouth of the front; white banks in the city off
+
+Owner's play notes tonight: the fog and cloud systems cancel and paste over each other; white self-lit fog in the city looks terrible and shows statues as outlines; the tunnel passed through the water; the tunnel must be the opening in the front and line up with it; the front itself fights the other clouds.
+
+- **Tunnel on the course** (`DCFogFront.cpp`, `BuildTunnel/TickTunnel`): tunnel 1 at scale 300 rides at the face of the front, its mouth reaches the bow at about 59.8 s and it draws aft over 16 s. Absent pack: no tunnel, nothing else changes. Switches `-DCFrontTunnel=N` (0 off), `-DCFrontTunnelScale= -DCFrontTunnelSink= -DCFrontTunnelFloor= -DCFrontTunnelSoft= -DCFrontTunnelRate= -DCFrontTunnelTemp= -DCFrontTunnelDensity=`.
+- **Own material** `M_VdbCloud` (`Tools/make_vdbcloud_material.py`): plays the volume with a floor just above the sea (the pack's material let it pass through the water), a storm-grey tint, a faint cold light in the folds and a lightning flare. It holds no pack data; the game sets the volume on an instance.
+- **White banks off**: the sharp self-shadowed banks I made the default yesterday are what the owner saw as white, self-lit and pasted over the ruins. They do not take the local fog that darkens the scenery in front of them. Now off unless `-DCHeroBanks`; the soft banks are back.
+- Frames 46 to 80 s in `review/46-tunnel-on-course`. 91 to 116 fps at 1280x720 through the tunnel.
+- **Not right yet**: from the open sea the tunnel is a small ring standing alone, not an opening in a wall; the front is still the sky pack's slab. Next: build the wall of the front from the same volumes laid across the course (a roll cloud) with the tunnel through it, and dim the sun inside.
+- Tried and left off: `r.HeterogeneousVolumes.SupportOverlappingVolumes 1` and `r.Translucency.HeterogeneousVolumes 1` made no visible difference at 54 to 76 s.
+
 ## 13 Nov 22:40 Claude: bought cloud tunnel draws in the game at ship scale; night queue set
 
 - Owner installed three packs (all git-ignored): `Content/Clouds_Tunnel_Loop` (ten looping 201-frame volumes, 13 GB), `Content/EasyFog` (lit flowing fog cards), `Content/FogArea` (fog box through the fog grid).

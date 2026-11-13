@@ -52,6 +52,15 @@ protected:
 		float Radial = 0.f, High = 0.f, Shown = -1.f;
 	};
 	TArray<FBank> Banks;
+	/** The mouth of the front: a rolling tunnel of cloud (the bought looping volume, if it is installed) that the ship sails through into the fog. */
+	UPROPERTY() TObjectPtr<class AHeterogeneousVolume> Tunnel;
+	UPROPERTY() TObjectPtr<class UMaterialInstanceDynamic> TunnelMID;
+	float TunnelScale = 300.f;
+	float TunnelSink = 5000.f;
+	float TunnelShown = -1.f;
+	float TunnelDensity = 1.f;
+	void BuildTunnel();
+	void TickTunnel(float T);
 	void BuildBanks();
 	float Flash = 0.f;
 	float NextFlashIn = 3.f;

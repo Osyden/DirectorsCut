@@ -3,6 +3,9 @@
 #include "DCTypes.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/LocalFogVolumeComponent.h"
+#include "Components/HeterogeneousVolumeComponent.h"
+#include "HAL/IConsoleManager.h"
+#include "SparseVolumeTexture/SparseVolumeTexture.h"
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
@@ -128,6 +131,7 @@ void ADCFogFront::Tick(float DeltaSeconds)
 	Director->StormFrontX = 1500000.f * (1.f - T / ArrivalTime);
 	Director->StormFrontStrength = FMath::Clamp((ArrivalTime + 28.f - T) / 12.f, 0.f, 1.f);
 	Director->StormMouthRadius = 35000.f;
+	TickTunnel(T);
 	if (Director->bUDS)
 	{
 		if (Banks.Num() == 0) { BuildBanks(); }
@@ -198,6 +202,68 @@ void ADCFogFront::Tick(float DeltaSeconds)
 		CloudShades[i]->SetVectorParameterValue(TEXT("Flash"), FLinearColor(0.55f * Flicker, 0.7f * Flicker, 1.f * Flicker, Opacity));
 		CloudShades[i]->SetVectorParameterValue(TEXT("Top"), (FLinearColor(0.5f, 0.3f, 0.2f) * Sun + FLinearColor(0.035f, 0.05f, 0.065f)) * Shades[i % 3]);
 		CloudShades[i]->SetVectorParameterValue(TEXT("Bottom"), FLinearColor(0.008f, 0.012f, 0.02f) * Shades[i % 3]);
+	}
+}
+
+void ADCFogFront::BuildTunnel()
+{
+	// Clouds Tunnel Vdb Effects Pack Loop (bought, not in the repository): absent, the front simply has no mouth.
+	int32 Index = 1;
+	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnel="), Index);
+	UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_VdbCloud.M_VdbCloud"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	const FString VolumeName = FString::Printf(TEXT("CT_Clouds_Tunnel_Vdb_0%d"), Index);
+	USparseVolumeTexture* Volume = Index > 0 ? LoadObject<USparseVolumeTexture>(nullptr, *FString::Printf(TEXT("/Game/Clouds_Tunnel_Loop/Effects/%s.%s"), *VolumeName, *VolumeName), nullptr, LOAD_NoWarn | LOAD_Quiet) : nullptr;
+	if (!Volume) { Base = nullptr; }
+	if (!Base) { UE_LOG(LogDC, Log, TEXT("FogFront: no cloud tunnel (pack not installed or switched off)")); return; }
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	Tunnel = GetWorld()->SpawnActor<AHeterogeneousVolume>(AHeterogeneousVolume::StaticClass(), FTransform::Identity, Params);
+	UHeterogeneousVolumeComponent* H = Tunnel ? Tunnel->FindComponentByClass<UHeterogeneousVolumeComponent>() : nullptr;
+	if (!H) { return; }
+	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnelScale="), TunnelScale);
+	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnelSink="), TunnelSink);
+	float Rate = 24.f, Temp = 0.004f;
+	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnelDensity="), TunnelDensity);
+	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnelRate="), Rate);
+	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnelTemp="), Temp);
+	H->SetMobility(EComponentMobility::Movable);
+	TunnelMID = UMaterialInstanceDynamic::Create(Base, this);
+	TunnelMID->SetSparseVolumeTextureParameterValue(TEXT("SparseVolumeTexture"), Volume);
+	// The cloud stands on the sea: nothing below a floor just above the water, thickening over the first metres.
+	float Floor = TunnelSink / (TunnelScale * 0.42f) + 2.f, Soft = 8.f;
+	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnelFloor="), Floor);
+	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnelSoft="), Soft);
+	TunnelMID->SetVectorParameterValue(TEXT("Floor"), FLinearColor(Floor, Soft, 0.f, 0.f));
+	TunnelMID->SetVectorParameterValue(TEXT("Glow"), FLinearColor(0.45f, 0.6f, 1.f) * Temp);
+	H->SetMaterial(0, TunnelMID);
+	H->StartFrame = 0.f; H->EndFrame = 200.f; H->FrameRate = Rate; H->bPlaying = true; H->bLooping = true;
+	H->bIssueBlockingRequests = true;
+	// The engine stops marching these volumes a few hundred metres from the eye; the tunnel has to be seen coming.
+	if (IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(TEXT("r.HeterogeneousVolumes.MaxTraceDistance"))) { V->Set(600000.f, ECVF_SetByCode); }
+	UE_LOG(LogDC, Log, TEXT("FogFront: cloud tunnel %d, scale %.0f"), Index, TunnelScale);
+}
+
+void ADCFogFront::TickTunnel(float T)
+{
+	if (!Tunnel && TunnelShown < 0.f) { TunnelShown = 0.f; BuildTunnel(); }
+	if (!Tunnel) { return; }
+	// The volume is 672 voxels of 0.42 cm long, its foot at the actor.
+	const float Half = 0.5f * 672.f * 0.42f * TunnelScale;
+	// It rides on the face of the front until its mouth reaches the bow, then draws aft over the ship
+	// slowly enough that she is inside it until the city opens (phase Fog, 58 to 76 s).
+	// Its mouth stands in the face of the front, so the opening is seen in the wall as the wall comes on.
+	const float Through = (2.f * Half + 6000.f) / 16.f;
+	const float Reach = ArrivalTime * (1.f - 6000.f / 1500000.f);   // when the face is at the bow
+	const float Mouth = FMath::Max(Director->StormFrontX, 6000.f - (T - Reach) * Through);
+	Tunnel->SetActorTransform(FTransform(FRotator(0.f, -90.f, 0.f), FVector(Mouth + Half, 0.f, Director->SeaLevelZ - TunnelSink), FVector(TunnelScale)));
+	TunnelMID->SetVectorParameterValue(TEXT("Flare"), Director->FogFlare * 0.02f);
+	// It thickens with the storm and thins away once it has passed.
+	const float Shown = FMath::SmoothStep(0.25f, 0.9f, Director->StormGrowth) * FMath::Clamp((ArrivalTime + 20.f - T) / 4.f, 0.f, 1.f);
+	if (!FMath::IsNearlyEqual(Shown, TunnelShown, 0.004f))
+	{
+		TunnelShown = Shown;
+		TunnelMID->SetScalarParameterValue(TEXT("Density"), Shown * TunnelDensity);
+		Tunnel->SetActorHiddenInGame(Shown <= 0.01f);
 	}
 }
 

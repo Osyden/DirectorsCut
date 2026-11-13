@@ -854,7 +854,7 @@ void ADCTreadmill::SpawnAtlantis()
 				D.Erode = Rng.FRandRange(0.4f, 0.65f);
 				D.Drift = FVector(Rng.FRandRange(-350.f, -150.f), Side * Rng.FRandRange(-60.f, 160.f), 0.f);
 				// The walls along the course are drawn sharp and self-shadowed (heterogeneous volumes).
-				static const bool bHeroBanks = !FParse::Param(FCommandLine::Get(), TEXT("DCNoHeroBanks"));
+				static const bool bHeroBanks = FParse::Param(FCommandLine::Get(), TEXT("DCHeroBanks"));
 				D.bHero = bHeroBanks;
 				Lay(D, X + Rng.FRandRange(-3000.f, 3000.f), Side * (D.Radii.Y + Rng.FRandRange(3500.f, 7000.f)), SeaZ + D.Radii.Z * 0.35f);
 			}
@@ -889,7 +889,7 @@ void ADCTreadmill::SpawnAtlantis()
 			D.Erode = 0.5f;
 			D.Drift = FVector(-200.f, 0.f, 60.f);
 			D.RevealWithin = FMath::Abs(H.Y) * 0.62f + 15000.f;
-			D.bHero = !FParse::Param(FCommandLine::Get(), TEXT("DCNoHeroBanks"));   // a tower of sharp cloud that thins away as the ship comes up
+			D.bHero = FParse::Param(FCommandLine::Get(), TEXT("DCHeroBanks"));   // a tower of sharp cloud that thins away as the ship comes up
 			// Between the ship's course and the figure, and a little before it.
 			Lay(D, H.X - 7000.f, H.Y * 0.62f, SeaZ + H.Height * 0.45f);
 		}
@@ -943,6 +943,16 @@ void ADCTreadmill::SpawnAtlantis()
 			H->SetMobility(EComponentMobility::Movable);
 			UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(Base, Holder);
 			MID->SetScalarParameterValue(TEXT("Density Scale"), VDensity);
+			// As bought it is brown cloud lit teal from within. Storm cloud: grey-blue, with a faint cold light in its folds.
+			if (!FParse::Param(FCommandLine::Get(), TEXT("DCVdbRaw")))
+			{
+				float Temp = 0.12f, Albedo = 0.9f; FParse::Value(FCommandLine::Get(), TEXT("DCVdbTemp="), Temp); FParse::Value(FCommandLine::Get(), TEXT("DCVdbAlbedo="), Albedo);
+				MID->SetVectorParameterValue(TEXT("Albedo Color"), FLinearColor(0.78f, 0.83f, 0.92f));
+				MID->SetScalarParameterValue(TEXT("Albedo Scale"), Albedo);
+				MID->SetVectorParameterValue(TEXT("Temperature Color"), FLinearColor(0.45f, 0.6f, 1.f));
+				MID->SetVectorParameterValue(TEXT("Blackbody Tint"), FLinearColor(0.45f, 0.6f, 1.f));
+				MID->SetScalarParameterValue(TEXT("Temperature Scale"), Temp);
+			}
 			H->SetMaterial(0, MID);
 			H->StartFrame = 0.f; H->EndFrame = 200.f; H->FrameRate = Rate; H->bPlaying = true; H->bLooping = true;
 			H->bIssueBlockingRequests = true;
