@@ -1,74 +1,187 @@
 #include "DCPortal.h"
 #include "DCRideDirector.h"
 #include "DCTypes.h"
-#include "Components/StaticMeshComponent.h"
-#include "Engine/StaticMesh.h"
+#include "ProceduralMeshComponent.h"
+#include "KismetProceduralMeshLibrary.h"
 #include "Materials/MaterialInstanceDynamic.h"
+
+namespace
+{
+	struct FPortalSurface
+	{
+		TArray<FVector> Vertices;
+		TArray<int32> Triangles;
+		TArray<FVector2D> UVs;
+		TArray<FLinearColor> Colors;
+
+		void Quad(int32 A, int32 B, int32 C, int32 D)
+		{
+			// Unreal's procedural-mesh normal calculation uses clockwise winding.
+			Triangles.Append({ A, B, C, B, D, C });
+		}
+
+		void Apply(UProceduralMeshComponent* Mesh)
+		{
+			TArray<FVector> Normals;
+			TArray<FProcMeshTangent> Tangents;
+			UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UVs, Normals, Tangents);
+			Mesh->CreateMeshSection_LinearColor(0, Vertices, Triangles, Normals, UVs, Colors, Tangents, false);
+		}
+	};
+}
 
 ADCPortal::ADCPortal()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 	RootComponent->SetMobility(EComponentMobility::Movable);
+	Mouth = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("WaterMouth"));
+	Crests = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("SpiralCrests"));
+	Spray = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("CrestSpray"));
+	for (UProceduralMeshComponent* Mesh : { Mouth.Get(), Crests.Get(), Spray.Get() })
+	{
+		Mesh->SetupAttachment(RootComponent);
+		Mesh->SetMobility(EComponentMobility::Movable);
+		Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Mesh->SetCastShadow(false);
+	}
 }
 
 void ADCPortal::BeginPlay()
 {
 	Super::BeginPlay();
-	UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Cloud.M_Cloud"));
-	UStaticMesh* Sphere = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere"));
-	if (!Base || !Sphere || !bBillows) { return; }
-	for (int32 s = 0; s < 3; ++s)
+	UMaterialInterface* Water = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Maelstrom/M_MaelstromWater.M_MaelstromWater"));
+	if (!Water) { Water = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Wave.M_Wave")); }
+	if (Water)
 	{
-		UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(Base, this);
-		MID->SetScalarParameterValue(TEXT("Erode"), 0.8f);
-		Shades.Add(MID);
+		WaterMID = UMaterialInstanceDynamic::Create(Water, this);
+		WaterMID->SetScalarParameterValue(TEXT("WaveHeight"), 70.f);
+		WaterMID->SetScalarParameterValue(TEXT("FlowStrength"), 1.4f);
+		WaterMID->SetScalarParameterValue(TEXT("TunnelFlow"), 1.f);
+		Mouth->SetMaterial(0, WaterMID);
+		Crests->SetMaterial(0, WaterMID);
 	}
-	CoreMID = UMaterialInstanceDynamic::Create(Base, this);
-	CoreMID->SetScalarParameterValue(TEXT("Erode"), 0.f);
-
-	auto Billow = [&](USceneComponent* Parent, const FVector& Loc, float Size, UMaterialInterface* Mat)
+	UMaterialInterface* Mist = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Maelstrom/M_MaelstromSpray.M_MaelstromSpray"));
+	if (Mist)
 	{
-		UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
-		C->SetMobility(EComponentMobility::Movable);
-		C->SetStaticMesh(Sphere);
-		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		C->SetCastShadow(false);
-		C->SetMaterial(0, Mat);
-		C->SetupAttachment(Parent);
-		C->SetRelativeLocation(Loc);
-		C->SetRelativeScale3D(FVector(Size / 50.f));
-		C->RegisterComponent();
-	};
+		SprayMID = UMaterialInstanceDynamic::Create(Mist, this);
+		Spray->SetMaterial(0, SprayMID);
+	}
+	Radius = FMath::Max(Radius, 6000.f);
+	BuildMouth();
+	BuildCrests();
+	if (SprayMID) { BuildSpray(); }
+}
 
-	// The tunnel runs away along +X. The centre of the mouth sits a little above the sea, so the
-	// lowest billows are in the water and the opening is where the ship can sail into it.
-	FRandomStream Rng(777);
-	const int32 RingCount = 8;
-	for (int32 r = 0; r < RingCount; ++r)
+void ADCPortal::BuildMouth()
+{
+	FPortalSurface Surface;
+	constexpr int32 Along = 48;
+	constexpr int32 Around = 144;
+	for (int32 X = 0; X <= Along; ++X)
 	{
-		const float RingT = static_cast<float>(r) / (RingCount - 1);
-		USceneComponent* Ring = NewObject<USceneComponent>(this);
-		Ring->SetMobility(EComponentMobility::Movable);
-		Ring->SetupAttachment(RootComponent);
-		Ring->SetRelativeLocation(FVector(RingT * Radius * 5.f, 0.f, Radius * 0.55f));
-		Ring->RegisterComponent();
-		Rings.Add(Ring);
-
-		const float RingRadius = Radius * FMath::Lerp(1.3f, 0.75f, RingT);
-		const int32 Count = 22 - r;
-		for (int32 i = 0; i < Count; ++i)
+		const float T = static_cast<float>(X) / Along;
+		const float R = Radius * FMath::Lerp(1.f, 0.38f, FMath::SmoothStep(0.f, 1.f, T));
+		const float Height = R * 0.72f;
+		for (int32 Ring = 0; Ring <= Around; ++Ring)
 		{
-			const float A = 2.f * UE_PI * i / Count;
-			// Arms trail off each ring, which is what makes it read as curling.
-			const float Trail = Rng.FRandRange(0.f, 1.f);
-			const float Rad = RingRadius * (1.f + 0.35f * Trail);
-			const float Size = Radius * FMath::Lerp(0.42f, 0.26f, RingT) * Rng.FRandRange(0.75f, 1.25f) * (1.f - 0.4f * Trail);
-			Billow(Ring, FVector(Rng.FRandRange(-0.12f, 0.12f) * Radius + Trail * Radius * 0.5f, FMath::Cos(A + Trail * 0.5f) * Rad, FMath::Sin(A + Trail * 0.5f) * Rad), Size, Shades[(i + r) % 3]);
+			const float A = UE_TWO_PI * Ring / Around;
+			const float Twist = A + T * 4.8f;
+			const float Crest = FMath::Pow(FMath::Max(0.f, FMath::Sin(Twist * 5.f + T * 3.f)), 6.f);
+			const float Uneven = 0.035f * FMath::Sin(A * 3.f + T * 8.f) + 0.018f * FMath::Sin(A * 11.f - T * 19.f);
+			const float Radial = R * (1.f + Uneven - Crest * 0.075f);
+			Surface.Vertices.Add(FVector(T * Radius * 3.4f, FMath::Cos(A) * Radial, Height + FMath::Sin(A) * Radial));
+			Surface.UVs.Add(FVector2D(T * Radius * 3.4f / 10000.f, A * R / 10000.f));
+			Surface.Colors.Add(FLinearColor(0.15f + Crest * 0.55f, T, 0.65f, 1.f));
 		}
 	}
-	// The light at the far end.
-	Billow(RootComponent, FVector(Radius * 4.5f, 0.f, Radius * 0.55f), Radius * 1.7f, CoreMID);
+	for (int32 X = 0; X < Along; ++X)
+	{
+		for (int32 Ring = 0; Ring < Around; ++Ring)
+		{
+			const int32 A = X * (Around + 1) + Ring;
+			Surface.Quad(A, A + 1, A + Around + 1, A + Around + 2);
+		}
+	}
+	Surface.Apply(Mouth);
+}
+
+void ADCPortal::BuildCrests()
+{
+	FPortalSurface Surface;
+	constexpr int32 Arms = 6;
+	constexpr int32 Along = 64;
+	constexpr int32 Across = 12;
+	for (int32 Arm = 0; Arm < Arms; ++Arm)
+	{
+		const int32 Base = Surface.Vertices.Num();
+		const float Phase = Arm * UE_TWO_PI / Arms;
+		for (int32 X = 0; X <= Along; ++X)
+		{
+			const float T = static_cast<float>(X) / Along;
+			const float Angle = Phase + T * 2.8f;
+			const float R = Radius * FMath::Lerp(1.65f, 0.84f, T);
+			const float Width = Radius * 0.16f * FMath::Sin(UE_PI * T);
+			for (int32 Y = 0; Y <= Across; ++Y)
+			{
+				const float V = static_cast<float>(Y) / Across;
+				const float Curl = V * UE_PI * 1.25f;
+				const float Radial = R + Width * FMath::Cos(Curl);
+				const float Forward = Radius * (-0.10f + T * 0.28f) - Width * FMath::Sin(Curl);
+				Surface.Vertices.Add(FVector(Forward, FMath::Cos(Angle) * Radial,
+					Radius * 0.72f + FMath::Sin(Angle) * Radial));
+				Surface.UVs.Add(FVector2D(T * Radius * 4.f / 10000.f, V * Radius * 0.32f / 10000.f));
+				Surface.Colors.Add(FLinearColor(FMath::Pow(V, 4.f) * 0.9f, T, 0.5f, 1.f));
+			}
+		}
+		for (int32 X = 0; X < Along; ++X)
+		{
+			for (int32 Y = 0; Y < Across; ++Y)
+			{
+				const int32 A = Base + X * (Across + 1) + Y;
+				Surface.Quad(A, A + 1, A + Across + 1, A + Across + 2);
+			}
+		}
+	}
+	Surface.Apply(Crests);
+}
+
+void ADCPortal::BuildSpray()
+{
+	FPortalSurface Surface;
+	constexpr int32 Sheets = 9;
+	constexpr int32 Along = 36;
+	constexpr int32 Across = 5;
+	for (int32 Sheet = 0; Sheet < Sheets; ++Sheet)
+	{
+		const int32 Base = Surface.Vertices.Num();
+		const float Phase = Sheet * UE_TWO_PI / Sheets;
+		for (int32 X = 0; X <= Along; ++X)
+		{
+			const float T = static_cast<float>(X) / Along;
+			const float Angle = Phase + T * 1.25f;
+			const float R = Radius * (1.12f - T * 0.13f);
+			for (int32 Y = 0; Y <= Across; ++Y)
+			{
+				const float V = static_cast<float>(Y) / Across;
+				const float Radial = R + V * Radius * 0.15f;
+				Surface.Vertices.Add(FVector(-Radius * (0.08f + V * 0.30f),
+					FMath::Cos(Angle) * Radial, Radius * 0.72f + FMath::Sin(Angle) * Radial));
+				Surface.UVs.Add(FVector2D(T, V));
+				const float Density = FMath::Sin(UE_PI * T) * (1.f - V);
+				Surface.Colors.Add(FLinearColor(Density, 0.f, V, 0.55f));
+			}
+		}
+		for (int32 X = 0; X < Along; ++X)
+		{
+			for (int32 Y = 0; Y < Across; ++Y)
+			{
+				const int32 A = Base + X * (Across + 1) + Y;
+				Surface.Quad(A, A + 1, A + Across + 1, A + Across + 2);
+			}
+		}
+	}
+	Surface.Apply(Spray);
 }
 
 void ADCPortal::Tick(float DeltaSeconds)
@@ -76,37 +189,32 @@ void ADCPortal::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	if (!Director) { Director = ADCRideDirector::Get(this); }
 	if (!Director) { return; }
-	// The portal itself is drawn by the volumetric cloud layer; tell the director where it stands.
-	// It fades as the city sinks behind the ship.
+	// The treadmill sinks the entrance in sea space, then applies world rocking.
+	// Keep the opaque shell until its tallest crest (~2.4 radii) is underwater;
+	// fading it after only one radius made the remaining tower disappear in view.
+	const FVector SeaPosition = Director->GetWorldRock().InverseTransformPosition(GetActorLocation());
+	const float SinkDistance = FMath::Max(0.f, Director->SeaLevelZ - SeaPosition.Z);
+	const float Strength = FMath::Clamp(1.f - SinkDistance / (Radius * 2.5f), 0.f, 1.f);
 	Director->PortalLocation = GetActorLocation();
 	Director->PortalRadius = Radius;
-	Director->PortalStrength = FMath::Clamp(1.f + (GetActorLocation().Z - Director->SeaLevelZ) / 30000.f, 0.f, 1.f);
-	if (!CoreMID) { return; }
-	if (!bHooked)
+	Director->PortalStrength = Strength;
+	const FVector Centre = GetActorTransform().TransformPosition(FVector(0.f, 0.f, Radius * 0.72f));
+	if (WaterMID)
 	{
-		bHooked = true;
-		Director->OnLightning.AddWeakLambda(this, [this]() { Flash = 1.f; });
+		WaterMID->SetScalarParameterValue(TEXT("Clock"), Director->RideTime);
+		WaterMID->SetVectorParameterValue(TEXT("BowlCenter"), FLinearColor(Centre.X, Centre.Y, Centre.Z));
+		WaterMID->SetVectorParameterValue(TEXT("Deep"), Director->GetEnv().SeaColor);
+		WaterMID->SetVectorParameterValue(TEXT("Scatter"), FLinearColor(0.02f, 0.12f, 0.16f, 0.2f));
 	}
-	Clock += DeltaSeconds;
-	Flash = FMath::Max(0.f, Flash - DeltaSeconds * 2.f);
-
-	// Each ring turns about the tunnel's axis, alternate rings at different rates.
-	for (int32 r = 0; r < Rings.Num(); ++r)
+	if (SprayMID)
 	{
-		Rings[r]->SetRelativeRotation(FRotator(0.f, 0.f, Clock * (14.f + r * 3.f) * (r % 2 ? 1.f : 0.7f) + r * 30.f));
+		SprayMID->SetScalarParameterValue(TEXT("Clock"), Director->RideTime);
+		SprayMID->SetScalarParameterValue(TEXT("Reveal"), Strength);
 	}
-
-	const float Pulse = 0.85f + 0.15f * FMath::Sin(Clock * 2.3f);
-	const FLinearColor CoreColor = FLinearColor(0.75f, 0.9f, 1.25f) * (4.5f * Pulse + 4.f * Flash);
-	CoreMID->SetVectorParameterValue(TEXT("Top"), CoreColor);
-	CoreMID->SetVectorParameterValue(TEXT("Bottom"), CoreColor);
-	CoreMID->SetVectorParameterValue(TEXT("Flash"), FLinearColor(0.f, 0.f, 0.f, 0.95f));
-	static const float Tone[3] = { 0.5f, 1.f, 1.6f };
-	for (int32 s = 0; s < Shades.Num(); ++s)
-	{
-		// Lit from within: the inner faces of the billows catch the core's light.
-		Shades[s]->SetVectorParameterValue(TEXT("Top"), FLinearColor(0.2f, 0.26f, 0.36f) * Tone[s] * (1.f + Flash));
-		Shades[s]->SetVectorParameterValue(TEXT("Bottom"), FLinearColor(0.1f, 0.14f, 0.2f) * Tone[s] * (1.f + Flash));
-		Shades[s]->SetVectorParameterValue(TEXT("Flash"), FLinearColor(0.25f * Pulse + Flash * 0.6f, 0.32f * Pulse + Flash * 0.7f, 0.5f * Pulse + Flash, 0.9f));
-	}
+	// The owning treadmill sinks the entrance as the ship enters the slide. Never leave a tall
+	// portal sheet protruding above the water after that transition has finished.
+	const bool bVisible = Strength > 0.01f && Director->GetPhase() != EDCPhase::Maelstrom && Director->GetPhase() != EDCPhase::Ending;
+	Mouth->SetVisibility(bVisible);
+	Crests->SetVisibility(bVisible);
+	Spray->SetVisibility(bVisible);
 }

@@ -5,14 +5,10 @@
 #include "DCPortal.generated.h"
 
 class UMaterialInstanceDynamic;
-class USceneComponent;
+class UProceduralMeshComponent;
 class ADCRideDirector;
 
-/**
- * The way out of Atlantis: a luminous tunnel of cloud and spray standing on the sea among the
- * ruins, straight ahead of the ship. Rings of billows turn slowly around a bright core that
- * flares with the lightning. The ship reaches it as the sea itself rolls up into the slide.
- */
+/** A hollow, curling water entrance out of Atlantis, independent of the sky's cloud layer. */
 UCLASS()
 class ADCPortal : public AActor
 {
@@ -23,17 +19,20 @@ public:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
 
-	/** Radius of the mouth, cm. */
+	/** Radius of the entrance in cm. The low part of the opening intersects the sea. */
 	UPROPERTY(EditAnywhere) float Radius = 30000.f;
-	/** Also build the old rings of billow meshes. Off: the volumetric cloud layer draws the portal. */
+	/** Kept for existing saved actors. The portal now uses continuous curled sheets. */
 	UPROPERTY(EditAnywhere) bool bBillows = false;
 
 protected:
-	UPROPERTY() TArray<TObjectPtr<USceneComponent>> Rings;
-	UPROPERTY() TArray<TObjectPtr<UMaterialInstanceDynamic>> Shades;
-	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> CoreMID;
+	void BuildMouth();
+	void BuildCrests();
+	void BuildSpray();
+
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Mouth;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Crests;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Spray;
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> WaterMID;
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> SprayMID;
 	UPROPERTY() TObjectPtr<ADCRideDirector> Director;
-	float Flash = 0.f;
-	float Clock = 0.f;
-	bool bHooked = false;
 };

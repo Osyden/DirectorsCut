@@ -1,5 +1,6 @@
 #include "DCGunnery.h"
 #include "DCTreadmill.h"
+#include "DCMaelstrom.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/PrimitiveComponent.h"
 #include "Engine/StaticMesh.h"
@@ -10,6 +11,33 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "EngineUtils.h"
 #include "UObject/ConstructorHelpers.h"
+
+namespace
+{
+	/** Find the first air-to-water crossing, including a slope rising into the shot. */
+	bool IntersectMaelstromSurface(const ADCMaelstrom* Maelstrom, const FVector& Start, const FVector& End, FVector& OutPoint)
+	{
+		float Above = 0.f;
+		if (Start.Z <= Maelstrom->SampleSurfaceWorld(Start)) { OutPoint = Start; return true; }
+		const int32 Steps = FMath::Max(1, FMath::CeilToInt(FVector::Distance(Start, End) / 250.f));
+		for (int32 Step = 1; Step <= Steps; ++Step)
+		{
+			float Below = static_cast<float>(Step) / Steps;
+			const FVector Sample = FMath::Lerp(Start, End, Below);
+			if (Sample.Z > Maelstrom->SampleSurfaceWorld(Sample)) { Above = Below; continue; }
+			for (int32 Refine = 0; Refine < 9; ++Refine)
+			{
+				const float Middle = (Above + Below) * 0.5f;
+				const FVector Point = FMath::Lerp(Start, End, Middle);
+				if (Point.Z > Maelstrom->SampleSurfaceWorld(Point)) { Above = Middle; }
+				else { Below = Middle; }
+			}
+			OutPoint = FMath::Lerp(Start, End, Below);
+			return true;
+		}
+		return false;
+	}
+}
 
 ADCGunnery::ADCGunnery()
 {
@@ -87,7 +115,14 @@ bool ADCGunnery::ResolveAim(EDCSide Side, const FVector& Origin, const FVector& 
 	const float Sign = Side == EDCSide::Port ? -1.f : 1.f;
 	float Distance = MaxRange;
 	bool bSurface = false;
-	if (Direction.Z < -UE_SMALL_NUMBER && Origin.Z > SeaLevelZ)
+	const ADCMaelstrom* Maelstrom = ADCMaelstrom::Get(this);
+	if (Maelstrom && Maelstrom->IsActive())
+	{
+		FVector WaterPoint;
+		bSurface = IntersectMaelstromSurface(Maelstrom, Origin, Origin + Direction * MaxRange, WaterPoint);
+		if (bSurface) { Distance = FVector::Distance(Origin, WaterPoint); }
+	}
+	else if (Direction.Z < -UE_SMALL_NUMBER && Origin.Z > SeaLevelZ)
 	{
 		const float WaterDistance = (SeaLevelZ - Origin.Z) / Direction.Z;
 		bSurface = WaterDistance <= MaxRange;
@@ -193,6 +228,8 @@ void ADCGunnery::Tick(float DeltaSeconds)
 	}
 
 	ADCTreadmill* Treadmill = ADCTreadmill::Get(this);
+	const ADCMaelstrom* Maelstrom = ADCMaelstrom::Get(this);
+	if (Maelstrom && !Maelstrom->IsActive()) { Maelstrom = nullptr; }
 	for (int32 i = Shots.Num() - 1; i >= 0; --i)
 	{
 		FShot& S = Shots[i];
@@ -210,16 +247,26 @@ void ADCGunnery::Tick(float DeltaSeconds)
 			S.Vel.Z -= Gravity * Step;
 			Remaining -= Step;
 
-			bSplash = S.Pos.Z <= SeaLevelZ && S.Vel.Z < 0.f;
-			if (bSplash && Previous.Z > SeaLevelZ)
+			if (Maelstrom)
 			{
-				S.Pos = FMath::Lerp(Previous, S.Pos, (Previous.Z - SeaLevelZ) / (Previous.Z - S.Pos.Z));
+				FVector WaterPoint;
+				bSplash = IntersectMaelstromSurface(Maelstrom, Previous, S.Pos, WaterPoint);
+				if (bSplash) { S.Pos = WaterPoint; }
+			}
+			else
+			{
+				bSplash = S.Pos.Z <= SeaLevelZ && S.Vel.Z < 0.f;
+				if (bSplash && Previous.Z > SeaLevelZ)
+				{
+					S.Pos = FMath::Lerp(Previous, S.Pos, (Previous.Z - SeaLevelZ) / (Previous.Z - S.Pos.Z));
+				}
 			}
 			FHitResult Hit;
 			const bool bGeometry = GetWorld()->LineTraceSingleByChannel(Hit, Previous, S.Pos, ECC_Visibility, Query);
 			if (bGeometry) { S.Pos = Hit.ImpactPoint; }
 			bHitTarget = (Treadmill && Treadmill->DamageNear(S.Pos, 250.f, 1.f, true) > 0) || bGeometry;
-			if (bGeometry && S.Pos.Z > SeaLevelZ + 10.f) { bSplash = false; }
+			const float SurfaceZ = Maelstrom ? Maelstrom->SampleSurfaceWorld(S.Pos) : SeaLevelZ;
+			if (bGeometry && S.Pos.Z > SurfaceZ + 10.f) { bSplash = false; }
 		}
 		S.Life -= DeltaSeconds;
 		if (bHitTarget || bSplash || S.Life <= 0.f)

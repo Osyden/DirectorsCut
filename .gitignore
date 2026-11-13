@@ -46,3 +46,5 @@ Content/UltraDynamicSky/
 Content/__ExternalActors__/
 Content/__ExternalObjects__/
 Content/Fab/
+# Regenerated from purchased Kaiju source textures; never publish these assets.
+/Content/DC/Maelstrom/LeviathanSkin/

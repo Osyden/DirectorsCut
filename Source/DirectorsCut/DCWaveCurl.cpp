@@ -1,4 +1,7 @@
 #include "DCWaveCurl.h"
+#include "DCMaelstrom.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "DCRideDirector.h"
 #include "DCTypes.h"
 #include "ProceduralMeshComponent.h"
@@ -24,6 +27,12 @@ ADCWaveCurl::ADCWaveCurl()
 void ADCWaveCurl::BeginPlay()
 {
 	Super::BeginPlay();
+	if (!FParse::Param(FCommandLine::Get(), TEXT("DCLegacyMaelstrom")))
+	{
+		GetWorld()->SpawnActor<ADCMaelstrom>();
+		SetActorTickEnabled(false);
+		return;
+	}
 	if (UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Wave.M_Wave")))
 	{
 		MID = UMaterialInstanceDynamic::Create(Base, this);
