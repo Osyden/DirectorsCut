@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 17:24 — Claude: 4K re-measured with the cloud city
+
+- True 3840x2160, DLSS 67%, editor build, 3x run: 94 fps open sea, 89 inside the front, 77, 78, 82 and 91 through the city. The lower volume resolution that helped at 1600x900 does little at 4K, where the cost is in the pixels marched.
+- Tried: marching the sharp banks at a quarter of the screen resolution instead of half (`r.HeterogeneousVolumes.DownsampleFactor 4`): 79, 88, 88 in the city and no difference I could see in a frame scaled to 1600x900. Not made the default this late in the run; it is the first thing to try if 4K speed matters more than it does now.
+
 ## Fri 13 Nov 17:03 — Claude: eighth build verified; lightning with the sharp banks checked; evening hand-over written
 
 - **Build:** `Builds/2026-11-13_1645_2a0837e_cloud-city` runs: 132 fps open sea, 123 and 118 in the city at 1600x900. This is the build to play.

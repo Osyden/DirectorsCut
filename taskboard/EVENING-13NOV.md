@@ -6,7 +6,7 @@ What changed while you were at work, what to play, and what only you can judge. 
 
 `E:\projects\directorscut\Builds\2026-11-13_1645_2a0837e_cloud-city\Windows\DirectorsCut.exe`
 
-It ran at 132 fps on the open sea and 118 to 123 in the drowned city at 1600x900. At true 4K the editor build gave 77 to 86 in the city before the last speed-up; not re-measured since. Every build of the day is kept in `Builds\` (eight dated folders plus the two older ones; `Builds\INDEX.txt` lists them) for the dev log.
+It ran at 132 fps on the open sea and 118 to 123 in the drowned city at 1600x900. At true 4K (DLSS 67%, editor build) it gives 94 on the open sea and 77 to 91 in the city; this morning the city was 90 to 101, so the sharp cloud costs about a seventh there. Every build of the day is kept in `Builds\` (eight dated folders plus the two older ones; `Builds\INDEX.txt` lists them) for the dev log.
 
 ## Your notes from this morning, and where they stand
 
