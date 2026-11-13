@@ -128,7 +128,7 @@ void ADCRideDirector::BuildDefaultPhases()
 		E.SeaColor = FLinearColor(0.03f, 0.09f, 0.13f); E.SeaRoughness = 1.2f; E.ShipSpeed = 1000.f; E.WaveHeight = 70.f; E.Foam = 0.5f; E.Exposure = 1.0f;
 	}
 	{
-		FDCEnvState& E = Add(EDCPhase::Fog, 58.f, 7.f); // the mouth of the storm front closes over the bow at 60 s (DCFogFront); dark a few seconds into the tunnel
+		FDCEnvState& E = Add(EDCPhase::Fog, 58.f, 3.5f); // the mouth of the storm front closes over the bow at 60 s (DCFogFront); dark a few seconds into the tunnel
 		// First the inside of the cloud front: close, dark, nothing to see.
 		E.FogColor = FLinearColor(0.1f, 0.14f, 0.18f); E.FogDensity = 0.035f; E.FogHeightFalloff = 0.002f; E.CloudCover = 1.f; E.CloudBase = 50000.f;
 		E.SunColor = FLinearColor(0.5f, 0.7f, 0.8f); E.SunIntensity = 0.6f; E.SunPitch = -20.f; E.SkyIntensity = 0.35f;
@@ -137,7 +137,7 @@ void ADCRideDirector::BuildDefaultPhases()
 	{
 		// Then it thins, and the drowned city stands in layered blue-grey haze out to a couple of kilometres:
 		// cold moonlight from behind the statues, lightning to pick out their outlines, warm lanterns on deck.
-		FDCEnvState& E = Add(EDCPhase::Fog, 78.f, 22.f);
+		FDCEnvState& E = Add(EDCPhase::Fog, 76.f, 15.f);
 		E.FogColor = FLinearColor(0.2f, 0.26f, 0.33f); E.FogDensity = 0.006f; E.FogHeightFalloff = 0.0012f; E.CloudCover = 0.5f; E.CloudBase = 110000.f; E.Mist = 0.75f;
 		E.SunColor = FLinearColor(1.f, 0.82f, 0.62f); E.SunIntensity = 3.f; E.SunPitch = -11.f; E.SunYaw = 168.f; // low sun ahead to port, behind the ruins: silhouettes and long shafts through the mist E.SkyIntensity = 0.55f;
 		E.SeaColor = FLinearColor(0.012f, 0.019f, 0.025f); E.SeaRoughness = 3.f; E.Rain = 0.35f; E.LightningRate = 10.f; E.ShipSpeed = 1500.f; E.WaveHeight = 190.f; E.Foam = 1.f; E.Exposure = 0.05f;

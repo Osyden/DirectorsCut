@@ -213,7 +213,8 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 			}
 		}
 	}
-	if (AtlantisHidden.Num() && Director->GetPhase() != EDCPhase::OpenSea)
+	// Not until the ship is deep in the murk of the front: shown as the fog began, the city popped up close by in thin haze.
+	if (AtlantisHidden.Num() && Director->GetPhase() != EDCPhase::OpenSea && Director->RideTime > FogStart + 5.5f)
 	{
 		// A couple a frame: showing them all at once still cost a quarter of a second. They are inside the front and out of sight meanwhile.
 		for (int32 n = 0; n < 2 && AtlantisHidden.Num(); ++n)

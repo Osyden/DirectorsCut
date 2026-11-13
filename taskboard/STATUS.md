@@ -2,6 +2,14 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 07:25 — Claude: entering the front reads properly in a continuous run
+
+Seen in a normal continuous run (the seek tests had hidden it): the city popped up close by in thin haze as the fog began, and the dark took seven seconds to arrive.
+- The dark now closes in over 3.5 s as the front's face reaches the bow.
+- The city is revealed only once the ship is deep in the murk (63.5 s), so nothing pops.
+- The city opens up a little sooner (blend from 76 s over 15 s instead of 78 over 22): shapes loom at 80 to 86 s, the view is open by 92 s.
+- Not in `Builds/Next` yet.
+
 ## Fri 13 Nov 07:03 — Claude: Builds/Next at 885d796; morning hand-over written
 
 - `Builds/Next` rebuilt with the helm momentum and verified in a continuous run (116 fps open sea, 92 Atlantis at 720p; a helm order during the run; no slow frames besides the test screenshots).
