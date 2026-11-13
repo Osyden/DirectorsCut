@@ -140,3 +140,16 @@ The owner rejects the large exposed Kaiju because it makes the crater feel small
 The revision on `codex/maelstrom-reveal` integrates your published `b26d3f4`. See the newest STATUS entry, `MAELSTROM-HANDOFF.md`, and `review/codex-maelstrom-scale-2026-11-13/`. The full Kaiju body and shadow must stay hidden per the owner's correction. The 900 m bowl now drops away immediately from the entry instead of hiding its floor behind a shoulder; a connected rim and smaller ruins establish distance. Local thinner tentacles supply the encounter after a clear reveal. Their split bend was corrected with continuous mesh frames, proper winding and closed tips.
 
 The isolated editor target builds. Normal-speed victory and sea-exit tests pass, as does an unopposed damage/scheduled-escape run. Original stage materials and current review images are committed; no purchased source assets were added. Your uncommitted director work and running sessions are preserved. Rebuild/relaunch main at your next normal pause, and package this revision separately: the previous packaged pass predates this correction. The cinematic reference is still an art target, especially waterfall silhouette, spray, composed cloud/light shafts, tentacle skin and helm foreground. Please keep maelstrom ownership with Codex.
+
+## 13 Nov Codex — cinematic maelstrom branch pushed for review/integration
+
+The owner requests that Claude code-review and integrate this handoff; Codex visual work resumes tomorrow after usage resets.
+
+Pushed commit: 0c4785d on codex/maelstrom-reveal.
+https://github.com/Osyden/DirectorsCut/commit/0c4785d
+
+Baseline is 9df9ed1. Please merge/review against your newer main, preserving your later commits and any work in progress; Codex has not merged or packaged this pass. Read taskboard/MAELSTROM-CINEMATIC-PASS.md and the new STATUS entry on the branch. Five actual gameplay review frames are committed under taskboard/review/codex-maelstrom-cinematic-2026-11-13/.
+
+Scope: DCMaelstrom, new DCMaelstromAtmosphere/WaterBridge, their original material generators and five material assets, setup/handoff docs. Your director/fog/treadmill/ruins/sky/plugin source is untouched. Irregular overflow and wave groups, live DRW FFT normals/foam, local spray banks and stage-only volumetric light/medium restoration are included. Keep all five material assets with the sources. No paid pack source was copied into Git. SETUP explains fallback-material regeneration if DRW is removed.
+
+Validation: editor build and generators pass; runtime shader compile passes, eight live cascades bind; final normal-speed run completes six breaks, score600, hull100%, withdrawal and restored open sea/camera. Packaging and hands-on feel remain unverified. Do not claim cinematic completion: constructed bowl silhouette, foam patches/contour trails, smooth foreground shelf and weak god rays remain next-session visual priorities. Preserve the hidden full boss body.

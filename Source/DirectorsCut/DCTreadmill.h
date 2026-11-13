@@ -103,6 +103,10 @@ protected:
 	/** Which way she is being shouldered off the stone (+1 starboard), kept while the contact lasts so that stone dead ahead does not toss her to and fro. */
 	float StrikeAway = 0.f;
 	float SinceContact = 100.f;
+	/** For the hand at the helm: how far ahead (cm) the first stone lies on each lane he might choose
+	 *  (lane i is at -LaneLimit + i * 250), or a negative number where the way is clear. Looked for a few times a second. */
+	TArray<float> StoneAhead;
+	float StoneLookTimer = 0.f;
 	void SpawnOutliers();
 	/** How far ahead the portal stands when the city is laid out: the distance sailed before the slide starts. */
 	UPROPERTY(EditAnywhere) float PortalDistance = 287000.f;

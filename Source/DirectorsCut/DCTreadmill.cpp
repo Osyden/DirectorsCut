@@ -1,5 +1,6 @@
 #include "DCTreadmill.h"
 #include "Components/LocalFogVolumeComponent.h"
+#include "DCFogBank.h"
 #include "DCRideDirector.h"
 #include "DCHazards.h"
 #include "DCCrew.h"
@@ -331,7 +332,7 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 				Obj.Reach = FVector2D(Extent.X, Extent.Y).Size() + FVector2D(Origin - Actor->GetActorLocation()).Size();
 			}
 			// (The faces in the cloud are registered as scenery too; they are kilometres across and not stone.)
-			const bool bNear = Obj.Reach < 90000.f && FVector2D(Local.X, Local.Y).Size() < Obj.Reach + 5000.f;
+			const bool bNear = Obj.Reach < 90000.f && !Actor->IsA<ADCFogBank>() && FVector2D(Local.X, Local.Y).Size() < Obj.Reach + 20000.f;
 			if (bNear != Obj.bFeelable)
 			{
 				Obj.bFeelable = bNear;
@@ -499,6 +500,9 @@ float ADCTreadmill::FindClearLane(float Lookahead) const
 				Cost += (Gap < 0.f ? 10.f : 2.f) * (1.f + 8000.f / (Obj.Base.X + 2500.f));
 			}
 		}
+		// Stone of the drowned city on this lane (TickStrikes looks for it).
+		const int32 Lane = FMath::RoundToInt32((Candidate + LaneLimit) / 250.f);
+		if (StoneAhead.IsValidIndex(Lane) && StoneAhead[Lane] >= 0.f) { Cost += 10.f * (1.f + 8000.f / (StoneAhead[Lane] + 2500.f)); }
 		if (Cost < BestCost) { BestCost = Cost; Best = Candidate; }
 	}
 	return Best;
@@ -578,7 +582,33 @@ void ADCTreadmill::TickStrikes(float DeltaSeconds)
 	if (!Director || FParse::Param(FCommandLine::Get(), TEXT("DCNoStrikes"))) { return; }
 	bool bAny = false;
 	for (const FDCWorldObject& Obj : Objects) { if (Obj.bFeelable) { bAny = true; break; } }
-	if (!bAny) { return; }
+	if (!bAny) { StoneAhead.Reset(); return; }
+
+	// The helmsman's look ahead: for each lane he might take, three lines run forward from the bow
+	// (keel and both sides) and the nearest stone on any of them is remembered.
+	StoneLookTimer -= DeltaSeconds;
+	if (StoneLookTimer <= 0.f)
+	{
+		StoneLookTimer = 0.2f;
+		const int32 Lanes = FMath::RoundToInt32(2.f * LaneLimit / 250.f) + 1;
+		StoneAhead.Init(-1.f, Lanes);
+		FCollisionQueryParams Look(TEXT("DCStoneLook"), true);
+		const FCollisionObjectQueryParams LookFor(ECC_Destructible);
+		const float LookZ = Director->SeaLevelZ + 140.f;
+		for (int32 i = 0; i < Lanes; ++i)
+		{
+			const float Y = -LaneLimit + i * 250.f - LaneOffset;
+			for (float Off : { 0.f, -ShipHalfWidth - 150.f, ShipHalfWidth + 150.f })
+			{
+				FHitResult Hit;
+				if (GetWorld()->LineTraceSingleByObjectType(Hit, FVector(-ShipHalfLength, Y + Off, LookZ), FVector(16000.f, Y + Off, LookZ), LookFor, Look))
+				{
+					const float Ahead = FMath::Max(0.f, Hit.ImpactPoint.X);
+					if (StoneAhead[i] < 0.f || Ahead < StoneAhead[i]) { StoneAhead[i] = Ahead; }
+				}
+			}
+		}
+	}
 
 	// Feelers at the waterline, in the ship's resting place (she lies at the origin, bow to +X): out
 	// from the centreline to the planking on both sides, and forward from the foremast round the bow.
@@ -713,38 +743,71 @@ void ADCTreadmill::SpawnAtlantis()
 		}
 	}
 
-	// Fog banks lying on the water among the ruins: local fog volumes, each a low wide drift a couple
-	// of hundred metres across, so that the city stands in mist at several depths and the low sun
-	// rakes across the tops of the banks. Radius 0: the ship sails through them.
-	if (!FParse::Param(FCommandLine::Get(), TEXT("DCNoBanks")))
+	// Fog laid by hand among the ruins (DCFogBank: real volumes of fog, lit and shadowed like the air).
+	// Three kinds. Walls to either hand of the course, low and thick, which leave a way through and
+	// drown the feet of the ruins so that their heads stand out of it. Curtains, tall, in front of each
+	// great figure, which part when the ship is close: that is how a colossus comes out of nowhere.
+	// And veils lying across the course that the ship sails through.
 	{
-		float BankDensity = 1.f;
-		FParse::Value(FCommandLine::Get(), TEXT("DCBankDensity="), BankDensity);
 		FRandomStream Rng(613);
-		for (int32 i = 0; i < 16; ++i)
+		int32 Seed = 0;
+		auto Lay = [&](const FDCFogBankDesc& D, float X, float Y, float Z)
 		{
-			const float X = 45000.f + i * 19000.f + Rng.FRandRange(-5000.f, 5000.f);
-			const float Side = (i % 3 == 0) ? 0.f : ((i % 2) ? 1.f : -1.f);
-			const float Y = Side * Rng.FRandRange(9000.f, 42000.f) + Rng.FRandRange(-4000.f, 4000.f);
-			const float Radius = Rng.FRandRange(9000.f, 24000.f);
-			const float Thick = Rng.FRandRange(1200.f, 3500.f);
-			FActorSpawnParameters Params;
-			Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-			AActor* Bank = World->SpawnActor<AActor>(AActor::StaticClass(), FTransform::Identity, Params);
-			ULocalFogVolumeComponent* C = NewObject<ULocalFogVolumeComponent>(Bank);
-			C->SetMobility(EComponentMobility::Movable);
-			Bank->SetRootComponent(C);
-			C->SetWorldScale3D(FVector(Radius / 500.f));
-			// The banks the ship sails through are thinner than those to either hand: a veil, not a white-out.
-			const float Thin = Side == 0.f ? 0.45f : 1.f;
-			C->RadialFogExtinction = 0.1f * BankDensity * Thin;
-			C->HeightFogExtinction = 0.16f * BankDensity * Thin;
-			C->HeightFogFalloff = 100.f * Radius / Thick;
-			C->FogPhaseG = 0.6f;
-			C->FogAlbedo = FLinearColor(0.78f, 0.84f, 0.92f);
-			C->RegisterComponent();
-			Register(Bank, FVector(X, Y, SeaZ), 0.f, false, 1.f, 0.f, false);
+			if (ADCFogBank* Bank = ADCFogBank::Spawn(World, D, ++Seed)) { Register(Bank, FVector(X, Y, Z), 1.5f, false, 1.f, 0.f, false); }
+		};
+		// Walls: a pair every 130 m or so, staggered, standing off the course by a ship's length or two.
+		for (float X = 30000.f; X < 340000.f; X += Rng.FRandRange(11000.f, 15000.f))
+		{
+			for (float Side : { -1.f, 1.f })
+			{
+				if (Rng.FRand() < 0.18f) { continue; }   // a gap: a look out to the side
+				FDCFogBankDesc D;
+				D.Radii = FVector(Rng.FRandRange(8000.f, 13000.f), Rng.FRandRange(6000.f, 10000.f), Rng.FRandRange(2200.f, 4200.f));
+				D.Density = Rng.FRandRange(0.04f, 0.065f);
+				D.Size = Rng.FRandRange(5000.f, 8000.f);
+				D.Erode = Rng.FRandRange(0.6f, 0.85f);
+				D.Drift = FVector(Rng.FRandRange(-350.f, -150.f), Side * Rng.FRandRange(-60.f, 160.f), 0.f);
+				Lay(D, X + Rng.FRandRange(-3000.f, 3000.f), Side * (D.Radii.Y + Rng.FRandRange(3500.f, 7000.f)), SeaZ + D.Radii.Z * 0.35f);
+			}
 		}
+		// Curtains before the great figures and the temples.
+		struct FHidden { float X, Y, Height; };
+		const FHidden Hidden[] = {
+			{ 70000.f, -12000.f, 16000.f }, { 76000.f, 13000.f, 17000.f }, { 150000.f, 17000.f, 22000.f }, { 160000.f, -16000.f, 19000.f },
+			{ 240000.f, -14000.f, 21000.f }, { 252000.f, 15000.f, 24000.f }, { 112000.f, 30000.f, 14000.f }, { 205000.f, -40000.f, 18000.f },
+			{ 92000.f, -30000.f, 12000.f }, { 140000.f, 34000.f, 14000.f }, { 200000.f, -40000.f, 16000.f }, { 262000.f, 46000.f, 18000.f } };
+		for (const FHidden& H : Hidden)
+		{
+			FDCFogBankDesc D;
+			D.Radii = FVector(9000.f, 8000.f, H.Height * 0.65f);
+			D.Density = 0.06f;
+			D.Size = 7000.f;
+			D.Erode = 0.5f;
+			D.Drift = FVector(-200.f, 0.f, 60.f);
+			D.RevealWithin = FMath::Abs(H.Y) + 26000.f;
+			// Between the ship's course and the figure, and a little before it.
+			Lay(D, H.X - 7000.f, H.Y * 0.62f, SeaZ + H.Height * 0.45f);
+		}
+		// Veils across the course.
+		for (float X = 52000.f; X < 330000.f; X += Rng.FRandRange(30000.f, 45000.f))
+		{
+			FDCFogBankDesc D;
+			D.Radii = FVector(Rng.FRandRange(4000.f, 7000.f), Rng.FRandRange(9000.f, 14000.f), Rng.FRandRange(2000.f, 3200.f));
+			D.Density = Rng.FRandRange(0.01f, 0.018f);
+			D.Size = 4500.f;
+			D.Erode = 0.75f;
+			Lay(D, X, Rng.FRandRange(-2500.f, 2500.f), SeaZ + D.Radii.Z * 0.5f);
+		}
+		// Wisps across the deck: a thin fast-running layer round the ship herself, drawn out along the wind.
+		FDCFogBankDesc W;
+		W.bOnDeck = true;
+		W.Radii = FVector(6000.f, 3000.f, 900.f);
+		W.Density = 0.016f;
+		W.Size = 1400.f;
+		W.Erode = 0.95f;
+		W.Drift = FVector(-900.f, 260.f, 0.f);
+		W.Stretch = FVector(3.f, 1.f, 0.6f);
+		if (ADCFogBank* Wisps = ADCFogBank::Spawn(World, W, 77)) { Wisps->SetActorLocation(FVector(500.f, 0.f, SeaZ + 800.f)); }
 	}
 
 	// The portal out of the city: on the ship's course, at the distance covered by the time the slide begins.

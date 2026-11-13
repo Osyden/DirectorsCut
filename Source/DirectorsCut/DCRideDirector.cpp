@@ -779,7 +779,7 @@ void ADCRideDirector::SetupUDS()
 	SkyFlag(UDSSky, TEXT("Manually Position Sun Target"), true);
 	SkyFlag(UDSSky, TEXT("Use Volumetric Fog"), true);
 	// Far enough for shafts between ruins a few hundred metres off, and strong enough to see.
-	SkyNum(UDSSky, TEXT("Volumetric Fog Distance"), 40000.0);
+	SkyNum(UDSSky, TEXT("Volumetric Fog Distance"), 70000.0);
 	SkyNum(UDSSky, TEXT("Sun Volumetric Scattering Intensity"), 3.0);
 	SkyFlag(UDSSky, TEXT("Enable Sun Light Shaft Bloom"), true);
 	// The director keeps its own fixed exposure per phase, so dark scenes stay dark.
@@ -851,7 +851,7 @@ void ADCRideDirector::TickUDS()
 		// Test hook: -DCFog=8 fixes the pack's fog amount (0..10).
 		static float ForcedFog = -1.f;
 		static const bool bForcedFog = FParse::Value(FCommandLine::Get(), TEXT("DCFog="), ForcedFog);
-		SkyNum(UDSWeather, TEXT("Fog"), bForcedFog ? ForcedFog : FMath::Clamp(Env.FogDensity * 250.0 + Env.Mist * 7.3, 0.0, 10.0));
+		SkyNum(UDSWeather, TEXT("Fog"), bForcedFog ? ForcedFog : FMath::Clamp(Env.FogDensity * 250.0 + Env.Mist * 4.0, 0.0, 10.0));
 		// The drowned city (the only stretch with heavy mist) stands in dense, pale, low-lying fog: thick on
 		// the sea and round the feet of the ruins, thinning with height so that their heads and the storm
 		// cloud show above it, and bright, because fog this thick glows with whatever light there is.
