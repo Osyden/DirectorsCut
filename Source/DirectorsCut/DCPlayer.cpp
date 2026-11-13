@@ -394,7 +394,7 @@ void ADCPlayerCharacter::TickCameraFeel(float DeltaSeconds)
 		Shake * 2.2f * FMath::PerlinNoise1D(T * 17.f),
 		Shake * 1.6f * FMath::PerlinNoise1D(T * 15.f + 40.f),
 		Shake * 3.5f * FMath::PerlinNoise1D(T * 13.f + 80.f));
-	Camera->SetRelativeRotation(Jitter);
+	Camera->SetRelativeRotation(Jitter + Director->DeckSway);
 	const FVector Eye = bClearHelmView
 		? GetActorTransform().InverseTransformPosition(GetActorLocation() + FVector(0.f, 320.f, 125.f))
 		: FVector(0.f, 0.f, 64.f);

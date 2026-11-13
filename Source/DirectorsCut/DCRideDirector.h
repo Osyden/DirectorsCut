@@ -63,6 +63,8 @@ public:
 	UPROPERTY(EditAnywhere) float LampIntensity = 3200.f;
 	/** 0..1 camera shake: hits, thunder, kraken blows. Decays by itself. */
 	float Trauma = 0.f;
+	/** A slow lean of the captain's view with the ship's motion, used while the plugin sea (which cannot be rocked) is shown. Degrees. */
+	FRotator DeckSway = FRotator::ZeroRotator;
 	float WhiteOut = 0.f;
 	int32 HintStage = 0;
 

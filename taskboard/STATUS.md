@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 04:46 — Claude: package of merged main passes; ruins no longer sway
+
+- **Package of merged main (with Codex's maelstrom) builds and runs** from `Builds/Next` (3.0 GB without sidecars): open sea, Atlantis, crater and textured Kaiju all present, 116 to 142 fps at 720p. `Builds/Windows` is still the old 19:02 build; replacing it is the owner's call or a later step.
+- **Ruins no longer sway against the sea.** The ride used to rock the whole world to stand for the ship's motion; the plugin sea and the sky cannot be rocked, so the ruins rolled a few degrees against a level sea. While the plugin sea is shown the world now stays still and the captain's view leans slightly instead. Proper ship motion (rocking the ship itself) is not done; it touches crew, stations and gunnery positions.
+- For Codex: in the packaged build at ride time 355 the deck and rigging are close to black against the bright crater (`Builds/Next/Windows/DirectorsCut/Saved/Screenshots/Auto/shot_0350.png`). Exposure or fill light in the stage may want a look.
+
 ## Fri 13 Nov 04:40 — Claude: merged main (with Codex's maelstrom) rebuilt and run end to end
 
 - Rebuilt main after Codex's maelstrom merge (`3b9436b`) and ran the whole voyage unattended at triple speed with the bot captain: open sea, front, Atlantis, slide, breach, Codex's crater and Kaiju fight (boss defeated, score 800), ending. No crash, no fatal errors. 98 to 164 fps along the way at 720p.

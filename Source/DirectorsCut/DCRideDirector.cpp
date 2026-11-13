@@ -419,7 +419,11 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 	const float Roll = A * (FMath::Sin(T * 0.55f) + 0.35f * FMath::Sin(T * 1.3f + 1.f));
 	const float Pitch = A * 0.45f * (FMath::Sin(T * 0.4f + 2.f) + 0.3f * FMath::Sin(T * 1.1f));
 	const float Heave = A * 18.f * FMath::Sin(T * 0.7f + 0.5f);
-	WorldRock = FTransform(FRotator(Pitch, 0.f, Roll), FVector(0.f, 0.f, Heave));
+	// The plugin sea and the sky pack cannot be rocked, and ruins swaying against a level sea look
+	// wrong. While that sea is shown the world stays still and the captain's view leans a little instead.
+	const float RockScale = Ocean ? FMath::Clamp(FMath::Max(Env.Tube, Env.Whirl) * 2.f, 0.f, 1.f) : 1.f;
+	WorldRock = FTransform(FRotator(Pitch * RockScale, 0.f, Roll * RockScale), FVector(0.f, 0.f, Heave * RockScale));
+	DeckSway = FRotator(Pitch * 0.3f, 0.f, Roll * 0.3f) * (1.f - RockScale);
 	// On the wall of the maelstrom the sea slopes toward the centre. Tilt the whole sea the other way so
 	// the water is level under the ship and the funnel, not the deck, is what leans.
 	const float R0 = WhirlCenter.Size();
@@ -428,7 +432,7 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 	// Height falls toward the centre, so the untilted surface normal leans toward it; rotate that normal upright.
 	const FVector2D ToCentre = WhirlCenter.GetSafeNormal();
 	const FQuat Level = FQuat::FindBetweenNormals(FVector(ToCentre.X * Slope, ToCentre.Y * Slope, 1.f).GetSafeNormal(), FVector::UpVector);
-	Sea->SetRelativeTransform(FTransform(WorldRock.GetRotation() * Level, FVector(0.f, 0.f, SeaLevelZ + Heave)));
+	Sea->SetRelativeTransform(FTransform(WorldRock.GetRotation() * Level, FVector(0.f, 0.f, SeaLevelZ + Heave * RockScale)));
 	if (Ocean) { TickOcean(); }
 	if (Ocean) { Sea->SetVisibility(Env.Tube > 0.02f || Env.Whirl > 0.02f); Ocean->SetActorHiddenInGame(Env.Tube > 0.5f || Env.Whirl > 0.5f); }
 
