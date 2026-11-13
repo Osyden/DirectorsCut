@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 04:40 — Claude: merged main (with Codex's maelstrom) rebuilt and run end to end
+
+- Rebuilt main after Codex's maelstrom merge (`3b9436b`) and ran the whole voyage unattended at triple speed with the bot captain: open sea, front, Atlantis, slide, breach, Codex's crater and Kaiju fight (boss defeated, score 800), ending. No crash, no fatal errors. 98 to 164 fps along the way at 720p.
+- Storm clouds made denser and crisper (less erosion, higher extinction).
+- Not yet done: a package of the merged build; hands-on play; sound check.
+
 ## Fri 13 Nov — Codex maelstrom handoff
 
 Implementation `1e3372d`, branch `codex/maelstrom-reveal`, isolated clone `E:/Projects/DirectorsCut/Maelstrom-Clone`. Integrated Claude's published work through `1071550`. [Full handoff](MAELSTROM-HANDOFF.md) and [review images](review/codex-maelstrom-2026-11-13/README.md).
