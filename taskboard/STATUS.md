@@ -2,6 +2,14 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 11:58 — Claude: a wake astern, in the sea's own shading
+
+- **Wake.** The same water-material patch now lays a wake astern of the ship: a band that starts at the stern post 6.6 m wide and widens a metre in five, churned in the middle with a brighter line down each edge, ragged, breaking into lace and gone in a couple of hundred metres. It is foam in the water's own shading, so it rides the real waves. Strength follows her speed through a second value in `MPC_Sea` (`Wake`); `-DCNoWakeFoam` turns it off. This replaces the stern half of the old ribbon.
+- **Foam pattern** for hull, ruins and wake now comes from the engine's cloud-noise volume (boiling with time) instead of the plugin's foam texture, which was nearly all white and gave a smooth cream skirt along the hull. The hull foam is now patchy white lace.
+- Ship view: the camera's height above the sea now follows the mouse properly (it was pinned to its lowest height by a sign error); it starts low on her quarter, the angle that gave the best pictures.
+- 141 to 142 fps in the city, 102 to 106 on the open sea (1600x900). Pictures added to review set 35.
+- Packaging a dated build of this state now.
+
 ## Fri 13 Nov 11:51 — Claude: ship view (T) and a deck eye that leans with her
 
 - **Ship view.** `T` puts the camera outside the ship, standing off her quarter 52 m away; the mouse swings it round her and the mouse wheel brings it in or out (26 to 120 m). It rides her heave, keeps a level horizon and stays above the sea. The captain goes on doing what he was doing, so at the helm it is a view to steer by (the wheel prompt names it). Open sea and city only; the slide and the maelstrom keep their own camera, and the guns their own. Station markers are hidden in it. The pictures it gives are the best the game has: the backlit brigantine on the open sea, and climbing the trough past a gate in the fog. `-DCShipView -DCOrbit=yaw,pitch` for the harness.

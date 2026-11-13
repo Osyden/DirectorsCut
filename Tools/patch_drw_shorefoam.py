@@ -61,10 +61,12 @@ CODE = """
 float near = min(Dist, max(Behind, 0.0) * 0.45);
 float band = saturate(1.0 - near / max(Width, 1.0));
 // The pattern is carried aft with the current (the sea streams past the ship toward -X).
-float2 uv = float2(WP.x + T * 1200.0, WP.y) / 1100.0;
-float lace = Texture2DSample(Tex, TexSampler, uv).r;
-float lace2 = Texture2DSample(Tex, TexSampler, uv * 0.31 + float2(0.37, T * 0.01)).r;
-float l = saturate((lace * lace2 - 0.12) * 3.2);
+// (The engine's cloud-noise volume, which sits in a narrow band near white, stretched to 0..1; time
+// is its third axis, so the foam boils as it goes.)
+#define NZ(p) saturate((Texture3DSampleLevel(Tex, TexSampler, (p), 0.0).r - 0.835) / 0.125)
+float2 q = float2(WP.x + T * 1200.0, WP.y);
+float n = NZ(float3(q * 0.00042, T * 0.05)) * 0.4 + NZ(float3(q * 0.0017 + 0.31, T * 0.11 + 0.5)) * 0.35 + NZ(float3(q * 0.0052 + 0.67, T * 0.17)) * 0.25;
+float l = saturate((n - 0.3) * 2.4);
 // The wash comes and goes along the stone.
 float surge = 0.5 + 0.5 * sin(T * 0.8 + WP.x * 0.0021 + WP.y * 0.0017);
 float reach = band * (0.7 + 0.6 * surge);
@@ -72,6 +74,20 @@ float reach = band * (0.7 + 0.6 * surge);
 float core = smoothstep(0.9, 1.0, band) * (0.35 + 0.65 * l);
 float torn = saturate(reach * 2.3 - (1.0 - l) * 1.3);
 float foam = max(core, torn);
+// The ship's wake. She lies at the world's origin with her head to +X and the sea streams aft past
+// her, so the wake is a widening band astern: churned white down the middle, a brighter line along
+// each edge, breaking into lace and dying away over a couple of hundred metres.
+float back = -(WP.x + Wake.y);
+if (back > 0.0 && Wake.x > 0.0)
+{
+    float halfw = Wake.z + back * Wake.w;
+    float across = abs(WP.y + (n - 0.5) * 700.0) / halfw;   // ragged edges
+    float inside = saturate(1.0 - across);
+    float arms = saturate(1.0 - abs(across - 0.82) / 0.18);
+    float fade = exp(-back / 8000.0) * saturate(back / 300.0);
+    float wk = saturate((sqrt(inside) * 0.7 + arms * 0.4) * fade * 1.8 - (1.0 - l) * 1.05);
+    foam = max(foam, wk * Wake.x);
+}
 return max(Existing, foam * Strength);
 """
 
@@ -133,7 +149,7 @@ for n in NAMES:
     node.set_editor_property("description", "DCShoreFoam")
     node.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT1)
     inputs = []
-    for name in ["Existing", "Dist", "Behind", "WP", "T", "Width", "Strength", "Tex"]:
+    for name in ["Existing", "Wake", "Dist", "Behind", "WP", "T", "Width", "Strength", "Tex"]:
         ci = unreal.CustomInput()
         ci.set_editor_property("input_name", name)
         inputs.append(ci)
@@ -154,9 +170,13 @@ for n in NAMES:
     strength.set_editor_property("parameter_name", "DCShoreFoam")
     strength.set_editor_property("default_value", 1.0)
     tex = mel.create_material_expression(m, unreal.MaterialExpressionTextureObject, -700, 3000)
-    tex.set_editor_property("texture", unreal.load_asset("/DynamicRealWater/Textures/T_DRW_OceanFoam_BaseColor"))
+    tex.set_editor_property("texture", unreal.load_asset("/Engine/EngineSky/VolumetricClouds/T_VolumeNoiseShape128"))
 
+    wake = mel.create_material_expression(m, unreal.MaterialExpressionCollectionParameter, -700, 3100)
+    wake.set_editor_property("collection", unreal.load_asset("/Game/DC/Materials/MPC_Sea"))
+    wake.set_editor_property("parameter_name", "Wake")
     ok = mel.connect_material_expressions(existing, existing_out, node, "Existing")
+    ok = mel.connect_material_expressions(wake, "", node, "Wake") and ok
     for src, name in [(dist, "Dist"), (behind, "Behind"), (wp, "WP"), (time, "T"), (width, "Width"), (strength, "Strength"), (tex, "Tex")]:
         ok = mel.connect_material_expressions(src, "", node, name) and ok
     ok = mel.connect_material_expressions(node, "", shading, "Foam") and ok

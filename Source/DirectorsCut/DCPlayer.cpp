@@ -83,7 +83,7 @@ void ADCPlayerCharacter::SetShipView(APlayerController* PC, bool bOn)
 		ShipCamera->GetCameraComponent()->bConstrainAspectRatio = false;
 		ShipCamera->GetCameraComponent()->SetFieldOfView(70.f);
 	}
-	if (bOn) { OrbitYaw = 0.f; OrbitPitch = 14.f; }
+	if (bOn) { OrbitYaw = 20.f; OrbitPitch = 5.f; }
 	PC->SetViewTargetWithBlend(bOn ? static_cast<AActor*>(ShipCamera) : static_cast<AActor*>(this), 0.8f, VTBlend_EaseInOut, 2.f);
 }
 
@@ -113,7 +113,7 @@ void ADCPlayerCharacter::TickShipView(APlayerController* PC, float DeltaSeconds)
 	if (!bShipView || !ShipCamera) { return; }
 	// The ship lies at the origin. The camera rides her heave but keeps a level horizon, a little above the sea whatever she does.
 	const FVector Aim = Director->DeckToWorld(FVector(200.f, 0.f, Director->SeaLevelZ + 900.f));
-	const FRotator Round(-OrbitPitch, OrbitYaw + 180.f, 0.f);
+	const FRotator Round(OrbitPitch, OrbitYaw + 180.f, 0.f);
 	FVector At = Aim + Round.Vector() * OrbitDistance;
 	At.Z = FMath::Max(At.Z, Director->SeaLevelZ + 250.f);
 	const FVector Now = FMath::VInterpTo(ShipCamera->GetActorLocation(), At, DeltaSeconds, 6.f);
@@ -128,7 +128,7 @@ void ADCPlayerCharacter::Look(APlayerController* PC)
 	{
 		// In the ship view the mouse swings the camera round her, and the wheel (of the mouse) brings it in or out.
 		OrbitYaw = FRotator::NormalizeAxis(OrbitYaw + DX * LookSensitivity * 10.f);
-		OrbitPitch = FMath::Clamp(OrbitPitch - DY * LookSensitivity * 10.f, 2.f, 60.f);
+		OrbitPitch = FMath::Clamp(OrbitPitch - DY * LookSensitivity * 10.f, 1.f, 70.f);
 		if (PC->WasInputKeyJustPressed(EKeys::MouseScrollUp)) { OrbitDistance = FMath::Max(2600.f, OrbitDistance * 0.87f); }
 		if (PC->WasInputKeyJustPressed(EKeys::MouseScrollDown)) { OrbitDistance = FMath::Min(12000.f, OrbitDistance / 0.87f); }
 		return;

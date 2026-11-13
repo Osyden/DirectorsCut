@@ -219,6 +219,9 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 		if (UMaterialParameterCollectionInstance* Sea = GetWorld()->GetParameterCollectionInstance(SeaCollection))
 		{
 			Sea->SetVectorParameterValue(TEXT("Trough"), FLinearColor(-LaneOffset, Director->TroughRise, Director->TroughHalfWidth, 0.f));
+			// Her wake, drawn by the sea's own material astern of her: stronger the faster she goes. -DCNoWakeFoam switches it off.
+			static const bool bNoWake = FParse::Param(FCommandLine::Get(), TEXT("DCNoWakeFoam"));
+			Sea->SetVectorParameterValue(TEXT("Wake"), FLinearColor(bNoWake ? 0.f : FMath::Clamp(Env.ShipSpeed / 1300.f, 0.5f, 1.3f), 1900.f, 330.f, 0.2f));
 		}
 	}
 	TickStrikes(DeltaSeconds);
