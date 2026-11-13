@@ -617,6 +617,7 @@ void ADCGameMode::Tick(float DeltaSeconds)
 		if (bCrewLog && Dir && Dir->RideTime > 20.f && Dir->RideTime < 24.f)
 		{
 			if (Ship) { const UPrimitiveComponent* Hull = nullptr; TArray<UPrimitiveComponent*> Ps; Ship->GetComponents(Ps); for (UPrimitiveComponent* P : Ps) { if (P->GetName() == TEXT("HullShip")) { Hull = P; } } const FVector SL = Ship->GetActorLocation(); const FRotator SR = Ship->GetActorRotation(); const FVector HL = Hull ? Hull->GetComponentLocation() : FVector::ZeroVector; const FRotator HR = Hull ? Hull->GetComponentRotation() : FRotator::ZeroRotator; UE_LOG(LogDC, Log, TEXT("ShipLog t=%.3f ship=%.3f,%.3f,%.3f rot=%.3f,%.3f,%.3f hull=%.3f,%.3f,%.3f hullrot=%.3f,%.3f,%.3f"), Dir->RideTime, SL.X, SL.Y, SL.Z, SR.Pitch, SR.Yaw, SR.Roll, HL.X, HL.Y, HL.Z, HR.Pitch, HR.Yaw, HR.Roll); }
+			if (const APawn* Me = GetWorld()->GetFirstPlayerController() ? GetWorld()->GetFirstPlayerController()->GetPawn() : nullptr) { const FVector OnDeck = Dir->DeckTransform.InverseTransformPosition(Me->GetActorLocation()); FVector CamLoc; FRotator CamRot; GetWorld()->GetFirstPlayerController()->GetPlayerViewPoint(CamLoc, CamRot); UE_LOG(LogDC, Log, TEXT("PlayerLog t=%.3f ondeck=%.2f,%.2f,%.2f world=%.2f cam=%.2f,%.2f,%.2f camrot=%.2f,%.2f,%.2f"), Dir->RideTime, OnDeck.X, OnDeck.Y, OnDeck.Z, Me->GetActorLocation().Z, CamLoc.X, CamLoc.Y, CamLoc.Z, CamRot.Pitch, CamRot.Yaw, CamRot.Roll); }
 			for (TActorIterator<ADCCrewMember> It(GetWorld()); It; ++It)
 			{
 				const USkeletalMeshComponent* Fig = It->FindComponentByClass<USkeletalMeshComponent>();
