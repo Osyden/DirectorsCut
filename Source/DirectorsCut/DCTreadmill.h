@@ -51,6 +51,8 @@ public:
 	void SetSteer(float InSteer) { Steer = FMath::Clamp(InSteer, -1.f, 1.f); }
 	float GetSteer() const { return Steer; }
 	float GetLaneOffset() const { return LaneOffset; }
+	/** How fast the ship is crossing the sea sideways as a fraction of full helm (-1 port .. 1 starboard): she gathers way into a turn and carries it out of one. */
+	float GetTurn() const { return LaneSpeed > 0.f ? LaneVelocity / LaneSpeed : 0.f; }
 
 	/** Nearest obstacle ahead of the bow. Returns false if the lane is clear. OutY is relative to the ship centreline. */
 	bool FindObstacleAhead(float MaxDistance, float& OutX, float& OutY) const;
@@ -115,6 +117,7 @@ protected:
 	TArray<FDCWreck> Wrecks;
 	float Steer = 0.f;
 	float LaneOffset = 0.f;
+	float LaneVelocity = 0.f;
 	float ObstacleTimer = 4.f;
 	float HostileTimer = 8.f;
 };

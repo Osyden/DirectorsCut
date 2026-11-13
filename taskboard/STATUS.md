@@ -2,6 +2,13 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 06:50 — Claude: the ship turns under helm instead of sliding
+
+- **Helm momentum** (playtest: "ship should turn with momentum, not be dragged sideways"): the sideways motion now builds and dies away over about a second instead of starting and stopping dead, the ship's head swings up to 6 degrees toward the turn and she heels about 2 degrees away from it; the hull wash turns with her. Measured on a "hard to starboard" order: yaw rising to 5.8 degrees and easing back. Open sea and Atlantis only; the maelstrom keeps Codex's own steering.
+- Frame rate unchanged (117 open sea, 95 Atlantis). Full voyage with the bot captain passes.
+- Tried three sun bearings for the open sea to get a darker, backlit storm front; the current one (sun on the port beam, ruins in full light) is clearly the best, kept. `-DCSunYaw=`, `-DCSunPitch=` are there for trying others. `-DCCrewLogFrom=` sets when the position log starts.
+- Not in `Builds/Next` yet. Not tried by hand at the wheel.
+
 ## Fri 13 Nov 06:32 — Claude: Builds/Next current; gun station checked on the moving ship
 
 - `Builds/Next` rebuilt at `3932ab0` (ship motion, wake, open-deck splashes, fires and markers on the moving deck) and run continuously to 110 s: 114 / 100 / 90 fps (open sea / front / Atlantis, 720p), no slow frames besides the test screenshots.

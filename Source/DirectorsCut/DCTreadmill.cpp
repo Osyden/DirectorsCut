@@ -184,7 +184,10 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 	const FDCEnvState& Env = Director->GetEnv();
 	const float Speed = Env.ShipSpeed * Director->TimeScale;
 
-	LaneOffset = FMath::Clamp(LaneOffset + Steer * LaneSpeed * SteerAuthority * DeltaSeconds, -LaneLimit, LaneLimit);
+	// The helm takes a moment to bite and the ship carries her swing after it is eased: she turns, she is not slid sideways.
+	LaneVelocity = FMath::FInterpTo(LaneVelocity, Steer * LaneSpeed * SteerAuthority, DeltaSeconds, 1.1f);
+	LaneOffset = FMath::Clamp(LaneOffset + LaneVelocity * DeltaSeconds, -LaneLimit, LaneLimit);
+	if (FMath::Abs(LaneOffset) >= LaneLimit && LaneOffset * LaneVelocity > 0.f) { LaneVelocity = 0.f; }
 
 	if (!bOutliersBuilt)
 	{

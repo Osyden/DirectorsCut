@@ -614,7 +614,8 @@ void ADCGameMode::Tick(float DeltaSeconds)
 		const ADCRideDirector* Dir = ADCRideDirector::Get(this);
 		const double Ms = FApp::GetDeltaTime() * 1000.0;
 		if (bHitch && Dir && Ms > 25.0 && GetWorld()->GetTimeSeconds() > 5.f) { UE_LOG(LogDC, Log, TEXT("Hitch %.0f ms at ride time %.1f"), Ms, Dir->RideTime); }
-		if (bCrewLog && Dir && Dir->RideTime > 20.f && Dir->RideTime < 24.f)
+		static float LogFrom = 20.f; static bool bFromRead = false; if (!bFromRead) { bFromRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCCrewLogFrom="), LogFrom); }
+		if (bCrewLog && Dir && Dir->RideTime > LogFrom && Dir->RideTime < LogFrom + 4.f)
 		{
 			if (Ship) { const UPrimitiveComponent* Hull = nullptr; TArray<UPrimitiveComponent*> Ps; Ship->GetComponents(Ps); for (UPrimitiveComponent* P : Ps) { if (P->GetName() == TEXT("HullShip")) { Hull = P; } } const FVector SL = Ship->GetActorLocation(); const FRotator SR = Ship->GetActorRotation(); const FVector HL = Hull ? Hull->GetComponentLocation() : FVector::ZeroVector; const FRotator HR = Hull ? Hull->GetComponentRotation() : FRotator::ZeroRotator; UE_LOG(LogDC, Log, TEXT("ShipLog t=%.3f ship=%.3f,%.3f,%.3f rot=%.3f,%.3f,%.3f hull=%.3f,%.3f,%.3f hullrot=%.3f,%.3f,%.3f"), Dir->RideTime, SL.X, SL.Y, SL.Z, SR.Pitch, SR.Yaw, SR.Roll, HL.X, HL.Y, HL.Z, HR.Pitch, HR.Yaw, HR.Roll); }
 			if (const APawn* Me = GetWorld()->GetFirstPlayerController() ? GetWorld()->GetFirstPlayerController()->GetPawn() : nullptr) { const FVector OnDeck = Dir->DeckTransform.InverseTransformPosition(Me->GetActorLocation()); FVector CamLoc; FRotator CamRot; GetWorld()->GetFirstPlayerController()->GetPlayerViewPoint(CamLoc, CamRot); UE_LOG(LogDC, Log, TEXT("PlayerLog t=%.3f ondeck=%.2f,%.2f,%.2f world=%.2f cam=%.2f,%.2f,%.2f camrot=%.2f,%.2f,%.2f"), Dir->RideTime, OnDeck.X, OnDeck.Y, OnDeck.Z, Me->GetActorLocation().Z, CamLoc.X, CamLoc.Y, CamLoc.Z, CamRot.Pitch, CamRot.Yaw, CamRot.Roll); }
@@ -792,7 +793,12 @@ void ADCGameMode::TickShipMotion(float DeltaSeconds)
 
 	// Deck up = the normal of that plane; turned about the waterline amidships.
 	const FVector Up = FVector(-ShipSlope.X, -ShipSlope.Y, 1.f).GetSafeNormal();
-	const FQuat Lean = FRotationMatrix::MakeFromZX(Up, FVector::ForwardVector).ToQuat();
+	// Under helm her head swings toward the turn and she heels a little away from it. Only on the open
+	// sea and in Atlantis; the maelstrom stage turns the world round her itself.
+	const ADCTreadmill* Mill = ADCTreadmill::Get(this);
+	ShipTurn = FMath::FInterpTo(ShipTurn, (Wake && Mill && Rise + SlopeX != 0.f) ? Mill->GetTurn() : 0.f, DeltaSeconds, 1.5f);
+	const FQuat Helm = FRotator(0.f, ShipTurn * 6.f, -ShipTurn * 2.2f).Quaternion();
+	const FQuat Lean = FRotationMatrix::MakeFromZX(Up, FVector::ForwardVector).ToQuat() * Helm;
 	const FVector Pivot(0.f, 0.f, Dir ? Dir->SeaLevelZ : 0.f);
 	const FTransform Deck(Lean, Pivot - Lean.RotateVector(Pivot) + FVector(0.f, 0.f, ShipHeave));
 	if (Dir) { Dir->DeckTransform = Deck; }

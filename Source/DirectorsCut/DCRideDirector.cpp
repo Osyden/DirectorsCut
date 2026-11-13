@@ -826,7 +826,8 @@ void ADCRideDirector::TickUDS()
 	// The director's light points down along its pitch; the pack wants a point to hang the sun on.
 	if (FStructProperty* Target = FindFProperty<FStructProperty>(UDSSky->GetClass(), TEXT("Sun Target")))
 	{
-		const FVector ToSun = -FRotator(Env.SunPitch, Env.SunYaw, 0.f).Vector();
+		float TestYaw = Env.SunYaw, TestPitch = Env.SunPitch; FParse::Value(FCommandLine::Get(), TEXT("DCSunYaw="), TestYaw); FParse::Value(FCommandLine::Get(), TEXT("DCSunPitch="), TestPitch);   // test hooks
+		const FVector ToSun = -FRotator(TestPitch, TestYaw, 0.f).Vector();
 		*Target->ContainerPtrToValuePtr<FVector>(UDSSky.Get()) = ToSun * 1000000.0;
 	}
 	SkyNum(UDSWeather, TEXT("Cloud Coverage"), FMath::Clamp(2.0 + 8.0 * Env.CloudCover, 0.0, 10.0));

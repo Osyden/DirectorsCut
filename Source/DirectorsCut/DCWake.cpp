@@ -182,6 +182,8 @@ void ADCWake::Tick(float DeltaSeconds)
 		Verts[s * 3 + 1].Z = (In + Out) * 0.5f + Lift;
 		Verts[s * 3 + 2].Z = Out + (Out - In) * 0.33f + Lift;
 	}
+	// The wash stays against the hull as her head swings under helm.
+	SetActorRotation(FRotator(0.f, Director->DeckTransform.GetRotation().Rotator().Yaw, 0.f));
 	Mesh->UpdateMeshSection(0, Verts, TArray<FVector>(), TArray<FVector2D>(), TArray<FColor>(), TArray<FProcMeshTangent>());
 
 	// More white water the faster she goes and the rougher the sea; lit by the day.

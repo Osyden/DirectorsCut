@@ -61,6 +61,7 @@ protected:
 	/** The ship rides the sea: heave, pitch and roll, eased toward the plane of the water under the hull. */
 	float ShipHeave = 0.f;
 	FVector2D ShipSlope = FVector2D::ZeroVector;
+	float ShipTurn = 0.f;
 	void TickShipMotion(float DeltaSeconds);
 	UPROPERTY() TObjectPtr<ADCRideDirector> Director;
 	UPROPERTY() TObjectPtr<ADCTreadmill> Treadmill;
