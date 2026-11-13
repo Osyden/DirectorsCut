@@ -5,6 +5,7 @@
 #include "DCKrakenHead.h"
 #include "DCWeatherFX.h"
 #include "DCLeviathan.h"
+#include "DCMaelstromAtmosphere.h"
 #include "DCPlayer.h"
 #include "DCTreadmill.h"
 #include "ProceduralMeshComponent.h"
@@ -14,6 +15,7 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "EngineUtils.h"
+#include "Engine/StaticMesh.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "KismetProceduralMeshLibrary.h"
 #include "Misc/CommandLine.h"
@@ -31,13 +33,11 @@ ADCMaelstrom::ADCMaelstrom()
 	Basin->SetupAttachment(Arena);
 	Falls = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("RimCascades"));
 	Falls->SetupAttachment(Arena);
-	Mist = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("CascadeMist"));
-	Mist->SetupAttachment(Arena);
 	RimLand = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("ContinuousRim"));
 	RimLand->SetupAttachment(Arena);
 	Tunnel = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("ExitTunnel"));
 	Tunnel->SetupAttachment(RootComponent);
-	for (UProceduralMeshComponent* Mesh : {Basin.Get(), Falls.Get(), Tunnel.Get(), Mist.Get(), RimLand.Get()})
+	for (UProceduralMeshComponent* Mesh : {Basin.Get(), Falls.Get(), Tunnel.Get(), RimLand.Get()})
 	{
 		Mesh->SetMobility(EComponentMobility::Movable);
 		Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -93,8 +93,8 @@ void ADCMaelstrom::BeginPlay()
 			Phase.Env.Mist = 0.f;
 			Phase.Env.Rain = 0.f;
 			Phase.Env.SunIntensity = 9.f;
-			Phase.Env.SunColor = FLinearColor(1.f, 0.93f, 0.8f);
-			Phase.Env.SunPitch = -15.f;
+			Phase.Env.SunColor = FLinearColor(1.f, 0.97f, 0.91f);
+			Phase.Env.SunPitch = -38.f;
 			Phase.Env.SunYaw = 230.f;
 			Phase.Env.CloudCover = 0.16f;
 			Phase.Env.CloudBase = 260000.f;
@@ -110,12 +110,6 @@ void ADCMaelstrom::BeginPlay()
 		TunnelMID = UMaterialInstanceDynamic::Create(Water, this);
 		Basin->SetMaterial(0, WaterMID);
 		Tunnel->SetMaterial(0, TunnelMID);
-	}
-	if (UMaterialInterface* Spray = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Maelstrom/M_MaelstromSpray.M_MaelstromSpray")))
-	{
-		SprayMID = UMaterialInstanceDynamic::Create(Spray, this);
-		SprayMID->SetScalarParameterValue(TEXT("Density"), 0.32f);
-		Mist->SetMaterial(0, SprayMID);
 	}
 	if (UMaterialInterface* Cascade = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Maelstrom/M_MaelstromCascade.M_MaelstromCascade")))
 	{
@@ -148,24 +142,65 @@ void ADCMaelstrom::BeginPlay()
 		}
 	}
 	Boss = GetWorld()->SpawnActor<ADCLeviathan>();
+	Atmosphere = GetWorld()->SpawnActor<ADCMaelstromAtmosphere>();
 	SetStageVisible(false);
 	UE_LOG(LogDC, Log, TEXT("Maelstrom stage: %.1f km across, %.0f m deep, breach %.1f ending %.1f"), Radius / 50000.f, Depth / 100.f, BreachStart, EndingStart);
+}
+
+namespace
+{
+	float RimVariation(float Angle)
+	{
+		// Leave the playable entry corridor unchanged, including both gun batteries.
+		return FMath::SmoothStep(0.35f, 0.85f, FMath::Abs(FMath::UnwindRadians(Angle - UE_PI)));
+	}
+}
+
+float ADCMaelstrom::GetRimRadius(float Angle) const
+{
+	const float Bays = 0.065f * FMath::Sin(Angle * 3.f + 0.7f) + 0.032f * FMath::Sin(Angle * 7.f - 1.3f) + 0.014f * FMath::Sin(Angle * 17.f + 2.1f);
+	return Radius * (1.f + Bays * RimVariation(Angle));
+}
+
+float ADCMaelstrom::GetOverflowAmount(float Angle) const
+{
+	const float Channels = 0.5f + 0.34f * FMath::Sin(Angle * 7.f + 0.3f) + 0.23f * FMath::Sin(Angle * 13.f - 0.9f);
+	return FMath::SmoothStep(0.25f, 0.56f, Channels);
+}
+
+float ADCMaelstrom::GetRimDrop(float Angle) const
+{
+	const float Variation = FMath::Clamp(0.5f + 0.30f * FMath::Sin(Angle * 4.f - 0.4f) + 0.21f * FMath::Sin(Angle * 9.f + 1.7f), 0.f, 1.f);
+	return FMath::Lerp(Depth * (240.f / 900.f), Depth * FMath::Lerp(0.10f, 0.39f, Variation), RimVariation(Angle));
+}
+
+float ADCMaelstrom::GetRimJoin(float Angle) const
+{
+	const float Approach = FMath::Pow(FMath::Max(0.f, -FMath::Cos(Angle)), 8.f);
+	return FMath::Lerp(0.90f - 0.12f * Approach, 0.84f + 0.11f * GetOverflowAmount(Angle), RimVariation(Angle));
+}
+
+float ADCMaelstrom::RimElevation(float Angle) const
+{
+	return RimVariation(Angle) * (3500.f * FMath::Sin(Angle * 3.f - 0.5f) + 1600.f * FMath::Sin(Angle * 8.f + 1.2f));
 }
 
 float ADCMaelstrom::HeightAt(const FVector2D& Point, bool bWaves) const
 {
 	const float R = Point.Size();
-	const float U = FMath::Clamp(R / Radius, 0.f, 1.f);
 	const float A = FMath::Atan2(Point.Y, Point.X);
+	const float LocalRadius = GetRimRadius(A);
+	const float U = FMath::Clamp(R / LocalRadius, 0.f, 1.f);
 	// One continuous surface: broad entry ramp, steep far overflow, deep inner slope.
 	const float Approach = FMath::Pow(FMath::Max(0.f, -FMath::Cos(A)), 8.f);
-	const float Join = 0.90f - 0.12f * Approach;
-	const float LipDrop = Depth * (240.f / 900.f);
+	const float Join = GetRimJoin(A);
+	const float LipDrop = GetRimDrop(A);
+	const float LipHeight = RimElevation(A);
 	constexpr float Power = 1.55f;
 	float Height;
 	if (U <= Join)
 	{
-		Height = -Depth + (Depth - LipDrop) * FMath::Pow(U / Join, Power);
+		Height = -Depth + (Depth + LipHeight - LipDrop) * FMath::Pow(U / Join, Power);
 	}
 	else
 	{
@@ -173,9 +208,9 @@ float ADCMaelstrom::HeightAt(const FVector2D& Point, bool bWaves) const
 		// A rounded approach shoulder hides the crater floor from the helm.
 		// Start the entry at a downhill grade; keep the distant overflow lip soft.
 		const float M0 = FMath::Lerp(0.08f, 0.65f, Approach);
-		const float M1 = (Depth - LipDrop) * Power * (1.f - Join) / (Join * LipDrop);
+		const float M1 = (Depth + LipHeight - LipDrop) * Power * (1.f - Join) / (Join * LipDrop);
 		const float Profile = (M0 + M1 - 2.f) * T * T * T + (3.f - 2.f * M0 - M1) * T * T + M0 * T;
-		Height = -LipDrop * Profile;
+		Height = LipHeight - LipDrop * Profile;
 	}
 	if (!bWaves) { return Height; }
 	const float Warp = FMath::PerlinNoise2D(Point / 31000.f);
@@ -185,14 +220,36 @@ float ADCMaelstrom::HeightAt(const FVector2D& Point, bool bWaves) const
 	const float Patch = FMath::SmoothStep(0.25f, 0.7f, 0.5f + FMath::PerlinNoise2D(Point / 4500.f + FVector2D(17.3f, -8.7f)));
 	const float Broken = FMath::Clamp(0.7f + FMath::PerlinNoise2D(Point / 18000.f), 0.15f, 1.2f) * FMath::Lerp(0.15f, 1.f, Patch);
 	const float Amplitude = FMath::Lerp(1000.f, 380.f, Approach);
-	const float RimFade = 1.f - FMath::SmoothStep(0.89f, 1.02f, R / Radius) * 0.85f;
-	return Height + Amplitude * (Crest * Broken + Cross * 0.3f) * RimFade * FMath::SmoothStep(0.05f, 0.2f, U);
+	const float RimFade = 1.f - FMath::SmoothStep(0.89f, 1.02f, U) * 0.85f;
+	const float EntryWaves = Amplitude * (Crest * Broken + Cross * 0.3f);
+	// Cross seas with unequal wavelengths and directions form long breaking crests,
+	// rather than isotropic terrain mounds or one repeating set of parallel ribs.
+	const FVector2D Bent = Point + 6500.f * FVector2D(
+		FMath::PerlinNoise2D(Point / 22000.f + FVector2D(4.7f, 13.2f)),
+		FMath::PerlinNoise2D(Point / 25000.f + FVector2D(-7.9f, 6.1f)));
+	struct FWave { FVector2D Direction; float Length; float Height; float Phase; };
+	static const FWave Waves[] = {
+		{FVector2D(0.958f, 0.287f), 14200.f, 500.f, 1.3f},
+		{FVector2D(0.427f, 0.904f), 8700.f, 330.f, 4.7f},
+		{FVector2D(0.836f,-0.548f), 5300.f, 180.f, 2.8f},
+		{FVector2D(-0.572f,0.820f),21100.f, 700.f, 0.2f},
+		{FVector2D(0.752f, 0.659f), 3400.f, 100.f, 5.9f},
+		{FVector2D(0.101f,-0.995f), 6400.f, 260.f, 3.1f}
+	};
+	float FarWaves = 0.f;
+	for (const FWave& Wave : Waves)
+	{
+		const float PhaseAngle = FVector2D::DotProduct(Bent, Wave.Direction) * UE_TWO_PI / Wave.Length + Wave.Phase;
+		const float Envelope = FMath::Clamp(0.70f + FMath::PerlinNoise2D(Point / (Wave.Length * 1.8f) + FVector2D(Wave.Phase, -Wave.Phase)), 0.2f, 1.2f);
+		FarWaves += Wave.Height * Envelope * (FMath::Sin(PhaseAngle) + 0.22f * FMath::Cos(2.f * PhaseAngle + 0.7f));
+	}
+	return Height + FMath::Lerp(EntryWaves, FarWaves, RimVariation(A)) * RimFade * FMath::SmoothStep(0.05f, 0.2f, U);
 }
 
 float ADCMaelstrom::RimGroundHeight(float R, float Angle) const
 {
 	const float Ridge = 3000.f + 1800.f * FMath::Sin(Angle * 9.f) + 900.f * FMath::Sin(Angle * 23.f + R * 0.0001f);
-	return FMath::Lerp(-1800.f, Ridge, FMath::SmoothStep(1.008f, 1.055f, R / Radius));
+	return RimElevation(Angle) + FMath::Lerp(-1800.f, Ridge, FMath::SmoothStep(1.008f, 1.055f, R / GetRimRadius(Angle)));
 }
 
 void ADCMaelstrom::BuildBasin()
@@ -206,10 +263,10 @@ void ADCMaelstrom::BuildBasin()
 	TArray<FProcMeshTangent> Tangents;
 	for (int32 Ring = 0; Ring <= Rings; ++Ring)
 	{
-		const float R = FMath::Lerp(120.f, Radius * 1.24f, static_cast<float>(Ring) / Rings);
 		for (int32 Side = 0; Side <= Sectors; ++Side)
 		{
 			const float A = Side * UE_TWO_PI / Sectors;
+			const float R = FMath::Lerp(120.f, GetRimRadius(A) * 1.24f, static_cast<float>(Ring) / Rings);
 			const FVector2D P(FMath::Cos(A) * R, FMath::Sin(A) * R);
 			const float Z = HeightAt(P);
 			const float DX = (HeightAt(P + FVector2D(60.f, 0.f)) - HeightAt(P - FVector2D(60.f, 0.f))) / 120.f;
@@ -220,7 +277,8 @@ void ADCMaelstrom::BuildBasin()
 			UVs.Add(P / 10000.f);
 			const float Approach = FMath::Pow(FMath::Max(0.f, -FMath::Cos(A)), 8.f);
 			const float Crest = FMath::Clamp((Z - HeightAt(P, false)) / FMath::Lerp(1600.f, 250.f, Approach), 0.f, 1.f);
-			Colors.Add(FLinearColor(Crest, R / Radius, FMath::Clamp(-Z / Depth, 0.f, 1.f), 1.f).ToFColor(false));
+			const float UpstreamAngle = A + (8.f / 3.5f) * FMath::Loge(FMath::Clamp(R / GetRimRadius(A), 0.08f, 1.f));
+			Colors.Add(FLinearColor(Crest, R / GetRimRadius(A), FMath::Clamp(-Z / Depth, 0.f, 1.f), GetOverflowAmount(UpstreamAngle)).ToFColor(false));
 			if (Ring < Rings && Side < Sectors)
 			{
 				const int32 I = Ring * (Sectors + 1) + Side;
@@ -234,17 +292,18 @@ void ADCMaelstrom::BuildBasin()
 	Vertices.Reset(); Normals.Reset(); UVs.Reset(); Colors.Reset(); Triangles.Reset(); Tangents.Reset();
 	// The falling face is actual opaque water attached to the overflow, not floating
 	// translucent cards. The approach remains an open sloping ride surface.
-	constexpr int32 FallSides = 384, FallRows = 24;
+	constexpr int32 FallSides = 768, FallRows = 32;
 	for (int32 Side = 0; Side <= FallSides; ++Side)
 	{
 		const float A = Side * UE_TWO_PI / FallSides;
-		const float Approach = FMath::Pow(FMath::Max(0.f, -FMath::Cos(A)), 8.f);
-		const float Join = 0.90f - 0.12f * Approach;
-		const float LipZ = HeightAt(FVector2D(FMath::Cos(A), FMath::Sin(A)) * Radius);
+		const float LocalRadius = GetRimRadius(A);
+		const float Join = GetRimJoin(A);
+		const float LipZ = HeightAt(FVector2D(FMath::Cos(A), FMath::Sin(A)) * LocalRadius);
+		const float Overflow = GetOverflowAmount(A);
 		for (int32 Row = 0; Row <= FallRows; ++Row)
 		{
 			const float T = Row / static_cast<float>(FallRows);
-			const float R = Radius * FMath::Lerp(1.001f, Join - 0.015f, T);
+			const float R = LocalRadius * FMath::Lerp(1.001f, Join - 0.015f - 0.012f * FMath::Sin(A * 21.f), T);
 			const FVector2D P(FMath::Cos(A) * R, FMath::Sin(A) * R);
 			const float Z = HeightAt(P) + 120.f;
 			const float DX = (HeightAt(P + FVector2D(60,0)) - HeightAt(P - FVector2D(60,0))) / 120.f;
@@ -253,8 +312,8 @@ void ADCMaelstrom::BuildBasin()
 			Normals.Add(FVector(-DX,-DY,1.f).GetSafeNormal());
 			Tangents.Add(FProcMeshTangent(FVector(-FMath::Sin(A),FMath::Cos(A),-DX*FMath::Sin(A)+DY*FMath::Cos(A)).GetSafeNormal(), false));
 			UVs.Add(FVector2D(A * Radius / 10000.f, FMath::Max(0.f, LipZ - Z) / 10000.f));
-			Colors.Add(FLinearColor(1.f, 1.f, T, 1.f).ToFColor(false));
-			if (Side < FallSides && Row < FallRows && FMath::Abs(FMath::UnwindRadians(A - UE_PI)) > 0.7f)
+			Colors.Add(FLinearColor(Overflow, 1.f, T, Overflow).ToFColor(false));
+			if (Side < FallSides && Row < FallRows && Overflow > 0.16f && FMath::Abs(FMath::UnwindRadians(A - UE_PI)) > 0.8f)
 			{
 				const int32 I = Side * (FallRows + 1) + Row, J = I + FallRows + 1;
 				Triangles.Append({I, J, I+1, I+1, J, J+1});
@@ -264,39 +323,13 @@ void ADCMaelstrom::BuildBasin()
 	Falls->CreateMeshSection(0, Vertices, Triangles, Normals, UVs, Colors, Tangents, false);
 
 	Vertices.Reset(); Normals.Reset(); UVs.Reset(); Colors.Reset(); Triangles.Reset(); Tangents.Reset();
-	for (int32 Patch = 0; Patch < 32; ++Patch)
-	{
-		const float A = Patch * UE_TWO_PI / 32.f;
-		if (FMath::Abs(FMath::UnwindRadians(A - UE_PI)) < 0.65f) { continue; }
-		const int32 Start = Vertices.Num();
-		const float R = Radius * (0.865f + 0.012f * FMath::Sin(A*7.f));
-		const float Floor = HeightAt(FVector2D(FMath::Cos(A)*R,FMath::Sin(A)*R));
-		for (int32 X = 0; X <= 8; ++X)
-		{
-			const float Arc = A + (X/8.f - 0.5f) * 0.12f;
-			for (int32 Y = 0; Y <= 4; ++Y)
-			{
-				const float T = Y/4.f;
-				Vertices.Add(FVector(FMath::Cos(Arc)*R,FMath::Sin(Arc)*R,Floor + 700.f + T*8500.f));
-				Normals.Add(FVector(-FMath::Cos(Arc),-FMath::Sin(Arc),0));
-				UVs.Add(FVector2D(X/8.f,1.f-T)); Colors.Add(FColor(255,255,255,180));
-				if (X<8 && Y<4)
-				{
-					const int32 I=Start+X*5+Y; Triangles.Append({I,I+5,I+1,I+1,I+5,I+6});
-				}
-			}
-		}
-	}
-	Mist->CreateMeshSection(0,Vertices,Triangles,Normals,UVs,Colors,Tangents,false);
-
-	Vertices.Reset(); Normals.Reset(); UVs.Reset(); Colors.Reset(); Triangles.Reset(); Tangents.Reset();
 	constexpr int32 LandRows=16, LandSides=384;
 	for (int32 Row=0; Row<=LandRows; ++Row)
 	{
-		const float R=Radius*FMath::Lerp(1.008f,1.24f,Row/static_cast<float>(LandRows));
 		for (int32 Side=0; Side<=LandSides; ++Side)
 		{
 			const float A=Side*UE_TWO_PI/LandSides;
+			const float R=GetRimRadius(A)*FMath::Lerp(1.008f,1.24f,Row/static_cast<float>(LandRows));
 			const FVector2D P(FMath::Cos(A)*R,FMath::Sin(A)*R);
 			auto Ground=[this](const FVector2D& Q) { return RimGroundHeight(Q.Size(),FMath::Atan2(Q.Y,Q.X)); };
 			const float DX=(Ground(P+FVector2D(60,0))-Ground(P-FVector2D(60,0)))/120.f;
@@ -361,7 +394,7 @@ void ADCMaelstrom::BuildLandmarks()
 	{
 		const float Angle = FMath::Lerp(-145.f, 145.f, I / 8.f) + Random.FRandRange(-6.f,6.f);
 		const float A = FMath::DegreesToRadians(Angle);
-		const float R = Radius * Random.FRandRange(1.045f, 1.075f);
+		const float R = GetRimRadius(A) * Random.FRandRange(1.045f, 1.075f);
 		const FVector Position(R*FMath::Cos(A),R*FMath::Sin(A),RimGroundHeight(R,A));
 		const float Scale=Random.FRandRange(0.65f,1.4f);
 		AActor* Crag=DCRuins::SpawnCrag(GetWorld(),12000.f,7000.f);
@@ -372,6 +405,45 @@ void ADCMaelstrom::BuildLandmarks()
 		}
 		Place(DCRuins::SpawnComplex(GetWorld(),Scale,419+I),Position+FVector(0,0,300.f),Angle+180.f);
 		if (I%3==0) { Place(DCRuins::SpawnColossus(GetWorld(),11000.f),Position+FVector(3000,6000,500),Angle+180.f); }
+	}
+	// Rock buttresses interrupt the overflow instead of making one white circular
+	// wall. Their feet descend into the bowl; their crests join the uneven coast.
+	auto BroadenCrag = [](AActor* Crag)
+	{
+		if (!Crag) { return; }
+		TInlineComponentArray<UStaticMeshComponent*> Pieces(Crag);
+		for (UStaticMeshComponent* Piece : Pieces)
+		{
+			if (!Piece->GetStaticMesh()) { continue; }
+			const FBox Box = Piece->GetStaticMesh()->GetBoundingBox();
+			const FVector Size = Box.GetSize();
+			const FVector OldScale = Piece->GetRelativeScale3D();
+			FVector Scale = OldScale;
+			const float Width = FMath::Max(Size.X * Scale.X, Size.Y * Scale.Y);
+			Scale.X = FMath::Max(Scale.X, Width * 0.65f / FMath::Max(Size.X, 1.f));
+			Scale.Y = FMath::Max(Scale.Y, Width * 0.65f / FMath::Max(Size.Y, 1.f));
+			const FVector Foot(Box.GetCenter().X, Box.GetCenter().Y, Box.Min.Z);
+			Piece->SetRelativeLocation(Piece->GetRelativeLocation() + Piece->GetRelativeRotation().RotateVector(Foot * (OldScale - Scale)));
+			Piece->SetRelativeScale3D(Scale);
+		}
+	};
+	float LastButtress = -10.f;
+	for (int32 I = 0; I < 100; ++I)
+	{
+		const float A = -2.30f + I * 4.60f / 99.f;
+		if (GetOverflowAmount(A) > 0.24f || A - LastButtress < 0.22f) { continue; }
+		LastButtress = A;
+		const float Drop = GetRimDrop(A);
+		const float R = GetRimRadius(A) * 0.975f;
+		const float Height = Drop + Random.FRandRange(5000.f, 10500.f);
+		const FVector At(FMath::Cos(A)*R,FMath::Sin(A)*R,RimElevation(A)-Drop-1500.f);
+		AActor* Buttress = DCRuins::SpawnCrag(GetWorld(),Random.FRandRange(12000.f,19000.f),Height);
+		BroadenCrag(Buttress);
+		Place(Buttress,At,FMath::RadiansToDegrees(A)+Random.FRandRange(-30.f,30.f));
+		const float SpurR = R - Random.FRandRange(7000.f,13000.f);
+		const FVector2D SpurPoint(FMath::Cos(A+0.035f)*SpurR,FMath::Sin(A+0.035f)*SpurR);
+		const FVector Spur(SpurPoint,HeightAt(SpurPoint)-2200.f);
+		Place(DCRuins::SpawnCrag(GetWorld(),Random.FRandRange(4500.f,7500.f),Random.FRandRange(6000.f,13000.f)),Spur,FMath::RadiansToDegrees(A)+40.f);
 	}
 
 }
@@ -412,7 +484,6 @@ void ADCMaelstrom::SetStageVisible(bool bVisible)
 {
 	Basin->SetVisibility(bVisible);
 	Falls->SetVisibility(bVisible);
-	Mist->SetVisibility(bVisible);
 	RimLand->SetVisibility(bVisible);
 	Tunnel->SetVisibility(bVisible);
 	for (AActor* Landmark : Landmarks) { if (Landmark) { Landmark->SetActorHiddenInGame(!bVisible); } }
@@ -496,6 +567,8 @@ void ADCMaelstrom::Tick(float DeltaSeconds)
 		}
 	}
 	if (Boss) { Boss->UpdateEncounter(Elapsed, GetArenaTransform(), Radius, Depth, bActive); }
+	if (Atmosphere) { Atmosphere->UpdateAtmosphere(this, Elapsed, bActive); }
+	WaterBridge.Update(GetWorld(), WaterMID, bActive);
 	if (bActive && Boss && Boss->ShouldExitEncounter(Elapsed))
 	{
 		// Let the defeated arms withdraw before the cut back to open sea.
@@ -528,7 +601,6 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
 	Tunnel->SetVisibility(Elapsed < 10.f);
 	Basin->SetVisibility(Elapsed >= -7.f);
 	Falls->SetVisibility(Elapsed >= -7.f);
-	Mist->SetVisibility(Elapsed >= -7.f);
 	RimLand->SetVisibility(Elapsed >= -7.f);
 	for (AActor* Landmark : Landmarks) { if (Landmark) { Landmark->SetActorHiddenInGame(Elapsed < -7.f); } }
 	const bool bInsideTunnel = ExitX - 200000.f * LengthScale <= -3000.f;
@@ -559,6 +631,7 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
 	{
 		WaterMID->SetScalarParameterValue(TEXT("Clock"), Director->RideTime);
 		WaterMID->SetScalarParameterValue(TEXT("HullFlatten"), 1.f);
+		WaterMID->SetScalarParameterValue(TEXT("OverflowFoam"), 1.f);
 		WaterMID->SetScalarParameterValue(TEXT("SeaLevel"), Director->SeaLevelZ);
 		WaterMID->SetVectorParameterValue(TEXT("BowlCenter"), FLinearColor(Arena->GetComponentLocation()));
 	}
@@ -569,7 +642,6 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
 		TunnelMID->SetScalarParameterValue(TEXT("TunnelFlow"), 1.f);
 		TunnelMID->SetVectorParameterValue(TEXT("BowlCenter"), FLinearColor(0.f, 0.f, Director->SeaLevelZ + 9000.f));
 	}
-	if (SprayMID) { SprayMID->SetScalarParameterValue(TEXT("Clock"), Director->RideTime); }
 	if (CascadeMID) { CascadeMID->SetScalarParameterValue(TEXT("Clock"), Director->RideTime); }
 	// A sea-level height-fog bank would fill the deep bowl. Move its
 	// base down for this stage and restore it on exit, using the existing renderer.
@@ -634,9 +706,12 @@ void ADCMaelstrom::UpdateView(float DeltaSeconds)
 	if (Captain->IsAtStation() && bAutomaticHelmView)
 	{
 		const float Offset = FMath::SmoothStep(-2.f, 5.f, Elapsed);
+		// Look through the opening before turning toward the abyss. Turning early
+		// filled the reveal with the tunnel's near sidewall instead of its exit.
+		const float Look = FMath::SmoothStep(4.f, 10.f, Elapsed);
 		const FVector DesiredWorld = Captain->GetActorLocation() + FVector(-20.f * Offset, 180.f * Offset, 64.f + 216.f * Offset);
 		Camera->SetWorldLocation(DesiredWorld);
-		Camera->AddAdditiveOffset(FTransform(FRotator(-7.f * Offset, 38.f * Offset, 0.f)), 0.f);
+		Camera->AddAdditiveOffset(FTransform(FRotator(-12.f * Look, 38.f * Look, 0.f)), 0.f);
 	}
 	Camera->SetFieldOfView(90.f);
 }
@@ -676,10 +751,12 @@ void ADCMaelstrom::RestoreAtmosphere()
 
 void ADCMaelstrom::EndPlay(const EEndPlayReason::Type Reason)
 {
+	WaterBridge.Reset(WaterMID);
 	RestoreView();
 	RestoreAtmosphere();
 	if (bOceanHidden) { SetOceanVisible(true); }
 	for (AActor* Landmark : Landmarks) { if (IsValid(Landmark)) { Landmark->Destroy(); } }
 	if (IsValid(Boss)) { Boss->Destroy(); }
+	if (IsValid(Atmosphere)) { Atmosphere->Destroy(); }
 	Super::EndPlay(Reason);
 }

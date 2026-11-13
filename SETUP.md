@@ -41,7 +41,11 @@ The water plugin's waves are fixed to the world, and in this game the ship stand
 
 ## Maelstrom assets and isolated review
 
-The original maelstrom water/spray materials are in `Content/DC/Maelstrom/`. Regenerate with `Tools/make_maelstrom_materials.py` through Unreal's Python commandlet in the intended project. DRW's detail-normal texture is referenced in place when installed; the bowl is our own geometry and shader, not the plugin's FFT ocean simulation.
+The original maelstrom materials are in `Content/DC/Maelstrom/`. Run `Tools/make_maelstrom_materials.py` and `Tools/make_maelstrom_atmosphere.py` through Unreal's Python commandlet in the intended project. The latter creates the plume and daylight-opening light-function materials used by `DCMaelstromAtmosphere`.
+
+The bowl keeps its own curved geometry and gameplay height queries. When DRW is installed and running, `DCMaelstromWaterBridge` binds its live FFT derivative/foam arrays to that surface without altering the plugin or its simulation settings. Only surface normals, roughness and foam use those outputs; FFT displacement does not move the cannon/ship surface. The generator references installed DRW textures and its shader helper in place; no purchased shader implementation or texture is copied into the repository. The baseline foam and animated normal path remains available with `UseLiveFFT=0` (including `-DCNoDRW`).
+
+If DRW is physically removed, regenerate the water materials before building/cooking: a material generated with the plugin installed still references its shader include even when the runtime flag is zero. Regeneration without the pack creates the independent procedural fallback graph. Do not interpret the runtime fallback as making a stale plugin-dependent material portable.
 
 The Kaiju skin is local licensed content under the ignored `Content/DC/Maelstrom/LeviathanSkin/` directory. Run `Tools/make_leviathan_skin.py` with the same commandlet. It finds the purchased texture files in the local Fab cache; set `DC_KAIJU_TEXTURES` to their extracted folder on another machine. This avoids UDIM auto-discovery treating each imported tile as the whole atlas. Never commit those generated textures or their material.
 

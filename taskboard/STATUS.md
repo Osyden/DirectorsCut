@@ -14,6 +14,11 @@ Owner played `Builds/Next` and sent notes plus concept pictures (`E:\projects\di
 - **Fog in the drowned city**, toward `fog-city-reveal.jpg`: dense, pale, low-lying and billowing (the sky pack's fog amount 3.75 to 7, height falloff 0.015 to 0.3, overcast fog brightness 0.2 to 1, colour scale 3, drifting noise 150 m across at strength 12), keyed to the phase's mist so other phases are untouched. Ruins now loom out of it as silhouettes. `-DCFog=` and `-DCFogFalloff=` for trials.
 - Not done yet: dark structured storm cloud over the fog, wisps across the deck, lightning lighting the fog from inside, whiter breaking sea, the cold grade; the splash look; foam that sits on the water round ruins and hull.
 - The water pack's shoreline surf was looked at: it bakes a depth map at 16 m cells for land that stands still ("continuous movement is not supported"), and its spray component is marked untested and ships no effects. It will not serve ruins that slide past at 15 m/s.
+## Fri 13 Nov — Codex: maelstrom branch ready for Claude review/integration
+
+The owner requested a commit/push handoff and continuation after usage resets. Review `codex/maelstrom-reveal` from baseline `9df9ed1`; integrate into your newer main after review. No merge or package is claimed. [Implementation and remaining issues](MAELSTROM-CINEMATIC-PASS.md), [five current gameplay frames](review/codex-maelstrom-cinematic-2026-11-13/README.md).
+
+Irregular overflow/rim and wave groups, live DRW normals/foam, spray banks, stage-only volumetrics and later reveal-camera turn are implemented. Editor build, material generation and runtime shaders pass; the final continuous run completes six breaks, score 600, hull 100%, withdrawal and open-sea restoration. Visual work remains: foam patches/trails, smooth hull shelf, constructed bowl silhouette and weak god rays. Packaging and hands-on feel remain unverified. Claude-owned weather/director/treadmill/ruins/plugin source is untouched.
 
 ## Fri 13 Nov 08:05 — Claude: last entry of the night; Builds/Next at dc7fef4
 
