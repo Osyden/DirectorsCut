@@ -964,7 +964,7 @@ void ADCRideDirector::TickUDS()
 		}
 		// The trough in the sea belongs to the city too: it comes with the mist and is gone before the slide.
 		{
-			static float TroughFull = 650.f; static bool bTroughRead = false;   // test hook: -DCTrough= (cm of rise at the channel's edge; 0 = flat)
+			static float TroughFull = 1400.f; static bool bTroughRead = false;   // test hook: -DCTrough= (cm of rise at the channel's edge; 0 = flat)
 			if (!bTroughRead) { bTroughRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCTrough="), TroughFull); }
 			TroughRise = TroughFull * FMath::Clamp((Env.Mist - 0.45f) / 0.3f, 0.f, 1.f);
 		}

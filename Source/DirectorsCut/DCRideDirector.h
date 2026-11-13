@@ -122,7 +122,7 @@ public:
 	float SeaRiseSlope(float SeaY) const;
 	/** Rise at the edge of the channel this frame (cm; 0 = flat sea) and half the channel's width. */
 	float TroughRise = 0.f;
-	float TroughHalfWidth = 5000.f;
+	float TroughHalfWidth = 9000.f;
 	/** Light that thick fog gives off per unit of density this frame: the glow of the sky in it, and lightning. Read by the fog banks. */
 	FLinearColor FogGlow = FLinearColor::Black;
 	/** The extra light lightning puts into the fog banks while it lasts (the wisps round the ship take little of it: a flash must not white the whole view out). */

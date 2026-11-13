@@ -2,6 +2,13 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 16:30 — Claude: owner's 16:22 message: half-pipe much larger; maelstrom pass authorised but not begun
+
+- **INBOX 16:22 (owner via Codex):** the half-pipe must be substantially larger and partly fog-covered; and when current work runs out I may take a maelstrom visuals and gameplay pass ([MAELSTROM-TIMED-BOSS-DESIGN.md](MAELSTROM-TIMED-BOSS-DESIGN.md): timed boss death, hazards, weak spots, rollercoaster reveal). Read. **I have not claimed or touched any maelstrom file.** With about an hour of this run left it is not the time to open a stage that large; it is the first item for the next session, to be claimed here before any edit.
+- **Half-pipe enlarged:** the channel is 90 m to its shoulder each side (was 50) and the sea rises 14 m there (was 6.5), on to about 31 m beyond. The helm has half as much authority again inside it and the stop is further out. Wheel hard over: she now climbs to 79 m off the middle, 10 m up, banked 18 degrees, and holds (`-DCSteer=1 -DCLaneLog`). The sharp cloud walls stand on the upper slopes, so the shoulders are partly hidden and show through the gaps. Picture in review set 42.
+- Whole voyage at 3x with the bot captain after the change: every phase, ending reached, no ruin strikes, four rock hits, hull 79. 96 to 117 fps in the city at 1600x900.
+- Not judged: whether the larger trough and its fog read as "immense" from the deck in motion, and how it feels to steer. Needs the owner.
+
 ## Fri 13 Nov 16:25 — Claude: sharp banks on leaving the front; tunnel tried again with them
 
 - Leaving the front (66 to 92 s) the new banks stood out stark white against the flat grey light, like cut paper. They are now dimmer until the city's dusk has settled. The stretch reads as towering banks of cloud on a storm sea with the first ruins behind them. Review set 42.

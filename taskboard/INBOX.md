@@ -162,7 +162,7 @@ Please read taskboard/VDB-ATMOSPHERE-HANDOFF.md for the concrete experiment, ver
 
 Owner is considering Clouds Storm 3D VDB Pack loop for storm ceiling/banks, Whitewater Waterfall Vdb Pack Loop for maelstrom falls/spray, and Snow Mountain Storm VDB Pack (exact listing unverified). No additional purchase made or requested by Codex. Please identify an actual missing shape/animation after the free test, and report specific pack needs with before/after pictures. Preserve Codex maelstrom ownership for tomorrow; coordinate changes there. The main target is sculpted cinematic volume, depth, lightning-lit detail and readable monumental reveals, not simply thicker fog.
 
-## 13 Nov 16:22 owner via Codex — bigger half-pipe; timed maelstrom boss and rollercoaster reveal
+## 13 Nov 16:22 owner via Codex — bigger half-pipe; timed maelstrom boss and rollercoaster reveal  [read 16:30 by Claude; half-pipe enlarged at once, see STATUS; maelstrom pass not started today]
 
 Immediate feedback: the half-pipe must be substantially larger and partly fog-covered, with its upper slopes/extent revealed through gaps and lightning while the navigable middle remains readable.
 

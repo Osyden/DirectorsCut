@@ -193,13 +193,14 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 	static const bool bForced = FParse::Value(FCommandLine::Get(), TEXT("DCSteer="), ForcedSteer);
 	if (bForced) { Steer = ForcedSteer; }
 	// The helm takes a moment to bite and the ship carries her swing after it is eased: she turns, she is not slid sideways.
-	LaneVelocity = FMath::FInterpTo(LaneVelocity, Steer * LaneSpeed * SteerAuthority, DeltaSeconds, 1.1f);
+	// (In the trough she is given half as much helm again: it is a wide channel and there is a slope to climb.)
+	LaneVelocity = FMath::FInterpTo(LaneVelocity, Steer * LaneSpeed * SteerAuthority * (Director->TroughRise > 1.f ? 1.5f : 1.f), DeltaSeconds, 1.1f);
 	// In the trough of the drowned city the sea itself brings her back: she slides down the slope she
 	// has climbed, harder the higher she is, so full helm holds her near the edge and no further, and
 	// with the wheel let go she swings back to the middle. Elsewhere the lane simply ends.
 	const float Pull = Director->SeaRiseSlope(LaneOffset) * 4400.f;
 	LaneVelocity -= Pull * DeltaSeconds;
-	const float Edge = Director->TroughRise > 1.f ? LaneLimit * 1.6f : LaneLimit;
+	const float Edge = Director->TroughRise > 1.f ? LaneLimit * 2.6f : LaneLimit;
 	LaneOffset = FMath::Clamp(LaneOffset + LaneVelocity * DeltaSeconds, -Edge, Edge);
 	if (FMath::Abs(LaneOffset) >= Edge && LaneOffset * LaneVelocity > 0.f) { LaneVelocity = 0.f; }
 	// Test hook: -DCLaneLog writes where she is across the channel twice a second.
