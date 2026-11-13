@@ -792,6 +792,30 @@ void ADCTreadmill::SpawnAtlantis()
 		{
 			if (ADCFogBank* Bank = ADCFogBank::Spawn(World, D, ++Seed)) { Register(Bank, FVector(X, Y, Z), 1.5f, false, 1.f, 0.f, false); }
 		};
+		// Inside the storm front (the first 300 m after the fog begins): a tunnel of cloud. Rings of heavy
+		// billows to either hand, on the shoulders and overhead, with the middle left open, so the ship
+		// runs down a rolling throat of cloud with the light at the far end, not through an even grey.
+		// Off by default (-DCTunnel): tried 13 Nov, it reads as patches of fog, not a throat of cloud. The fog grid cannot hold the shape.
+		if (FParse::Param(FCommandLine::Get(), TEXT("DCTunnel")))
+		{
+			for (float X = 1500.f; X < 31000.f; X += 4200.f)
+			{
+				const float Turn = Rng.FRandRange(-0.25f, 0.25f);
+				for (int32 k = 0; k < 5; ++k)
+				{
+					// Round the throat from the port waterline, over the mastheads, to the starboard waterline.
+					const float A = UE_PI * (k / 4.f) + Turn;
+					const float Across = FMath::Cos(A), Up = FMath::Sin(A);
+					FDCFogBankDesc D;
+					D.Radii = FVector(Rng.FRandRange(3800.f, 5200.f), Rng.FRandRange(3200.f, 4400.f), Rng.FRandRange(2600.f, 3600.f));
+					D.Density = Rng.FRandRange(0.05f, 0.08f);
+					D.Size = Rng.FRandRange(3500.f, 5500.f);
+					D.Erode = Rng.FRandRange(0.45f, 0.65f);
+					D.Drift = FVector(Rng.FRandRange(-500.f, -250.f), -Across * 120.f, Rng.FRandRange(-40.f, 60.f));
+					Lay(D, X + Rng.FRandRange(-1200.f, 1200.f), -Across * Rng.FRandRange(6200.f, 7600.f), SeaZ + 800.f + FMath::Max(0.f, Up) * Rng.FRandRange(5200.f, 6400.f));
+				}
+			}
+		}
 		// Walls: a pair every 130 m or so, staggered, standing off the course by a ship's length or two.
 		for (float X = 30000.f; X < 340000.f; X += Rng.FRandRange(11000.f, 15000.f))
 		{

@@ -2,6 +2,10 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 15:06 — Claude: a cloud tunnel from fog banks tried in the front; not good enough, off
+
+- Rings of banks round the course inside the front (`-DCTunnel`): invisible in the front's thick fog, mere side patches when that fog is thinned, and thinning it shows the city too early. Off by default. Recorded in the VDB hand-off as the one shape the present system cannot make, which is what the owner's tunnel pack is for.
+
 ## Fri 13 Nov 14:47 — Claude: fog banks modelled (lit tops, dark folds, edges)
 
 - Answering "sculpted, not thicker": `M_FogVolume` now gives each billow an edge (density climbs quickly from nothing to full) and shades the bank's own glow by whether a point is open to the sky or under more cloud, and by its height. Banks read as rolling forms with bright tops and dark hollows. 120 to 138 fps at 1600x900. Review set 40. Not in a packaged build.
