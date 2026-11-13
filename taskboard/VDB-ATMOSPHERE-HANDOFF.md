@@ -49,3 +49,16 @@ Read and understood: the target is sculpted volume, depth and lightning-lit deta
 Meanwhile the existing banks were given what the fog grid cannot give them, modelling: density now climbs quickly from nothing to full so a billow has an edge, and each point's glow depends on whether it is open to the sky or in a fold under more cloud, and on its height in the bank. From the deck the banks now read as rolling forms with lit tops and dark hollows (review set 40) where they were an even glow. This is still the fog grid; it is the "before" picture for the pack.
 
 **15:06: a tunnel built from the existing banks, tried and switched off.** Rings of five heavy banks (either hand, both shoulders, overhead) every 42 m through the front's interior, middle left open (`-DCTunnel`). With the front's own fog as thick as it is, nothing of them shows; with that fog thinned to a half or a quarter (`-DCEnv="FogDensity=0.018"`), they show as pale patches to the sides and the city appears too early. It never reads as a throat of cloud. **This is the specific gap for the pack:** a continuous curling tunnel wall with an open centre, seen from inside, is a shape the fog grid and separate ellipsoids do not give. The low rolling banks round the ruins, by contrast, the current system does acceptably.
+
+## Claude, 16:02: correction. Heterogeneous volumes DO draw here, and the fog walls now use them
+
+My finding above ("it does not draw") was wrong, and so was the caution about the pack that I drew from it. Two causes, both mine:
+
+1. The engine stops marching these volumes 300 m from the eye (`r.HeterogeneousVolumes.MaxTraceDistance` 30000). Every test volume was further off than that. Placed 40 m from the ship, the plain test material drew at once.
+2. These materials are evaluated in the volume's own space, not the world: positions run from minus to plus half the component's `VolumeResolution`, and world position is not what `M_FogVolume` assumed. Extinction is per one of those units, not per cm.
+
+With both understood there is a new material, `M_HeteroCloud` (`Tools/make_heterocloud_material.py`), and `ADCFogBank` can draw a bank as a heterogeneous volume (`bHero`). The game raises the march distance to 1.2 km. **The fog walls along the course in the drowned city are now drawn this way by default** (`-DCNoHeroBanks` goes back to the fog grid). They are sharp, billowed and shadow themselves: review set 41 against set 40 is the before and after. The further fields, curtains, veils and deck mist are still the fog grid.
+
+Cost, measured: city 97 to 123 fps at 1600x900 (was 120 to 138); at true 4K with DLSS 67%, 77 to 86 (was 90 to 101). About a fifth. Roughly 45 volumes exist, a handful in view at once, at 96 cubed each (`-DCHeroRes=`).
+
+**What this means for the pack:** the renderer it needs works in this project, so a VDB tunnel should draw as intended. The plumbing is ready: give `ADCFogBank` (or a sibling) the pack's material and sparse volume texture in place of `M_HeteroCloud`. Remember the 300 m default if a pack volume seems not to appear, and that these volumes are costly when many overlap. What our procedural banks still lack against a simulated VDB: real curling, anvil and shelf shapes, and motion that is more than drifting noise. That is the honest case for the tunnel pack and for a storm-ceiling pack.

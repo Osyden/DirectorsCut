@@ -828,6 +828,9 @@ void ADCTreadmill::SpawnAtlantis()
 				D.Size = Rng.FRandRange(5000.f, 8000.f);
 				D.Erode = Rng.FRandRange(0.4f, 0.65f);
 				D.Drift = FVector(Rng.FRandRange(-350.f, -150.f), Side * Rng.FRandRange(-60.f, 160.f), 0.f);
+				// The walls along the course are drawn sharp and self-shadowed (heterogeneous volumes).
+				static const bool bHeroBanks = !FParse::Param(FCommandLine::Get(), TEXT("DCNoHeroBanks"));
+				D.bHero = bHeroBanks;
 				Lay(D, X + Rng.FRandRange(-3000.f, 3000.f), Side * (D.Radii.Y + Rng.FRandRange(3500.f, 7000.f)), SeaZ + D.Radii.Z * 0.35f);
 			}
 		}
@@ -892,7 +895,7 @@ void ADCTreadmill::SpawnAtlantis()
 	// sharp, and seen from any distance; the fog grid is coarse and ends 700 m out.
 	if (FParse::Param(FCommandLine::Get(), TEXT("DCHeteroTest")))
 	{
-		UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, FParse::Param(FCommandLine::Get(), TEXT("DCHeteroPlain")) ? TEXT("/Game/DC/Materials/M_HeteroTest.M_HeteroTest") : TEXT("/Game/DC/Materials/M_FogVolume.M_FogVolume"));
+		UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, FParse::Param(FCommandLine::Get(), TEXT("DCHeteroPlain")) ? TEXT("/Game/DC/Materials/M_HeteroTest.M_HeteroTest") : TEXT("/Game/DC/Materials/M_HeteroCloud.M_HeteroCloud"));
 		FActorSpawnParameters Params;
 		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 		AActor* Holder = World->SpawnActor<AActor>(AActor::StaticClass(), FTransform::Identity, Params);
@@ -917,6 +920,22 @@ void ADCTreadmill::SpawnAtlantis()
 			H->SetMaterial(0, MID);
 			H->RegisterComponent();
 			float At = 90000.f; FParse::Value(FCommandLine::Get(), TEXT("DCHeteroAt="), At);
+			// -DCHeteroNear: a small one standing still beside the ship instead (20 m cube, 30 m off the starboard bow).
+			if (FParse::Param(FCommandLine::Get(), TEXT("DCHeteroNear")))
+			{
+				H->SetWorldScale3D(FVector(2000.f / Res));
+				Holder->SetActorLocation(FVector(3000.f, 3000.f, SeaZ + 1500.f));
+				float NearSize = 2000.f; FParse::Value(FCommandLine::Get(), TEXT("DCHeteroSize="), NearSize);
+				H->SetWorldScale3D(FVector(NearSize / Res));
+				Holder->SetActorLocation(FVector(3000.f + NearSize, 3000.f + NearSize * 0.5f, SeaZ + NearSize * 0.45f));
+				const float Unit = NearSize / Res;   // cm of world to one unit of the volume
+				MID->SetVectorParameterValue(TEXT("Centre"), FLinearColor(0.f, 0.f, 0.f, 0.f));
+				MID->SetVectorParameterValue(TEXT("Radii"), FLinearColor(Res * 0.5f, Res * 0.5f, Res * 0.5f, 0.f));
+				MID->SetScalarParameterValue(TEXT("Size"), NearSize * 0.6f / Unit);
+				MID->SetVectorParameterValue(TEXT("Drift"), FLinearColor(-200.f / Unit, 60.f / Unit, 0.f, 0.f));
+				UE_LOG(LogDC, Log, TEXT("Hetero test: near volume, bounds %s"), *H->Bounds.ToString());
+			}
+			else
 			Register(Holder, FVector(At, -14000.f, SeaZ + 3000.f), 1.5f, false, 1.f, 0.f, false);
 			UE_LOG(LogDC, Log, TEXT("Hetero test: volume registered %.0f cm ahead; bounds %s; registered %d visible %d material %s"), At, *H->Bounds.ToString(), H->IsRegistered(), H->IsVisible(), *GetNameSafe(H->GetMaterial(0)));
 		}

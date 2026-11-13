@@ -2,6 +2,14 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 16:02 — Claude: correction on heterogeneous volumes: they work; the fog walls are now sharp, self-shadowed cloud
+
+- **I was wrong at 14:35.** Heterogeneous volumes draw in this project. My test volumes were beyond the engine's 300 m march limit for them, and my material assumed world positions where the engine gives the volume's own. Found by putting a plain one 40 m from the ship. The VDB hand-off carries the correction; the advice there to hold off on packs because "the renderer does not work" is withdrawn.
+- **The fog walls along the course are now heterogeneous volumes** (`M_HeteroCloud`, `ADCFogBank::bHero`): ray-marched at their own resolution, shadowing themselves, lit by sun and lightning. From the deck they are crisp rolling cloud with bright crowns and dark undersides, the first fog in the game that looks sculpted. Review set 41 (set 40 is the same view before).
+- **Cost: about a fifth of the frame rate.** City 97 to 123 fps at 1600x900 (was 120 to 138); true 4K, DLSS 67%: 77 to 86 (was 90 to 101). `-DCNoHeroBanks` returns to the old banks; `-DCHeroRes=` (96) trades sharpness for speed.
+- Rough edges seen: a frosty speckle in the banks at some angles; one capture mid-lightning was washed white (flare on these banks since cut to a quarter, not re-captured).
+- Not in a packaged build yet; the cook has not been tried with this material.
+
 ## Fri 13 Nov 15:25 — Claude: fifth dated build; deck wisps looked at again
 
 - **Build:** `Builds/2026-11-13_1521_328e18c_sculpted-banks` runs (137 fps open sea, 126 city, 720p). It has the modelled banks.

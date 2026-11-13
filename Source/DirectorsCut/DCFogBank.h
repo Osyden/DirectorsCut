@@ -28,6 +28,8 @@ struct FDCFogBankDesc
 	FLinearColor Tint = FLinearColor(0.8f, 0.86f, 0.95f);
 	/** Stays round the ship (wisps across the deck) instead of lying in the sea. */
 	bool bOnDeck = false;
+	/** Draw it with the heterogeneous-volume renderer (sharp, self-shadowed) instead of the fog grid. */
+	bool bHero = false;
 	/** Above 0, only the crests of the noise are fog: streaks with clear air between. */
 	float Wisp = 0.f;
 };
@@ -52,6 +54,12 @@ public:
 protected:
 	UPROPERTY() TObjectPtr<UStaticMeshComponent> Mesh;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> MID;
+	/** A bank drawn by the engine's heterogeneous-volume renderer instead of the fog grid: ray-marched at
+	 *  its own resolution and shadowing itself against the sun and the lightning, so it has sharp
+	 *  sculpted billows where the fog grid can only give a soft glow. Costlier; used for the banks near the course. */
+	UPROPERTY() TObjectPtr<class UHeterogeneousVolumeComponent> Hero;
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> HeroMID;
+	float HeroUnit = 1.f;
 	UPROPERTY() TObjectPtr<ADCRideDirector> Director;
 	FDCFogBankDesc Desc;
 	/** 0..1: how much of the bank is there (it thins away when it reveals, and with the weather). */
