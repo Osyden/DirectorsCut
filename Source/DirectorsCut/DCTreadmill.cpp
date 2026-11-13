@@ -515,8 +515,11 @@ float ADCTreadmill::FindClearLane(float Lookahead) const
 {
 	float Best = LaneOffset;
 	float BestCost = TNumericLimits<float>::Max();
+	// In the trough she cannot hold a lane much beyond three quarters of the way to its edge.
+	const float Reach = (Director && Director->TroughRise > 1.f) ? LaneLimit * 0.7f : LaneLimit;
 	for (float Candidate = -LaneLimit; Candidate <= LaneLimit; Candidate += 250.f)
 	{
+		if (FMath::Abs(Candidate) > Reach) { continue; }
 		// Prefer staying put, and drift back toward the middle when nothing is in the way.
 		float Cost = FMath::Abs(Candidate - LaneOffset) * 0.0005f + FMath::Abs(Candidate) * 0.00005f;
 		for (const FDCWorldObject& Obj : Objects)

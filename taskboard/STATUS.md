@@ -2,6 +2,16 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 11:51 — Claude: ship view (T) and a deck eye that leans with her
+
+- **Ship view.** `T` puts the camera outside the ship, standing off her quarter 52 m away; the mouse swings it round her and the mouse wheel brings it in or out (26 to 120 m). It rides her heave, keeps a level horizon and stays above the sea. The captain goes on doing what he was doing, so at the helm it is a view to steer by (the wheel prompt names it). Open sea and city only; the slide and the maelstrom keep their own camera, and the guns their own. Station markers are hidden in it. The pictures it gives are the best the game has: the backlit brigantine on the open sea, and climbing the trough past a gate in the fog. `-DCShipView -DCOrbit=yaw,pitch` for the harness.
+- **The captain's eye leans with the deck**: 60% of her roll and pitch in the direction he faces (`-DCDeckLean=`), so the horizon tilts as she rolls and banks. Before, the view stayed dead level while the ship moved under it.
+- Foam at the hull: the solid line against the planking is thinner and more broken (it read as a cream skirt from outside).
+- The helmsman now only picks lanes he can hold in the trough. Three-times-speed voyages with and without the trough: 1 and 6 ruin strikes, 4 and 2 rock hits, hull 82 and 83 at the slide. He is meant to miss some in fog; it is not worse with the trough.
+- 142 to 152 fps in the city, 103 to 106 on the open sea (1600x900, ship view). Review set 35.
+- Not checked by hand: any of the new controls (`T`, mouse orbit, steering in the trough).
+- Next: wake astern; a blacker wall for the front; bank and wisp tuning; package a build.
+
 ## Fri 13 Nov 11:41 — Claude: the sea of the drowned city is a trough the ship steers in; rain splashes as crowns
 
 - **Half-pipe sea (owner's task).** In the city the sea is level along the middle of the channel and rises to either hand: 6.5 m at 50 m out, on to about 15 m by 100 m, then level. One rule (`ADCRideDirector::SeaRise` / `SeaRiseSlope`) is used by everything: the water's material lifts the surface (the water-plugin patch now also adds this to all four ocean materials, fed by the new `/Game/DC/Materials/MPC_Sea`), the treadmill stands ruins, rocks and fog banks on the sea as it lies where they are, the ship lies over on the slope she is on, and the slope pulls her back toward the middle. Measured with the wheel held hard over (`-DCSteer=1 -DCLaneLog`): she climbs to 39 m off the middle, 3.5 m up, banked 12.7 degrees, and stays there; let go, she slides back. The hard stop at the old lane limit is gone inside the trough. It comes with the city's mist and is flat again before the slide. `-DCTrough=0` gives a flat sea.

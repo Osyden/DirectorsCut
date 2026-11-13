@@ -30,6 +30,8 @@ public:
 	bool HasGunSolution() const { return bGunSolution; }
 	bool IsTypingOrder() const { return bTyping; }
 	bool IsAtStation() const { return ActiveStation != INDEX_NONE; }
+	/** Looking at the ship from outside (T). */
+	bool IsShipView() const { return bShipView; }
 	/** For unattended tests and debug commands. */
 	void DebugTakeStation(EDCStationType Type, EDCSide Side);
 
@@ -52,6 +54,15 @@ protected:
 
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UCameraComponent> Camera;
 	UPROPERTY() TObjectPtr<ACameraActor> GunCamera;
+	/** The ship seen from outside (T): a camera that stands off her quarter and can be swung round her with the mouse.
+	 *  The captain keeps doing whatever he was doing; at the helm it is a good view to steer by. */
+	UPROPERTY() TObjectPtr<ACameraActor> ShipCamera;
+	bool bShipView = false;
+	float OrbitYaw = 0.f;
+	float OrbitPitch = 14.f;
+	float OrbitDistance = 5200.f;
+	void TickShipView(APlayerController* PC, float DeltaSeconds);
+	void SetShipView(APlayerController* PC, bool bOn);
 	int32 NearbyStation = INDEX_NONE;
 	bool bGunSolution = false;
 	bool bClearHelmView = false;

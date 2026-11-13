@@ -142,7 +142,7 @@ void ADCHUD::DrawHUD()
 
 	// Bottom right: how to give orders, and which parts of the voice loop are up.
 	{
-		FString Help = TEXT("V  talk     Enter  type     1-6  quick orders     E  take a station     F5  DLSS mode     F6  frame generation");
+		FString Help = TEXT("V  talk     Enter  type     1-6  quick orders     E  take a station     T  ship view     F5  DLSS mode     F6  frame generation");
 		if (ADCVoice* V = ADCVoice::Get(this))
 		{
 			if (!V->IsSTTReady()) { Help = TEXT("Enter  type     1-6  quick orders     E  take a station     (voice starting...)"); }
@@ -180,7 +180,7 @@ void ADCHUD::DrawHUD()
 	{
 		APlayerController* PC = GetOwningPlayerController();
 		ADCGunnery* Guns = ADCGunnery::Get(this);
-		if (!Captain->IsTypingOrder() && !Captain->IsAtStation() && PC)
+		if (!Captain->IsTypingOrder() && !Captain->IsAtStation() && !Captain->IsShipView() && PC)
 		{
 			if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
 			{

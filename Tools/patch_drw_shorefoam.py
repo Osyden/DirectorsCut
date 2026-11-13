@@ -69,7 +69,7 @@ float l = saturate((lace * lace2 - 0.12) * 3.2);
 float surge = 0.5 + 0.5 * sin(T * 0.8 + WP.x * 0.0021 + WP.y * 0.0017);
 float reach = band * (0.7 + 0.6 * surge);
 // A thin solid line of white where the water touches, torn lace beyond it, nothing at the outer edge.
-float core = smoothstep(0.82, 1.0, band) * (0.6 + 0.4 * l);
+float core = smoothstep(0.9, 1.0, band) * (0.35 + 0.65 * l);
 float torn = saturate(reach * 2.3 - (1.0 - l) * 1.3);
 float foam = max(core, torn);
 return max(Existing, foam * Strength);

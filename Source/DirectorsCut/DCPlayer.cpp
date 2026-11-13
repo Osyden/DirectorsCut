@@ -48,6 +48,7 @@ void ADCPlayerCharacter::Tick(float DeltaSeconds)
 	if (PC->WasInputKeyJustPressed(EKeys::Enter)) { OpenOrderBox(PC); return; }
 	TickMeta(PC);
 	TickCameraFeel(DeltaSeconds);
+	TickShipView(PC, DeltaSeconds);
 	TickGraphicsKeys(PC);
 
 	switch (ActiveType)
@@ -70,10 +71,68 @@ void ADCPlayerCharacter::Tick(float DeltaSeconds)
 	}
 }
 
+void ADCPlayerCharacter::SetShipView(APlayerController* PC, bool bOn)
+{
+	if (bOn == bShipView) { return; }
+	bShipView = bOn;
+	if (bOn && !ShipCamera)
+	{
+		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		ShipCamera = GetWorld()->SpawnActor<ACameraActor>(Camera->GetComponentLocation(), Camera->GetComponentRotation(), Params);
+		ShipCamera->GetCameraComponent()->bConstrainAspectRatio = false;
+		ShipCamera->GetCameraComponent()->SetFieldOfView(70.f);
+	}
+	if (bOn) { OrbitYaw = 0.f; OrbitPitch = 14.f; }
+	PC->SetViewTargetWithBlend(bOn ? static_cast<AActor*>(ShipCamera) : static_cast<AActor*>(this), 0.8f, VTBlend_EaseInOut, 2.f);
+}
+
+void ADCPlayerCharacter::TickShipView(APlayerController* PC, float DeltaSeconds)
+{
+	ADCRideDirector* Director = ADCRideDirector::Get(this);
+	// On the open sea and in the drowned city only: the slide and the maelstrom stage direct the camera themselves.
+	const bool bAllowed = Director && Director->GetPhase() < EDCPhase::Slide && ActiveType != EDCStationType::Cannons;
+	if (bAllowed && PC->WasInputKeyJustPressed(EKeys::T)) { SetShipView(PC, !bShipView); }
+	// Test hook: -DCShipView starts in the ship view, -DCOrbit=yaw,pitch sets where it stands.
+	static bool bHookDone = false;
+	if (!bHookDone && bAllowed && Director->RideTime > 1.f)
+	{
+		bHookDone = true;
+		if (FParse::Param(FCommandLine::Get(), TEXT("DCShipView")))
+		{
+			SetShipView(PC, true);
+			FString Orbit;
+			if (FParse::Value(FCommandLine::Get(), TEXT("DCOrbit="), Orbit, false))
+			{
+				FString Y, P;
+				if (Orbit.Split(TEXT(","), &Y, &P)) { OrbitYaw = FCString::Atof(*Y); OrbitPitch = FCString::Atof(*P); }
+			}
+		}
+	}
+	if (bShipView && !bAllowed) { SetShipView(PC, false); }
+	if (!bShipView || !ShipCamera) { return; }
+	// The ship lies at the origin. The camera rides her heave but keeps a level horizon, a little above the sea whatever she does.
+	const FVector Aim = Director->DeckToWorld(FVector(200.f, 0.f, Director->SeaLevelZ + 900.f));
+	const FRotator Round(-OrbitPitch, OrbitYaw + 180.f, 0.f);
+	FVector At = Aim + Round.Vector() * OrbitDistance;
+	At.Z = FMath::Max(At.Z, Director->SeaLevelZ + 250.f);
+	const FVector Now = FMath::VInterpTo(ShipCamera->GetActorLocation(), At, DeltaSeconds, 6.f);
+	ShipCamera->SetActorLocationAndRotation(Now, (Aim - Now).Rotation());
+}
+
 void ADCPlayerCharacter::Look(APlayerController* PC)
 {
 	float DX = 0.f, DY = 0.f;
 	PC->GetInputMouseDelta(DX, DY);
+	if (bShipView)
+	{
+		// In the ship view the mouse swings the camera round her, and the wheel (of the mouse) brings it in or out.
+		OrbitYaw = FRotator::NormalizeAxis(OrbitYaw + DX * LookSensitivity * 10.f);
+		OrbitPitch = FMath::Clamp(OrbitPitch - DY * LookSensitivity * 10.f, 2.f, 60.f);
+		if (PC->WasInputKeyJustPressed(EKeys::MouseScrollUp)) { OrbitDistance = FMath::Max(2600.f, OrbitDistance * 0.87f); }
+		if (PC->WasInputKeyJustPressed(EKeys::MouseScrollDown)) { OrbitDistance = FMath::Min(12000.f, OrbitDistance / 0.87f); }
+		return;
+	}
 	FRotator Rot = PC->GetControlRotation();
 	Rot.Yaw += DX * LookSensitivity * 10.f;
 	Rot.Pitch = FMath::Clamp(FRotator::NormalizeAxis(Rot.Pitch) + DY * LookSensitivity * 10.f, -85.f, 85.f);
@@ -182,6 +241,7 @@ void ADCPlayerCharacter::EnterStation(APlayerController* PC, int32 Index)
 
 	if (ActiveType == EDCStationType::Cannons)
 	{
+		SetShipView(PC, false);
 		const float Sign = ActiveSide == EDCSide::Port ? -1.f : 1.f;
 		FActorSpawnParameters Params;
 		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -268,8 +328,8 @@ void ADCPlayerCharacter::TickHelm(APlayerController* PC, float DeltaSeconds)
 		Wheel->SetRelativeRotation(FQuat(WheelAxisInParent, FMath::DegreesToRadians(WheelAngle)) * WheelRestRotation);
 	}
 	if (PC->WasInputKeyJustPressed(EKeys::C)) { bClearHelmView = !bClearHelmView; }
-	Prompt = bClearHelmView ? TEXT("A/D  steer     C  wheel view     E  leave helm")
-		: TEXT("A/D  steer     C  clear view     E  leave helm");
+	Prompt = bClearHelmView ? TEXT("A/D  steer     C  wheel view     T  ship view     E  leave helm")
+		: TEXT("A/D  steer     C  clear view     T  ship view     E  leave helm");
 	if (PC->WasInputKeyJustPressed(EKeys::E)) { LeaveStation(PC); }
 }
 
@@ -394,7 +454,15 @@ void ADCPlayerCharacter::TickCameraFeel(float DeltaSeconds)
 		Shake * 2.2f * FMath::PerlinNoise1D(T * 17.f),
 		Shake * 1.6f * FMath::PerlinNoise1D(T * 15.f + 40.f),
 		Shake * 3.5f * FMath::PerlinNoise1D(T * 13.f + 80.f));
-	Camera->SetRelativeRotation(Jitter + Director->DeckSway);
+	// The captain's eye leans with the deck under him: a good part of her roll and pitch, taken in the
+	// direction he is looking, so the horizon tilts as she rolls and the rail rises and falls against it.
+	const FVector DeckUp = Director->DeckTransform.GetRotation().GetUpVector();
+	const FRotator Facing(0.f, GetControlRotation().Yaw, 0.f);
+	const float LeanRoll = FMath::RadiansToDegrees(FMath::Asin(FMath::Clamp(static_cast<float>(FVector::DotProduct(DeckUp, FRotationMatrix(Facing).GetUnitAxis(EAxis::Y))), -1.f, 1.f)));
+	const float LeanPitch = -FMath::RadiansToDegrees(FMath::Asin(FMath::Clamp(static_cast<float>(FVector::DotProduct(DeckUp, Facing.Vector())), -1.f, 1.f)));
+	static float LeanAmount = 0.6f; static bool bLeanRead = false;   // test hook: -DCDeckLean= (0 = level eye, 1 = locked to the deck)
+	if (!bLeanRead) { bLeanRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCDeckLean="), LeanAmount); }
+	Camera->SetRelativeRotation(Jitter + Director->DeckSway + FRotator(LeanPitch * LeanAmount, 0.f, LeanRoll * LeanAmount));
 	const FVector Eye = bClearHelmView
 		? GetActorTransform().InverseTransformPosition(GetActorLocation() + FVector(0.f, 320.f, 125.f))
 		: FVector(0.f, 0.f, 64.f);
