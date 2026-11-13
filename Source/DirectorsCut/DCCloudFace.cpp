@@ -147,9 +147,9 @@ void ADCCloudFace::Tick(float DeltaSeconds)
 		// It watches the ship: turned to her wherever she is, and bowed to look down at her. (The statue's head looks along +Y in its own space.)
 		const FQuat Q = FRotator(0.f, FMath::RadiansToDegrees(FMath::Atan2(-L.Y, -L.X)), 0.f).Quaternion() * FRotator(-HeadPitch, 0.f, 0.f).Quaternion() * FRotator(0.f, 270.f, 0.f).Quaternion();
 		HeadComp->SetWorldLocationAndRotation(L - Q.RotateVector(HeadCentre), Q);
-		static float Reach = 420000.f; static bool bReachRead = false;
+		static float Reach = 110000.f; static bool bReachRead = false;
 		if (!bReachRead) { bReachRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCFaceReach="), Reach); }
-		const float Want = FMath::Clamp((Reach - Dist) / 120000.f, 0.f, 1.f) * FMath::Clamp(Director->GetEnv().Mist / 0.5f, 0.f, 1.f) * (L.Z > BaseZ - 20000.f ? 1.f : 0.f);
+		const float Want = FMath::Clamp((Reach - Dist) / 40000.f, 0.f, 1.f) * FMath::Clamp(Director->GetEnv().Mist / 0.5f, 0.f, 1.f) * (L.Z > BaseZ - 20000.f ? 1.f : 0.f);
 		HeadShown = FMath::FInterpTo(HeadShown, Want, DeltaSeconds, 0.6f);
 		HeadFlash = FMath::Max(FMath::Max(0.f, HeadFlash - DeltaSeconds * 1.5f), Director->LightningNow);
 		const float Breath = 0.8f + 0.2f * FMath::Sin((Director->RideTime + Seed) * 0.45f);

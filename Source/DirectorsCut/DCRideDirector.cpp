@@ -825,6 +825,8 @@ void ADCRideDirector::SetupUDS()
 	}
 	// Off: at these resolutions the drops on the lens read as dirt on the picture, not as rain.
 	SkyFlag(UDSWeather, TEXT("Enable Screen Droplets"), false);
+	// In fog a flash already fills the air with light; the pack's extra bloom on top of it whites the picture out.
+	SkyNum(UDSWeather, TEXT("Lightning Flash Light Bloom Intensity"), 0.5);
 	SkyOverrides(UDSWeather, TEXT("DCWeather="));
 	UGameplayStatics::FinishSpawningActor(UDSWeather, FTransform::Identity);
 
@@ -931,13 +933,13 @@ void ADCRideDirector::TickUDS()
 			if (!UDSLightning.IsValid() && UDSWeather)
 			{
 				TInlineComponentArray<UDirectionalLightComponent*> Lights(UDSWeather);
-				for (UDirectionalLightComponent* L : Lights) { if (L->GetName().Contains(TEXT("Lightning"))) { UDSLightning = L; L->SetVolumetricScatteringIntensity(1.5f); } }
+				for (UDirectionalLightComponent* L : Lights) { if (L->GetName().Contains(TEXT("Lightning"))) { UDSLightning = L; L->SetVolumetricScatteringIntensity(1.f); } }
 			}
 			const float Struck = UDSLightning.IsValid() && UDSLightning->IsVisible() ? FMath::Clamp(UDSLightning->Intensity / 5.f, 0.f, 3.f) : 0.f;
 			if (Struck > 0.f && LightningNow <= 0.f && FParse::Param(FCommandLine::Get(), TEXT("DCLightningLog"))) { UE_LOG(LogDC, Log, TEXT("Lightning: flash light on (%.1f) at ride time %.2f"), UDSLightning->Intensity, RideTime); }
 			LightningNow = Struck;
 			FogGlow = FLinearColor(0.5f, 0.62f, 0.8f) * (0.35f * Env.SkyIntensity) * GlowScale;
-			FogFlare = FLinearColor(0.6f, 0.75f, 1.f) * (0.9f * Struck) * GlowScale;
+			FogFlare = FLinearColor(0.6f, 0.75f, 1.f) * (0.5f * Struck) * GlowScale;
 		}
 		// Looking into the sun on the open sea, strong scattering in the air whites the picture out; in the mist of the city it is what makes the shafts.
 		SkyNum(UDSSky, TEXT("Sun Volumetric Scattering Intensity"), FMath::Lerp(0.6, 3.0, K));

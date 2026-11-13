@@ -37,9 +37,9 @@ mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
 mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
 mat.set_editor_property("two_sided", False)
 # It hangs kilometres off in the sky: the sea fog must not paint it out.
-mat.set_editor_property("use_translucency_vertex_fog", False)
+mat.set_editor_property("use_translucency_vertex_fog", True)
 # The sky's clouds are laid over ordinary translucency; drawn in the later pass, the face stands in front of the cloud deck.
-mat.set_editor_property("translucency_pass", unreal.MaterialTranslucencyPass.MTP_AFTER_DOF)
+# (Tried: drawing it in the later pass to stand in front of the sky's cloud deck. The deck still covered it.)
 
 node = mel.create_material_expression(mat, unreal.MaterialExpressionCustom, -500, 300)
 node.set_editor_property("code", CODE)
