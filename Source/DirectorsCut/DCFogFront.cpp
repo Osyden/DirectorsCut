@@ -2,6 +2,7 @@
 #include "DCRideDirector.h"
 #include "DCTypes.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/LocalFogVolumeComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
@@ -127,6 +128,20 @@ void ADCFogFront::Tick(float DeltaSeconds)
 	Director->StormFrontX = 1500000.f * (1.f - T / ArrivalTime);
 	Director->StormFrontStrength = FMath::Clamp((ArrivalTime + 28.f - T) / 12.f, 0.f, 1.f);
 	Director->StormMouthRadius = 35000.f;
+	if (Director->bUDS)
+	{
+		if (Banks.Num() == 0) { BuildBanks(); }
+		// World space: the actor itself only moves when the old billows are shown.
+		const float Gone = FMath::Clamp((T - ArrivalTime - 30.f) / 6.f, 0.f, 1.f);
+		for (FBank& B : Banks)
+		{
+			if (ULocalFogVolumeComponent* C = B.Component.Get())
+			{
+				C->SetWorldLocation(FVector(Director->StormFrontX, 0.f, Director->SeaLevelZ) + B.Offset);
+				C->SetVisibility(Gone < 1.f);
+			}
+		}
+	}
 	const bool bVisible = bBillows && T < ArrivalTime + 35.f;
 	RootComponent->SetVisibility(bVisible, true);
 	if (!bVisible) { return; }
@@ -173,5 +188,45 @@ void ADCFogFront::Tick(float DeltaSeconds)
 		CloudShades[i]->SetVectorParameterValue(TEXT("Flash"), FLinearColor(0.55f * Flicker, 0.7f * Flicker, 1.f * Flicker, Opacity));
 		CloudShades[i]->SetVectorParameterValue(TEXT("Top"), (FLinearColor(0.5f, 0.3f, 0.2f) * Sun + FLinearColor(0.035f, 0.05f, 0.065f)) * Shades[i % 3]);
 		CloudShades[i]->SetVectorParameterValue(TEXT("Bottom"), FLinearColor(0.008f, 0.012f, 0.02f) * Shades[i % 3]);
+	}
+}
+
+void ADCFogFront::BuildBanks()
+{
+	// Local fog volumes: analytic, so a couple of dozen of them kilometres across cost next to nothing.
+	// Two ranks of overlapping domes, the nearer lower and ragged, the further tall, 24 km from end to end.
+	float Density = 1.2f, Tall = 1.f;
+	FParse::Value(FCommandLine::Get(), TEXT("DCWallDensity="), Density);
+	FParse::Value(FCommandLine::Get(), TEXT("DCWallHeight="), Tall);
+	// The front's banks and the city's drifts can all be in view at once.
+	if (IConsoleVariable* Max = IConsoleManager::Get().FindConsoleVariable(TEXT("r.LocalFogVolume.TileMaxInstanceCount"))) { Max->Set(64); }
+	FRandomStream Rng(977);
+	for (int32 Rank = 0; Rank < 2; ++Rank)
+	{
+		const int32 Count = Rank == 0 ? 13 : 9;
+		for (int32 i = 0; i < Count; ++i)
+		{
+			const float Across = (static_cast<float>(i) / (Count - 1) - 0.5f) * 2400000.f + Rng.FRandRange(-40000.f, 40000.f);
+			// A volume is always a sphere; its fog thins with height, so each is a wide low bank whose
+			// top fades out a hundred metres or so up (the nearer rank) or a few hundred (the further).
+			const float Radius = (Rank == 0 ? 260000.f : 380000.f) * Rng.FRandRange(0.8f, 1.3f);
+			const float Bow = FMath::Square(Across / 1200000.f) * 250000.f;
+			FBank B;
+			B.Offset = FVector(Radius * 0.8f + (Rank == 0 ? 0.f : 120000.f) + Bow + Rng.FRandRange(0.f, 40000.f), Across, 0.f);
+			ULocalFogVolumeComponent* C = NewObject<ULocalFogVolumeComponent>(this);
+			C->SetMobility(EComponentMobility::Movable);
+			// Not attached: the root is hidden with the old billows, and that would hide these too.
+			// The unit volume is a sphere of 5 m radius. Optical depth scales with the radius in
+			// metres, so the densities are small numbers.
+			C->SetWorldScale3D(FVector(Radius / 500.f));
+			C->RadialFogExtinction = 0.03f * Density;
+			C->HeightFogExtinction = 0.04f * Density;
+			C->HeightFogFalloff = (Rank == 0 ? 2500.f : 1200.f) * Rng.FRandRange(0.7f, 1.4f) / Tall;
+			C->FogPhaseG = 0.5f;
+			C->FogAlbedo = Rank == 0 ? FLinearColor(0.3f, 0.36f, 0.46f) : FLinearColor(0.12f, 0.15f, 0.2f);
+			C->RegisterComponent();
+			B.Component = C;
+			Banks.Add(B);
+		}
 	}
 }

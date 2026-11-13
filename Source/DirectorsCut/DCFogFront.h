@@ -43,6 +43,14 @@ protected:
 	UPROPERTY() TArray<TObjectPtr<UMaterialInstanceDynamic>> CloudShades;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> CoreMID;
 	UPROPERTY() TObjectPtr<ADCRideDirector> Director;
+	/** Under the sky pack: the foot of the front, a wall of fog banks on the water that travels with it and swallows the ship. */
+	struct FBank
+	{
+		TWeakObjectPtr<class ULocalFogVolumeComponent> Component;
+		FVector Offset;
+	};
+	TArray<FBank> Banks;
+	void BuildBanks();
 	float Flash = 0.f;
 	float NextFlashIn = 3.f;
 };

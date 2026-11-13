@@ -124,7 +124,7 @@ void ADCRideDirector::BuildDefaultPhases()
 	{
 		FDCEnvState& E = Add(EDCPhase::OpenSea, 0.f, 0.f);
 		E.FogColor = FLinearColor(0.75f, 0.55f, 0.4f); E.FogDensity = 0.0004f; E.CloudCover = 0.05f; E.CloudBase = 520000.f;
-		E.SunColor = FLinearColor(1.f, 0.86f, 0.68f); E.SunIntensity = 7.f; E.SunPitch = -20.f; E.SunYaw = 320.f; // low behind the port quarter, so the face of the storm front ahead is lit
+		E.SunColor = FLinearColor(1.f, 0.86f, 0.68f); E.SunIntensity = 7.f; E.SunPitch = -30.f; E.SunYaw = 262.f; // low on the port beam: the towers of the storm front ahead are lit on one side and dark on the other
 		E.SeaColor = FLinearColor(0.03f, 0.09f, 0.13f); E.SeaRoughness = 1.2f; E.ShipSpeed = 1000.f; E.WaveHeight = 70.f; E.Foam = 0.5f; E.Exposure = 1.0f;
 	}
 	{
@@ -132,7 +132,7 @@ void ADCRideDirector::BuildDefaultPhases()
 		// First the inside of the cloud front: close, dark, nothing to see.
 		E.FogColor = FLinearColor(0.1f, 0.14f, 0.18f); E.FogDensity = 0.035f; E.FogHeightFalloff = 0.002f; E.CloudCover = 1.f; E.CloudBase = 50000.f;
 		E.SunColor = FLinearColor(0.5f, 0.7f, 0.8f); E.SunIntensity = 0.6f; E.SunPitch = -20.f; E.SkyIntensity = 0.35f;
-		E.SeaColor = FLinearColor(0.01f, 0.03f, 0.035f); E.SeaRoughness = 2.5f; E.LightningRate = 5.f; E.ShipSpeed = 1500.f; E.WaveHeight = 130.f; E.Foam = 0.7f; E.Exposure = 0.6f;
+		E.SeaColor = FLinearColor(0.01f, 0.03f, 0.035f); E.SeaRoughness = 2.5f; E.Rain = 0.7f; E.LightningRate = 8.f; E.ShipSpeed = 1500.f; E.WaveHeight = 130.f; E.Foam = 0.7f; E.Exposure = 0.6f;
 	}
 	{
 		// Then it thins, and the drowned city stands in layered blue-grey haze out to a couple of kilometres:
@@ -410,6 +410,7 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 	// Under the pack an overcast sky already takes most of the sun away, so the dim phases are opened up.
 	PostProcess->Settings.AutoExposureBias = Env.Exposure + (bUDS ? 2.2f * (1.f - FMath::Clamp(Env.SunIntensity / 7.f, 0.f, 1.f)) : 0.f) + 7.f * WhiteOut * WhiteOut;
 	if (bUDS) { TickUDS(); }
+	TickWetness(DeltaSeconds);
 
 	// Sea motion: the world rocks, the ship does not.
 	const float T = RideTime;
@@ -544,7 +545,7 @@ void ADCRideDirector::AddLamp(const FVector& Location)
 	Lamp->SetLightColor(FLinearColor(1.f, 0.62f, 0.28f));
 	Lamp->SetAttenuationRadius(2600.f);
 	// Each lantern lights the mist round it: a warm halo in the fog.
-	Lamp->SetVolumetricScatteringIntensity(0.8f);
+	Lamp->SetVolumetricScatteringIntensity(0.45f);
 	Lamp->SetSourceRadius(12.f);
 	Lamp->SetIntensity(0.f);
 	// No shadows from the lanterns: four point lights re-rendering the whole rig every frame cost more than they showed.
@@ -590,6 +591,53 @@ void ADCRideDirector::AdoptLampGlass(AActor* Ship)
 		}
 	}
 	UE_LOG(LogDC, Log, TEXT("Lanterns: %d glass panes lit"), LampGlows.Num());
+
+	// Wet weather: every ship material built on the pack's master (it has a roughness range) gets one
+	// dynamic instance, shared by all the parts that use it, which TickWetness drives.
+	TMap<UMaterialInterface*, UMaterialInstanceDynamic*> Shared;
+	for (UStaticMeshComponent* Part : Parts)
+	{
+		for (int32 s = 0; s < Part->GetNumMaterials(); ++s)
+		{
+			UMaterialInterface* M = Part->GetMaterial(s);
+			if (!M || M->IsA<UMaterialInstanceDynamic>()) { continue; }
+			UMaterialInstanceDynamic*& MID = Shared.FindOrAdd(M);
+			if (!MID)
+			{
+				float RoughMin = 0.f, RoughMax = 0.f;
+				if (!M->GetScalarParameterValue(FName(TEXT("2_Roughness_max")), RoughMax) || !M->GetScalarParameterValue(FName(TEXT("2_Roughness_min")), RoughMin)) { Shared.Remove(M); continue; }
+				MID = UMaterialInstanceDynamic::Create(M, this);
+				FWetMaterial W;
+				W.MID = MID; W.RoughMin = RoughMin; W.RoughMax = RoughMax; W.Bright = 1.f; W.Spec = 0.5f;
+				M->GetScalarParameterValue(FName(TEXT("1_Brightness")), W.Bright);
+				M->GetScalarParameterValue(FName(TEXT("Specular_Amount")), W.Spec);
+				WetMaterials.Add(W);
+				WetMIDs.Add(MID);
+			}
+			Part->SetMaterial(s, MID);
+		}
+	}
+	UE_LOG(LogDC, Log, TEXT("Ship: %d materials made wettable"), WetMaterials.Num());
+}
+
+void ADCRideDirector::TickWetness(float DeltaSeconds)
+{
+	// Rain soaks the ship in a few seconds, and so does the spray in the tunnel and the maelstrom; it dries slowly.
+	float Target = FMath::Clamp(FMath::Max3(Env.Rain * 2.5f, Env.Tube, Env.Whirl * 0.8f), 0.f, 1.f);
+	FParse::Value(FCommandLine::Get(), TEXT("DCWet="), Target);
+	Wetness = FMath::FInterpTo(Wetness, Target, DeltaSeconds, Target > Wetness ? 0.35f : 0.04f);
+	if (FMath::Abs(Wetness - WetApplied) < 0.01f) { return; }
+	WetApplied = Wetness;
+	for (const FWetMaterial& W : WetMaterials)
+	{
+		if (UMaterialInstanceDynamic* MID = W.MID.Get())
+		{
+			MID->SetScalarParameterValue(FName(TEXT("2_Roughness_min")), FMath::Lerp(W.RoughMin, FMath::Min(W.RoughMin, 0.07f), Wetness));
+			MID->SetScalarParameterValue(FName(TEXT("2_Roughness_max")), FMath::Lerp(W.RoughMax, FMath::Min(W.RoughMax, 0.36f), Wetness));
+			MID->SetScalarParameterValue(FName(TEXT("1_Brightness")), W.Bright * FMath::Lerp(1.f, 0.68f, Wetness));
+			MID->SetScalarParameterValue(FName(TEXT("Specular_Amount")), FMath::Lerp(W.Spec, FMath::Max(W.Spec, 0.9f), Wetness));
+		}
+	}
 }
 
 void ADCRideDirector::BuildBolt()
@@ -642,7 +690,40 @@ namespace
 		if (!Obj) { return; }
 		if (FDoubleProperty* P = FindFProperty<FDoubleProperty>(Obj->GetClass(), Name)) { P->SetPropertyValue_InContainer(Obj, Value); }
 		else if (FIntProperty* I = FindFProperty<FIntProperty>(Obj->GetClass(), Name)) { I->SetPropertyValue_InContainer(Obj, static_cast<int32>(Value)); }
+		else if (FByteProperty* By = FindFProperty<FByteProperty>(Obj->GetClass(), Name)) { By->SetPropertyValue_InContainer(Obj, static_cast<uint8>(Value)); }
 		else { UE_LOG(LogDC, Warning, TEXT("UDS: no number '%s' on %s"), Name, *Obj->GetClass()->GetName()); }
+	}
+	/** Test hook: -DCSky="Name=1.5;Other Name=0" (and -DCWeather=, -DCStorm=) sets pack variables by display name before the actor finishes spawning. */
+	void SkyOverrides(UObject* Obj, const TCHAR* Switch)
+	{
+		FString All;
+		if (!Obj || !FParse::Value(FCommandLine::Get(), Switch, All, false)) { return; }
+		TArray<FString> Pairs;
+		All.ParseIntoArray(Pairs, TEXT(";"));
+		for (const FString& Pair : Pairs)
+		{
+			FString Name, Value;
+			if (!Pair.Split(TEXT("="), &Name, &Value)) { continue; }
+			if (FBoolProperty* B = FindFProperty<FBoolProperty>(Obj->GetClass(), *Name)) { B->SetPropertyValue_InContainer(Obj, Value.ToBool() || Value == TEXT("1")); }
+			else { SkyNum(Obj, *Name, FCString::Atod(*Value)); }
+		}
+	}
+	/** Calls a blueprint function by its display name, filling its first vector parameter (if it has one). */
+	void SkyCall(UObject* Obj, const TCHAR* Name, const FVector& V = FVector::ZeroVector)
+	{
+		if (!Obj) { return; }
+		UFunction* Fn = Obj->FindFunction(FName(Name));
+		if (!Fn) { UE_LOG(LogDC, Warning, TEXT("UDS: no function '%s' on %s"), Name, *Obj->GetClass()->GetName()); return; }
+		uint8* Params = static_cast<uint8*>(FMemory_Alloca(FMath::Max<int32>(Fn->ParmsSize, 1)));
+		FMemory::Memzero(Params, Fn->ParmsSize);
+		for (TFieldIterator<FProperty> It(Fn); It && It->HasAnyPropertyFlags(CPF_Parm); ++It) { It->InitializeValue_InContainer(Params); }
+		for (TFieldIterator<FProperty> It(Fn); It && It->HasAnyPropertyFlags(CPF_Parm); ++It)
+		{
+			FStructProperty* SP = CastField<FStructProperty>(*It);
+			if (SP && SP->Struct == TBaseStructure<FVector>::Get()) { *SP->ContainerPtrToValuePtr<FVector>(Params) = V; break; }
+		}
+		Obj->ProcessEvent(Fn, Params);
+		for (TFieldIterator<FProperty> It(Fn); It && It->HasAnyPropertyFlags(CPF_Parm); ++It) { It->DestroyValue_InContainer(Params); }
 	}
 	void SkyFlag(UObject* Obj, const TCHAR* Name, bool bValue)
 	{
@@ -680,6 +761,10 @@ void ADCRideDirector::SetupUDS()
 	// The director keeps its own fixed exposure per phase, so dark scenes stay dark.
 	SkyFlag(UDSSky, TEXT("Apply Exposure Settings"), false);
 	SkyNum(UDSSky, TEXT("Time of Day"), 1300.0);
+	// A low cloud base and a deep layer: the clouds stand up as towers instead of lying as a flat deck.
+	SkyNum(UDSSky, TEXT("Bottom Altitude"), 0.2);
+	SkyNum(UDSSky, TEXT("Layer Height Scale"), 4.0);
+	SkyOverrides(UDSSky, TEXT("DCSky="));
 	UGameplayStatics::FinishSpawningActor(UDSSky, FTransform::Identity);
 
 	UDSWeather = GetWorld()->SpawnActorDeferred<AActor>(WeatherClass, FTransform::Identity);
@@ -688,10 +773,28 @@ void ADCRideDirector::SetupUDS()
 		SkyFlag(UDSWeather, Name, true);
 	}
 	SkyFlag(UDSWeather, TEXT("Enable Screen Droplets"), true);
+	SkyOverrides(UDSWeather, TEXT("DCWeather="));
 	UGameplayStatics::FinishSpawningActor(UDSWeather, FTransform::Identity);
 
+	// The storm front: the pack's radial storm, a towering mass of cloud with rain, fog and lightning
+	// under it, which stands on the horizon ahead and closes on the ship (TickUDS moves it).
+	if (!FParse::Param(FCommandLine::Get(), TEXT("DCNoStorm")))
+	{
+		if (UClass* StormClass = LoadClass<AActor>(nullptr, TEXT("/Game/UltraDynamicSky/Blueprints/Weather_Effects/Radial_Storm.Radial_Storm_C"), nullptr, LOAD_NoWarn | LOAD_Quiet))
+		{
+			FParse::Value(FCommandLine::Get(), TEXT("DCStormRadius="), StormRadius);
+			const FTransform At(FVector(1500000.f + StormRadius, 0.f, SeaLevelZ));
+			UDSStorm = GetWorld()->SpawnActorDeferred<AActor>(StormClass, At);
+			SkyNum(UDSStorm, TEXT("Outer Radius"), StormRadius);
+			SkyNum(UDSStorm, TEXT("Lightning Spawn Rate"), 1.5);
+			SkyNum(UDSStorm, TEXT("Cloud Altitude Offset"), -1.0);
+			SkyOverrides(UDSStorm, TEXT("DCStorm="));
+			UGameplayStatics::FinishSpawningActor(UDSStorm, At);
+		}
+	}
+
 	bUDS = true;
-	UE_LOG(LogDC, Log, TEXT("Sky: Ultra Dynamic Sky in use"));
+	UE_LOG(LogDC, Log, TEXT("Sky: Ultra Dynamic Sky in use%s"), UDSStorm ? TEXT(", with its radial storm as the front") : TEXT(""));
 }
 
 void ADCRideDirector::TickUDS()
@@ -711,6 +814,13 @@ void ADCRideDirector::TickUDS()
 	SkyNum(UDSWeather, TEXT("Material Wetness"), FMath::Clamp(Env.Rain * 3.0, 0.0, 1.0));
 	SkyNum(UDSSky, TEXT("Sun Light Intensity"), Env.SunIntensity * 0.75 + 2.0);
 	SkyNum(UDSSky, TEXT("Sky Light Intensity"), Env.SkyIntensity);
+	if (UDSStorm)
+	{
+		// Its edge is at the front's face. Once it has closed over the ship it draws off astern at
+		// more than a kilometre a second, so the drowned city beyond it stands in broken light.
+		const float Face = StormFrontX - FMath::Max(0.f, RideTime - 66.f) * 130000.f;
+		SkyCall(UDSStorm, TEXT("Set Storm Location"), FVector(Face + StormRadius * 0.85f, 0.f, SeaLevelZ));
+	}
 }
 
 void ADCRideDirector::SetupOcean()

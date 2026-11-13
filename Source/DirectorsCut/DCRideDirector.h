@@ -76,6 +76,13 @@ protected:
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> BoltMID;
 	UPROPERTY() TArray<TObjectPtr<class UPointLightComponent>> Lamps;
 	UPROPERTY() TArray<TObjectPtr<UMaterialInstanceDynamic>> LampGlows;
+	/** The ship's own materials, made wettable: rain and spray darken the timber and give it a sheen. */
+	struct FWetMaterial { TWeakObjectPtr<UMaterialInstanceDynamic> MID; float RoughMin; float RoughMax; float Bright; float Spec; };
+	TArray<FWetMaterial> WetMaterials;
+	UPROPERTY() TArray<TObjectPtr<UMaterialInstanceDynamic>> WetMIDs;
+	float Wetness = 0.f;
+	float WetApplied = -1.f;
+	void TickWetness(float DeltaSeconds);
 	FVector2D SeaScroll = FVector2D::ZeroVector;
 
 public:
@@ -123,6 +130,9 @@ protected:
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> CloudMID;
 	UPROPERTY() TObjectPtr<AActor> UDSSky;
 	UPROPERTY() TObjectPtr<AActor> UDSWeather;
+	/** The sky pack's travelling storm: the front on the horizon that the ship sails into. */
+	UPROPERTY() TObjectPtr<AActor> UDSStorm;
+	float StormRadius = 1400000.f;
 	void SetupUDS();
 	void SetupOcean();
 	UPROPERTY() TObjectPtr<AActor> Ocean;

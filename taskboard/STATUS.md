@@ -2,6 +2,19 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 03:50 — Storm front, fog banks, rain and wet deck under the sky pack (set 26)
+
+Review set: `taskboard/review/26-storm-front-fog-banks-wet-deck/` (`a_bow_*` the front coming on, `b_helm_*` the voyage from the helm to 210 s, `c_deck_*` the wet deck).
+
+- **Storm front:** the sky pack's radial storm (14 km radius) stands on the horizon ahead and closes on the ship; the cloud layer now has a low base and four times the depth, so it reads as towers rather than a flat deck. A skirt of fog banks (engine local fog volumes) travels with its foot and swallows the ship at 60 s. After it has passed, the storm draws off astern so Atlantis keeps its low sun and shafts.
+- **Inside the front (60 to 78 s):** dark, heavy rain, lightning, lanterns glowing in the murk.
+- **Banked fog in Atlantis:** sixteen low drifts of fog lie on the water among the ruins and catch the light.
+- **Wet deck:** the ship's own materials are now driven by rain and spray (roughness down, timber darker), so the deck gleams under the lanterns. Dries slowly. `-DCWet=1` forces it.
+- **Sun on the open sea** moved to the port beam so the front has a lit and a shadowed side.
+- **Frame rate** (720p DLSS, editor build): open sea 115 to 150, inside the front 120 to 138, Atlantis 89 to 100. One frame at 125 s measured 50 fps; not yet explained (suspect a lightning flash or a hitch), to be checked.
+- Not done: rain splashes on the deck. The pack's splashes do not appear on the ship in any of its three collision modes.
+- New test switches: `-DCSky=`, `-DCWeather=`, `-DCStorm=` ("Name=value;Name=value" sets pack variables), `-DCNoStorm`, `-DCStormRadius=`, `-DCWallDensity=`, `-DCWallHeight=`, `-DCNoBanks`, `-DCBankDensity=`. `Tools/pyx.sh` runs plain Python with the engine's interpreter.
+
 ## Thu 12 Nov 22:47 — Kaiju import repaired; performance, lantern and sanctuary passes (set 25)
 
 Review set: `taskboard/review/25-performance-lanterns-sanctuaries/` (`a_bow_*`, `b_helm_*`, one quarterdeck view).

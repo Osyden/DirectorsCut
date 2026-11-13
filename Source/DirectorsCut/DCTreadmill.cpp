@@ -1,4 +1,5 @@
 #include "DCTreadmill.h"
+#include "Components/LocalFogVolumeComponent.h"
 #include "DCRideDirector.h"
 #include "DCHazards.h"
 #include "DCCrew.h"
@@ -561,6 +562,38 @@ void ADCTreadmill::SpawnAtlantis()
 			AActor* Built = P.Kind == 5 ? DCRuins::SpawnGate(World, P.Scale) : P.Kind == 6 ? DCRuins::SpawnTemple(World, P.Scale) : DCRuins::SpawnArch(World, P.Kind, P.Scale);
 			// A gate stands across the course (radius 0: it is sailed through, not pushed aside).
 			Register(Built, FVector(P.X, P.Y, SeaZ), P.Kind == 5 ? 0.f : 2000.f, false, 1.f, P.Yaw, false);
+		}
+	}
+
+	// Fog banks lying on the water among the ruins: local fog volumes, each a low wide drift a couple
+	// of hundred metres across, so that the city stands in mist at several depths and the low sun
+	// rakes across the tops of the banks. Radius 0: the ship sails through them.
+	if (!FParse::Param(FCommandLine::Get(), TEXT("DCNoBanks")))
+	{
+		float BankDensity = 1.f;
+		FParse::Value(FCommandLine::Get(), TEXT("DCBankDensity="), BankDensity);
+		FRandomStream Rng(613);
+		for (int32 i = 0; i < 16; ++i)
+		{
+			const float X = 45000.f + i * 19000.f + Rng.FRandRange(-5000.f, 5000.f);
+			const float Side = (i % 3 == 0) ? 0.f : ((i % 2) ? 1.f : -1.f);
+			const float Y = Side * Rng.FRandRange(9000.f, 42000.f) + Rng.FRandRange(-4000.f, 4000.f);
+			const float Radius = Rng.FRandRange(9000.f, 24000.f);
+			const float Thick = Rng.FRandRange(1200.f, 3500.f);
+			FActorSpawnParameters Params;
+			Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			AActor* Bank = World->SpawnActor<AActor>(AActor::StaticClass(), FTransform::Identity, Params);
+			ULocalFogVolumeComponent* C = NewObject<ULocalFogVolumeComponent>(Bank);
+			C->SetMobility(EComponentMobility::Movable);
+			Bank->SetRootComponent(C);
+			C->SetWorldScale3D(FVector(Radius / 500.f));
+			C->RadialFogExtinction = 0.1f * BankDensity;
+			C->HeightFogExtinction = 0.16f * BankDensity;
+			C->HeightFogFalloff = 100.f * Radius / Thick;
+			C->FogPhaseG = 0.6f;
+			C->FogAlbedo = FLinearColor(0.78f, 0.84f, 0.92f);
+			C->RegisterComponent();
+			Register(Bank, FVector(X, Y, SeaZ), 0.f, false, 1.f, 0.f, false);
 		}
 	}
 
