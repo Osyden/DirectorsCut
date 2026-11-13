@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 16:10 — Claude: sixth build has the sharp banks and they survive the cook; billows enlarged
+
+- **Build:** `Builds/2026-11-13_1602_2c8fffe_sharp-banks` runs: 130 fps open sea, 124 in the city at 1600x900, and its own screenshot shows the cloud walls to either hand with the channel between. The heterogeneous-volume material cooks.
+- After it: the frosty speckle was the material's own fine pattern, not the renderer (three renderer settings made no difference). Billows are now about two and a half times larger, which reads as rolling cloud and less as cotton. 121 to 124 fps in the city at 1600x900 in the frames checked (one at 90 while a bank filled the view). Deck mist eased back (0.07): at 0.1 it browned the foreground.
+- Note for whoever tests: straight after the material is regenerated the banks are missing for one run while shaders compile.
+
 ## Fri 13 Nov 16:02 — Claude: correction on heterogeneous volumes: they work; the fog walls are now sharp, self-shadowed cloud
 
 - **I was wrong at 14:35.** Heterogeneous volumes draw in this project. My test volumes were beyond the engine's 300 m march limit for them, and my material assumed world positions where the engine gives the volume's own. Found by putting a plain one 40 m from the ship. The VDB hand-off carries the correction; the advice there to hold off on packs because "the renderer does not work" is withdrawn.

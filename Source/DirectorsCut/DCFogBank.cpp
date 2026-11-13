@@ -69,7 +69,7 @@ ADCFogBank* ADCFogBank::Spawn(UWorld* World, const FDCFogBankDesc& InDesc, int32
 		Bank->HeroMID->SetVectorParameterValue(TEXT("Tint"), FLinearColor(0.3f, 0.34f, 0.42f));
 		Bank->HeroMID->SetVectorParameterValue(TEXT("Radii"), FLinearColor(Res * 0.5f, Res * 0.5f, Res * 0.5f, 0.f));
 		Bank->HeroMID->SetVectorParameterValue(TEXT("Unit"), FLinearColor(Unit.X, Unit.Y, Unit.Z, 0.f));
-		Bank->HeroMID->SetScalarParameterValue(TEXT("Size"), InDesc.Size * 1.5f);
+		Bank->HeroMID->SetScalarParameterValue(TEXT("Size"), InDesc.Size * 4.f);
 		Bank->HeroMID->SetScalarParameterValue(TEXT("Erode"), InDesc.Erode);
 		Bank->HeroMID->SetVectorParameterValue(TEXT("Drift"), FLinearColor(InDesc.Drift.X, InDesc.Drift.Y, InDesc.Drift.Z, 0.f));
 		Bank->HeroMID->SetScalarParameterValue(TEXT("Seed"), static_cast<float>(Seed % 97));

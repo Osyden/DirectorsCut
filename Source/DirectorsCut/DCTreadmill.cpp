@@ -881,7 +881,7 @@ void ADCTreadmill::SpawnAtlantis()
 		FDCFogBankDesc W;
 		W.bOnDeck = true;
 		W.Radii = FVector(6000.f, 3000.f, 900.f);
-		W.Density = 0.1f;
+		W.Density = 0.07f;
 		W.Size = 1400.f;
 		W.Erode = 0.3f;
 		W.Wisp = 0.5f;

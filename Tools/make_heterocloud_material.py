@@ -33,7 +33,7 @@ float r = length(lp);
 float body = saturate(1.0 - r);
 body = body * body * (3.0 - 2.0 * body);
 float3 q = (LP * Unit.xyz - Drift.xyz * T) / Size + Seed * 0.173;
-float n = NZ(q) * 0.62 + NZ(q * 2.63 + 0.37) * 0.3 + NZ(q * 6.1 + 0.71) * 0.08;
+float n = NZ(q) * 0.6 + NZ(q * 2.63 + 0.37) * 0.28 + NZ(q * 6.9 + 0.71) * 0.12;
 float d = saturate(body * (1.0 + 1.6 * Erode) - n * 1.9 * Erode);
 d = smoothstep(0.0, 0.6, d);
 // Nothing below the bottom fifth of the box: a flat base, as a bank lying on the sea has.
