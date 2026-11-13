@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "DCMaelstromWaterBridge.h"
 #include "DCMaelstrom.generated.h"
 
 class UProceduralMeshComponent;
@@ -9,6 +10,7 @@ class UMaterialInstanceDynamic;
 class UPostProcessComponent;
 class ADCRideDirector;
 class ADCLeviathan;
+class ADCMaelstromAtmosphere;
 
 /** A self-contained encounter, expressed in a single basin coordinate system. */
 UCLASS()
@@ -25,12 +27,17 @@ public:
 	float GetElapsed() const { return Elapsed; }
 	FTransform GetArenaTransform() const;
 	float SampleSurfaceWorld(const FVector& Position) const;
+	float GetRimRadius(float Angle) const;
+	float GetRimDrop(float Angle) const;
+	float GetRimJoin(float Angle) const;
+	float GetOverflowAmount(float Angle) const;
 
 	UPROPERTY(EditAnywhere) float Radius = 160000.f;
 	UPROPERTY(EditAnywhere) float Depth = 90000.f;
 
 private:
 	float HeightAt(const FVector2D& Point, bool bWaves = true) const;
+	float RimElevation(float Angle) const;
 	float RimGroundHeight(float R, float Angle) const;
 	void BuildBasin();
 	void BuildTunnel();
@@ -47,15 +54,15 @@ private:
 	UPROPERTY(VisibleAnywhere) TObjectPtr<USceneComponent> Arena;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Basin;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Falls;
-	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Mist;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> RimLand;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Tunnel;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UPostProcessComponent> Exposure;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> WaterMID;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> TunnelMID;
-	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> SprayMID;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> CascadeMID;
+	FDCMaelstromWaterBridge WaterBridge;
 	UPROPERTY() TObjectPtr<ADCLeviathan> Boss;
+	UPROPERTY() TObjectPtr<ADCMaelstromAtmosphere> Atmosphere;
 	UPROPERTY() TArray<TObjectPtr<AActor>> Landmarks;
 	TWeakObjectPtr<AActor> Ocean;
 	TWeakObjectPtr<AActor> LegacyWeather;

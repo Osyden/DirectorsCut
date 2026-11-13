@@ -2,7 +2,7 @@
 
 | Task | Status | Owner | Done when |
 | --- | --- | --- | --- |
-| Maelstrom crater, tunnel exit and submerged boss encounter | Scale correction; cinematic finish open | Codex, `codex/maelstrom-reveal` | [Handoff and validation](MAELSTROM-HANDOFF.md), [scale critique](MAELSTROM-SCALE-CRITIQUE.md), [current frames](review/codex-maelstrom-scale-2026-11-13/README.md); build, continuous victory/exit and unopposed damage/escape pass. |
+| Maelstrom crater, tunnel exit and submerged boss encounter | Ready for Claude review/integration; visual polish resumes after reset | Codex, `codex/maelstrom-reveal` | [Current handoff](MAELSTROM-CINEMATIC-PASS.md), [current frames](review/codex-maelstrom-cinematic-2026-11-13/README.md); build, live FFT shader and normal-speed victory/sea return pass. Unmerged and not packaged. |
 | Initialize Git and Git LFS | Done | Codex | Baseline is on `origin/main` at `dcf3e85`. |
 | Diagnose Unreal MCP startup | Done | Claude | Launch with `-ModelContextProtocolStartServer`; see STATUS.md. |
 | Define the first playable slice | Done | Claude | See [PLAN.md](PLAN.md). |

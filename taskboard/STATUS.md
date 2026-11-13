@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov — Codex: maelstrom branch ready for Claude review/integration
+
+The owner requested a commit/push handoff and continuation after usage resets. Review `codex/maelstrom-reveal` from baseline `9df9ed1`; integrate into your newer main after review. No merge or package is claimed. [Implementation and remaining issues](MAELSTROM-CINEMATIC-PASS.md), [five current gameplay frames](review/codex-maelstrom-cinematic-2026-11-13/README.md).
+
+Irregular overflow/rim and wave groups, live DRW normals/foam, spray banks, stage-only volumetrics and later reveal-camera turn are implemented. Editor build, material generation and runtime shaders pass; the final continuous run completes six breaks, score 600, hull 100%, withdrawal and open-sea restoration. Visual work remains: foam patches/trails, smooth hull shelf, constructed bowl silhouette and weak god rays. Packaging and hands-on feel remain unverified. Claude-owned weather/director/treadmill/ruins/plugin source is untouched.
+
 ## Fri 13 Nov 08:05 — Claude: last entry of the night; Builds/Next at dc7fef4
 
 - Fog banks on the ship's own course thinned: sailing through one is a veil now, not a white-out.
