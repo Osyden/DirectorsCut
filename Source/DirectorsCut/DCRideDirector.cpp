@@ -866,6 +866,15 @@ void ADCRideDirector::TickOcean()
 	if (FFloatProperty* P = FindFProperty<FFloatProperty>(OceanWaves->GetClass(), TEXT("Choppiness"))) { P->SetPropertyValue_InContainer(OceanWaves.Get(), FMath::GetMappedRangeValueClamped(FVector2f(15.f, 35.f), FVector2f(1.f, 1.5f), Wind)); }
 	// The waves run from the bow aft, which reads as the ship making way through them.
 	if (FStructProperty* P = FindFProperty<FStructProperty>(OceanWaves->GetClass(), TEXT("WindDirection"))) { *P->ContainerPtrToValuePtr<FVector2D>(OceanWaves.Get()) = FVector2D(-1.0, 0.2); }
+	// The sea streams aft past the hull. The plugin's waves are fixed to the world and the ship stands
+	// still, so the wave shader is patched (Tools/patch_drw_current.py) to shift the whole field; it
+	// does so when the swell is off and its direction is exactly this. Without the patch this does nothing.
+	{
+		float Sign = 1.f;   // +1 streams aft (measured with Tools/flow.ps1), -1 forward, 0 off
+		FParse::Value(FCommandLine::Get(), TEXT("DCCurrent="), Sign);
+		if (FFloatProperty* P = FindFProperty<FFloatProperty>(OceanWaves->GetClass(), TEXT("SwellHeight"))) { P->SetPropertyValue_InContainer(OceanWaves.Get(), 0.f); }
+		if (FStructProperty* P = FindFProperty<FStructProperty>(OceanWaves->GetClass(), TEXT("SwellDirection"))) { *P->ContainerPtrToValuePtr<FVector2D>(OceanWaves.Get()) = Sign == 0.f ? FVector2D(1.0, 1.0) : FVector2D(Sign, 0.0123).GetSafeNormal(); }
+	}
 
 	// Calls one of the plugin's "set ocean data" functions with an asset and a blend time.
 	auto Apply = [this, Library, bFirst](UFunction* Call, UObject* Asset)

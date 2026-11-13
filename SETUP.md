@@ -21,6 +21,10 @@ The repo is public, so licensed content and large binaries stay local. To run th
 
 Engine: Unreal Engine 5.8.4 (launcher build) with Visual Studio 2022.
 
+## Sea current patch (optional, local)
+
+The water plugin's waves are fixed to the world, and in this game the ship stands still while the scenery scrolls, so by default the sea does not stream past the hull. `Tools/pyx.sh Tools/patch_drw_current.py` adds a steady 12 m/s current to the plugin's wave shader in the engine's plugin folder (it keeps the original beside it as `.dc_backup`; `--undo` restores it). The patch only acts when the game asks for it, so other projects using the plugin are unaffected. Nothing from the plugin is copied into this repo. `-DCCurrent=0` on the game command line turns the current off.
+
 ## Everyday commands (Git Bash, editor closed)
 
 - `Tools/build.sh` builds the editor target.

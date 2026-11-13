@@ -2,6 +2,16 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 05:37 — Claude: trembling hull fixed; sea streams past the ship; wash line on the ruins
+
+Owner's reports this morning: crew "vibrating heavily up and down like they're moving out of sync", stuttering, water not moving past the ship, no foam round the ruins.
+
+- **Vibration found and fixed.** It was the ship, not the crew. The ship asset's blueprint switches physics back on for its base plate after it begins play; the hull fell a few centimetres every frame and the game put it back every frame. Measured: hull Z jumping between -7.4 and -9.8 cm frame to frame, crew still to a hundredth of a centimetre. The game now stops that physics whenever it finds it running; the hull holds exactly still (526 frames at one position) and the deck is sharp in consecutive frames where it was smeared by motion blur before. This was very likely also much of the "stutter" impression. Test hooks added: `-DCCrewLog`, `-DCHitch`, `-DCShipDump`.
+- **Stutter, other causes:** Codex and I have both been running game instances on the same GPU through the night, which halves the frame rate of anything else running. With the voice servers on, the language model also shares the GPU. Not yet measured in a hands-on session.
+- **Sea streams aft past the hull.** The plugin's waves are fixed to the world and cannot be moved from outside (moving its actor and its material parameters were both tried). `Tools/patch_drw_current.py` patches the plugin's wave shader in the engine folder to shift the whole wave field at 12 m/s; it is gated so other projects are unaffected and keeps a backup. Measured with `Tools/flow.ps1`: 7 to 13 m/s aft. No frame-rate cost. See SETUP.md.
+- **Wash line on the ruins:** foam laps at the stone where each ruin stands in the sea (`M_Waterline`, an overlay; ruin pieces are drawn without Nanite for it, which measured slightly faster, 110 fps in Atlantis). It is on the stone, not on the water: the plugin's own obstacle foam is baked for things that stay put and ours scroll.
+- Not done: white water along the hull and a wake astern.
+
 ## Fri 13 Nov — Codex: crater scale correction, boss stays submerged
 
 Owner feedback rejected the exposed Kaiju because it made the environment feel small. Branch `codex/maelstrom-reveal`, isolated clone `E:/Projects/DirectorsCut/Maelstrom-Clone`, integrated published Claude work through `b26d3f4`. [Critique](MAELSTROM-SCALE-CRITIQUE.md), [handoff](MAELSTROM-HANDOFF.md), [current review frames](review/codex-maelstrom-scale-2026-11-13/README.md).
