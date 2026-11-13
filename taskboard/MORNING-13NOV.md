@@ -4,7 +4,7 @@ What changed overnight, what to play, and what I could not check without a perso
 
 ## Play this build
 
-`E:\projects\directorscut\Builds\Next\Windows\DirectorsCut.exe` (source `885d796`, voice sidecars included). `Builds\Windows` is still the old 12 Nov build; I have not replaced it.
+`E:\projects\directorscut\Builds\Next\Windows\DirectorsCut.exe` (source `c000aea`, voice sidecars included). `Builds\Windows` is still the old 12 Nov build; I have not replaced it.
 
 Measured in that package at 1280x720: about 115 fps on the open sea, 100 in the storm front, 90 in Atlantis. At 4K (editor build, DLSS 67%): 84 to 102.
 

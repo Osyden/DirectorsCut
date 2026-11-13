@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 07:48 — Claude: Builds/Next at c000aea, verified at normal speed
+
+- `Builds/Next` rebuilt with the front-entry changes. Normal-speed run of the package to 100 s: 124 fps open sea, 131 inside the front, 93 in Atlantis (720p); no slow frame at all through the entry into the front (58 to 64 s), only the three test screenshots.
+- Atlantis lighting checked in a normal-speed continuous editor run to 150 s: warm low sun and mist as in the seek tests. At triple speed it looks much darker because the sky pack's weather lags behind; that is a test artefact, not the game.
+
 ## Fri 13 Nov 07:25 — Claude: entering the front reads properly in a continuous run
 
 Seen in a normal continuous run (the seek tests had hidden it): the city popped up close by in thin haze as the fog began, and the dark took seven seconds to arrive.
