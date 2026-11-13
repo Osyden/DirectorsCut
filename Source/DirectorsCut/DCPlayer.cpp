@@ -460,9 +460,12 @@ void ADCPlayerCharacter::TickCameraFeel(float DeltaSeconds)
 	const FRotator Facing(0.f, GetControlRotation().Yaw, 0.f);
 	const float LeanRoll = FMath::RadiansToDegrees(FMath::Asin(FMath::Clamp(static_cast<float>(FVector::DotProduct(DeckUp, FRotationMatrix(Facing).GetUnitAxis(EAxis::Y))), -1.f, 1.f)));
 	const float LeanPitch = -FMath::RadiansToDegrees(FMath::Asin(FMath::Clamp(static_cast<float>(FVector::DotProduct(DeckUp, Facing.Vector())), -1.f, 1.f)));
-	static float LeanAmount = 0.6f; static bool bLeanRead = false;   // test hook: -DCDeckLean= (0 = level eye, 1 = locked to the deck)
+	static float LeanAmount = 0.5f; static bool bLeanRead = false;   // test hook: -DCDeckLean= (0 = level eye, 1 = locked to the deck)
 	if (!bLeanRead) { bLeanRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCDeckLean="), LeanAmount); }
-	Camera->SetRelativeRotation(Jitter + Director->DeckSway + FRotator(LeanPitch * LeanAmount, 0.f, LeanRoll * LeanAmount));
+	// (As an additive offset: the camera takes its direction from the controller, which overwrites any
+	// rotation set on the component itself. That is why neither the shake nor the lean showed before.)
+	Camera->ClearAdditiveOffset();
+	Camera->AddAdditiveOffset(FTransform(Jitter + Director->DeckSway + FRotator(LeanPitch * LeanAmount, 0.f, LeanRoll * LeanAmount)), 0.f);
 	const FVector Eye = bClearHelmView
 		? GetActorTransform().InverseTransformPosition(GetActorLocation() + FVector(0.f, 320.f, 125.f))
 		: FVector(0.f, 0.f, 64.f);

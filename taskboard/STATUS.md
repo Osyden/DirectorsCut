@@ -2,6 +2,13 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 13:25 — Claude: correction: the deck lean was not working, nor was the camera shake; both are now
+
+- Measuring the captain on the banked deck (`-DCSteer=1 -DCCrewLog -DCCrewLogFrom=114 -DCRunThrough`), the camera's roll read 0.00 while the ship lay over 10 to 17 degrees. The lean I reported at 11:50 was not reaching the picture: the camera takes its direction from the controller, which overwrites any rotation set on the component. The tilted horizon in that screenshot was the trough's sea, not the camera. The same line carried the camera shake from hull strikes and thunder, so **that had never shown either**, since it was written.
+- Both now go in as the camera's additive offset. Measured after: roll -5.4, -6.8, -8.5 degrees at the eye as she banks (half the deck's; `-DCDeckLean=`). The shake from a strike has still not been seen by anyone: it wants a hand at the controls, or a capture during a strike.
+- The captain keeps his footing on the banked deck: his place on the planking moved 8 cm in two seconds with the ship rolled 17 degrees and heaving 1.2 m.
+- Not in any packaged build yet.
+
 ## Fri 13 Nov 13:10 — Claude: third dated build; more fog to either hand
 
 - **Build:** `Builds/2026-11-13_1300_734c009_dusk-city` (dusk city, lightning on cue, grade, grey front interior, bow spray). Runs: 140 fps open sea, 142 in the city at 720p. Whole voyage in the editor build at 3x with the bot captain: every phase, ending reached, hull 80, no errors.
