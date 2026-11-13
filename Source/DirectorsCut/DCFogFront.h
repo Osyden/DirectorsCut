@@ -59,6 +59,18 @@ protected:
 	float TunnelSink = 5000.f;
 	float TunnelShown = -1.f;
 	float TunnelDensity = 1.f;
+	/** The wall of the front either side of and over the mouth: the same volume, much enlarged and laid across the course like a roll cloud. */
+	struct FWallPiece
+	{
+		TWeakObjectPtr<class AHeterogeneousVolume> Actor;
+		TWeakObjectPtr<class UMaterialInstanceDynamic> MID;
+		FVector Offset;   // from the tunnel's mouth at sea level
+		float Scale = 900.f;
+		float Density = 1.f;
+		float Yaw = 0.f;
+	};
+	TArray<FWallPiece> Wall;
+	UPROPERTY() TArray<TObjectPtr<class UMaterialInstanceDynamic>> WallMIDs;
 	void BuildTunnel();
 	void TickTunnel(float T);
 	void BuildBanks();

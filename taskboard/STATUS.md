@@ -2,6 +2,14 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 13 Nov 23:25 Claude: the storm front is a wall of the tunnel volume with the portal through it
+
+- **Wall** (`DCFogFront.cpp`, end of `BuildTunnel`): three more instances of the same looping volume, about five times the tunnel's size and laid across the course like a roll cloud (about 4 km long, 1.1 km through, 900 m high, lower quarter under the sea): one either side of the mouth, one over it with its foot cut away above the tunnel's crown. Unequal sizes, a few degrees of turn and one set back so the top is not a level line. They travel with the tunnel's mouth and take its density and lightning flare. `-DCNoFrontWall`, `-DCFrontWallScale= -DCFrontWallDensity= -DCFrontWallGap=`.
+- **Tint**: low blue-grey albedo (0.34, 0.42, 0.58; `-DCFrontTint=r,g,b`) so the low sun no longer turns the cloud to sand.
+- Frames 24 to 59 s in `review/47-front-wall-with-portal`: a band on the horizon at 34 s, a towering wall with a lit opening at sea level by 56 s. 82 to 99 fps at 1280x720 with all four volumes in view.
+- **Owner at 23:15**: "Good progress, keep going, your intuition on what to improve next is right."
+- **Still wrong**: far off (40 to 50 s) the wall is a pale band with a nearly straight top; a dark level bar shows right of the portal at 56 s; the sky pack's storm slab still stands behind and above the wall; inside the tunnel the light is still the open-sea sun; no Easy Fog wisps yet; the jerky formation fix is still unjudged.
+
 ## 13 Nov 23:10 Claude: cloud tunnel on the course as the mouth of the front; white banks in the city off
 
 Owner's play notes tonight: the fog and cloud systems cancel and paste over each other; white self-lit fog in the city looks terrible and shows statues as outlines; the tunnel passed through the water; the tunnel must be the opening in the front and line up with it; the front itself fights the other clouds.

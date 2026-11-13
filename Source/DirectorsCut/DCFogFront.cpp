@@ -233,6 +233,17 @@ void ADCFogFront::BuildTunnel()
 	float Floor = TunnelSink / (TunnelScale * 0.42f) + 2.f, Soft = 8.f;
 	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnelFloor="), Floor);
 	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnelSoft="), Soft);
+	// Storm cloud is dark and cold: a low blue-grey albedo, so the low sun cannot turn it to sand.
+	FLinearColor StormTint(0.34f, 0.42f, 0.58f);
+	{
+		FString TintText;
+		if (FParse::Value(FCommandLine::Get(), TEXT("DCFrontTint="), TintText, false))
+		{
+			TArray<FString> Parts; TintText.ParseIntoArray(Parts, TEXT(","));
+			if (Parts.Num() == 3) { StormTint = FLinearColor(FCString::Atof(*Parts[0]), FCString::Atof(*Parts[1]), FCString::Atof(*Parts[2])); }
+		}
+	}
+	TunnelMID->SetVectorParameterValue(TEXT("Tint"), StormTint);
 	TunnelMID->SetVectorParameterValue(TEXT("Floor"), FLinearColor(Floor, Soft, 0.f, 0.f));
 	TunnelMID->SetVectorParameterValue(TEXT("Glow"), FLinearColor(0.45f, 0.6f, 1.f) * Temp);
 	H->SetMaterial(0, TunnelMID);
@@ -241,6 +252,44 @@ void ADCFogFront::BuildTunnel()
 	// The engine stops marching these volumes a few hundred metres from the eye; the tunnel has to be seen coming.
 	if (IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(TEXT("r.HeterogeneousVolumes.MaxTraceDistance"))) { V->Set(600000.f, ECVF_SetByCode); }
 	UE_LOG(LogDC, Log, TEXT("FogFront: cloud tunnel %d, scale %.0f"), Index, TunnelScale);
+
+	// The wall. Each piece is the tunnel lying across the course, nearly five times the size: a roll of cloud
+	// 4 km long, 1.1 km through and 900 m high whose lower quarter is under the sea. One either side of
+	// the mouth, and one over it whose foot is cut away above the tunnel's crown.
+	if (FParse::Param(FCommandLine::Get(), TEXT("DCNoFrontWall"))) { return; }
+	float WallScale = 1400.f, WallDensity = 1.f, WallGap = 11000.f;
+	FParse::Value(FCommandLine::Get(), TEXT("DCFrontWallScale="), WallScale);
+	FParse::Value(FCommandLine::Get(), TEXT("DCFrontWallDensity="), WallDensity);
+	FParse::Value(FCommandLine::Get(), TEXT("DCFrontWallGap="), WallGap);
+	const float Unit = WallScale * 0.42f;             // cm of world to one voxel
+	const float HalfLong = 0.5f * 672.f * Unit, HalfThrough = 0.5f * 192.f * Unit, WallSink = 40.f * Unit;
+	// Unequal sizes, a few degrees of turn and one set back, so the top of the wall is not one level line.
+	struct FPlace { float Side, Lift, Floor, Frame, Size, Yaw, Back, Soft; };
+	const FPlace Places[] = {
+		{ -1.f, 0.f, 42.f, 0.f, 1.f, 7.f, 0.f, 6.f },
+		{ 1.f, 0.f, 42.f, 70.f, 1.25f, -5.f, 9000.f, 6.f },
+		{ 0.f, 0.f, 40.f + 17000.f / Unit, 135.f, 1.1f, 0.f, 4000.f, 30.f },
+	};
+	for (const FPlace& P : Places)
+	{
+		AHeterogeneousVolume* A = GetWorld()->SpawnActor<AHeterogeneousVolume>(AHeterogeneousVolume::StaticClass(), FTransform::Identity, Params);
+		UHeterogeneousVolumeComponent* C = A ? A->FindComponentByClass<UHeterogeneousVolumeComponent>() : nullptr;
+		if (!C) { continue; }
+		C->SetMobility(EComponentMobility::Movable);
+		UMaterialInstanceDynamic* M = UMaterialInstanceDynamic::Create(Base, this);
+		M->SetSparseVolumeTextureParameterValue(TEXT("SparseVolumeTexture"), Volume);
+		M->SetVectorParameterValue(TEXT("Floor"), FLinearColor(P.Floor, P.Soft, 0.f, 0.f));
+		M->SetVectorParameterValue(TEXT("Tint"), StormTint);
+		M->SetVectorParameterValue(TEXT("Glow"), FLinearColor(0.45f, 0.6f, 1.f) * Temp);
+		C->SetMaterial(0, M);
+		C->StartFrame = 0.f; C->EndFrame = 200.f; C->FrameRate = Rate * 0.5f; C->Frame = P.Frame; C->bPlaying = true; C->bLooping = true;
+		C->bIssueBlockingRequests = true;
+		FWallPiece W;
+		W.Actor = A; W.MID = M; W.Scale = WallScale * P.Size; W.Density = WallDensity; W.Yaw = P.Yaw;
+		W.Offset = FVector(HalfThrough * P.Size - 6000.f + P.Back, P.Side * (WallGap + HalfLong * P.Size), P.Lift - WallSink * P.Size);
+		Wall.Add(W);
+		WallMIDs.Add(M);
+	}
 }
 
 void ADCFogFront::TickTunnel(float T)
@@ -264,6 +313,17 @@ void ADCFogFront::TickTunnel(float T)
 		TunnelShown = Shown;
 		TunnelMID->SetScalarParameterValue(TEXT("Density"), Shown * TunnelDensity);
 		Tunnel->SetActorHiddenInGame(Shown <= 0.01f);
+		for (FWallPiece& W : Wall)
+		{
+			if (W.Actor.IsValid()) { W.Actor->SetActorHiddenInGame(Shown <= 0.01f); }
+			if (W.MID.IsValid()) { W.MID->SetScalarParameterValue(TEXT("Density"), Shown * W.Density); }
+		}
+	}
+	for (FWallPiece& W : Wall)
+	{
+		if (!W.Actor.IsValid()) { continue; }
+		W.Actor->SetActorTransform(FTransform(FRotator(0.f, W.Yaw, 0.f), FVector(Mouth, 0.f, Director->SeaLevelZ) + W.Offset, FVector(W.Scale)));
+		if (W.MID.IsValid()) { W.MID->SetVectorParameterValue(TEXT("Flare"), Director->FogFlare * 0.02f); }
 	}
 }
 
