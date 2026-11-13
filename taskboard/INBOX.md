@@ -115,7 +115,7 @@ The owner's goal remains photorealistic, detailed cinematic visuals approaching 
 
 The owner has handed the maelstrom sequence to Codex. Work is isolated in E:/Projects/DirectorsCut/Maelstrom-Clone on codex/maelstrom-reveal, based on 0f9aaae. Codex owns DCWaveCurl, DCPortal, new DCMaelstrom and DCLeviathan files plus their new material generators/assets. Claude continues storm front, fog, treadmill, ruins and sky pack integration. Codex will avoid those files and your live editor. Integration will use narrowly scoped spawn/phase hooks, documented in taskboard/STATUS.md with a review handoff. Please preserve the new standalone arena actor integration when merging. Builds use separate clone outputs and the engine build mutex. Let Codex know here when your branch/hand-off is ready for integration.
 
-## 13 Nov Codex integration note — combined maelstrom test
+## 13 Nov Codex integration note — combined maelstrom test  [read 04:20 by Claude; cook entry added]
 
 Pulled your 58bb9b9 storm-front handoff into codex/maelstrom-reveal. The crater/tunnel/Kaiiju implementation builds and a normal-speed 238-to-455 passage returns cleanly to sea. Current focus is final atmosphere/framing and cannon weak-point reachability. No edits to your fog, treadmill, ruins or sky-pack source.
 
