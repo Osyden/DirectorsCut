@@ -1,6 +1,8 @@
 #include "DCTreadmill.h"
 #include "Components/LocalFogVolumeComponent.h"
 #include "DCFogBank.h"
+#include "Materials/MaterialParameterCollection.h"
+#include "Materials/MaterialParameterCollectionInstance.h"
 #include "DCRideDirector.h"
 #include "DCHazards.h"
 #include "DCCrew.h"
@@ -191,8 +193,34 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 	if (bForced) { Steer = ForcedSteer; }
 	// The helm takes a moment to bite and the ship carries her swing after it is eased: she turns, she is not slid sideways.
 	LaneVelocity = FMath::FInterpTo(LaneVelocity, Steer * LaneSpeed * SteerAuthority, DeltaSeconds, 1.1f);
-	LaneOffset = FMath::Clamp(LaneOffset + LaneVelocity * DeltaSeconds, -LaneLimit, LaneLimit);
-	if (FMath::Abs(LaneOffset) >= LaneLimit && LaneOffset * LaneVelocity > 0.f) { LaneVelocity = 0.f; }
+	// In the trough of the drowned city the sea itself brings her back: she slides down the slope she
+	// has climbed, harder the higher she is, so full helm holds her near the edge and no further, and
+	// with the wheel let go she swings back to the middle. Elsewhere the lane simply ends.
+	const float Pull = Director->SeaRiseSlope(LaneOffset) * 4400.f;
+	LaneVelocity -= Pull * DeltaSeconds;
+	const float Edge = Director->TroughRise > 1.f ? LaneLimit * 1.6f : LaneLimit;
+	LaneOffset = FMath::Clamp(LaneOffset + LaneVelocity * DeltaSeconds, -Edge, Edge);
+	if (FMath::Abs(LaneOffset) >= Edge && LaneOffset * LaneVelocity > 0.f) { LaneVelocity = 0.f; }
+	// Test hook: -DCLaneLog writes where she is across the channel twice a second.
+	{
+		static const bool bLaneLog = FParse::Param(FCommandLine::Get(), TEXT("DCLaneLog"));
+		static float LaneLogTimer = 0.f;
+		LaneLogTimer -= DeltaSeconds;
+		if (bLaneLog && LaneLogTimer <= 0.f)
+		{
+			LaneLogTimer = 0.5f;
+			UE_LOG(LogDC, Log, TEXT("Lane %.0f cm, moving %.0f cm/s, helm %.2f, sea rise here %.0f cm, slope %.3f, at %.1f s"), LaneOffset, LaneVelocity, Steer, Director->SeaRise(LaneOffset), Director->SeaRiseSlope(LaneOffset), Director->RideTime);
+		}
+	}
+	// The water's material lays the trough round the middle of the channel, which is LaneOffset to port of the ship.
+	if (!SeaCollection) { SeaCollection = LoadObject<UMaterialParameterCollection>(nullptr, TEXT("/Game/DC/Materials/MPC_Sea.MPC_Sea")); }
+	if (SeaCollection)
+	{
+		if (UMaterialParameterCollectionInstance* Sea = GetWorld()->GetParameterCollectionInstance(SeaCollection))
+		{
+			Sea->SetVectorParameterValue(TEXT("Trough"), FLinearColor(-LaneOffset, Director->TroughRise, Director->TroughHalfWidth, 0.f));
+		}
+	}
 	TickStrikes(DeltaSeconds);
 
 	// Ruins on the open sea before the fog are off (owner, 13 Nov): the city is first seen in the murk. -DCOutliers brings them back.
@@ -320,6 +348,8 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 		const bool bPacing = Obj.bHostile && !Obj.bExternal;
 		// Radius 0 marks a destination (the portal): it stays dead ahead whatever the helm does.
 		FVector Local(Obj.Base.X, (bPacing || Obj.Radius < 1.f) ? Obj.Base.Y : Obj.Base.Y - LaneOffset, Obj.Base.Z);
+		// Whatever stands in the sea stands on the sea as it lies there: higher up the sides of the trough than the ship in it.
+		if (Director->TroughRise > 0.f) { Local.Z += Director->SeaRise(Local.Y + LaneOffset) - Director->SeaRise(LaneOffset); }
 		Actor->SetActorLocationAndRotation(Rock.TransformPosition(Local), Rock.GetRotation() * FRotator(0.f, Obj.Yaw, 0.f).Quaternion());
 		if (!Obj.bHostile && !Obj.bSolid && Obj.Radius > 1.f)
 		{

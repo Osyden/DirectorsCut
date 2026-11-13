@@ -2,6 +2,14 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 11:41 — Claude: the sea of the drowned city is a trough the ship steers in; rain splashes as crowns
+
+- **Half-pipe sea (owner's task).** In the city the sea is level along the middle of the channel and rises to either hand: 6.5 m at 50 m out, on to about 15 m by 100 m, then level. One rule (`ADCRideDirector::SeaRise` / `SeaRiseSlope`) is used by everything: the water's material lifts the surface (the water-plugin patch now also adds this to all four ocean materials, fed by the new `/Game/DC/Materials/MPC_Sea`), the treadmill stands ruins, rocks and fog banks on the sea as it lies where they are, the ship lies over on the slope she is on, and the slope pulls her back toward the middle. Measured with the wheel held hard over (`-DCSteer=1 -DCLaneLog`): she climbs to 39 m off the middle, 3.5 m up, banked 12.7 degrees, and stays there; let go, she slides back. The hard stop at the old lane limit is gone inside the trough. It comes with the city's mist and is flat again before the slide. `-DCTrough=0` gives a flat sea.
+- **Rain splashes** are small crowns of thrown water on two crossed upright cards with a quick thin ring on the deck, alive a fifth of each cycle, where they were flat widening rings.
+- Whole city at 2x with the wheel hard over: 145 to 149 fps at 1600x900; the slide still takes over cleanly. Review set 34.
+- Not done: the player has not steered it by hand; the helmsman's lane choice does not know the trough's edge is now soft.
+- Next: wake astern; banks and wisps tuning; a blacker wall for the front; camera and controls pass.
+
 ## Fri 13 Nov 11:31 — Claude: foam on the water round ruins, rocks and hull; first dated build
 
 - **Foam that lies on the sea.** `Tools/patch_drw_shorefoam.py` raises the existing foam input of the water plugin's two near ocean materials wherever something solid is close: by the distance field (which catches the hull) and by how little water lies over whatever is seen through the surface (which catches the ruins; they turned out not to be in the distance field). A thin white line where the water touches, torn lace beyond it, washing in and out and drifting aft. It is part of the water's shading, so it sits on the real waves with no gap. Two-step run and `--undo` are in SETUP.md. This edits plugin files in the engine folder (backups beside them).

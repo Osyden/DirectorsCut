@@ -114,6 +114,15 @@ public:
 	bool bUDS = false;
 	/** The storm front in the cloud volume: world X of its face, strength 0..1, radius of its tunnel mouth. Set by ADCFogFront. */
 	float StormFrontX = 400000.f;
+	/** The sea of the drowned city lies in a shallow trough: level along the middle, rising to either
+	 *  hand. How far the sea stands above its level in the middle at a distance across the channel
+	 *  (cm, sea space: 0 = the middle), and how steeply it is rising there. The water's material draws
+	 *  the same shape (Tools/patch_drw_shorefoam.py). */
+	float SeaRise(float SeaY) const;
+	float SeaRiseSlope(float SeaY) const;
+	/** Rise at the edge of the channel this frame (cm; 0 = flat sea) and half the channel's width. */
+	float TroughRise = 0.f;
+	float TroughHalfWidth = 5000.f;
 	/** Light that thick fog gives off per unit of density this frame: the glow of the sky in it, and lightning. Read by the fog banks. */
 	FLinearColor FogGlow = FLinearColor::Black;
 	/** 0..3: how bright the lightning is this instant (the sky pack's flash light). */

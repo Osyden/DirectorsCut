@@ -797,7 +797,10 @@ void ADCGameMode::TickShipMotion(float DeltaSeconds)
 	const float SwellHeave = (FMath::Sin(T * 1.07f + 2.1f) * 22.f + FMath::Sin(T * 0.53f) * 14.f) * Sea;
 	ShipHeave = FMath::FInterpTo(ShipHeave, FMath::Clamp(Rise * Amount, -150.f, 150.f) + SwellHeave, DeltaSeconds, 1.6f);
 	ShipSlope.X = FMath::FInterpTo(ShipSlope.X, FMath::Clamp(SlopeX * Amount + SwellPitch, -MaxPitch, MaxPitch), DeltaSeconds, 1.3f);
-	ShipSlope.Y = FMath::FInterpTo(ShipSlope.Y, FMath::Clamp(SlopeY * Amount + SwellRoll, -MaxRoll, MaxRoll), DeltaSeconds, 1.3f);
+	// On the side of the trough she lies on the slope of the sea there.
+	const ADCTreadmill* Lane = ADCTreadmill::Get(this);
+	const float Bank = (Dir && Lane && bRiding) ? Dir->SeaRiseSlope(Lane->GetLaneOffset()) : 0.f;
+	ShipSlope.Y = FMath::FInterpTo(ShipSlope.Y, FMath::Clamp(SlopeY * Amount + SwellRoll, -MaxRoll, MaxRoll) + Bank, DeltaSeconds, 1.3f);
 
 	// A blow to the hull: she lurches and rights herself over a second or two.
 	if (Dir)

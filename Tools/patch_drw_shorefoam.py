@@ -10,7 +10,10 @@ so it cannot serve. This edits the plugin's two near ocean materials (M_DRW_High
 ENGINE FOLDER. A copy of each is kept beside it (.dc_backup) the first time, and every run starts
 again from that copy, so the patch can be re-run after changing it and removed with --undo.
 
-What it adds: the engine knows, at every point, how far the nearest solid surface is (the global
+It also lets the game lay the sea in a shallow trough (all four ocean materials): see TROUGH below and
+Tools/make_sea_collection.py, which must have been run first.
+
+What the foam adds: the engine knows, at every point, how far the nearest solid surface is (the global
 distance field, which follows moving things). Within a few metres of one, the materials' existing
 "Foam" input is raised: solid white water against the stone, breaking into lace further out,
 washing in and out, and drifting aft with the current. Because it is part of the water's own
@@ -23,7 +26,8 @@ import shutil
 import sys
 
 PLUGIN = "E:/Utilities/UE_5.8/Engine/Plugins/Marketplace/DynamicR1d9938e98fdbV5/Content/Materials/OceanLOD"
-NAMES = ["M_DRW_High", "M_DRW_Med"]
+NAMES = ["M_DRW_High", "M_DRW_Med", "M_DRW_Far", "M_DRW_Low"]
+FOAM_NAMES = ["M_DRW_High", "M_DRW_Med"]
 
 if "--undo" in sys.argv:
     for n in NAMES:
@@ -71,9 +75,50 @@ float foam = max(core, torn);
 return max(Existing, foam * Strength);
 """
 
+TROUGH = """
+// The sea of the drowned city lies in a shallow trough: level along the ship's course, rising to
+// either hand, steeply at first and then levelling off. Trough = (middle, rise at the edge, half width).
+// The game moves the ship and the ruins by the same rule (ADCRideDirector::SeaRise).
+float u = abs(WP.y - Trough.x) / max(Trough.z, 1.0);
+float f = u <= 1.0 ? pow(u, 2.5) : (u <= 2.0 ? 1.0 + 2.5 * (u - 1.0) - 1.25 * (u - 1.0) * (u - 1.0) : 2.25);
+float here = 0.0;   // the ship lies at world Y 0: she is the level everything else is measured from
+float us = abs(here - Trough.x) / max(Trough.z, 1.0);
+float fs = us <= 1.0 ? pow(us, 2.5) : (us <= 2.0 ? 1.0 + 2.5 * (us - 1.0) - 1.25 * (us - 1.0) * (us - 1.0) : 2.25);
+return Existing + float3(0.0, 0.0, Trough.y * (f - fs));
+"""
+
 for n in NAMES:
     path = "/DynamicRealWater/Materials/OceanLOD/" + n
     m = unreal.load_asset(path)
+    # The trough: added to whatever the material already does to the surface's position.
+    wpo = mel.get_material_property_input_node(m, unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
+    collection = unreal.load_asset("/Game/DC/Materials/MPC_Sea")
+    if wpo and collection:
+        wpo_out = mel.get_material_property_input_node_output_name(m, unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
+        tnode = mel.create_material_expression(m, unreal.MaterialExpressionCustom, -200, 3400)
+        tnode.set_editor_property("code", TROUGH)
+        tnode.set_editor_property("description", "DCTrough")
+        tnode.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT3)
+        tin = []
+        for name in ["Existing", "WP", "Trough"]:
+            ci = unreal.CustomInput()
+            ci.set_editor_property("input_name", name)
+            tin.append(ci)
+        tnode.set_editor_property("inputs", tin)
+        twp = mel.create_material_expression(m, unreal.MaterialExpressionWorldPosition, -700, 3400)
+        twp.set_editor_property("world_position_shader_offset", unreal.WorldPositionIncludedOffsets.WPT_EXCLUDE_ALL_SHADER_OFFSETS)
+        tcp = mel.create_material_expression(m, unreal.MaterialExpressionCollectionParameter, -700, 3500)
+        tcp.set_editor_property("collection", collection)
+        tcp.set_editor_property("parameter_name", "Trough")
+        okt = mel.connect_material_expressions(wpo, wpo_out, tnode, "Existing")
+        okt = mel.connect_material_expressions(twp, "", tnode, "WP") and okt
+        okt = mel.connect_material_expressions(tcp, "", tnode, "Trough") and okt
+        okt = mel.connect_material_property(tnode, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET) and okt
+        unreal.log_warning("DC_RESULT %s: trough wired=%s" % (n, okt))
+    if n not in FOAM_NAMES:
+        mel.recompile_material(m)
+        unreal.log_warning("DC_RESULT %s: saved=%s" % (n, unreal.EditorAssetLibrary.save_asset(path, only_if_is_dirty=False)))
+        continue
     shading = mel.get_material_property_input_node(m, unreal.MaterialProperty.MP_BASE_COLOR)
     names = [str(x) for x in mel.get_material_expression_input_names(shading)]
     ins = mel.get_inputs_for_material_expression(m, shading)

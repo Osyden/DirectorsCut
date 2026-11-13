@@ -100,6 +100,7 @@ protected:
 	void TickStrikes(float DeltaSeconds);
 	float StrikeCooldown = 0.f;
 	float StrikeCallCooldown = 0.f;
+	UPROPERTY() TObjectPtr<class UMaterialParameterCollection> SeaCollection;
 	/** Which way she is being shouldered off the stone (+1 starboard), kept while the contact lasts so that stone dead ahead does not toss her to and fro. */
 	float StrikeAway = 0.f;
 	float SinceContact = 100.f;

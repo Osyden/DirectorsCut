@@ -271,6 +271,20 @@ void ADCRideDirector::DamageShip(float Amount, bool bQuiet)
 	if (!bQuiet) { UE_LOG(LogDC, Log, TEXT("Ship hit for %.0f, health %.0f"), Amount, ShipHealth); }
 }
 
+float ADCRideDirector::SeaRise(float SeaY) const
+{
+	const float U = FMath::Abs(SeaY) / FMath::Max(TroughHalfWidth, 1.f);
+	const float F = U <= 1.f ? FMath::Pow(U, 2.5f) : (U <= 2.f ? 1.f + 2.5f * (U - 1.f) - 1.25f * FMath::Square(U - 1.f) : 2.25f);
+	return TroughRise * F;
+}
+
+float ADCRideDirector::SeaRiseSlope(float SeaY) const
+{
+	const float U = FMath::Abs(SeaY) / FMath::Max(TroughHalfWidth, 1.f);
+	const float D = U <= 1.f ? 2.5f * FMath::Pow(U, 1.5f) : (U <= 2.f ? 2.5f - 2.5f * (U - 1.f) : 0.f);
+	return TroughRise * D / FMath::Max(TroughHalfWidth, 1.f) * (SeaY >= 0.f ? 1.f : -1.f);
+}
+
 void ADCRideDirector::StrikeHull(const FVector& Where, float Strength, bool bGrinding)
 {
 	// Struck to starboard she is thrown over to port, and her head is knocked away from the blow;
@@ -884,6 +898,12 @@ void ADCRideDirector::TickUDS()
 					if (MaxOpacity >= 0.f) { F->SetFogMaxOpacity(FMath::Lerp(1.f, MaxOpacity, (float)K)); }
 				}
 			}
+		}
+		// The trough in the sea belongs to the city too: it comes with the mist and is gone before the slide.
+		{
+			static float TroughFull = 650.f; static bool bTroughRead = false;   // test hook: -DCTrough= (cm of rise at the channel's edge; 0 = flat)
+			if (!bTroughRead) { bTroughRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCTrough="), TroughFull); }
+			TroughRise = TroughFull * FMath::Clamp((Env.Mist - 0.45f) / 0.3f, 0.f, 1.f);
 		}
 		// The banks of fog glow with the sky's light, and flare blue-white while the pack's lightning light is on.
 		{
