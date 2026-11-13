@@ -48,7 +48,7 @@ ADCFogBank* ADCFogBank::Spawn(UWorld* World, const FDCFogBankDesc& InDesc, int32
 	UMaterialInterface* HeroBase = InDesc.bHero ? LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_HeteroCloud.M_HeteroCloud")) : nullptr;
 	if (HeroBase)
 	{
-		static float Res = 96.f; static bool bResRead = false;
+		static float Res = 48.f; static bool bResRead = false;   // 96 and 64 looked the same from the deck and cost a tenth and a fifth more
 		if (!bResRead)
 		{
 			bResRead = true;

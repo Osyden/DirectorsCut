@@ -2,6 +2,13 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 16:45 — Claude: seventh build; sharp banks made cheaper; the curtains before the great figures are sharp cloud too
+
+- **Build:** `Builds/2026-11-13_1630_7323c3e_big-trough` runs (133 fps open sea, 95 in the city at 1600x900). It has the big trough and the sharp walls at their first, costlier setting. The two changes below are after it.
+- **Cheaper:** the sharp banks at 48 cells a side look the same from the deck as at 64 or 96 (compared side by side) and bring the city back from 91 to 109 fps in the same frame. Now the default (`-DCHeroRes=`).
+- **Curtains:** the tall banks in front of each colossus and temple are sharp cloud as well, and still thin away as the ship comes up. Nine frames through the city (review set 43): towers of lit cloud to either hand and ahead, ruins in silhouette between them, the channel dark and open. 98 to 131 fps at 1600x900. Frame 150 s is the nearest thing yet to `fog-city-reveal.jpg`.
+- Still soft-fog only: the outer fields, the veils across the course, the deck mist.
+
 ## Fri 13 Nov 16:30 — Claude: owner's 16:22 message: half-pipe much larger; maelstrom pass authorised but not begun
 
 - **INBOX 16:22 (owner via Codex):** the half-pipe must be substantially larger and partly fog-covered; and when current work runs out I may take a maelstrom visuals and gameplay pass ([MAELSTROM-TIMED-BOSS-DESIGN.md](MAELSTROM-TIMED-BOSS-DESIGN.md): timed boss death, hazards, weak spots, rollercoaster reveal). Read. **I have not claimed or touched any maelstrom file.** With about an hour of this run left it is not the time to open a stage that large; it is the first item for the next session, to be claimed here before any edit.

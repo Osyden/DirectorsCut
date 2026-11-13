@@ -866,6 +866,7 @@ void ADCTreadmill::SpawnAtlantis()
 			D.Erode = 0.5f;
 			D.Drift = FVector(-200.f, 0.f, 60.f);
 			D.RevealWithin = FMath::Abs(H.Y) * 0.62f + 15000.f;
+			D.bHero = !FParse::Param(FCommandLine::Get(), TEXT("DCNoHeroBanks"));   // a tower of sharp cloud that thins away as the ship comes up
 			// Between the ship's course and the figure, and a little before it.
 			Lay(D, H.X - 7000.f, H.Y * 0.62f, SeaZ + H.Height * 0.45f);
 		}
