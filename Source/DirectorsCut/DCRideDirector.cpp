@@ -271,6 +271,18 @@ void ADCRideDirector::DamageShip(float Amount, bool bQuiet)
 	if (!bQuiet) { UE_LOG(LogDC, Log, TEXT("Ship hit for %.0f, health %.0f"), Amount, ShipHealth); }
 }
 
+void ADCRideDirector::StrikeHull(const FVector& Where, float Strength, bool bGrinding)
+{
+	// Struck to starboard she is thrown over to port, and her head is knocked away from the blow;
+	// struck by the bow she bucks.
+	const float Side = Where.Y >= 0.f ? 1.f : -1.f;
+	const float Along = FMath::Clamp(Where.X / 2200.f, -1.f, 1.f);
+	PendingJolt += FVector(-Side * 16.f, FMath::Abs(Along) * Along * 7.f, -Side * Along * 9.f) * Strength;
+	DamageShip(bGrinding ? 0.5f : 1.f + 3.f * Strength);
+	Trauma = FMath::Min(1.f, Trauma + 0.3f * Strength);
+	OnHullStrike.Broadcast(Where, Strength);
+}
+
 void ADCRideDirector::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);

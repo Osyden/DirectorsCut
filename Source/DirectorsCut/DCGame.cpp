@@ -780,16 +780,35 @@ void ADCGameMode::TickShipMotion(float DeltaSeconds)
 	// (a ship averages the waves under her) and slowly. Off in the tunnel and the maelstrom, where the
 	// stage moves the world round her instead. -DCNoShipMotion keeps her still.
 	static const bool bStill = FParse::Param(FCommandLine::Get(), TEXT("DCNoShipMotion"));
-	static float Amount = 0.8f;
+	static float Amount = 1.5f;
 	static bool bRead = false;
 	if (!bRead) { bRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCShipMotion="), Amount); }
 	float Rise = 0.f, SlopeX = 0.f, SlopeY = 0.f;
 	const ADCWake* Wake = bStill ? nullptr : ADCWake::Get(this);
 	if (!Wake || !Wake->GetSeaUnderHull(Rise, SlopeX, SlopeY)) { Rise = SlopeX = SlopeY = 0.f; }
-	const float MaxPitch = FMath::Tan(FMath::DegreesToRadians(2.5f)), MaxRoll = FMath::Tan(FMath::DegreesToRadians(4.5f));
-	ShipHeave = FMath::FInterpTo(ShipHeave, FMath::Clamp(Rise * Amount, -70.f, 70.f), DeltaSeconds, 1.6f);
-	ShipSlope.X = FMath::FInterpTo(ShipSlope.X, FMath::Clamp(SlopeX * Amount, -MaxPitch, MaxPitch), DeltaSeconds, 1.3f);
-	ShipSlope.Y = FMath::FInterpTo(ShipSlope.Y, FMath::Clamp(SlopeY * Amount, -MaxRoll, MaxRoll), DeltaSeconds, 1.3f);
+	const float MaxPitch = FMath::Tan(FMath::DegreesToRadians(5.5f)), MaxRoll = FMath::Tan(FMath::DegreesToRadians(10.f));
+	// The waves under the hull are short and average out; what a deck really does is the long slow
+	// roll and pitch of the swell, so she is given one of her own, bigger as the sea gets up.
+	const bool bRiding = Wake && (Rise != 0.f || SlopeX != 0.f);
+	const float Sea = (bRiding && Dir) ? FMath::Clamp(Dir->GetEnv().WaveHeight / 120.f, 0.6f, 2.2f) * Amount / 1.5f : 0.f;
+	const float T = GetWorld()->GetTimeSeconds();
+	const float SwellRoll = FMath::Tan(FMath::DegreesToRadians((FMath::Sin(T * 0.83f) * 2.4f + FMath::Sin(T * 0.47f + 1.3f) * 1.3f) * Sea));
+	const float SwellPitch = FMath::Tan(FMath::DegreesToRadians((FMath::Sin(T * 1.07f + 0.6f) * 1.3f + FMath::Sin(T * 0.61f) * 0.7f) * Sea));
+	const float SwellHeave = (FMath::Sin(T * 1.07f + 2.1f) * 22.f + FMath::Sin(T * 0.53f) * 14.f) * Sea;
+	ShipHeave = FMath::FInterpTo(ShipHeave, FMath::Clamp(Rise * Amount, -150.f, 150.f) + SwellHeave, DeltaSeconds, 1.6f);
+	ShipSlope.X = FMath::FInterpTo(ShipSlope.X, FMath::Clamp(SlopeX * Amount + SwellPitch, -MaxPitch, MaxPitch), DeltaSeconds, 1.3f);
+	ShipSlope.Y = FMath::FInterpTo(ShipSlope.Y, FMath::Clamp(SlopeY * Amount + SwellRoll, -MaxRoll, MaxRoll), DeltaSeconds, 1.3f);
+
+	// A blow to the hull: she lurches and rights herself over a second or two.
+	if (Dir)
+	{
+		JoltSpeed += Dir->PendingJolt;
+		Dir->PendingJolt = FVector::ZeroVector;
+	}
+	const float StepDt = FMath::Min(DeltaSeconds, 0.05f);
+	JoltSpeed += (-30.f * JoltAngle - 4.2f * JoltSpeed) * StepDt;
+	JoltAngle += JoltSpeed * StepDt;
+	JoltAngle = JoltAngle.BoundToCube(9.f);
 
 	// Deck up = the normal of that plane; turned about the waterline amidships.
 	const FVector Up = FVector(-ShipSlope.X, -ShipSlope.Y, 1.f).GetSafeNormal();
@@ -797,7 +816,7 @@ void ADCGameMode::TickShipMotion(float DeltaSeconds)
 	// sea and in Atlantis; the maelstrom stage turns the world round her itself.
 	const ADCTreadmill* Mill = ADCTreadmill::Get(this);
 	ShipTurn = FMath::FInterpTo(ShipTurn, (Wake && Mill && Rise + SlopeX != 0.f) ? Mill->GetTurn() : 0.f, DeltaSeconds, 1.5f);
-	const FQuat Helm = FRotator(0.f, ShipTurn * 6.f, -ShipTurn * 2.2f).Quaternion();
+	const FQuat Helm = FRotator(JoltAngle.Y, ShipTurn * 6.f + JoltAngle.Z, -ShipTurn * 2.2f + JoltAngle.X).Quaternion();
 	const FQuat Lean = FRotationMatrix::MakeFromZX(Up, FVector::ForwardVector).ToQuat() * Helm;
 	const FVector Pivot(0.f, 0.f, Dir ? Dir->SeaLevelZ : 0.f);
 	const FTransform Deck(Lean, Pivot - Lean.RotateVector(Pivot) + FVector(0.f, 0.f, ShipHeave));

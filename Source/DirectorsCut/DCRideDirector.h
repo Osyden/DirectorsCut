@@ -59,6 +59,12 @@ public:
 	FSimpleMulticastDelegate OnLightning;
 	/** Fired for every blow to the hull (not for slow burn damage). */
 	TMulticastDelegate<void(float)> OnShipHit;
+	/** The hull has struck stone. Where: the point of contact in ship-at-rest space; Strength 0..1.5. The ship lurches away from it. */
+	void StrikeHull(const FVector& Where, float Strength, bool bGrinding = false);
+	/** Fired with every such strike (Where, Strength), after the damage. */
+	TMulticastDelegate<void(const FVector&, float)> OnHullStrike;
+	/** Turning speeds (degrees a second: roll, pitch, yaw) waiting to be given to the ship by whoever moves her. */
+	FVector PendingJolt = FVector::ZeroVector;
 
 	/** A ship lantern at a world position; lit automatically when it gets dark. */
 	void AddLamp(const FVector& Location);

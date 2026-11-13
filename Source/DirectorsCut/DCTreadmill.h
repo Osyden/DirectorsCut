@@ -24,6 +24,10 @@ struct FDCWorldObject
 	float Yaw = 0.f;
 	/** False for scenery that the ship cannot hit. */
 	bool bSolid = true;
+	/** Scenery only: its stone can be found by the hull's feelers at the moment (switched on while it is near the ship). */
+	bool bFeelable = false;
+	/** Scenery only: how far its stone reaches from its centre (cm), measured when it was laid out. */
+	float Reach = 0.f;
 	/** The lookout has already called this one. */
 	bool bCalled = false;
 	/** Seconds until a hostile alongside fires on us again. */
@@ -91,6 +95,14 @@ protected:
 	TArray<TWeakObjectPtr<AActor>> AtlantisHidden;
 	float SpawnAhead = 0.f;
 	bool bOutliersBuilt = false;
+	/** The ruins are solid: feelers run out from the hull to the waterline find their stone, the ship is
+	 *  shouldered off it and takes the blow. */
+	void TickStrikes(float DeltaSeconds);
+	float StrikeCooldown = 0.f;
+	float StrikeCallCooldown = 0.f;
+	/** Which way she is being shouldered off the stone (+1 starboard), kept while the contact lasts so that stone dead ahead does not toss her to and fro. */
+	float StrikeAway = 0.f;
+	float SinceContact = 100.f;
 	void SpawnOutliers();
 	/** How far ahead the portal stands when the city is laid out: the distance sailed before the slide starts. */
 	UPROPERTY(EditAnywhere) float PortalDistance = 287000.f;

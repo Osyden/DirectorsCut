@@ -122,6 +122,7 @@ void ADCWeatherFX::BuildSplashes()
 	if (!Base) { UE_LOG(LogDC, Warning, TEXT("WeatherFX: M_Splash missing; no rain splashes")); return; }
 
 	// Find the decks: drop probes over the hull and keep the ones that land on something level.
+	TMap<FString, int32> SplashSurfaces;
 	TArray<FVector> Verts; TArray<int32> Tris; TArray<FVector> Normals; TArray<FVector2D> UVs; TArray<FColor> Colors;
 	FCollisionQueryParams Params(TEXT("DCSplash"), true);
 	FRandomStream Rng(31);
@@ -138,7 +139,10 @@ void ADCWeatherFX::BuildSplashes()
 		{
 			if (!GetWorld()->LineTraceSingleByObjectType(Hit, FVector(X, Y, From), FVector(X, Y, 200.f), FCollisionObjectQueryParams(FCollisionObjectQueryParams::AllObjects), Params)) { break; }
 			// SM_Root is the ship blueprint's unseen base plate, not a deck.
-			bFound = !Hit.bStartPenetrating && Hit.ImpactNormal.Z > 0.9f && !(Hit.GetComponent() && Hit.GetComponent()->GetName() == TEXT("SM_Root"));
+			// Only the hull mesh itself counts: the blueprint also carries unseen plates and collision shapes (one stands above the stern).
+			const UPrimitiveComponent* On = Hit.GetComponent();
+			bFound = !Hit.bStartPenetrating && Hit.ImpactNormal.Z > 0.9f && On && On->GetName() == TEXT("HullShip") && On->IsVisible() && !On->bHiddenInGame;
+			if (On && !Hit.bStartPenetrating && Hit.ImpactNormal.Z > 0.9f) { SplashSurfaces.FindOrAdd(On->GetName())++; }
 			From = (Hit.bStartPenetrating ? From : Hit.ImpactPoint.Z) - (Hit.bStartPenetrating ? 30.f : 4.f);
 		}
 		// Open decks only: rain does not reach the gun deck below, which the probes get to through the gratings.
@@ -154,6 +158,7 @@ void ADCWeatherFX::BuildSplashes()
 		}
 		Tris.Append({ B, B + 2, B + 1, B + 1, B + 2, B + 3 });
 	}
+	for (const TPair<FString, int32>& S : SplashSurfaces) { UE_LOG(LogDC, Log, TEXT("WeatherFX: level surface under the rain: %s (%d probes)"), *S.Key, S.Value); }
 	if (Verts.Num() == 0) { UE_LOG(LogDC, Warning, TEXT("WeatherFX: no deck found for rain splashes")); return; }
 	Normals.Init(FVector::UpVector, Verts.Num());
 	Splashes = NewObject<UProceduralMeshComponent>(this, TEXT("Splashes"));

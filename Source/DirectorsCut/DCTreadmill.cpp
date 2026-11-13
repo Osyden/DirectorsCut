@@ -184,15 +184,21 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 	const FDCEnvState& Env = Director->GetEnv();
 	const float Speed = Env.ShipSpeed * Director->TimeScale;
 
+	// Test hook: -DCSteer=1 holds the helm hard over (starboard) for the whole run.
+	static float ForcedSteer = 0.f;
+	static const bool bForced = FParse::Value(FCommandLine::Get(), TEXT("DCSteer="), ForcedSteer);
+	if (bForced) { Steer = ForcedSteer; }
 	// The helm takes a moment to bite and the ship carries her swing after it is eased: she turns, she is not slid sideways.
 	LaneVelocity = FMath::FInterpTo(LaneVelocity, Steer * LaneSpeed * SteerAuthority, DeltaSeconds, 1.1f);
 	LaneOffset = FMath::Clamp(LaneOffset + LaneVelocity * DeltaSeconds, -LaneLimit, LaneLimit);
 	if (FMath::Abs(LaneOffset) >= LaneLimit && LaneOffset * LaneVelocity > 0.f) { LaneVelocity = 0.f; }
+	TickStrikes(DeltaSeconds);
 
+	// Ruins on the open sea before the fog are off (owner, 13 Nov): the city is first seen in the murk. -DCOutliers brings them back.
 	if (!bOutliersBuilt)
 	{
 		bOutliersBuilt = true;
-		SpawnOutliers();
+		if (FParse::Param(FCommandLine::Get(), TEXT("DCOutliers"))) { SpawnOutliers(); }
 	}
 	// The fog begins at 58 s; until then the ship runs at the open-sea speed. (The test harness seeks
 	// in the first frames, so wait a moment before trusting the ride time.)
@@ -313,13 +319,32 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 		const bool bPacing = Obj.bHostile && !Obj.bExternal;
 		// Radius 0 marks a destination (the portal): it stays dead ahead whatever the helm does.
 		FVector Local(Obj.Base.X, (bPacing || Obj.Radius < 1.f) ? Obj.Base.Y : Obj.Base.Y - LaneOffset, Obj.Base.Z);
+		Actor->SetActorLocationAndRotation(Rock.TransformPosition(Local), Rock.GetRotation() * FRotator(0.f, Obj.Yaw, 0.f).Quaternion());
 		if (!Obj.bHostile && !Obj.bSolid && Obj.Radius > 1.f)
 		{
-			// Scenery cannot be hit, so never let the helm carry the ship through it: it keeps its distance.
-			const float MinY = ShipHalfWidth + Obj.Radius + 1500.f;
-			if (FMath::Abs(Local.Y) < MinY) { Local.Y = (Obj.Base.Y - LaneOffset >= 0.f ? 1.f : -1.f) * MinY; }
+			// Scenery is solid stone. Its meshes answer the hull's feelers only while it is near the ship
+			// (moving hundreds of colliding pieces every frame for the whole city would cost too much).
+			if (Obj.Reach <= 0.f)
+			{
+				FVector Origin, Extent;
+				Actor->GetActorBounds(false, Origin, Extent);
+				Obj.Reach = FVector2D(Extent.X, Extent.Y).Size() + FVector2D(Origin - Actor->GetActorLocation()).Size();
+			}
+			// (The faces in the cloud are registered as scenery too; they are kilometres across and not stone.)
+			const bool bNear = Obj.Reach < 90000.f && FVector2D(Local.X, Local.Y).Size() < Obj.Reach + 5000.f;
+			if (bNear != Obj.bFeelable)
+			{
+				Obj.bFeelable = bNear;
+				UE_LOG(LogDC, Log, TEXT("Strikes: %s %s at %.0f, %.0f (reach %.0f), lane %.0f"), *Actor->GetName(), bNear ? TEXT("near") : TEXT("left astern"), Local.X, Local.Y, Obj.Reach, LaneOffset);
+				TInlineComponentArray<UStaticMeshComponent*> Pieces(Actor);
+				for (UStaticMeshComponent* C : Pieces)
+				{
+					C->SetCollisionObjectType(ECC_Destructible);
+					C->SetCollisionResponseToAllChannels(ECR_Ignore);
+					C->SetCollisionEnabled(bNear ? ECollisionEnabled::QueryOnly : ECollisionEnabled::NoCollision);
+				}
+			}
 		}
-		Actor->SetActorLocationAndRotation(Rock.TransformPosition(Local), Rock.GetRotation() * FRotator(0.f, Obj.Yaw, 0.f).Quaternion());
 
 		// Lookout: call an obstacle once, when it is close enough to matter and near our course.
 		if (!Obj.bHostile && Obj.bSolid && !Obj.bCalled && Local.X < 13000.f && FMath::Abs(Local.Y) < ShipHalfWidth + Obj.Radius + 150.f)
@@ -541,6 +566,81 @@ void ADCTreadmill::TickIncoming(float DeltaSeconds)
 		FVector P = FMath::Lerp(In.From, In.To, In.T);
 		P.Z += FMath::Sin(In.T * UE_PI) * 1400.f;
 		Shot->SetActorLocation(P);
+	}
+}
+
+void ADCTreadmill::TickStrikes(float DeltaSeconds)
+{
+	StrikeCooldown -= DeltaSeconds;
+	StrikeCallCooldown -= DeltaSeconds;
+	SinceContact += DeltaSeconds;
+	if (SinceContact > 1.5f) { StrikeAway = 0.f; }
+	if (!Director || FParse::Param(FCommandLine::Get(), TEXT("DCNoStrikes"))) { return; }
+	bool bAny = false;
+	for (const FDCWorldObject& Obj : Objects) { if (Obj.bFeelable) { bAny = true; break; } }
+	if (!bAny) { return; }
+
+	// Feelers at the waterline, in the ship's resting place (she lies at the origin, bow to +X): out
+	// from the centreline to the planking on both sides, and forward from the foremast round the bow.
+	const float Z = Director->SeaLevelZ + 140.f;
+	struct FFeeler { FVector From, To; };
+	TArray<FFeeler, TInlineAllocator<32>> Feelers;
+	for (int32 i = 0; i < 9; ++i)
+	{
+		const float X = -1900.f + i * 480.f;
+		// Half the beam at this station: full amidships, fining toward the bow, a little toward the stern.
+		const float U = X / 2400.f;
+		const float HalfBeam = ShipHalfWidth * (U > 0.25f ? FMath::Sqrt(FMath::Max(0.f, 1.f - FMath::Square((U - 0.25f) / 0.8f))) : FMath::Lerp(1.f, 0.72f, FMath::Clamp((0.25f - U) / 1.05f, 0.f, 1.f)));
+		for (float S : { -1.f, 1.f }) { Feelers.Add({ FVector(X, 0.f, Z), FVector(X, S * (HalfBeam + 40.f), Z) }); }
+	}
+	for (float Deg : { -50.f, -25.f, 0.f, 25.f, 50.f })
+	{
+		const float R = FMath::DegreesToRadians(Deg);
+		Feelers.Add({ FVector(1500.f, 0.f, Z), FVector(1500.f + FMath::Cos(R) * 1050.f, FMath::Sin(R) * 420.f, Z) });
+	}
+
+	FCollisionQueryParams Params(TEXT("DCStrike"), true);
+	const FCollisionObjectQueryParams Stone(ECC_Destructible);
+	float Deepest = 0.f, PushY = 0.f;
+	FVector Where = FVector::ZeroVector, Normal = FVector::ZeroVector;
+	for (const FFeeler& F : Feelers)
+	{
+		FHitResult Hit;
+		if (!GetWorld()->LineTraceSingleByObjectType(Hit, F.From, F.To, Stone, Params)) { continue; }
+		// A feeler that begins inside the stone (she has driven her bow into it) counts for its whole length.
+		const float In = Hit.bStartPenetrating ? (F.To - F.From).Size() : (F.To - Hit.ImpactPoint).Size();
+		if (In > Deepest) { Deepest = In; Where = Hit.ImpactPoint; Normal = Hit.ImpactNormal; }
+		// Which way to shoulder her: away from the side the stone is on, or for stone dead ahead, the way its face turns her.
+		const float Side = FMath::Abs(Hit.ImpactPoint.Y) > 60.f ? FMath::Sign(Hit.ImpactPoint.Y) : (FMath::Abs(Hit.ImpactNormal.Y) > 0.1f ? -FMath::Sign(Hit.ImpactNormal.Y) : (LaneOffset >= 0.f ? -1.f : 1.f));
+		PushY -= Side * In;
+	}
+	if (Deepest <= 0.f) { return; }
+
+	// She cannot sail through it: shoulder her off the stone (the sea is moved, not the ship) and kill her swing toward it.
+	if (StrikeAway == 0.f) { StrikeAway = PushY >= 0.f ? 1.f : -1.f; }
+	const float Away = StrikeAway;
+	const bool bFirst = SinceContact > 1.5f;
+	SinceContact = 0.f;
+	const float Closing = FMath::Max(0.f, -LaneVelocity * Away) + Director->GetEnv().ShipSpeed * Director->TimeScale * FMath::Max(0.f, -Normal.X);
+	LaneOffset = FMath::Clamp(LaneOffset + Away * FMath::Min(Deepest + 20.f, 4000.f * DeltaSeconds + 30.f), -LaneLimit - 3000.f, LaneLimit + 3000.f);
+	if (LaneVelocity * Away < 0.f) { LaneVelocity = -LaneVelocity * 0.3f + Away * 160.f; }
+	else { LaneVelocity = FMath::Max(FMath::Abs(LaneVelocity), 160.f) * Away; }
+
+	if (StrikeCooldown <= 0.f)
+	{
+		// The first blow is the heavy one; while she grinds along the stone, lighter ones follow.
+		const float Strength = FMath::Clamp(Closing / 900.f, 0.25f, 1.5f) * (bFirst ? 1.f : 0.4f);
+		StrikeCooldown = bFirst ? 0.5f : 0.8f;
+		Director->StrikeHull(Where, Strength, !bFirst);
+		UE_LOG(LogDC, Log, TEXT("Hull struck stone at %s (in %.0f cm, closing %.0f cm/s, strength %.2f) at ride time %.1f"), *Where.ToCompactString(), Deepest, Closing, Strength, Director->RideTime);
+		if (StrikeCallCooldown <= 0.f)
+		{
+			StrikeCallCooldown = 7.f;
+			if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
+			{
+				Crew->Report(FMath::Abs(Where.Y) < 150.f ? TEXT("We have struck, Captain! Stone under the bow!") : (Where.Y > 0.f ? TEXT("She is grinding on the stone to starboard!") : TEXT("She is grinding on the stone to port!")), true);
+			}
+		}
 	}
 }
 

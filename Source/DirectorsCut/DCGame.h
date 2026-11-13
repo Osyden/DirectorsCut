@@ -62,6 +62,9 @@ protected:
 	float ShipHeave = 0.f;
 	FVector2D ShipSlope = FVector2D::ZeroVector;
 	float ShipTurn = 0.f;
+	/** A blow to the hull: roll, pitch, yaw (degrees) and how fast each is changing; a damped spring brings her back. */
+	FVector JoltAngle = FVector::ZeroVector;
+	FVector JoltSpeed = FVector::ZeroVector;
 	void TickShipMotion(float DeltaSeconds);
 	UPROPERTY() TObjectPtr<ADCRideDirector> Director;
 	UPROPERTY() TObjectPtr<ADCTreadmill> Treadmill;
