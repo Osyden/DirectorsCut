@@ -203,10 +203,10 @@ void ADCFogFront::BuildBanks()
 	FRandomStream Rng(977);
 	for (int32 Rank = 0; Rank < 2; ++Rank)
 	{
-		const int32 Count = Rank == 0 ? 13 : 9;
+		const int32 Count = Rank == 0 ? 23 : 15;
 		for (int32 i = 0; i < Count; ++i)
 		{
-			const float Across = (static_cast<float>(i) / (Count - 1) - 0.5f) * 2400000.f + Rng.FRandRange(-40000.f, 40000.f);
+			const float Across = (static_cast<float>(i) / (Count - 1) - 0.5f) * 4200000.f + Rng.FRandRange(-40000.f, 40000.f);
 			// A volume is always a sphere; its fog thins with height, so each is a wide low bank whose
 			// top fades out a hundred metres or so up (the nearer rank) or a few hundred (the further).
 			const float Radius = (Rank == 0 ? 260000.f : 380000.f) * Rng.FRandRange(0.8f, 1.3f);
@@ -219,11 +219,11 @@ void ADCFogFront::BuildBanks()
 			// The unit volume is a sphere of 5 m radius. Optical depth scales with the radius in
 			// metres, so the densities are small numbers.
 			C->SetWorldScale3D(FVector(Radius / 500.f));
-			C->RadialFogExtinction = 0.03f * Density;
-			C->HeightFogExtinction = 0.04f * Density;
-			C->HeightFogFalloff = (Rank == 0 ? 2500.f : 1200.f) * Rng.FRandRange(0.7f, 1.4f) / Tall;
+			C->RadialFogExtinction = 0.02f * Density;
+			C->HeightFogExtinction = 0.028f * Density;
+			C->HeightFogFalloff = (Rank == 0 ? 1500.f : 700.f) * Rng.FRandRange(0.7f, 1.4f) / Tall;
 			C->FogPhaseG = 0.5f;
-			C->FogAlbedo = Rank == 0 ? FLinearColor(0.3f, 0.36f, 0.46f) : FLinearColor(0.12f, 0.15f, 0.2f);
+			C->FogAlbedo = Rank == 0 ? FLinearColor(0.62f, 0.7f, 0.82f) : FLinearColor(0.3f, 0.36f, 0.46f);
 			C->RegisterComponent();
 			B.Component = C;
 			Banks.Add(B);
