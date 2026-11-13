@@ -2,6 +2,13 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 06:09 — Claude: package verified; set 29
+
+Review set: `taskboard/review/29-wake-current-wash-line/` (hull wash, wake astern, wash line on a ruin, the ship seen from abeam in sun and in the storm; 1920x1080).
+
+- **`Builds/Next` rebuilt and verified** with everything up to `f4c4fbd` plus Codex's crater revision, voice sidecars included (6.4 GB). In a continuous run of the package: no frame over 25 ms in the first 62 s apart from the test screenshots themselves, the hull held one position for 536 consecutive frames, 132 fps on the open sea and 99 in the front at 720p.
+- The rings on the sea in rain are my deck splash quads being drawn there somehow (same pattern every run; gone with `-DCSplash=0`; not the sky pack's decals, not the wake). They only show from on deck, not from outside the ship. Still unexplained; they read as rain on the water.
+
 ## Fri 13 Nov 06:01 — Claude: half-second freeze at the storm front removed
 
 - Entering the front at 58 s froze the game for 0.5 s (measured with `-DCHitch`). Two causes: the whole drowned city was spawned in that one frame, and the sky pack loaded its rain effect at that moment. The city is now built in the first seconds of the voyage (under the title), placed further off by the distance still to run, hidden, and revealed a couple of actors a frame once the fog begins; the pack's rain and lightning effects are loaded at start. The frame at 58 s is now 79 ms. Remaining single frames of 30 to 60 ms at 61 s (the pack loading thunder and lightning pieces).
