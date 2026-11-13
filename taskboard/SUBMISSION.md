@@ -18,6 +18,10 @@ Working notes for the itch.io entry. Rules here come from secondary write-ups fo
 ## Sourced assets to list
 
 - **Brigantine ship** (Fab, purchased by the owner): hull, masts, sails, cannons, deck props, cannon smoke and cannon/impact sounds, and the UE mannequins and their idle/walk animations that ship inside that pack (used as placeholder crew).
+- **Ultra Dynamic Sky** (Fab, purchased): sky, sun, volumetric clouds, weather, rain, lightning and thunder, and the travelling storm that forms the front.
+- **Modular Ancient Ruins** by archafizov (Fab, purchased): every column, arch, temple piece, statue and rock in the drowned city and on the open sea. The layouts are built in code from its pieces.
+- **Dynamic Real Water 3.0** by Natural Level (Fab, purchased): the sea outside the tunnel and the maelstrom.
+- **Claw Kaiju Monster** (Fab, purchased): the boss creature in the maelstrom, with its animations.
 - **Unreal Engine 5.8** engine content: basic shapes, default fonts, volumetric cloud default material, sky atmosphere.
 - **NVIDIA DLSS 4.5 plugin** v8.7.2 for UE 5.8 (DLSS Super Resolution; Streamline).
 - **llama.cpp** (MIT) with the **Qwen3.5-4B** language model weights.
@@ -54,6 +58,12 @@ If there is a size limit (itch.io's normal limit is about 1 GB per file), the re
 1. Swap the language model for a 1 to 2 GB one. Crew lines get a little plainer.
 2. Ship without the language model: crew fall back to their written lines. Saves 3.1 GB.
 3. Host the build elsewhere and link it from the itch.io page, if the rules allow.
+
+## Measured on the development PC (13 Nov, editor build, DLSS Super Resolution at 67%)
+
+- 1280x720: open sea 115 to 150 fps, inside the storm front 120 to 139, Atlantis 88 to 105.
+- 3840x2160 (rendered offscreen): open sea 95, storm front 102, Atlantis 84.
+- Packaged build at 1280x720: 105 to 142 fps across open sea, Atlantis and the maelstrom.
 
 ## Still to do before submitting
 
