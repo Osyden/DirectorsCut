@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 06:32 — Claude: Builds/Next current; gun station checked on the moving ship
+
+- `Builds/Next` rebuilt at `3932ab0` (ship motion, wake, open-deck splashes, fires and markers on the moving deck) and run continuously to 110 s: 114 / 100 / 90 fps (open sea / front / Atlantis, 720p), no slow frames besides the test screenshots.
+- Port gun station and both batteries exercised unattended with ship motion on: station view, aim reticle and battery panel work.
+- Ruin wash-line foam dimmed (it glowed in the dusk light). This one change is after the package.
+
 ## Fri 13 Nov 06:26 — Claude: rings on the sea in rain fixed
 
 - The rings came from rain splash points placed on the gun deck below (the probes reached it through the gratings); from on deck they showed through onto the sea. Splashes are now kept to the open decks and the rings are gone. Not yet in `Builds/Next`.

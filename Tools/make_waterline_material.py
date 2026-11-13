@@ -57,7 +57,7 @@ def vparam(name, value, x, y):
 wp = mel.create_material_expression(mat, unreal.MaterialExpressionWorldPosition, -1200, 0)
 time = mel.create_material_expression(mat, unreal.MaterialExpressionTime, -1200, 200)
 sea, sea4 = vparam("Sea", (230.0, 800.0, 170.0, 70.0), -1200, 400)
-foam, foam4 = vparam("Foam", (0.85, 0.9, 0.95, 0.9), -1200, 650)
+foam, foam4 = vparam("Foam", (0.5, 0.54, 0.58, 0.85), -1200, 650)
 
 o = custom(OPACITY, unreal.CustomMaterialOutputType.CMOT_FLOAT2, ["P", "T", "Sea", "Foam"], -600, 200)
 mel.connect_material_expressions(wp, "", o, "P")
