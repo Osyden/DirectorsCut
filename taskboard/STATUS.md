@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 06:26 — Claude: rings on the sea in rain fixed
+
+- The rings came from rain splash points placed on the gun deck below (the probes reached it through the gratings); from on deck they showed through onto the sea. Splashes are now kept to the open decks and the rings are gone. Not yet in `Builds/Next`.
+- Checked with `-DCCrewLog`: the captain stays put on the moving deck, free-standing and at the helm (position on deck steady to a centimetre while the ship heaves 20 cm).
+
 ## Fri 13 Nov 06:22 — Claude: Builds/Next rebuilt with wake and ship motion
 
 - `Builds/Next` now has the hull wash, wake, ship motion and the storm-front freeze fix (source at `04f6b43`), with voice sidecars. Continuous run of the package: no slow frames to 110 s apart from the test screenshots; 113 fps open sea, 98 in the front, 89 in Atlantis at 720p.

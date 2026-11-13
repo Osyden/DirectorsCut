@@ -141,7 +141,8 @@ void ADCWeatherFX::BuildSplashes()
 			bFound = !Hit.bStartPenetrating && Hit.ImpactNormal.Z > 0.9f && !(Hit.GetComponent() && Hit.GetComponent()->GetName() == TEXT("SM_Root"));
 			From = (Hit.bStartPenetrating ? From : Hit.ImpactPoint.Z) - (Hit.bStartPenetrating ? 30.f : 4.f);
 		}
-		if (!bFound || Hit.ImpactPoint.Z < Director->SeaLevelZ + 60.f) { continue; }
+		// Open decks only: rain does not reach the gun deck below, which the probes get to through the gratings.
+		if (!bFound || Hit.ImpactPoint.Z < Director->SeaLevelZ + 240.f) { continue; }
 		const FVector C = Hit.ImpactPoint + FVector(0.f, 0.f, 1.2f);
 		const FColor Rand(Rng.RandRange(0, 255), Rng.RandRange(0, 255), Rng.RandRange(0, 255), 255);
 		const int32 B = Verts.Num();
