@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 12:06 — Claude: second dated build; the inside of the front is grey cloud, not brown soup
+
+- **Build:** `Builds/2026-11-13_1158_14aa459_foam-trough-shipview` (foam, wake, trough, ship view, lean, splashes). Run: 141 fps open sea, 157 in the city at 720p; its own screenshot shows the trough and the wisps. The change below is not in it.
+- **Inside the storm front (58 to 76 s)** was the weakest quarter-minute left: near-black fog in which the lanterns' scattered light turned the whole view brown. It is now a grey blind (sun 0.6 to 1.6, sky 0.35 to 0.6) with a little of the city's mist, which brings the running wisps and the lightning flare in the fog while staying under the level where the sea's trough begins. Review set 36.
+- Next: the front seen from outside still wants one black curling wall with lightning in it; banks and wisps tuning; crew stand-ins.
+
 ## Fri 13 Nov 11:58 — Claude: a wake astern, in the sea's own shading
 
 - **Wake.** The same water-material patch now lays a wake astern of the ship: a band that starts at the stern post 6.6 m wide and widens a metre in five, churned in the middle with a brighter line down each edge, ragged, breaking into lace and gone in a couple of hundred metres. It is foam in the water's own shading, so it rides the real waves. Strength follows her speed through a second value in `MPC_Sea` (`Wake`); `-DCNoWakeFoam` turns it off. This replaces the stern half of the old ribbon.
