@@ -867,17 +867,35 @@ void ADCRideDirector::TickOcean()
 	// The waves run from the bow aft, which reads as the ship making way through them.
 	if (FStructProperty* P = FindFProperty<FStructProperty>(OceanWaves->GetClass(), TEXT("WindDirection"))) { *P->ContainerPtrToValuePtr<FVector2D>(OceanWaves.Get()) = FVector2D(-1.0, 0.2); }
 
-	uint8* Params = static_cast<uint8*>(FMemory_Alloca(FMath::Max<int32>(Fn->ParmsSize, 1)));
-	FMemory::Memzero(Params, Fn->ParmsSize);
-	for (TFieldIterator<FProperty> It(Fn); It && It->HasAnyPropertyFlags(CPF_Parm); ++It)
+	// Calls one of the plugin's "set ocean data" functions with an asset and a blend time.
+	auto Apply = [this, Library, bFirst](UFunction* Call, UObject* Asset)
 	{
-		It->InitializeValue_InContainer(Params);
-		if (FObjectProperty* O = CastField<FObjectProperty>(*It))
+		uint8* Params = static_cast<uint8*>(FMemory_Alloca(FMath::Max<int32>(Call->ParmsSize, 1)));
+		FMemory::Memzero(Params, Call->ParmsSize);
+		for (TFieldIterator<FProperty> It(Call); It && It->HasAnyPropertyFlags(CPF_Parm); ++It)
 		{
-			O->SetObjectPropertyValue_InContainer(Params, It->GetName() == TEXT("WaveData") ? OceanWaves.Get() : static_cast<UObject*>(this));
+			It->InitializeValue_InContainer(Params);
+			if (FObjectProperty* O = CastField<FObjectProperty>(*It))
+			{
+				O->SetObjectPropertyValue_InContainer(Params, It->GetName() == TEXT("WorldContextObject") ? static_cast<UObject*>(this) : Asset);
+			}
+			else if (FFloatProperty* F = CastField<FFloatProperty>(*It)) { F->SetPropertyValue_InContainer(Params, bFirst ? 0.01f : 10.f); }
 		}
-		else if (FFloatProperty* F = CastField<FFloatProperty>(*It)) { F->SetPropertyValue_InContainer(Params, bFirst ? 0.01f : 10.f); }
+		Library->GetDefaultObject()->ProcessEvent(Call, Params);
+	};
+	Apply(Fn, OceanWaves);
+
+	// The look goes with the wind: whitecaps and a greyer, rougher surface as it rises.
+	UObject* StockLook = LoadObject<UObject>(nullptr, TEXT("/DynamicRealWater/Blueprints/WaterStates/Visuals/DA_DefaultVisual.DA_DefaultVisual"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	UFunction* LookFn = Library->FindFunctionByName(TEXT("SetOceanVisualData"));
+	if (StockLook && LookFn && !FParse::Param(FCommandLine::Get(), TEXT("DCNoSeaLook")))
+	{
+		const float Storm = FMath::GetMappedRangeValueClamped(FVector2f(16.f, 30.f), FVector2f(0.f, 1.f), Wind);
+		float Foam = FMath::Lerp(0.12f, 0.45f, Storm);
+		FParse::Value(FCommandLine::Get(), TEXT("DCSeaFoam="), Foam);
+		OceanLook = DuplicateObject<UObject>(StockLook, this);
+		if (FFloatProperty* P = FindFProperty<FFloatProperty>(OceanLook->GetClass(), TEXT("FoamStrength"))) { P->SetPropertyValue_InContainer(OceanLook.Get(), Foam); }
+		Apply(LookFn, OceanLook);
 	}
-	Library->GetDefaultObject()->ProcessEvent(Fn, Params);
 	UE_LOG(LogDC, Log, TEXT("Ocean: wind %.0f m/s at %.0f s"), Wind, RideTime);
 }

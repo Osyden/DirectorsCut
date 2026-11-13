@@ -140,6 +140,7 @@ protected:
 	UPROPERTY() TObjectPtr<AActor> Ocean;
 	/** The plugin sea's wave state, re-made whenever the ride's weather changes enough to matter. */
 	UPROPERTY() TObjectPtr<UObject> OceanWaves;
+	UPROPERTY() TObjectPtr<UObject> OceanLook;
 	float OceanWind = -1.f;
 	void TickOcean();
 	void TickUDS();
