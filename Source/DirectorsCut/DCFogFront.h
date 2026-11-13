@@ -35,6 +35,7 @@ protected:
 	{
 		TWeakObjectPtr<UStaticMeshComponent> Component;
 		FVector Offset;
+		float Radial = 0.f, High = 0.f, Shown = -1.f;
 		float Size;
 		float Seed;
 	};
@@ -48,6 +49,7 @@ protected:
 	{
 		TWeakObjectPtr<class ULocalFogVolumeComponent> Component;
 		FVector Offset;
+		float Radial = 0.f, High = 0.f, Shown = -1.f;
 	};
 	TArray<FBank> Banks;
 	void BuildBanks();

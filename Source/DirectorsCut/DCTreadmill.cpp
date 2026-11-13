@@ -180,6 +180,16 @@ void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
 void ADCTreadmill::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	if (VdbTrial)
+	{
+		static float NextVdbLog = 3.f; static float VdbClock = 0.f;
+		VdbClock += DeltaSeconds;
+		if (VdbClock > NextVdbLog)
+		{
+			NextVdbLog += 6.f;
+			UE_LOG(LogDC, Log, TEXT("Vdb tunnel: frame %.1f resolution %s bounds %s visible %d material %s"), VdbTrial->Frame, *VdbTrial->VolumeResolution.ToString(), *VdbTrial->Bounds.ToString(), VdbTrial->IsVisible(), *GetNameSafe(VdbTrial->GetMaterial(0)));
+		}
+	}
 	if (!Director)
 	{
 		Director = ADCRideDirector::Get(this);
@@ -904,6 +914,43 @@ void ADCTreadmill::SpawnAtlantis()
 		W.Drift = FVector(-900.f, 260.f, 0.f);
 		W.Stretch = FVector(3.f, 1.f, 0.6f);
 		if (ADCFogBank* Wisps = ADCFogBank::Spawn(World, W, 77)) { Wisps->SetActorLocation(FVector(500.f, 0.f, SeaZ + 800.f)); }
+	}
+
+	// Trial (-DCVdbTunnel=N): one of the bought looping cloud tunnels (Clouds Tunnel Vdb Effects Pack Loop,
+	// 1 to 10), standing still by the ship. -DCVdbScale= enlarges it (the pack's own size is about 50 m long),
+	// -DCVdbAt=x,y,z places its foot, -DCVdbYaw= turns it, -DCVdbRate= is frames a second, -DCVdbDensity= thickens it.
+	int32 VdbIndex = 0;
+	if (FParse::Value(FCommandLine::Get(), TEXT("DCVdbTunnel="), VdbIndex) && VdbIndex > 0)
+	{
+		UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, *FString::Printf(TEXT("/Game/Clouds_Tunnel_Loop/Material/MI_SparseVolumeMaterial_Inst_%d.MI_SparseVolumeMaterial_Inst_%d"), VdbIndex, VdbIndex));
+		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		AHeterogeneousVolume* Holder = World->SpawnActor<AHeterogeneousVolume>(AHeterogeneousVolume::StaticClass(), FTransform::Identity, Params);
+		if (Base && Holder)
+		{
+			float Scale = 20.f, Yaw = -90.f, Rate = 24.f, VDensity = 1.f; FVector At(0.f, 0.f, SeaZ);
+			FParse::Value(FCommandLine::Get(), TEXT("DCVdbScale="), Scale);
+			FParse::Value(FCommandLine::Get(), TEXT("DCVdbYaw="), Yaw);
+			FParse::Value(FCommandLine::Get(), TEXT("DCVdbRate="), Rate);
+			FParse::Value(FCommandLine::Get(), TEXT("DCVdbDensity="), VDensity);
+			FString AtText;
+			if (FParse::Value(FCommandLine::Get(), TEXT("DCVdbAt="), AtText, false))
+			{
+				TArray<FString> Parts; AtText.ParseIntoArray(Parts, TEXT(","));
+				if (Parts.Num() == 3) { At = FVector(FCString::Atof(*Parts[0]), FCString::Atof(*Parts[1]), SeaZ + FCString::Atof(*Parts[2])); }
+			}
+			UHeterogeneousVolumeComponent* H = Holder->FindComponentByClass<UHeterogeneousVolumeComponent>();
+			H->SetMobility(EComponentMobility::Movable);
+			UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(Base, Holder);
+			MID->SetScalarParameterValue(TEXT("Density Scale"), VDensity);
+			H->SetMaterial(0, MID);
+			H->StartFrame = 0.f; H->EndFrame = 200.f; H->FrameRate = Rate; H->bPlaying = true; H->bLooping = true;
+			H->bIssueBlockingRequests = true;
+			Holder->SetActorTransform(FTransform(FRotator(0.f, Yaw, 0.f), At, FVector(Scale)));
+			UE_LOG(LogDC, Log, TEXT("Vdb tunnel %d: scale %.1f at %s yaw %.0f, material %s"), VdbIndex, Scale, *At.ToString(), Yaw, *GetNameSafe(Base));
+			VdbTrial = H;
+		}
+		else { UE_LOG(LogDC, Warning, TEXT("Vdb tunnel %d: material not found"), VdbIndex); }
 	}
 
 	// Trial (-DCHeteroTest): one bank drawn by the engine's heterogeneous-volume renderer instead of the

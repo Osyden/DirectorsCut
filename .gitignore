@@ -48,3 +48,10 @@ Content/__ExternalObjects__/
 Content/Fab/
 # Regenerated from purchased Kaiju source textures; never publish these assets.
 /Content/DC/Maelstrom/LeviathanSkin/
+
+# Clouds Tunnel Vdb Effects Pack Loop (one.studio2, Fab): licensed, 13 GB
+Content/Clouds_Tunnel_Loop/
+
+# Fog packs (Fab): licensed
+Content/FogArea/
+Content/EasyFog/

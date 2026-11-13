@@ -139,7 +139,16 @@ void ADCFogFront::Tick(float DeltaSeconds)
 			{
 				C->SetWorldLocation(FVector(Director->StormFrontX, 0.f, Director->SeaLevelZ) + B.Offset);
 				// The skirt of fog under the front comes with the front itself.
-				C->SetVisibility(Gone < 1.f && Director->StormGrowth > 0.55f);
+				// The skirt of fog under the front thickens with the front itself; it does not switch on.
+				const float In = FMath::SmoothStep(0.3f, 1.f, Director->StormGrowth) * (1.f - Gone);
+				C->SetVisibility(In > 0.01f);
+				if (!FMath::IsNearlyEqual(In, B.Shown, 0.004f))
+				{
+					B.Shown = In;
+					C->RadialFogExtinction = B.Radial * In;
+					C->HeightFogExtinction = B.High * In;
+					C->MarkRenderStateDirty();
+				}
 			}
 		}
 	}
@@ -225,6 +234,7 @@ void ADCFogFront::BuildBanks()
 			C->HeightFogFalloff = (Rank == 0 ? 1500.f : 700.f) * Rng.FRandRange(0.7f, 1.4f) / Tall;
 			C->FogPhaseG = 0.5f;
 			C->FogAlbedo = Rank == 0 ? FLinearColor(0.62f, 0.7f, 0.82f) : FLinearColor(0.3f, 0.36f, 0.46f);
+			B.Radial = C->RadialFogExtinction; B.High = C->HeightFogExtinction;
 			C->RegisterComponent();
 			B.Component = C;
 			Banks.Add(B);

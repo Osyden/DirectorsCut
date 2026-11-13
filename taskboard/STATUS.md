@@ -2,6 +2,13 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 13 Nov 22:40 Claude: bought cloud tunnel draws in the game at ship scale; night queue set
+
+- Owner installed three packs (all git-ignored): `Content/Clouds_Tunnel_Loop` (ten looping 201-frame volumes, 13 GB), `Content/EasyFog` (lit flowing fog cards), `Content/FogArea` (fog box through the fog grid).
+- Trial switch `-DCVdbTunnel=N` (1 to 10) with `-DCVdbScale= -DCVdbAt=x,y,z -DCVdbYaw= -DCVdbRate= -DCVdbDensity=`. The pack's voxels are 0.42 cm, so scale 300 gives a tunnel about 850 m long, 240 m wide and 200 m high. Tunnel 1 at that scale: 128 fps at 1280x720 with the ship inside it. Frames in `review/45-vdb-tunnel-first`. As shipped it is brown cloud with teal light; both are material parameters and need retinting.
+- Written and built, not yet judged in frames: the radial storm redraws every frame (it moved in steps: `Movement Update Fraction`, `Alpha Update Threshold`, `Tick Interval`), and the fog skirt under the front fades in instead of switching on.
+- Owner's play-test faults and the night's order of work: `taskboard/NIGHT-QUEUE-13NOV.md`. Scheduler runs every 20 minutes until 08:00 on 14 Nov.
+
 ## Fri 13 Nov 18:29 — Claude: ninth build verified with the band fix; run ends
 
 - **Build:** `Builds/2026-11-13_1824_4c3cc16_no-bands` runs: 133 fps open sea, 96 and 97 in the city at 1600x900. Its own frame at 150 s (the pose of the owner's complaint) shows ruins, cloud and dark sea, no sheet or slab. This is the build to play; [EVENING-13NOV.md](EVENING-13NOV.md) is updated.

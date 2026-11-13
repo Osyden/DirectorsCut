@@ -137,4 +137,6 @@ protected:
 	float LaneVelocity = 0.f;
 	float ObstacleTimer = 4.f;
 	float HostileTimer = 8.f;
+	/** Trial: the bought cloud tunnel (-DCVdbTunnel=). */
+	UPROPERTY() TObjectPtr<class UHeterogeneousVolumeComponent> VdbTrial;
 };

@@ -888,6 +888,11 @@ void ADCRideDirector::SetupUDS()
 			SkyNum(UDSStorm, TEXT("Cloud Altitude Offset"), -1.0);
 			// Full strength almost to its edge: a face that stands up like a wall, not a slow thickening of the sky.
 			SkyNum(UDSStorm, TEXT("Inner Radius Fraction"), 0.92);
+			// The pack redraws the storm into the cloud layer only when it has moved or changed by a set
+			// amount, and on a slow tick: the front then swells in jumps a few times a second. Redraw it every frame.
+			SkyNum(UDSStorm, TEXT("Movement Update Fraction"), 0.0005);
+			SkyNum(UDSStorm, TEXT("Alpha Update Threshold"), 0.0005);
+			SkyNum(UDSStorm, TEXT("Tick Interval"), 0.0);
 			SkyOverrides(UDSStorm, TEXT("DCStorm="));
 			UGameplayStatics::FinishSpawningActor(UDSStorm, At);
 		}
