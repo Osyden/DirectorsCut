@@ -44,6 +44,9 @@ namespace
 		C->SetupAttachment(Actor->GetRootComponent());
 		if (FParse::Param(FCommandLine::Get(), TEXT("DCNoRuinShadows"))) { C->SetCastShadow(false); }
 		C->SetRelativeTransform(FTransform(Rot, Where - Rot.RotateVector(Foot), Scale));
+		// The wash line: foam lapping at the stone where it stands in the sea, and wet stone above it.
+		static UMaterialInterface* Waterline = FParse::Param(FCommandLine::Get(), TEXT("DCNoWaterline")) ? nullptr : LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Waterline.M_Waterline"));
+		if (Waterline) { C->SetOverlayMaterial(Waterline); /* an overlay cannot be drawn on a Nanite mesh */ C->SetForceDisableNanite(true); }
 		C->RegisterComponent();
 		return Box.GetSize() * Scale;
 	}
