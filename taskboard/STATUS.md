@@ -2,6 +2,15 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 00:35 Claude: cannon shot is an iron ball; lower guns fire from outside the hull
+
+Owner's note: the guns fired a salvo of wooden bolts from behind the camera, with the flash behind the camera too.
+
+- **Bolts**: each shot was drawn with a 2.5 m orange rod behind it. Now a dark iron ball (30 cm) with a thin grey streak (`DCGunnery.cpp`). `review/49-cannon-shot`.
+- **Flash and shot inside the ship**: the five lower-deck muzzles were reckoned about a metre inside the hull (Y 372 to 466 where the side is at up to 567), so their flashes and balls started inside her. They are moved 1.1 m outboard. The four deck guns were already at their barrels' mouths (checked from the gun station).
+- Test hook `-DCGunTestAt=<seconds>` fires a captain's starboard volley; with `-DCStation=starboard -DCTenths` it can be photographed.
+- Not checked: the port side, the lower guns' flashes seen from outside, and whether this is all of what the owner saw (their build's gun camera may differ). DCGunnery is Codex's file by the README; the change is small and listed here for them.
+
 ## 14 Nov 00:05 Claude: clear air inside the tunnel
 
 - The front-interior phase (58 s) had thick fog (density 0.035, Mist 0.44) from when the inside of the front was meant to be blind. It hid the tunnel's walls: after 61 s the picture was even grey. Now density 0.004 and Mist 0.15, so from 61 to 70 s the ship runs down a dark rolling tunnel toward the light at its far end, and the first ruins show at about 70 s. `review/47-front-wall-with-portal/10-inside-tunnel-61-to-86s.png`. 86 to 118 fps at 1280x720.

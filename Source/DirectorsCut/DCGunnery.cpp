@@ -79,8 +79,15 @@ void ADCGunnery::Init(AActor* Ship, float InSeaLevelZ)
 	if (UMaterialInterface* Base = Trails->GetMaterial(0))
 	{
 		UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(Base, Trails);
-		Material->SetVectorParameterValue(TEXT("Color"), FLinearColor(1.f, 0.57f, 0.23f));
+		// A thin grey streak of smoke and blur behind the ball. (It was a thick orange rod, which read as a wooden bolt.)
+		Material->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.16f, 0.16f, 0.17f));
 		Trails->SetMaterial(0, Material);
+	}
+	if (UMaterialInterface* BallBase = Balls->GetMaterial(0))
+	{
+		UMaterialInstanceDynamic* Iron = UMaterialInstanceDynamic::Create(BallBase, Balls);
+		Iron->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.02f, 0.02f, 0.022f));
+		Balls->SetMaterial(0, Iron);
 	}
 	Muzzles[0].Reset();
 	Muzzles[1].Reset();
@@ -96,7 +103,18 @@ void ADCGunnery::Init(AActor* Ship, float InSeaLevelZ)
 			const FVector Loc = P->Bounds.Origin;
 			if (FMath::Abs(Loc.Y) < 200.f || P->Bounds.BoxExtent.Y <= P->Bounds.BoxExtent.X) { continue; }
 			const int32 SideIdx = Loc.Y < 0.f ? 0 : 1;
-			Muzzles[SideIdx].Add(Loc + FVector(0.f, FMath::Sign(Loc.Y) * P->Bounds.BoxExtent.Y, 20.f));
+			FVector Muzzle = Loc + FVector(0.f, FMath::Sign(Loc.Y) * P->Bounds.BoxExtent.Y, 20.f);
+			// The guns below decks sit a metre inside the hull by that reckoning, so their flash and shot started
+			// inside the ship. Find the ship's side abreast of the gun and start just outside it.
+			FHitResult Side;
+			FCollisionQueryParams Q(SCENE_QUERY_STAT(DCMuzzle), true);
+			const FVector Out(Muzzle.X, FMath::Sign(Loc.Y) * 1500.f, Muzzle.Z);
+			if (Ship->ActorLineTraceSingle(Side, Out, FVector(Muzzle.X, 0.f, Muzzle.Z), ECC_Visibility, Q) && FMath::Abs(Side.ImpactPoint.Y) > FMath::Abs(Muzzle.Y))
+			{
+				Muzzle.Y = Side.ImpactPoint.Y + FMath::Sign(Loc.Y) * 25.f;
+			}
+			else if (Muzzle.Z < 470.f) { Muzzle.Y += FMath::Sign(Loc.Y) * 110.f; }   // no hit on the hull: the ports are about a metre deep
+			Muzzles[SideIdx].Add(Muzzle);
 		}
 	}
 	UE_LOG(LogDC, Log, TEXT("Gunnery: %d port guns, %d starboard guns"), Muzzles[0].Num(), Muzzles[1].Num());
@@ -187,6 +205,18 @@ void ADCGunnery::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 
 	for (float& R : ReloadLeft) { R = FMath::Max(0.f, R - DeltaSeconds); }
+	// Test hook: -DCGunTestAt=<seconds> fires a captain's starboard volley abeam at that time after start.
+	{
+		static float TestAt = -1.f; static bool bRead = false;
+		if (!bRead) { bRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCGunTestAt="), TestAt); }
+		if (TestAt >= 0.f && GetWorld()->GetTimeSeconds() >= TestAt)
+		{
+			TestAt = -1.f;
+			for (const FVector& M : Muzzles[1]) { UE_LOG(LogDC, Log, TEXT("Gun test: starboard muzzle at %s"), *M.ToCompactString()); }
+			FireBroadside(EDCSide::Starboard, FVector(0.f, 15000.f, SeaLevelZ), 6, true);
+		}
+	}
+
 
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -300,8 +330,8 @@ void ADCGunnery::Tick(float DeltaSeconds)
 	for (const FShot& S : Shots)
 	{
 		const FVector Direction = S.Vel.GetSafeNormal();
-		Trails->AddInstance(FTransform(Direction.Rotation(), S.Pos - Direction * 135.f, FVector(2.5f, 0.13f, 0.13f)), true);
-		Balls->AddInstance(FTransform(FQuat::Identity, S.Pos, FVector(0.35f)), true);
+		Trails->AddInstance(FTransform(Direction.Rotation(), S.Pos - Direction * 70.f, FVector(1.3f, 0.05f, 0.05f)), true);
+		Balls->AddInstance(FTransform(FQuat::Identity, S.Pos, FVector(0.3f)), true);
 	}
 
 	// A brief fan of water above the smoke, large enough to read from the deck.
