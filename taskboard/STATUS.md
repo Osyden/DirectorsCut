@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 15:25 — Claude: fifth dated build; deck wisps looked at again
+
+- **Build:** `Builds/2026-11-13_1521_328e18c_sculpted-banks` runs (137 fps open sea, 126 city, 720p). It has the modelled banks.
+- **Wisps over the deck:** a close look across the deck at 100 s showed none at all; they were too thin and dim for the dusk. Raised (density 0.05 to 0.1, more of the noise counts as fog). At 0.16 the deck had a visible warm mist round the lanterns, but it read as general haze, not running streaks, and began to go brown, so it is set between. Honest state: mist on deck yes, distinct wisps streaming across it no. Streaks finer than the fog grid's cells cannot be drawn in it. Not in the build above.
+
 ## Fri 13 Nov 15:06 — Claude: a cloud tunnel from fog banks tried in the front; not good enough, off
 
 - Rings of banks round the course inside the front (`-DCTunnel`): invisible in the front's thick fog, mere side patches when that fog is thinned, and thinning it shows the city too early. Off by default. Recorded in the VDB hand-off as the one shape the present system cannot make, which is what the owner's tunnel pack is for.

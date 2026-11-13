@@ -878,10 +878,10 @@ void ADCTreadmill::SpawnAtlantis()
 		FDCFogBankDesc W;
 		W.bOnDeck = true;
 		W.Radii = FVector(6000.f, 3000.f, 900.f);
-		W.Density = 0.05f;
+		W.Density = 0.1f;
 		W.Size = 1400.f;
 		W.Erode = 0.3f;
-		W.Wisp = 0.62f;
+		W.Wisp = 0.5f;
 		W.Drift = FVector(-900.f, 260.f, 0.f);
 		W.Stretch = FVector(3.f, 1.f, 0.6f);
 		if (ADCFogBank* Wisps = ADCFogBank::Spawn(World, W, 77)) { Wisps->SetActorLocation(FVector(500.f, 0.f, SeaZ + 800.f)); }
