@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 07:03 — Claude: Builds/Next at 885d796; morning hand-over written
+
+- `Builds/Next` rebuilt with the helm momentum and verified in a continuous run (116 fps open sea, 92 Atlantis at 720p; a helm order during the run; no slow frames besides the test screenshots).
+- [MORNING-13NOV.md](MORNING-13NOV.md): what changed overnight against the owner's reports, what to play, what needs a person at the controls.
+
 ## Fri 13 Nov 06:50 — Claude: the ship turns under helm instead of sliding
 
 - **Helm momentum** (playtest: "ship should turn with momentum, not be dragged sideways"): the sideways motion now builds and dies away over about a second instead of starting and stopping dead, the ship's head swings up to 6 degrees toward the turn and she heels about 2 degrees away from it; the hull wash turns with her. Measured on a "hard to starboard" order: yaw rising to 5.8 degrees and easing back. Open sea and Atlantis only; the maelstrom keeps Codex's own steering.
