@@ -2,6 +2,14 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 04:09 — Packaged build works with the new packs; rain splashes; sea follows the weather
+
+- **Packaging test passed.** A package with Ultra Dynamic Sky, the ruins and Dynamic Real Water cooked in (`Config/DefaultGame.ini` cook list) builds and runs: sky, storm, plugin sea, ruins, wet deck all present, 105 to 133 fps at 720p. It is in `Builds/Next` (2.8 GB without the voice sidecars); the 19:02 build in `Builds/Windows` is untouched. Three of the water plugin's render-target materials failed to compile in the cook with no visible effect so far.
+- **Rain splashes on the deck:** about 5000 points on every level surface of the ship play a small impact and ring (`M_Splash`, `Tools/make_splash_material.py`), scaled by the rain. The sky pack's own splashes never appeared because the ship's hull does not block the visibility channel they trace on.
+- **Plugin sea follows the ride:** its wind goes from 16 m/s on the open sea to 22 in the front and 28 in Atlantis, blended over ten seconds.
+- `SETUP.md` lists the new packs.
+- Frame-rate readings taken while Codex is running its own game on the same GPU are about half the real figure; readings above were taken when it was idle.
+
 ## Fri 13 Nov 03:50 — Storm front, fog banks, rain and wet deck under the sky pack (set 26)
 
 Review set: `taskboard/review/26-storm-front-fog-banks-wet-deck/` (`a_bow_*` the front coming on, `b_helm_*` the voyage from the helm to 210 s, `c_deck_*` the wet deck).

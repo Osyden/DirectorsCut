@@ -136,6 +136,10 @@ protected:
 	void SetupUDS();
 	void SetupOcean();
 	UPROPERTY() TObjectPtr<AActor> Ocean;
+	/** The plugin sea's wave state, re-made whenever the ride's weather changes enough to matter. */
+	UPROPERTY() TObjectPtr<UObject> OceanWaves;
+	float OceanWind = -1.f;
+	void TickOcean();
 	void TickUDS();
 	UPROPERTY() TArray<TObjectPtr<class UTexture>> CloudNoise;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<class UPostProcessComponent> PostProcess;

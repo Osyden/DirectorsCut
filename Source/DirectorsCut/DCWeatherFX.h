@@ -29,6 +29,11 @@ protected:
 	UPROPERTY() TObjectPtr<UProceduralMeshComponent> Embers;
 	UPROPERTY() TObjectPtr<UProceduralMeshComponent> Spray;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> SprayMID;
+	/** Rain striking the deck: small quads lying on every upward-facing surface of the ship (M_Splash). */
+	UPROPERTY() TObjectPtr<UProceduralMeshComponent> Splashes;
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> SplashMID;
+	bool bSplashesBuilt = false;
+	void BuildSplashes();
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> RainMID;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> EmberMID;
 	UPROPERTY() TObjectPtr<ADCRideDirector> Director;

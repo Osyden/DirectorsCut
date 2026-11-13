@@ -429,6 +429,7 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 	const FVector2D ToCentre = WhirlCenter.GetSafeNormal();
 	const FQuat Level = FQuat::FindBetweenNormals(FVector(ToCentre.X * Slope, ToCentre.Y * Slope, 1.f).GetSafeNormal(), FVector::UpVector);
 	Sea->SetRelativeTransform(FTransform(WorldRock.GetRotation() * Level, FVector(0.f, 0.f, SeaLevelZ + Heave)));
+	if (Ocean) { TickOcean(); }
 	if (Ocean) { Sea->SetVisibility(Env.Tube > 0.02f || Env.Whirl > 0.02f); Ocean->SetActorHiddenInGame(Env.Tube > 0.5f || Env.Whirl > 0.5f); }
 
 	TickLamps();
@@ -837,4 +838,37 @@ void ADCRideDirector::SetupOcean()
 	if (FStructProperty* Wind = FindFProperty<FStructProperty>(OceanClass, TEXT("WindDirection"))) { *Wind->ContainerPtrToValuePtr<FVector2D>(Ocean.Get()) = FVector2D(-1.0, 0.2); }
 	UGameplayStatics::FinishSpawningActor(Ocean, FTransform(FVector(0.f, 0.f, SeaLevelZ)));
 	UE_LOG(LogDC, Log, TEXT("Ocean: Dynamic Real Water in use (%s)"), Ocean ? *Ocean->GetClass()->GetName() : TEXT("spawn failed"));
+}
+
+void ADCRideDirector::TickOcean()
+{
+	// The plugin sea follows the ride's weather: a fresh breeze on the open sea, a gale in the storm.
+	// Its wave state is an asset; a copy of the stock one is given the new wind and blended in.
+	const float Wind = FMath::Clamp(9.f + Env.WaveHeight * 0.1f, 5.f, 60.f);
+	if (FMath::Abs(Wind - OceanWind) < 2.f) { return; }
+	UClass* Library = FindObject<UClass>(nullptr, TEXT("/Script/DynamicRealWater.DRW_BlueprintLibrary"));
+	UObject* Stock = LoadObject<UObject>(nullptr, TEXT("/DynamicRealWater/Blueprints/WaterStates/Waves/DA_DefaultWaves.DA_DefaultWaves"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	UFunction* Fn = Library ? Library->FindFunctionByName(TEXT("SetOceanWaveData")) : nullptr;
+	if (!Fn || !Stock) { OceanWind = Wind; return; }
+	const bool bFirst = OceanWind < 0.f;
+	OceanWind = Wind;
+	OceanWaves = DuplicateObject<UObject>(Stock, this);
+	if (FFloatProperty* P = FindFProperty<FFloatProperty>(OceanWaves->GetClass(), TEXT("WindSpeed"))) { P->SetPropertyValue_InContainer(OceanWaves.Get(), Wind); }
+	if (FFloatProperty* P = FindFProperty<FFloatProperty>(OceanWaves->GetClass(), TEXT("Choppiness"))) { P->SetPropertyValue_InContainer(OceanWaves.Get(), FMath::GetMappedRangeValueClamped(FVector2f(15.f, 35.f), FVector2f(1.f, 1.5f), Wind)); }
+	// The waves run from the bow aft, which reads as the ship making way through them.
+	if (FStructProperty* P = FindFProperty<FStructProperty>(OceanWaves->GetClass(), TEXT("WindDirection"))) { *P->ContainerPtrToValuePtr<FVector2D>(OceanWaves.Get()) = FVector2D(-1.0, 0.2); }
+
+	uint8* Params = static_cast<uint8*>(FMemory_Alloca(FMath::Max<int32>(Fn->ParmsSize, 1)));
+	FMemory::Memzero(Params, Fn->ParmsSize);
+	for (TFieldIterator<FProperty> It(Fn); It && It->HasAnyPropertyFlags(CPF_Parm); ++It)
+	{
+		It->InitializeValue_InContainer(Params);
+		if (FObjectProperty* O = CastField<FObjectProperty>(*It))
+		{
+			O->SetObjectPropertyValue_InContainer(Params, It->GetName() == TEXT("WaveData") ? OceanWaves.Get() : static_cast<UObject*>(this));
+		}
+		else if (FFloatProperty* F = CastField<FFloatProperty>(*It)) { F->SetPropertyValue_InContainer(Params, bFirst ? 0.01f : 10.f); }
+	}
+	Library->GetDefaultObject()->ProcessEvent(Fn, Params);
+	UE_LOG(LogDC, Log, TEXT("Ocean: wind %.0f m/s at %.0f s"), Wind, RideTime);
 }

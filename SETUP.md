@@ -5,6 +5,11 @@ The repo is public, so licensed content and large binaries stay local. To run th
 | What | Where it goes | Source |
 | --- | --- | --- |
 | Brigantine ship asset (purchased) | `Content/Brigantine/` | Fab library, added through the Epic launcher |
+| Ultra Dynamic Sky (purchased; sky, clouds, weather, storm front) | `Content/UltraDynamicSky/` | Fab library. Without it the game uses its own sky (`-DCNoUDS` forces that) |
+| Modular Ancient Ruins by archafizov (purchased; Atlantis) | `Content/AncientRuins/` | Fab library. Without it Atlantis is built from placeholder shapes |
+| Dynamic Real Water 3.0 by Natural Level (purchased; the sea outside the tunnel and maelstrom) | engine `Plugins/Marketplace/` (installed by the launcher) | Fab library, "Install to engine". Optional plugin; `-DCNoDRW` uses the game's own sea |
+| Claw Kaiju Monster (boss) | `Content/Fab/Claw_Kaiju_Monster/` | Fab library, then run `Tools/py.sh Tools/fix_kaiju.py` once to repair its textures and material |
+| Kraken (free) | `Content/Kraken/` | Fab library |
 | NVIDIA DLSS 4.5 plugin v8.7.2 for UE 5.8 | `Plugins/DLSS`, `Plugins/StreamlineCore`, `Plugins/StreamlineDLSSG`, `Plugins/StreamlineNGXCommon`, `Plugins/StreamlineReflex` | NVIDIA developer site, "DLSS Unreal Engine plugin archive" |
 | llama.cpp server, Vulkan build b12317 (`llama-b12317-bin-win-vulkan-x64.zip`) | `Sidecars/bin/llama/` | github.com/ggml-org/llama.cpp releases |
 | whisper.cpp, CPU build b5454 (`whisper-bin-x64.zip`) | `Sidecars/bin/whisper/` | github.com/ggml-org/whisper.cpp releases |

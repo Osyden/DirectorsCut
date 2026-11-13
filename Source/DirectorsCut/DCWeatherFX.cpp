@@ -79,6 +79,19 @@ void ADCWeatherFX::Tick(float DeltaSeconds)
 	const FDCEnvState& Env = Director->GetEnv();
 	FlashBoost = FMath::Max(0.f, FlashBoost - DeltaSeconds * 4.f);
 
+	// Splashes on the deck, once the ship is there to be rained on.
+	if (!bSplashesBuilt && Director->RideTime > 1.f) { BuildSplashes(); }
+	if (Splashes && SplashMID)
+	{
+		float Amount = FMath::Clamp(Env.Rain * 1.6f, 0.f, 1.f);
+		FParse::Value(FCommandLine::Get(), TEXT("DCSplash="), Amount);
+		Splashes->SetVisibility(Amount > 0.02f);
+		// Lit by whatever lights the deck: daylight, or the lanterns when it is dark.
+		const float Day = FMath::Clamp(Env.SunIntensity / 6.f, 0.f, 1.f);
+		const FLinearColor Lit = FMath::Lerp(FLinearColor(0.5f, 0.36f, 0.2f), FLinearColor(0.9f, 0.95f, 1.f), Day) * FMath::Lerp(0.3f, 0.8f, Day) * (1.f + 3.f * FlashBoost);
+		SplashMID->SetVectorParameterValue(TEXT("Tint"), FLinearColor(Lit.R, Lit.G, Lit.B, Amount));
+	}
+
 	// Rain; inside the water tunnel the same streaks read as spray.
 	const float RainAmount = FMath::Clamp(Env.Rain + Env.Tube * 0.6f * (1.f - FMath::Min(Env.SeaGlow.R, 1.f)), 0.f, 1.f);
 	Rain->SetVisibility(RainAmount > 0.01f && !Director->bUDS);   // the sky pack brings its own rain
@@ -100,4 +113,56 @@ void ADCWeatherFX::Tick(float DeltaSeconds)
 	Embers->SetVisibility(EmberAmount > 0.01f);
 	EmberMID->SetVectorParameterValue(TEXT("Motion"), FLinearColor(-260.f, 9.f, 5.f, 0.5f));
 	EmberMID->SetVectorParameterValue(TEXT("Tint"), FLinearColor(30.f, 7.f, 0.6f, 0.9f * EmberAmount));
+}
+
+void ADCWeatherFX::BuildSplashes()
+{
+	bSplashesBuilt = true;
+	UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Splash.M_Splash"));
+	if (!Base) { UE_LOG(LogDC, Warning, TEXT("WeatherFX: M_Splash missing; no rain splashes")); return; }
+
+	// Find the decks: drop probes over the hull and keep the ones that land on something level.
+	TArray<FVector> Verts; TArray<int32> Tris; TArray<FVector> Normals; TArray<FVector2D> UVs; TArray<FColor> Colors;
+	FCollisionQueryParams Params(TEXT("DCSplash"), true);
+	FRandomStream Rng(31);
+	const float Half = 7.f;
+	for (int32 i = 0; i < 12000 && Verts.Num() < 5000 * 4; ++i)
+	{
+		const float X = Rng.FRandRange(-2000.f, 2650.f);
+		const float Y = Rng.FRandRange(-560.f, 560.f);
+		// Ropes, spars and rails are in the way: keep going down through them to the first level surface.
+		FHitResult Hit;
+		bool bFound = false;
+		float From = 980.f;
+		for (int32 Step = 0; Step < 30 && !bFound; ++Step)
+		{
+			if (!GetWorld()->LineTraceSingleByObjectType(Hit, FVector(X, Y, From), FVector(X, Y, 200.f), FCollisionObjectQueryParams(FCollisionObjectQueryParams::AllObjects), Params)) { break; }
+			// SM_Root is the ship blueprint's unseen base plate, not a deck.
+			bFound = !Hit.bStartPenetrating && Hit.ImpactNormal.Z > 0.9f && !(Hit.GetComponent() && Hit.GetComponent()->GetName() == TEXT("SM_Root"));
+			From = (Hit.bStartPenetrating ? From : Hit.ImpactPoint.Z) - (Hit.bStartPenetrating ? 30.f : 4.f);
+		}
+		if (!bFound || Hit.ImpactPoint.Z < Director->SeaLevelZ + 60.f) { continue; }
+		const FVector C = Hit.ImpactPoint + FVector(0.f, 0.f, 1.2f);
+		const FColor Rand(Rng.RandRange(0, 255), Rng.RandRange(0, 255), Rng.RandRange(0, 255), 255);
+		const int32 B = Verts.Num();
+		for (int32 c = 0; c < 4; ++c)
+		{
+			Verts.Add(C + FVector((c & 1) ? Half : -Half, (c >> 1) ? Half : -Half, 0.f));
+			UVs.Add(FVector2D(c & 1, c >> 1));
+			Colors.Add(Rand);
+		}
+		Tris.Append({ B, B + 2, B + 1, B + 1, B + 2, B + 3 });
+	}
+	if (Verts.Num() == 0) { UE_LOG(LogDC, Warning, TEXT("WeatherFX: no deck found for rain splashes")); return; }
+	Normals.Init(FVector::UpVector, Verts.Num());
+	Splashes = NewObject<UProceduralMeshComponent>(this, TEXT("Splashes"));
+	Splashes->SetMobility(EComponentMobility::Movable);
+	Splashes->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Splashes->SetCastShadow(false);
+	Splashes->SetupAttachment(RootComponent);
+	Splashes->RegisterComponent();
+	Splashes->CreateMeshSection(0, Verts, Tris, Normals, UVs, Colors, TArray<FProcMeshTangent>(), false);
+	SplashMID = UMaterialInstanceDynamic::Create(Base, this);
+	Splashes->SetMaterial(0, SplashMID);
+	UE_LOG(LogDC, Log, TEXT("WeatherFX: %d rain splash points on the ship"), Verts.Num() / 4);
 }
