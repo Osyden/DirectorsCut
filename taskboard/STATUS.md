@@ -2,6 +2,17 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov — Codex maelstrom handoff
+
+Implementation `1e3372d`, branch `codex/maelstrom-reveal`, isolated clone `E:/Projects/DirectorsCut/Maelstrom-Clone`. Integrated Claude's published work through `1071550`. [Full handoff](MAELSTROM-HANDOFF.md) and [review images](review/codex-maelstrom-2026-11-13/README.md).
+
+- 3.2 km crater, 650 m depth, spiral swells, rim sanctuaries and cascades; hollow tunnel and daylight reveal; helm bearing response and clearer reveal camera.
+- Correctly textured/oriented Claw Kaiju emerges and chases alongside; four connected tentacles expose reachable cannon weak points, telegraph strikes and react to damage. Six breaks defeat it, then it sinks and the scene cuts back to sea after 20 seconds.
+- Editor build and continuous combat passed: 600 score, 100% hull, clean restored ocean at the ending. Separate no-fire review confirms attacks hurt the ship. Final side-gun capture checks the uphill target and broader island foundations. Hand-played controls, audio mix and a package of this encounter remain to verify.
+- No source edits to the fog, treadmill, ruins builders, ride director, weather actor or sky/water plugins. The new stage temporarily adjusts fog components/visibility during its phase and restores them afterward. Existing gunnery received only the curved-water query adapter.
+- Private generated Kaiju skin lives in ignored `Content/DC/Maelstrom/LeviathanSkin/`; copy locally or run its generator before reviewing another checkout. Public Git contains original water/spray materials, source and screenshots, with no paid source assets.
+- This is a playable visual foundation. Foam/waterfall detail, tunnel-edge breakup, tentacle art and temporal artifacts still need polish against the concept. Keep those gaps visible during review.
+
 ## Fri 13 Nov 04:09 — Packaged build works with the new packs; rain splashes; sea follows the weather
 
 - **Packaging test passed.** A package with Ultra Dynamic Sky, the ruins and Dynamic Real Water cooked in (`Config/DefaultGame.ini` cook list) builds and runs: sky, storm, plugin sea, ruins, wet deck all present, 105 to 133 fps at 720p. It is in `Builds/Next` (2.8 GB without the voice sidecars); the 19:02 build in `Builds/Windows` is untouched. Three of the water plugin's render-target materials failed to compile in the cook with no visible effect so far.
