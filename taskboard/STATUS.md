@@ -2,6 +2,16 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 04:22 — Sunlit ruins on the open sea; set 27
+
+Review set: `taskboard/review/27-open-sea-ruins-atlantis-splashes/` (`a_helm_*` the first minute, `b_bow_*` Atlantis from the bow, `c_deck_*` rain splashes).
+
+- **Open sea:** outlying ruins now stand in full sun in the first minute (an arch, a statue, colonnades, broken columns, a crag), passed close on either hand before the front closes in. `-DCNoOutliers` removes them.
+- **Front's fog skirt** made wider (42 km), softer and paler; it read as a mud bank before.
+- **Crew stand-ins** painted matte and dark instead of chrome. They are still mannequins; a sailor character pack is the real fix.
+- **The 50 fps frame at 125 s was not ours:** Codex was running its game on the same GPU. Re-measured alone, Atlantis holds 88 to 105 fps there.
+- Cook list now includes the Claw Kaiju folder at Codex's request.
+
 ## Fri 13 Nov 04:09 — Packaged build works with the new packs; rain splashes; sea follows the weather
 
 - **Packaging test passed.** A package with Ultra Dynamic Sky, the ruins and Dynamic Real Water cooked in (`Config/DefaultGame.ini` cook list) builds and runs: sky, storm, plugin sea, ruins, wet deck all present, 105 to 133 fps at 720p. It is in `Builds/Next` (2.8 GB without the voice sidecars); the 19:02 build in `Builds/Windows` is untouched. Three of the water plugin's render-target materials failed to compile in the cook with no visible effect so far.
