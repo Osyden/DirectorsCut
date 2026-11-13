@@ -914,6 +914,68 @@ void ADCTreadmill::SpawnAtlantis()
 		W.Drift = FVector(-900.f, 260.f, 0.f);
 		W.Stretch = FVector(3.f, 1.f, 0.6f);
 		if (ADCFogBank* Wisps = ADCFogBank::Spawn(World, W, 77)) { Wisps->SetActorLocation(FVector(500.f, 0.f, SeaZ + 800.f)); }
+
+		// Easy Fog cards (bought, not in the repository; absent, nothing is laid). Lit, flowing sheets of mist:
+		// wide ones lying on the sea so the water and the feet of the ruins stand in layered fog, and slanted
+		// rags of scud hanging over the channel's shoulders. They fade out near the eye and where they meet stone.
+		UStaticMesh* CardMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/EasyFog/Meshes/SM_easyFogCard_02.SM_easyFogCard_02"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+		UMaterialInterface* CardBase = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/EasyFog/Materials/M_BP_EasyFog.M_BP_EasyFog"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+		if (CardMesh && CardBase && !FParse::Param(FCommandLine::Get(), TEXT("DCNoFogCards")))
+		{
+			float CardDensity = 1.f; FParse::Value(FCommandLine::Get(), TEXT("DCFogCards="), CardDensity);
+			TArray<UTexture*> Masks, Normals;
+			for (int32 i = 1; i <= 8; ++i)
+			{
+				Masks.Add(LoadObject<UTexture>(nullptr, *FString::Printf(TEXT("/Game/EasyFog/Textures/Fog/T_mountainFog_0%d_mask.T_mountainFog_0%d_mask"), i, i), nullptr, LOAD_NoWarn | LOAD_Quiet));
+				Normals.Add(LoadObject<UTexture>(nullptr, *FString::Printf(TEXT("/Game/EasyFog/Textures/Fog/T_mountainFog_0%d_N.T_mountainFog_0%d_N"), i, i), nullptr, LOAD_NoWarn | LOAD_Quiet));
+			}
+			FActorSpawnParameters CardParams;
+			CardParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			int32 Cards = 0;
+			auto LayCard = [&](const FVector& At, float Across, float Pitch, float Yaw, float Density)
+			{
+				AActor* Holder = World->SpawnActor<AActor>(AActor::StaticClass(), FTransform::Identity, CardParams);
+				if (!Holder) { return; }
+				USceneComponent* Root = NewObject<USceneComponent>(Holder);
+				Root->SetMobility(EComponentMobility::Movable);
+				Holder->SetRootComponent(Root);
+				Root->RegisterComponent();
+				UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(Holder);
+				C->SetMobility(EComponentMobility::Movable);
+				C->SetStaticMesh(CardMesh);
+				C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+				C->SetCastShadow(false);
+				C->SetupAttachment(Root);
+				C->SetRelativeRotation(FRotator(Pitch, 0.f, 0.f));
+				C->SetRelativeScale3D(FVector(Across / 1160.f, Across / 1160.f * Rng.FRandRange(0.6f, 1.f), Across / 1160.f));
+				UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(CardBase, Holder);
+				const int32 Shape = Rng.RandRange(0, 7);
+				if (Masks[Shape]) { MID->SetTextureParameterValue(TEXT("Opacity Map"), Masks[Shape]); }
+				if (Normals[Shape]) { MID->SetTextureParameterValue(TEXT("FogNormals"), Normals[Shape]); }
+				MID->SetScalarParameterValue(TEXT("Fog Density"), Density * CardDensity);
+				MID->SetScalarParameterValue(TEXT("Fading Distance"), FMath::Min(Across * 0.25f, 3000.f));
+				MID->SetScalarParameterValue(TEXT("Camera Fading Distance"), 2500.f);
+				MID->SetScalarParameterValue(TEXT("Normal Intensity"), 1.f);
+				MID->SetScalarParameterValue(TEXT("Emissive Intensity"), 0.f);   // lit by the scene only
+				MID->SetVectorParameterValue(TEXT("Base Color Tint"), FLinearColor(0.62f, 0.68f, 0.78f));
+				C->SetMaterial(0, MID);
+				C->RegisterComponent();
+				Register(Holder, At, 1.5f, false, 1.f, Yaw, false);
+				++Cards;
+			};
+			for (float X = 26000.f; X < 345000.f; X += Rng.FRandRange(5000.f, 9000.f))
+			{
+				// A sheet on the water, anywhere from the course to well out among the ruins.
+				LayCard(FVector(X, Rng.FRandRange(-14000.f, 14000.f), SeaZ + Rng.FRandRange(180.f, 420.f)), Rng.FRandRange(14000.f, 38000.f), 0.f, Rng.FRandRange(0.f, 360.f), Rng.FRandRange(0.5f, 0.9f));
+				// Every other step, a rag of scud leaning over one shoulder of the channel.
+				if (Rng.FRand() < 0.5f)
+				{
+					const float Side = Rng.FRand() < 0.5f ? -1.f : 1.f;
+					LayCard(FVector(X + 2500.f, Side * Rng.FRandRange(7000.f, 18000.f), SeaZ + Rng.FRandRange(2500.f, 7000.f)), Rng.FRandRange(9000.f, 22000.f), Rng.FRandRange(50.f, 78.f), Rng.FRandRange(-25.f, 25.f), Rng.FRandRange(0.35f, 0.7f));
+				}
+			}
+			UE_LOG(LogDC, Log, TEXT("Fog cards: %d laid"), Cards);
+		}
 	}
 
 	// Trial (-DCVdbTunnel=N): one of the bought looping cloud tunnels (Clouds Tunnel Vdb Effects Pack Loop,

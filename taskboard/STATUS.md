@@ -2,6 +2,14 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 13 Nov 23:50 Claude: Easy Fog cards in the city; front skirt off; tunnel has no light of its own
+
+- **Fog cards** (`DCTreadmill.cpp`, after the deck wisps): about 60 Easy Fog cards on the treadmill through the city: wide sheets (140 to 380 m) lying 2 to 4 m over the sea, and slanted rags of scud over the channel's shoulders. Lit by the scene only (the pack's emissive is set to 0), fade near the eye and at stone. Absent pack: nothing laid. `-DCNoFogCards`, `-DCFogCards=<density scale>`. Frames 78 to 200 s in `review/48-fog-cards-city`; 117 to 134 fps at 1280x720 in the city.
+- **Front skirt off** when the cloud wall exists (`-DCFrontSkirt` brings it back): it laid a pale belt across the foot of the wall. The floor fade of the wall pieces is now 1.5 voxels, which removes the bright strip under them.
+- **Tunnel glow 0**: nothing in the front lights itself now except the lightning flare (Codex's review point).
+- Owner at 23:30: "Always just keep going."
+- Not done: deck wisps from cards (they need to move with the ship), far-off look of the wall (pale, straight top at 40 to 50 s), judging the storm growth for steps.
+
 ## 13 Nov 23:25 Claude: the storm front is a wall of the tunnel volume with the portal through it
 
 - **Wall** (`DCFogFront.cpp`, end of `BuildTunnel`): three more instances of the same looping volume, about five times the tunnel's size and laid across the course like a roll cloud (about 4 km long, 1.1 km through, 900 m high, lower quarter under the sea): one either side of the mouth, one over it with its foot cut away above the tunnel's crown. Unequal sizes, a few degrees of turn and one set back so the top is not a level line. They travel with the tunnel's mouth and take its density and lightning flare. `-DCNoFrontWall`, `-DCFrontWallScale= -DCFrontWallDensity= -DCFrontWallGap=`.

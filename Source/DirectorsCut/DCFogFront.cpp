@@ -132,7 +132,8 @@ void ADCFogFront::Tick(float DeltaSeconds)
 	Director->StormFrontStrength = FMath::Clamp((ArrivalTime + 28.f - T) / 12.f, 0.f, 1.f);
 	Director->StormMouthRadius = 35000.f;
 	TickTunnel(T);
-	if (Director->bUDS)
+	// With the wall of cloud volumes the old skirt of fog domes under the front only lays a pale belt across its foot.
+	if (Director->bUDS && (Wall.Num() == 0 || FParse::Param(FCommandLine::Get(), TEXT("DCFrontSkirt"))))
 	{
 		if (Banks.Num() == 0) { BuildBanks(); }
 		// World space: the actor itself only moves when the old billows are shown.
@@ -222,7 +223,7 @@ void ADCFogFront::BuildTunnel()
 	if (!H) { return; }
 	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnelScale="), TunnelScale);
 	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnelSink="), TunnelSink);
-	float Rate = 24.f, Temp = 0.004f;
+	float Rate = 24.f, Temp = 0.f;   // no light of its own: only lightning lights it from within
 	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnelDensity="), TunnelDensity);
 	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnelRate="), Rate);
 	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnelTemp="), Temp);
@@ -266,8 +267,8 @@ void ADCFogFront::BuildTunnel()
 	// Unequal sizes, a few degrees of turn and one set back, so the top of the wall is not one level line.
 	struct FPlace { float Side, Lift, Floor, Frame, Size, Yaw, Back, Soft; };
 	const FPlace Places[] = {
-		{ -1.f, 0.f, 42.f, 0.f, 1.f, 7.f, 0.f, 6.f },
-		{ 1.f, 0.f, 42.f, 70.f, 1.25f, -5.f, 9000.f, 6.f },
+		{ -1.f, 0.f, 42.f, 0.f, 1.f, 7.f, 0.f, 1.5f },
+		{ 1.f, 0.f, 42.f, 70.f, 1.25f, -5.f, 9000.f, 1.5f },
 		{ 0.f, 0.f, 40.f + 17000.f / Unit, 135.f, 1.1f, 0.f, 4000.f, 30.f },
 	};
 	for (const FPlace& P : Places)
