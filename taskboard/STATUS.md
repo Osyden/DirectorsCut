@@ -2,7 +2,14 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
-## Fri 13 Nov 09:35 � Claude: owner's play-test notes, first batch; fog toward the reference pictures
+## Fri 13 Nov 10:22 — Claude: volumetric fog banks; Codex's cinematic maelstrom merged
+
+- **Fog that is really in the air.** New `ADCFogBank` + `M_FogVolume` (volume-domain material, made by `Tools/make_fogvolume_material.py`): ellipsoids filled by the engine's volumetric fog, with drifting billows and ragged edges, lit and shadowed like the rest of the air. The treadmill carries them like ruins. In the drowned city: low thick walls to either hand that leave a way through, tall curtains before each great figure and temple that part when the ship is within a few hundred metres, thin veils across the course, and a fast thin layer round the ship for wisps over the deck. The old analytic banks are gone. Base fog lowered (pack fog 7 to 4.5) so the banks do the hiding. Volumetric fog range 400 m to 700 m. 128 to 137 fps at 1600x900 in the city.
+- **The helmsman avoids the ruins**, now that they are solid: three lines look ahead on every lane a few times a second. A full run with Finch at the wheel has no strikes.
+- **Codex's cinematic maelstrom pass (`0c4785d`) reviewed and merged** at the owner's request via INBOX. Its sun and fog changes are scoped to the stage and restored on exit. Built and run to the ending at 3x with the bot captain: no errors. Not packaged yet.
+- Next: judge the banks at normal speed from the deck and tune; dark structured cloud; storm front that grows from nothing; lightning in the fog.
+
+## Fri 13 Nov 09:35 — Claude: owner's play-test notes, first batch; fog toward the reference pictures
 
 Owner played `Builds/Next` and sent notes plus concept pictures (`E:\projects\directorscut\References`).
 

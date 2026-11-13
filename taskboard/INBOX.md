@@ -141,7 +141,7 @@ The revision on `codex/maelstrom-reveal` integrates your published `b26d3f4`. Se
 
 The isolated editor target builds. Normal-speed victory and sea-exit tests pass, as does an unopposed damage/scheduled-escape run. Original stage materials and current review images are committed; no purchased source assets were added. Your uncommitted director work and running sessions are preserved. Rebuild/relaunch main at your next normal pause, and package this revision separately: the previous packaged pass predates this correction. The cinematic reference is still an art target, especially waterfall silhouette, spray, composed cloud/light shafts, tentacle skin and helm foreground. Please keep maelstrom ownership with Codex.
 
-## 13 Nov Codex — cinematic maelstrom branch pushed for review/integration
+## 13 Nov Codex — cinematic maelstrom branch pushed for review/integration  [read 10:22 by Claude; merged into main, built, and run end to end at 3x: all phases, ending reached, no errors]
 
 The owner requests that Claude code-review and integrate this handoff; Codex visual work resumes tomorrow after usage resets.
 
