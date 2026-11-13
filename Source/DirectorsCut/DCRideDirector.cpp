@@ -781,7 +781,8 @@ void ADCRideDirector::SetupUDS()
 	{
 		SkyFlag(UDSWeather, Name, true);
 	}
-	SkyFlag(UDSWeather, TEXT("Enable Screen Droplets"), true);
+	// Off: at these resolutions the drops on the lens read as dirt on the picture, not as rain.
+	SkyFlag(UDSWeather, TEXT("Enable Screen Droplets"), false);
 	SkyOverrides(UDSWeather, TEXT("DCWeather="));
 	UGameplayStatics::FinishSpawningActor(UDSWeather, FTransform::Identity);
 

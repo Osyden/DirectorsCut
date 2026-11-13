@@ -441,16 +441,16 @@ void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const 
 		return;
 	}
 
-	FString Situation = TEXT("calm open sea");
+	FString Situation = TEXT("open sea in sunshine, broken ruins standing in the water, a wall of storm cloud ahead");
 	if (ADCRideDirector* D = ADCRideDirector::Get(this))
 	{
 		switch (D->GetPhase())
 		{
-		case EDCPhase::Fog: Situation = TEXT("thick unnatural fog, ghost ships and ruins looming"); break;
+		case EDCPhase::Fog: Situation = D->RideTime < 80.f ? TEXT("inside the storm front: dark, heavy rain, lightning, nothing to be seen") : TEXT("mist among the vast ruins of a drowned city, temples and statues looming, rocks and fallen columns in the water"); break;
 		case EDCPhase::Slide: Situation = TEXT("the sea is dropping away beneath the ship"); break;
 		case EDCPhase::Hell: Situation = TEXT("a burning channel of fire and demons"); break;
 		case EDCPhase::Breach: Situation = TEXT("the ship bursts out into a vast storm"); break;
-		case EDCPhase::Maelstrom: Situation = TEXT("a giant whirlpool, a kraken's tentacles rising around the ship"); break;
+		case EDCPhase::Maelstrom: Situation = TEXT("a giant whirlpool crater, a colossal clawed sea monster rising out of it, its arms reaching for the ship"); break;
 		default: break;
 		}
 		if (!Context.IsEmpty()) { Situation += FString::Printf(TEXT("; hull at %d percent"), FMath::RoundToInt(D->ShipHealth)); }

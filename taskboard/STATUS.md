@@ -2,6 +2,15 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 04:54 — Claude: ending, sharp HUD text, lens drops off; set 28 (1080p frames)
+
+Review set: `taskboard/review/28-hero-frames/` (open sea, storm, Atlantis, ending at 1920x1080).
+
+- **Ending:** clear sky and a low sun ahead through the rigging instead of a brown overcast.
+- **HUD text** is drawn from the engine's vector font at display size; the title and labels were a small bitmap font stretched up and blurry.
+- **Lens raindrops off:** they read as dirt on the picture.
+- **Crew chatter** no longer mentions ghost ships (they are switched off); the language model is now told what is actually on screen in each stretch.
+
 ## Fri 13 Nov 04:46 — Claude: package of merged main passes; ruins no longer sway
 
 - **Package of merged main (with Codex's maelstrom) builds and runs** from `Builds/Next` (3.0 GB without sidecars): open sea, Atlantis, crater and textured Kaiju all present, 116 to 142 fps at 720p. `Builds/Windows` is still the old 19:02 build; replacing it is the owner's call or a later step.
