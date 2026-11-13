@@ -138,7 +138,7 @@ void ADCRideDirector::BuildDefaultPhases()
 		// Then it thins, and the drowned city stands in layered blue-grey haze out to a couple of kilometres:
 		// cold moonlight from behind the statues, lightning to pick out their outlines, warm lanterns on deck.
 		FDCEnvState& E = Add(EDCPhase::Fog, 76.f, 15.f);
-		E.FogColor = FLinearColor(0.2f, 0.26f, 0.33f); E.FogDensity = 0.006f; E.FogHeightFalloff = 0.0012f; E.CloudCover = 0.5f; E.CloudBase = 110000.f; E.Mist = 0.75f;
+		E.FogColor = FLinearColor(0.2f, 0.26f, 0.33f); E.FogDensity = 0.006f; E.FogHeightFalloff = 0.0012f; E.CloudCover = 0.8f; E.CloudBase = 110000.f; E.Mist = 0.75f;
 		E.SunColor = FLinearColor(1.f, 0.82f, 0.62f); E.SunIntensity = 3.f; E.SunPitch = -11.f; E.SunYaw = 168.f; // low sun ahead to port, behind the ruins: silhouettes and long shafts through the mist E.SkyIntensity = 0.55f;
 		E.SeaColor = FLinearColor(0.012f, 0.019f, 0.025f); E.SeaRoughness = 3.f; E.Rain = 0.35f; E.LightningRate = 10.f; E.ShipSpeed = 1500.f; E.WaveHeight = 190.f; E.Foam = 1.f; E.Exposure = 0.05f;
 	}
@@ -792,6 +792,10 @@ void ADCRideDirector::SetupUDS()
 	SkyNum(UDSSky, TEXT("3D Erosion Intensity"), 0.7);
 	SkyNum(UDSSky, TEXT("High Frequency Noise Amount"), 0.1);
 	SkyNum(UDSSky, TEXT("Extinction Scale"), 20.0);
+	// Fog that billows: the pack's drifting noise in the volumetric fog, in banks a hundred metres across, out to the limit of the volume.
+	SkyNum(UDSSky, TEXT("Fog Noise Scale"), 15000.0);
+	SkyNum(UDSSky, TEXT("Fog Noise Intensity"), 12.0);
+	SkyNum(UDSSky, TEXT("Fog Noise Outer Distance"), 40000.0);
 	SkyOverrides(UDSSky, TEXT("DCSky="));
 	UGameplayStatics::FinishSpawningActor(UDSSky, FTransform::Identity);
 
@@ -843,7 +847,22 @@ void ADCRideDirector::TickUDS()
 		*Target->ContainerPtrToValuePtr<FVector>(UDSSky.Get()) = ToSun * 1000000.0;
 	}
 	SkyNum(UDSWeather, TEXT("Cloud Coverage"), FMath::Clamp(2.0 + 8.0 * Env.CloudCover, 0.0, 10.0));
-	SkyNum(UDSWeather, TEXT("Fog"), FMath::Clamp(Env.FogDensity * 250.0 + Env.Mist * 3.0, 0.0, 10.0));
+	{
+		// Test hook: -DCFog=8 fixes the pack's fog amount (0..10).
+		static float ForcedFog = -1.f;
+		static const bool bForcedFog = FParse::Value(FCommandLine::Get(), TEXT("DCFog="), ForcedFog);
+		SkyNum(UDSWeather, TEXT("Fog"), bForcedFog ? ForcedFog : FMath::Clamp(Env.FogDensity * 250.0 + Env.Mist * 7.3, 0.0, 10.0));
+		// The drowned city (the only stretch with heavy mist) stands in dense, pale, low-lying fog: thick on
+		// the sea and round the feet of the ruins, thinning with height so that their heads and the storm
+		// cloud show above it, and bright, because fog this thick glows with whatever light there is.
+		// Elsewhere the pack's own values stand.
+		const double K = FMath::Clamp(Env.Mist / 0.75, 0.0, 1.0);
+		static float Falloff = 0.3f; static bool bFalloffRead = false;   // test hook: -DCFogFalloff=
+		if (!bFalloffRead) { bFalloffRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCFogFalloff="), Falloff); }
+		SkyNum(UDSSky, TEXT("Foggy Height Fog Falloff"), FMath::Lerp(0.015, (double)Falloff, K));
+		SkyNum(UDSSky, TEXT("Overcast Brightness Day"), FMath::Lerp(0.2, 1.0, K));
+		SkyNum(UDSSky, TEXT("Fog Color Intensity Scale"), FMath::Lerp(1.0, 3.0, K));
+	}
 	SkyNum(UDSWeather, TEXT("Rain"), FMath::Clamp(Env.Rain * 10.0, 0.0, 10.0));
 	SkyNum(UDSWeather, TEXT("Wind Intensity"), FMath::Clamp(Env.WaveHeight / 30.0, 1.0, 10.0));
 	// The pack's own lightning (bolts, flashes in the cloud, thunder) replaces the director's.

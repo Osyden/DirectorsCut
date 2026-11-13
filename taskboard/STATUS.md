@@ -2,6 +2,19 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 09:35 — Claude: owner's play-test notes, first batch; fog toward the reference pictures
+
+Owner played `Builds/Next` and sent notes plus concept pictures (`E:\projects\directorscut\References`).
+
+- **Builds are kept apart.** `Tools/package.sh [label]` now writes each build to its own dated folder (`Builds/<date>_<time>_<commit>`), never overwrites, and adds a line to `Builds/INDEX.txt`.
+- **No ruins before the fog.** The open-sea outliers are off (`-DCOutliers` brings them back for tests).
+- **Rain splashes on an unseen plane above the stern:** it was the blueprint's helm trigger box (and other unseen plates). Splashes now land on the drawn hull mesh only. Their look is not changed yet.
+- **Ship motion roughly doubled** (default 1.5, limits 5.5 degrees pitch / 10 roll), plus a slow swell of her own that grows with the sea. `-DCShipMotion=` still scales it.
+- **Ruins are solid.** Feelers from the hull at the waterline find the stone (pieces answer only while near the ship). She is shouldered off it, lurches (roll, yaw, pitch on a damped spring), takes damage, the camera shakes, the impact sound plays and the crew call it; grinding along the stone gives lighter repeats. The old rule that slid scenery out of the ship's way is gone. Tested with `-DCOutliers -DCSteer=1` (new test switch: holds the helm over).
+- **Fog in the drowned city**, toward `fog-city-reveal.jpg`: dense, pale, low-lying and billowing (the sky pack's fog amount 3.75 to 7, height falloff 0.015 to 0.3, overcast fog brightness 0.2 to 1, colour scale 3, drifting noise 150 m across at strength 12), keyed to the phase's mist so other phases are untouched. Ruins now loom out of it as silhouettes. `-DCFog=` and `-DCFogFalloff=` for trials.
+- Not done yet: dark structured storm cloud over the fog, wisps across the deck, lightning lighting the fog from inside, whiter breaking sea, the cold grade; the splash look; foam that sits on the water round ruins and hull.
+- The water pack's shoreline surf was looked at: it bakes a depth map at 16 m cells for land that stands still ("continuous movement is not supported"), and its spray component is marked untested and ships no effects. It will not serve ruins that slide past at 15 m/s.
+
 ## Fri 13 Nov 08:05 â€” Claude: last entry of the night; Builds/Next at dc7fef4
 
 - Fog banks on the ship's own course thinned: sailing through one is a veil now, not a white-out.
