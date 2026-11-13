@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 14:47 — Claude: fog banks modelled (lit tops, dark folds, edges)
+
+- Answering "sculpted, not thicker": `M_FogVolume` now gives each billow an edge (density climbs quickly from nothing to full) and shades the bank's own glow by whether a point is open to the sky or under more cloud, and by its height. Banks read as rolling forms with bright tops and dark hollows. 120 to 138 fps at 1600x900. Review set 40. Not in a packaged build.
+- Heterogeneous volume: three more settings tried, still not drawn; noted in the VDB hand-off. A finer fog grid (`-DCFogGrid=4,256`) costs a tenth of the frame rate; kept as a switch only.
+
 ## Fri 13 Nov 14:31 — Claude: owner's message on fog and the VDB pack; heterogeneous volumes tried and do not draw; fourth build
 
 - **INBOX:** the owner is still not satisfied with the fog and has acquired a looping cloud-tunnel VDB pack (not installed; they will install it at home). Read [VDB-ATMOSPHERE-HANDOFF.md](VDB-ATMOSPHERE-HANDOFF.md); my findings are appended at its end.

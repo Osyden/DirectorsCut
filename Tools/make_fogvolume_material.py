@@ -35,10 +35,29 @@ float3 q = (WP - Drift.xyz * T) / (Size * Stretch.xyz) + Seed * 0.173;
 float n = NZ(q) * 0.62 + NZ(q * 2.63 + 0.37) * 0.38;
 // Noise eats the bank from its skin inward: the heart stays thick, the edge is ragged.
 float d = saturate(body * (1.0 + 1.6 * Erode) - n * 1.9 * Erode);
+// Sculpted, not smeared: the density climbs quickly from nothing to full, so a billow has an edge.
+d = smoothstep(0.0, 0.45, d);
 // Wisps: only the crests of the noise are fog at all, the rest is clear air between streaks.
 if (Wisp > 0.0) { float w = saturate((n - Wisp) / (1.0 - Wisp)); d = body * w * sqrt(w); }
 float lift = saturate((WP.z - Floor.x) / max(Floor.w, 1.0));
 return Density * d * lift;
+"""
+
+# How much of its light a point of the bank gives off. A real cloud is bright where it faces the sky
+# and dark in its folds and underneath; the fog grid is too coarse to shadow a bank against itself, so
+# the modelling is put in here: tops and outer billows bright, the hollows between them and the
+# underside dim. This is what makes a bank read as a solid rolling form instead of an even glow.
+SHADE = """
+#define NZ(p) saturate((Texture3DSampleLevel(Shape, ShapeSampler, (p), 0.0).r - 0.835) / 0.125)
+float3 lp = (WP - Centre) / Radii.xyz;
+float3 q = (WP - Drift.xyz * T) / (Size * Stretch.xyz) + Seed * 0.173;
+float n = NZ(q) * 0.62 + NZ(q * 2.63 + 0.37) * 0.38;
+// The same noise a little higher up: where there is more cloud above than here, this point is in a fold.
+float3 qa = q + float3(0.0, 0.0, 0.22 / Stretch.z);
+float above = NZ(qa) * 0.62 + NZ(qa * 2.63 + 0.37) * 0.38;
+float fold = saturate(0.5 + (above - n) * 2.2);          // 1 = open to the sky, 0 = under an overhang
+float height = saturate(lp.z * 0.5 + 0.5);
+return lerp(0.18, 1.0, fold) * lerp(0.45, 1.15, height);
 """
 
 path = PKG + "/" + NAME
@@ -105,8 +124,14 @@ for node, name in [(wp, "WP"), (centre, "Centre"), (radii, "Radii"), (time, "T")
 mel.connect_material_property(tint, "", unreal.MaterialProperty.MP_BASE_COLOR)
 mel.connect_material_property(e, "", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)
 # Its own light: thick fog glows with the light of the whole sky, and flares when lightning is inside it.
+sh = custom(SHADE, unreal.CustomMaterialOutputType.CMOT_FLOAT1, ["WP", "Centre", "Radii", "T", "Size", "Drift", "Stretch", "Seed", "Shape"], -500, 800)
+for node, name in [(wp, "WP"), (centre, "Centre"), (radii, "Radii"), (time, "T"), (size, "Size"), (drift, "Drift"), (stretch, "Stretch"), (seed, "Seed"), (shape, "Shape")]:
+    mel.connect_material_expressions(node, "", sh, name)
+lit = mel.create_material_expression(mat, unreal.MaterialExpressionMultiply, -350, 600)
+mel.connect_material_expressions(glow, "", lit, "A")
+mel.connect_material_expressions(sh, "", lit, "B")
 em = mel.create_material_expression(mat, unreal.MaterialExpressionMultiply, -200, 600)
-mel.connect_material_expressions(glow, "", em, "A")
+mel.connect_material_expressions(lit, "", em, "A")
 mel.connect_material_expressions(e, "", em, "B")
 mel.connect_material_property(em, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
 
