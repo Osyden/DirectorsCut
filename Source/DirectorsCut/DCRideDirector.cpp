@@ -141,7 +141,9 @@ void ADCRideDirector::BuildDefaultPhases()
 		// cold moonlight from behind the statues, lightning to pick out their outlines, warm lanterns on deck.
 		FDCEnvState& E = Add(EDCPhase::Fog, 76.f, 15.f);
 		E.FogColor = FLinearColor(0.2f, 0.26f, 0.33f); E.FogDensity = 0.006f; E.FogHeightFalloff = 0.0012f; E.CloudCover = 0.8f; E.CloudBase = 110000.f; E.Mist = 0.75f;
-		E.SunColor = FLinearColor(1.f, 0.82f, 0.62f); E.SunIntensity = 3.f; E.SunPitch = -11.f; E.SunYaw = 168.f; // low sun ahead to port, behind the ruins: silhouettes and long shafts through the mist E.SkyIntensity = 0.55f;
+		// (13 Nov: darker. The owner's pictures are a storm at dusk, the fog the brightest thing in them, the lanterns the only warmth.)
+		E.SkyIntensity = 0.5f;
+		E.SunColor = FLinearColor(1.f, 0.82f, 0.62f); E.SunIntensity = 0.8f; E.SunPitch = -11.f; E.SunYaw = 168.f; // low sun ahead to port, behind the ruins: silhouettes and long shafts through the mist E.SkyIntensity = 0.55f;
 		E.SeaColor = FLinearColor(0.012f, 0.019f, 0.025f); E.SeaRoughness = 3.f; E.Rain = 0.35f; E.LightningRate = 10.f; E.ShipSpeed = 1500.f; E.WaveHeight = 190.f; E.Foam = 1.f; E.Exposure = 0.05f;
 	}
 	{
@@ -365,6 +367,25 @@ void ADCRideDirector::Tick(float DeltaSeconds)
 	else
 	{
 		Env = Cur.Env;
+	}
+
+	// Test hook: -DCEnv="SunIntensity=0.8;Exposure=-0.5" fixes weather values for the whole run, for trying a look without a build.
+	{
+		static TArray<TPair<FString, float>> Fixed; static bool bFixedRead = false;
+		if (!bFixedRead)
+		{
+			bFixedRead = true;
+			FString All;
+			if (FParse::Value(FCommandLine::Get(), TEXT("DCEnv="), All, false))
+			{
+				TArray<FString> Pairs; All.ParseIntoArray(Pairs, TEXT(";"));
+				for (const FString& P : Pairs) { FString N, V; if (P.Split(TEXT("="), &N, &V)) { Fixed.Emplace(N, FCString::Atof(*V)); } }
+			}
+		}
+		for (const TPair<FString, float>& F : Fixed)
+		{
+			if (FFloatProperty* P = FindFProperty<FFloatProperty>(FDCEnvState::StaticStruct(), *F.Key)) { P->SetPropertyValue_InContainer(&Env, F.Value); }
+		}
 	}
 
 	ApplyEnv(DeltaSeconds);

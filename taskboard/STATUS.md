@@ -2,6 +2,13 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 12:49 — Claude: the drowned city is a storm at dusk
+
+- Set against `fog-city-reveal.jpg` and `fog-to-maelstrom-portal.jpg`, the city was still far too light: a grey day. Both pictures are a storm at dusk in which the fog is the brightest thing and the lanterns the only warmth. The city's sun is now 0.8 (was 3) and its sky light 0.5 (was 1: the 0.55 it was meant to have had been swallowed by a comment on the same line since the day it was written). The fog banks keep their own glow, so they now stand out pale against dark stone and a near-black sea, and each lightning flash lifts the whole scene. This is the closest the game has been to the owner's pictures. Review set 38 (nine frames, 70 to 236 s; two caught mid-flash).
+- New test switch `-DCEnv="SunIntensity=0.8;Exposure=-1"` fixes any weather value for a run; it is how this was found without a build per try.
+- 117 to 145 fps at 1600x900 through the city.
+- Still missing against those pictures: a black sculpted cloud ceiling (ours is dim and veined, not sculpted), the faces, heavy breaking seas with spray, crew who are people.
+
 ## Fri 13 Nov 12:26 — Claude: a grade; flash toned down again; faces still parked
 
 - **Grade.** There was none. Now: a darkened frame edge, a trace of grain and fringe throughout; in the mist of the front and the city the colour is drained a little (saturation 0.86), shadows pushed toward blue, blacks a little deeper and bloom up (0.9 to 1.5) so the lanterns are the one warm thing and glow in the fog; the open sea stays warm with slightly more contrast. `-DCNoGrade` for comparison (picture in review set 37).
