@@ -436,6 +436,24 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 	// Thrown clear of the maelstrom: the screen whites out, then the calm sea fades in.
 	WhiteOut = FMath::Max(0.f, WhiteOut - DeltaSeconds / 3.5f);
 	// Under the pack an overcast sky already takes most of the sun away, so the dim phases are opened up.
+	// The grade. In the mist of the city and the front the picture is cold: colour drained a little,
+	// shadows toward blue, blacks deeper, so that the lanterns are the only warm thing in it and their
+	// glow blooms in the fog. On the open sea it is left warm with a touch more contrast. Always a
+	// darkened frame edge and a trace of grain, which is most of what makes a rendered frame read as film.
+	if (!FParse::Param(FCommandLine::Get(), TEXT("DCNoGrade")))
+	{
+		const float Cold = FMath::Clamp(Env.Mist / 0.75f, 0.f, 1.f);
+		FPostProcessSettings& G = PostProcess->Settings;
+		G.bOverride_VignetteIntensity = true; G.VignetteIntensity = FMath::Lerp(0.3f, 0.45f, Cold);
+		G.bOverride_FilmGrainIntensity = true; G.FilmGrainIntensity = 0.12f;
+		G.bOverride_BloomIntensity = true; G.BloomIntensity = FMath::Lerp(0.9f, 1.5f, Cold);
+		G.bOverride_ColorSaturation = true; G.ColorSaturation = FVector4(1.f, 1.f, 1.f, FMath::Lerp(1.04f, 0.86f, Cold));
+		G.bOverride_ColorContrast = true; G.ColorContrast = FVector4(1.f, 1.f, 1.f, FMath::Lerp(1.05f, 1.1f, Cold));
+		G.bOverride_ColorGainShadows = true; G.ColorGainShadows = FVector4(FMath::Lerp(1.f, 0.9f, Cold), FMath::Lerp(1.f, 0.97f, Cold), FMath::Lerp(1.f, 1.1f, Cold), 1.f);
+		G.bOverride_ColorGainHighlights = true; G.ColorGainHighlights = FVector4(FMath::Lerp(1.f, 1.04f, Cold), 1.f, FMath::Lerp(1.f, 0.96f, Cold), 1.f);
+		G.bOverride_FilmToe = true; G.FilmToe = FMath::Lerp(0.55f, 0.62f, Cold);
+		G.bOverride_SceneFringeIntensity = true; G.SceneFringeIntensity = 0.12f;
+	}
 	PostProcess->Settings.AutoExposureBias = Env.Exposure + (bUDS ? 2.2f * (1.f - FMath::Clamp(Env.SunIntensity / 7.f, 0.f, 1.f)) : 0.f) + 7.f * WhiteOut * WhiteOut;
 	if (bUDS) { TickUDS(); }
 	TickWetness(DeltaSeconds);

@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 12:26 — Claude: a grade; flash toned down again; faces still parked
+
+- **Grade.** There was none. Now: a darkened frame edge, a trace of grain and fringe throughout; in the mist of the front and the city the colour is drained a little (saturation 0.86), shadows pushed toward blue, blacks a little deeper and bloom up (0.9 to 1.5) so the lanterns are the one warm thing and glow in the fog; the open sea stays warm with slightly more contrast. `-DCNoGrade` for comparison (picture in review set 37).
+- Lightning in the fog: a second capture, inside a bank, was still too white. The sky pack adds its own bloom on a flash (2.0, now 0.5); flare and scattering are down again.
+- Cloud faces: tried at ruin scale under the cloud base with the sea fog applied (heads 145 to 210 m, 300 m off the course). Nothing readable from the deck in four captures. Still off (`-DCFaces`). Not spending more on it today.
+
 ## Fri 13 Nov 12:12 — Claude: lightning on cue, lighting the fog without whiting the picture out
 
 - **Lightning on the director's cue.** Besides the sky pack's own chance flashes, the director now calls a bolt down somewhere ahead of the ship every 3.5 to 8 seconds in the front and over the city (the pack's `Flash Lightning`). Each lights the banks from inside.
