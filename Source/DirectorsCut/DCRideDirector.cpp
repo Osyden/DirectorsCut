@@ -278,14 +278,17 @@ void ADCRideDirector::DamageShip(float Amount, bool bQuiet)
 float ADCRideDirector::SeaRise(float SeaY) const
 {
 	const float U = FMath::Abs(SeaY) / FMath::Max(TroughHalfWidth, 1.f);
-	const float F = U <= 1.f ? FMath::Pow(U, 2.5f) : (U <= 2.f ? 1.f + 2.5f * (U - 1.f) - 1.25f * FMath::Square(U - 1.f) : 2.25f);
+	// Level in the middle, rising to the shoulder, level again beyond it: the city stands on a level sea
+	// a little above the channel. (When the sea went on rising beyond the shoulder, a wide temple base set at
+	// the height under its middle hung metres above the lower water at its near edge.)
+	const float F = U <= 1.f ? U * U * (3.f - 2.f * U) : 1.f;
 	return TroughRise * F;
 }
 
 float ADCRideDirector::SeaRiseSlope(float SeaY) const
 {
 	const float U = FMath::Abs(SeaY) / FMath::Max(TroughHalfWidth, 1.f);
-	const float D = U <= 1.f ? 2.5f * FMath::Pow(U, 1.5f) : (U <= 2.f ? 2.5f - 2.5f * (U - 1.f) : 0.f);
+	const float D = U <= 1.f ? 6.f * U * (1.f - U) : 0.f;
 	return TroughRise * D / FMath::Max(TroughHalfWidth, 1.f) * (SeaY >= 0.f ? 1.f : -1.f);
 }
 
@@ -964,7 +967,7 @@ void ADCRideDirector::TickUDS()
 		}
 		// The trough in the sea belongs to the city too: it comes with the mist and is gone before the slide.
 		{
-			static float TroughFull = 1400.f; static bool bTroughRead = false;   // test hook: -DCTrough= (cm of rise at the channel's edge; 0 = flat)
+			static float TroughFull = 1100.f; static bool bTroughRead = false;   // test hook: -DCTrough= (cm of rise at the channel's shoulder; 0 = flat)
 			if (!bTroughRead) { bTroughRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCTrough="), TroughFull); }
 			TroughRise = TroughFull * FMath::Clamp((Env.Mist - 0.45f) / 0.3f, 0.f, 1.f);
 		}

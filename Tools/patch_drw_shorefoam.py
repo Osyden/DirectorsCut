@@ -93,13 +93,13 @@ return max(Existing, foam * Strength);
 
 TROUGH = """
 // The sea of the drowned city lies in a shallow trough: level along the ship's course, rising to
-// either hand, steeply at first and then levelling off. Trough = (middle, rise at the edge, half width).
+// either hand to a shoulder and level again beyond it, where the city stands: ruins on a level sea do not hang over lower water. Trough = (middle, rise at the edge, half width).
 // The game moves the ship and the ruins by the same rule (ADCRideDirector::SeaRise).
 float u = abs(WP.y - Trough.x) / max(Trough.z, 1.0);
-float f = u <= 1.0 ? pow(u, 2.5) : (u <= 2.0 ? 1.0 + 2.5 * (u - 1.0) - 1.25 * (u - 1.0) * (u - 1.0) : 2.25);
+float f = u <= 1.0 ? u * u * (3.0 - 2.0 * u) : 1.0;   // level in the middle, level again beyond the shoulder
 float here = 0.0;   // the ship lies at world Y 0: she is the level everything else is measured from
 float us = abs(here - Trough.x) / max(Trough.z, 1.0);
-float fs = us <= 1.0 ? pow(us, 2.5) : (us <= 2.0 ? 1.0 + 2.5 * (us - 1.0) - 1.25 * (us - 1.0) * (us - 1.0) : 2.25);
+float fs = us <= 1.0 ? us * us * (3.0 - 2.0 * us) : 1.0;
 return Existing + float3(0.0, 0.0, Trough.y * (f - fs));
 """
 
@@ -130,6 +130,41 @@ for n in NAMES:
         okt = mel.connect_material_expressions(twp, "", tnode, "WP") and okt
         okt = mel.connect_material_expressions(tcp, "", tnode, "Trough") and okt
         okt = mel.connect_material_property(tnode, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET) and okt
+        # The surface's normal must lean with the trough as well. Without this the lifted slope was still
+        # shaded as level water seen at a grazing angle: a smooth bright sheet with none of the waves'
+        # modelling (owner, 13 Nov: "deformed band"). The slope's lean is worked out in world space, turned
+        # into the surface's tangent space and added to the normal the material already has.
+        nrm = mel.get_material_property_input_node(m, unreal.MaterialProperty.MP_NORMAL)
+        if nrm:
+            nrm_out = mel.get_material_property_input_node_output_name(m, unreal.MaterialProperty.MP_NORMAL)
+            lean = mel.create_material_expression(m, unreal.MaterialExpressionCustom, -500, 3700)
+            lean.set_editor_property("code", """
+float w = max(Trough.z, 1.0);
+float y = WP.y - Trough.x;
+float u = abs(y) / w;
+float d = u <= 1.0 ? 6.0 * u * (1.0 - u) : 0.0;
+float slope = Trough.y * d / w * sign(y);      // rise per cm toward +Y
+return float3(0.0, -slope, 0.0);
+""")
+            lean.set_editor_property("description", "DCTroughLean")
+            lean.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT3)
+            lin = []
+            for name in ["WP", "Trough"]:
+                ci = unreal.CustomInput(); ci.set_editor_property("input_name", name); lin.append(ci)
+            lean.set_editor_property("inputs", lin)
+            mel.connect_material_expressions(twp, "", lean, "WP")
+            mel.connect_material_expressions(tcp, "", lean, "Trough")
+            tov = mel.create_material_expression(m, unreal.MaterialExpressionTransform, -300, 3700)
+            tov.set_editor_property("transform_source_type", unreal.MaterialVectorCoordTransformSource.TRANSFORMSOURCE_WORLD)
+            tov.set_editor_property("transform_type", unreal.MaterialVectorCoordTransform.TRANSFORM_TANGENT)
+            mel.connect_material_expressions(lean, "", tov, "")
+            add = mel.create_material_expression(m, unreal.MaterialExpressionAdd, -150, 3700)
+            mel.connect_material_expressions(nrm, nrm_out, add, "A")
+            mel.connect_material_expressions(tov, "", add, "B")
+            nz = mel.create_material_expression(m, unreal.MaterialExpressionNormalize, -50, 3700)
+            mel.connect_material_expressions(add, "", nz, "")
+            okn = mel.connect_material_property(nz, "", unreal.MaterialProperty.MP_NORMAL)
+            unreal.log_warning("DC_RESULT %s: trough normal wired=%s" % (n, okn))
         unreal.log_warning("DC_RESULT %s: trough wired=%s" % (n, okt))
     if n not in FOAM_NAMES:
         mel.recompile_material(m)

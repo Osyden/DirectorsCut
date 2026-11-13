@@ -4,6 +4,7 @@
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
+#include "Components/InstancedStaticMeshComponent.h"
 
 namespace
 {
@@ -93,6 +94,59 @@ AActor* DCRuins::SpawnColonnade(UWorld* World, int32 Segments, float Height)
 	return A;
 }
 
+namespace
+{
+	/**
+	 * A floor of stone blocks W by D (cm, the structure's own space) and High thick, its top course
+	 * laid as many blocks side by side, each near its own proportions. One block stretched to the
+	 * whole size, as these bases were first built, drew its face out a hundredfold: from the deck a
+	 * temple's base was a smooth streaked sheet (owner, 13 Nov: "deformed band"). One component, many instances.
+	 */
+	void RuinFloor(AActor* Actor, const FVector& Where, float W, float D, float High)
+	{
+		UStaticMesh* M = RuinMesh(TEXT("Stone_blocks/SM_Stone_blocks_04_block_01"));
+		if (!M) { return; }
+		const FBox Box = M->GetBoundingBox();
+		const FVector Size = Box.GetSize();
+		const float K = 1.6f;   // each block a little over life size before the structure's own scale
+		const int32 NX = FMath::Max(1, FMath::RoundToInt32(W / (Size.X * K))), NY = FMath::Max(1, FMath::RoundToInt32(D / (Size.Y * K)));
+		const FVector S(W / NX / Size.X, D / NY / Size.Y, High / Size.Z);
+		// What the hull feels is one unseen block of the whole size (as before); the many blocks are only looked at.
+		// (With every block solid, moving them cost 12 ms a frame and the helmsman struck the base 30 times a voyage.)
+		{
+			const FVector Whole(W / Size.X, D / Size.Y, High / Size.Z);
+			UStaticMeshComponent* Solid = NewObject<UStaticMeshComponent>(Actor);
+			Solid->SetMobility(EComponentMobility::Movable);
+			Solid->SetStaticMesh(M);
+			Solid->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			Solid->SetVisibility(false);
+			Solid->SetCastShadow(false);
+			Solid->SetupAttachment(Actor->GetRootComponent());
+			Solid->SetRelativeTransform(FTransform(FRotator::ZeroRotator, Where - FVector(Box.GetCenter().X, Box.GetCenter().Y, Box.Min.Z) * Whole, Whole));
+			Solid->RegisterComponent();
+		}
+		UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(Actor);
+		C->SetMobility(EComponentMobility::Movable);
+		C->SetStaticMesh(M);
+		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		C->SetupAttachment(Actor->GetRootComponent());
+		C->RegisterComponent();
+		FRandomStream Rng(static_cast<int32>(W + D * 3.f + Where.Z));
+		for (int32 x = 0; x < NX; ++x)
+		{
+			for (int32 y = 0; y < NY; ++y)
+			{
+				// Turned end for end at random and set a hair high or low, so the courses do not read as a printed grid.
+				const bool bTurned = Rng.FRand() < 0.5f;
+				const FRotator Rot(0.f, bTurned ? 180.f : 0.f, 0.f);
+				const FVector Centre(Where.X + (x + 0.5f - NX * 0.5f) * W / NX, Where.Y + (y + 0.5f - NY * 0.5f) * D / NY, Where.Z + Rng.FRandRange(-6.f, 6.f));
+				const FVector Foot = FVector(Box.GetCenter().X, Box.GetCenter().Y, Box.Min.Z) * S;
+				C->AddInstance(FTransform(Rot, Centre - Rot.RotateVector(Foot), S));
+			}
+		}
+	}
+}
+
 AActor* DCRuins::SpawnTemple(UWorld* World, float Scale)
 {
 	AActor* A = RuinActor(World);
@@ -101,7 +155,7 @@ AActor* DCRuins::SpawnTemple(UWorld* World, float Scale)
 	for (int32 s = 0; s < 3; ++s)
 	{
 		const float W = 4400.f - s * 300.f, D = 3000.f - s * 300.f;
-		RuinPiece(A, TEXT("Stone_blocks/SM_Stone_blocks_04_block_01"), FVector(0.f, 0.f, -350.f + s * 150.f), 0.f, FVector(W / 320.f, D / 340.f, 150.f / 170.f));
+		RuinFloor(A, FVector(0.f, 0.f, -350.f + s * 150.f), W, D, 150.f);
 	}
 	const float Floor = 100.f;
 	for (int32 Row = -1; Row <= 1; Row += 2)
@@ -195,7 +249,7 @@ AActor* DCRuins::SpawnComplex(UWorld* World, float Scale, int32 Seed)
 	for (int32 s = 0; s < 3; ++s)
 	{
 		const float W = 15000.f - s * 900.f, D = 11000.f - s * 900.f;
-		RuinPiece(A, TEXT("Stone_blocks/SM_Stone_blocks_04_block_01"), FVector(0.f, 0.f, -500.f + s * 220.f), 0.f, FVector(W / 320.f, D / 340.f, 220.f / 170.f));
+		RuinFloor(A, FVector(0.f, 0.f, -500.f + s * 220.f), W, D, 220.f);
 	}
 	const float Floor = 160.f;
 	// Temple at the back: six spans wide, columns front and back, pediment over each.

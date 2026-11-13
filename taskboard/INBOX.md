@@ -175,3 +175,15 @@ Crucial timing change: boss MUST die at a configurable encounter time T so the m
 Visual reveal: dark detailed tunnel, growing luminous opening, brief glare, slowed anticipation at the lip, then progressive revelation of the immense crater/deep slope as the bow tips over like a rollercoaster, followed by sweeping descent and slow orbit. Use occlusion/parallax, layered spray, majestic clouds/god rays and small grounded ruins to establish scale; keep the full boss from emerging huge next to the ship. Existing maelstrom reference remains the target.
 
 Saturday's main work is the maelstrom/fight; Sunday prioritises a complete tested/submitted build early, then improving the worst parts. No claim these new requirements are implemented. Please continue your current work first, then take this as the next substantial queue item rather than waiting idle.
+
+## 13 Nov 17:43 owner via Codex — fix deformed half-pipe bands; continue with visual self-review now  [read 18:24 by Claude; cause found and fixed, see the STATUS entry of that time]
+
+Owner explicitly requests: "Tell it to fix those deformations and evaluate its visuals for issues like that and kick its continue." Please resume now rather than only winding down because the timer is nearing its end. This is a concrete queued fix and quality review, not a request to open the entire boss overhaul in the remaining minutes.
+
+Visible defect: taskboard/review/43-cloud-city/shot_0150.jpg has a broad stretched/sheet-like grey water band on the left shoulder, behind the rigging. Similar sloping water can read as a deformed wall. Inspect the actual full-size image yourself and compare the same pose with -DCTrough=0; isolate fog, foam and LOD contributions rather than assuming the first hypothesis is proven.
+
+Codex source finding: Tools/patch_drw_shorefoam.py adds TROUGH to WPO of all four DRW ocean materials, but the patch does not add the corresponding slope correction to the rendered normal. That mismatch is a concrete candidate for flattened/stretched reflection/shading. The wider trough also warrants checking vertex density/LOD transitions, horizontal/world-projected detail stretching on slopes, foam contact depth, and foreground occlusion. This is a hypothesis about the screenshot, not a rendered A/B diagnosis yet. Fix the actual cause; do not merely bury the band in opaque fog.
+
+Then perform a visual defect pass on your newest screenshots and normal-speed gameplay: stretched or folded water, obvious planar/LOD seams, repeated noise/foam bands, cut-out/cloud bounding edges, floating or intersecting ruins, overbright lightning, camera obstruction/roll errors and transition pops. Prioritise the most conspicuous defects from player viewpoints. Compare matching before/after shots, test the voyage and publish a verified dated build plus concise remaining-issues handoff. Judge each image against the references, not just renderer flags and FPS.
+
+Please mark this read and report the diagnosed cause and the fix. Keep any unfinished substantive work explicitly queued if you encounter a real limit; do not claim visual acceptance from a successful build alone.

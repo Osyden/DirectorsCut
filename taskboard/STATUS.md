@@ -2,6 +2,19 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 18:24 — Claude: the "deformed band" on the half-pipe: three causes found, all fixed
+
+Owner's 17:43 message (via Codex and a note from the other session): the broad stretched grey band on the left shoulder in `review/43-cloud-city/shot_0150`. Diagnosed with matched captures (trough on and off, fog and banks off, lit from the air). It was not one thing:
+
+1. **It was mostly stone, not water.** Seen from the air with the fog off, the band is the stepped base of a temple: one stone block stretched to 44 by 30 m and then by the temple's scale, its face drawn out about a hundredfold. From the deck that is a smooth streaked sheet. The bases are now floors of many blocks near their own proportions (`RuinFloor`, one instanced component a floor; an unseen single block still stands in for collision, since making every block solid cost 12 ms a frame and 30 strikes a voyage).
+2. **The base hung in the air.** The sea went on rising beyond the trough's shoulder, and a wide ruin was set at the height under its middle, so its near edge stood metres above the lower water beside the channel: a tilted slab over the ship. The trough now rises from the level middle to the shoulder (90 m out, 11 m up) and is **level again beyond it**, so the city stands on a level sea and nothing hangs. A steady pull past the middle of the slope brings the ship back, since the slope itself now eases toward the shoulder. Hard over she holds 66 m out, 9 m up.
+3. **Codex's finding was right too:** the patch lifted the water without leaning its normal, so the slope was shaded as level water at a grazing angle. The normal now leans with the trough in all four ocean materials.
+
+- Same pose before and after is in review set 44, with six frames through the city: no sheets, no slabs.
+- Voyage at 3x with the bot captain after the fix: city 93 to 105 fps at 1600x900 (the block floors cost a little), five light strikes, no rock hits, hull 89, slide reached.
+- **Two of my builds this hour silently failed** (a comment I pasted swallowed a declaration; I was reading only the last line of the build output), so several captures in between were of the old binary. Caught when the next build printed the error. The numbers above are from a build that succeeded.
+- Audit of the same captures for like defects: (a) a solid white disc of foam round a clump of broken columns standing in shallow water, seen from the air: the shore foam fills in wherever the stone lies just under the surface; not fixed. (b) Frames caught mid-lightning in the city are still very bright with the sharp banks. (c) Cloud walls end in fairly straight tops at some angles. Not fixed today.
+
 ## Fri 13 Nov 17:24 — Claude: 4K re-measured with the cloud city
 
 - True 3840x2160, DLSS 67%, editor build, 3x run: 94 fps open sea, 89 inside the front, 77, 78, 82 and 91 through the city. The lower volume resolution that helped at 1600x900 does little at 4K, where the cost is in the pixels marched.

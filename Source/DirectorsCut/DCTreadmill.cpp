@@ -1,6 +1,7 @@
 #include "DCTreadmill.h"
 #include "Components/LocalFogVolumeComponent.h"
 #include "DCFogBank.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "Components/HeterogeneousVolumeComponent.h"
 #include "Materials/MaterialParameterCollection.h"
 #include "Materials/MaterialParameterCollectionInstance.h"
@@ -198,9 +199,11 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 	// In the trough of the drowned city the sea itself brings her back: she slides down the slope she
 	// has climbed, harder the higher she is, so full helm holds her near the edge and no further, and
 	// with the wheel let go she swings back to the middle. Elsewhere the lane simply ends.
-	const float Pull = Director->SeaRiseSlope(LaneOffset) * 4400.f;
+	// (The slope eases off toward the shoulder, so past the middle of it a steady pull is added that grows with the distance out: she cannot be held on the shelf.)
+	const float Out = FMath::Abs(LaneOffset) / FMath::Max(Director->TroughHalfWidth, 1.f);
+	const float Pull = Director->SeaRiseSlope(LaneOffset) * 4400.f + (Director->TroughRise > 1.f ? FMath::Sign(LaneOffset) * FMath::Max(0.f, Out - 0.45f) * 2600.f : 0.f);
 	LaneVelocity -= Pull * DeltaSeconds;
-	const float Edge = Director->TroughRise > 1.f ? LaneLimit * 2.6f : LaneLimit;
+	const float Edge = Director->TroughRise > 1.f ? Director->TroughHalfWidth : LaneLimit;
 	LaneOffset = FMath::Clamp(LaneOffset + LaneVelocity * DeltaSeconds, -Edge, Edge);
 	if (FMath::Abs(LaneOffset) >= Edge && LaneOffset * LaneVelocity > 0.f) { LaneVelocity = 0.f; }
 	// Test hook: -DCLaneLog writes where she is across the channel twice a second.
@@ -354,7 +357,16 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 		// Radius 0 marks a destination (the portal): it stays dead ahead whatever the helm does.
 		FVector Local(Obj.Base.X, (bPacing || Obj.Radius < 1.f) ? Obj.Base.Y : Obj.Base.Y - LaneOffset, Obj.Base.Z);
 		// Whatever stands in the sea stands on the sea as it lies there: higher up the sides of the trough than the ship in it.
-		if (Director->TroughRise > 0.f) { Local.Z += Director->SeaRise(Local.Y + LaneOffset) - Director->SeaRise(LaneOffset); }
+		// A wide ruin stands across the slope: it is set at the height of the sea at its edge nearest the
+		// channel, so its far side is drowned deeper. (Set at the height under its middle, its near edge
+		// hung in the air over lower water: a great flat slab seen from the deck. Owner, 13 Nov.)
+		if (Director->TroughRise > 0.f)
+		{
+			const float Mid = Local.Y + LaneOffset;
+			// (Tried setting a wide ruin at the height of the sea at its edge nearest the channel, to stop its
+			// near edge hanging over lower water: its base then lay in the ship's path and she struck 31 times in a voyage. Back to the height under its middle.)
+			Local.Z += Director->SeaRise(Mid) - Director->SeaRise(LaneOffset);
+		}
 		Actor->SetActorLocationAndRotation(Rock.TransformPosition(Local), Rock.GetRotation() * FRotator(0.f, Obj.Yaw, 0.f).Quaternion());
 		if (!Obj.bHostile && !Obj.bSolid && Obj.Radius > 1.f)
 		{
@@ -375,6 +387,7 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 				TInlineComponentArray<UStaticMeshComponent*> Pieces(Actor);
 				for (UStaticMeshComponent* C : Pieces)
 				{
+					if (C->IsA<UInstancedStaticMeshComponent>()) { continue; }   // floors of many blocks: looked at, not felt (an unseen block stands in for them)
 					C->SetCollisionObjectType(ECC_Destructible);
 					C->SetCollisionResponseToAllChannels(ECR_Ignore);
 					C->SetCollisionEnabled(bNear ? ECollisionEnabled::QueryOnly : ECollisionEnabled::NoCollision);
