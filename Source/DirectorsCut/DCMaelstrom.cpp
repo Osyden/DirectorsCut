@@ -8,6 +8,11 @@
 #include "DCMaelstromAtmosphere.h"
 #include "DCPlayer.h"
 #include "DCTreadmill.h"
+#include "DCTroubles.h"
+#include "DCCrew.h"
+#include "Components/HeterogeneousVolumeComponent.h"
+#include "SparseVolumeTexture/SparseVolumeTexture.h"
+#include "HAL/IConsoleManager.h"
 #include "ProceduralMeshComponent.h"
 #include "Components/PostProcessComponent.h"
 #include "Components/ExponentialHeightFogComponent.h"
@@ -574,6 +579,7 @@ void ADCMaelstrom::Tick(float DeltaSeconds)
 		}
 	}
 	if (Boss) { Boss->UpdateEncounter(Elapsed, GetArenaTransform(), Radius, Depth, bActive); }
+	if (bActive) { UpdateTwisters(DeltaSeconds); } else if (Twisters.Num() || TwistersRaised) { ClearTwisters(); }
 	if (Atmosphere) { Atmosphere->UpdateAtmosphere(this, Elapsed, bActive); }
 	WaterBridge.Update(GetWorld(), WaterMID, bActive);
 	if (bActive && Boss && Boss->ShouldExitEncounter(Elapsed))
@@ -692,6 +698,123 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
 	Exposure->BlendWeight = 1.f;
 	const FDCEnvState& Env = Director->GetEnv();
 	Exposure->Settings.AutoExposureBias = Env.Exposure + (Director->bUDS ? 2.2f * (1.f - FMath::Clamp(Env.SunIntensity / 7.f, 0.f, 1.f)) : 0.f) + Glare;
+}
+
+void ADCMaelstrom::ClearTwisters()
+{
+	for (FTwister& T : Twisters) { if (AActor* A = T.Actor.Get()) { A->Destroy(); } }
+	Twisters.Reset();
+	TwisterMIDs.Reset();
+	TwistersRaised = 0;
+}
+
+void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
+{
+	// Seeking back starts the schedule again.
+	if (PreviousTime >= 0.f && Director->RideTime < PreviousTime - 0.5f) { ClearTwisters(); }
+	// The schedule: between the arms' strikes, none in the first half minute, none in the last twenty seconds.
+	static const float RaiseAt[] = { 30.f, 50.f, 78.f, 96.f, 118.f, 134.f };
+	const float Finale = Boss ? Boss->FinaleAt : 160.f;
+	const float Tell = 5.f, Run = 3600.f, Start = 42000.f;   // 5 s standing, then 36 m a second up the slope from 420 m off
+	static const bool bOff = FParse::Param(FCommandLine::Get(), TEXT("DCNoTwisters"));
+	static float TwisterDensity = 0.7f; static bool bDensityRead = false;   // test hook: -DCTwisterDensity=
+	if (!bDensityRead) { bDensityRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCTwisterDensity="), TwisterDensity); }
+	while (!bOff && TwistersRaised < UE_ARRAY_COUNT(RaiseAt) && Elapsed >= RaiseAt[TwistersRaised])
+	{
+		const int32 Index = TwistersRaised++;
+		if (Elapsed > RaiseAt[Index] + 3.f || RaiseAt[Index] > Finale - 20.f) { continue; }   // skipped over by a seek, or too near the end
+		UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_VdbCloud.M_VdbCloud"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+		USparseVolumeTexture* Volume = LoadObject<USparseVolumeTexture>(nullptr, TEXT("/Game/Clouds_Tunnel_Loop/Effects/CT_Clouds_Tunnel_Vdb_01.CT_Clouds_Tunnel_Vdb_01"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+		FTwister T;
+		T.RaisedAt = RaiseAt[Index];
+		T.Ahead = Start;
+		// In her path, a little to one side: she must turn away from it, and either way will do.
+		T.Abeam = (Index % 2 == 0 ? 1.f : -1.f) * FMath::FRandRange(400.f, 1800.f);
+		if (Base && Volume)
+		{
+			FActorSpawnParameters Params;
+			Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			AHeterogeneousVolume* A = GetWorld()->SpawnActor<AHeterogeneousVolume>(AHeterogeneousVolume::StaticClass(), FTransform::Identity, Params);
+			if (UHeterogeneousVolumeComponent* C = A ? A->FindComponentByClass<UHeterogeneousVolumeComponent>() : nullptr)
+			{
+				C->SetMobility(EComponentMobility::Movable);
+				UMaterialInstanceDynamic* M = UMaterialInstanceDynamic::Create(Base, this);
+				M->SetSparseVolumeTextureParameterValue(TEXT("SparseVolumeTexture"), Volume);
+				M->SetVectorParameterValue(TEXT("Tint"), FLinearColor(0.93f, 0.96f, 1.f));   // spray, not smoke: thin and white
+				M->SetScalarParameterValue(TEXT("Density"), 0.f);
+				// Spray scatters light all through itself; the volume's single shadowed bounce leaves it sooty. A little light of its own stands in for that.
+				M->SetVectorParameterValue(TEXT("Flare"), FLinearColor(0.13f, 0.15f, 0.17f));
+				C->SetMaterial(0, M);
+				C->StartFrame = 0.f; C->EndFrame = 200.f; C->FrameRate = 45.f; C->Frame = Index * 37.f; C->bPlaying = true; C->bLooping = true;
+				C->bIssueBlockingRequests = true;
+				if (IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(TEXT("r.HeterogeneousVolumes.MaxTraceDistance"))) { if (V->GetFloat() < 600000.f) { V->Set(600000.f, ECVF_SetByCode); } }
+				T.Actor = A; T.MID = M;
+				TwisterMIDs.Add(M);
+			}
+		}
+		Twisters.Add(T);
+		UE_LOG(LogDC, Log, TEXT("Twister %d raised at %.1f s, %.0f m ahead, %.0f m abeam%s"), Index + 1, Elapsed, T.Ahead / 100.f, T.Abeam / 100.f, T.Actor.IsValid() ? TEXT("") : TEXT(" (no volume: unseen)"));
+	}
+	UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>();
+	for (int32 i = Twisters.Num() - 1; i >= 0; --i)
+	{
+		FTwister& T = Twisters[i];
+		const float Age = Elapsed - T.RaisedAt;
+		if (!T.bCalled && Age > 0.6f)
+		{
+			T.bCalled = true;
+			if (Crew) { Crew->Report(T.Abeam > 0.f ? TEXT("Waterspout dead ahead! Turn to port, Captain!") : TEXT("Waterspout dead ahead! Turn to starboard, Captain!"), true); }
+		}
+		if (Age > Tell) { T.Ahead -= Run * DeltaSeconds * Director->TimeScale; }
+		// The helm carries the ship across the current; seen from her deck the spout slides the other way.
+		T.Abeam -= HelmTurn * 1100.f * DeltaSeconds * Director->TimeScale;
+		const float Rise = FMath::SmoothStep(0.f, Tell, Age);
+		const float Gone = 1.f - FMath::SmoothStep(-26000.f, -9000.f, T.Ahead);
+		// It comes up the slope from the abyss, on a line a little to starboard of the bow, where the helm's view looks.
+		FVector Foot = FRotator(0.f, 20.f, 0.f).RotateVector(FVector(T.Ahead, T.Abeam, 0.f));
+		Foot.Z = SampleSurfaceWorld(Foot);
+		// Tall enough to stand well over the ship however far down the slope its foot is.
+		const float Height = FMath::Clamp(Director->SeaLevelZ - Foot.Z + 22000.f, 26000.f, 62000.f);
+		if (AHeterogeneousVolume* A = T.Actor.Get())
+		{
+			// The tunnel stood on end: its long axis upright, turning as it comes. 260 m high and 70 m through at the least.
+			const float Scale = Height / 282.f * FMath::Lerp(0.45f, 1.f, Rise);
+			A->SetActorTransform(FTransform(FRotator(0.f, Director->RideTime * 70.f, 90.f), Foot, FVector(Scale)));
+			if (UHeterogeneousVolumeComponent* C = A->FindComponentByClass<UHeterogeneousVolumeComponent>())
+			{
+				// Wherever the turned volume's box has landed, stand it with its foot on the water at Foot.
+				const FBoxSphereBounds B = C->Bounds;
+				A->AddActorWorldOffset(FVector(Foot.X - B.Origin.X, Foot.Y - B.Origin.Y, Foot.Z - 600.f - (B.Origin.Z - B.BoxExtent.Z)));
+			}
+			if (UMaterialInstanceDynamic* M = T.MID.Get()) { M->SetScalarParameterValue(TEXT("Density"), TwisterDensity * Rise * (1.f - Gone)); }
+			static const bool bLog = FParse::Param(FCommandLine::Get(), TEXT("DCTwisterLog"));
+			if (bLog && FMath::Fmod(Age, 2.f) < DeltaSeconds)
+			{
+				const UHeterogeneousVolumeComponent* C = A->FindComponentByClass<UHeterogeneousVolumeComponent>();
+				UE_LOG(LogDC, Log, TEXT("Twister: age %.1f foot %s actor %s bounds %s hidden %d res %s"), Age, *Foot.ToCompactString(), *A->GetActorLocation().ToCompactString(), C ? *C->Bounds.ToString() : TEXT("-"), A->IsHidden(), C ? *C->VolumeResolution.ToString() : TEXT("-"));
+			}
+		}
+		// Struck: the spout's core passes over the ship.
+		if (!T.bStruck && Age > Tell && FMath::Abs(T.Ahead) < 3000.f && FMath::Abs(T.Abeam) < 3800.f)
+		{
+			T.bStruck = true;
+			Director->DamageShip(6.f);
+			if (ADCTroubles* Troubles = ADCTroubles::Get(this)) { Troubles->TearRigging(); }
+			if (Crew) { Crew->Report(TEXT("The spout has us! Rigging's torn away!"), true); }
+			UE_LOG(LogDC, Log, TEXT("Twister struck the ship at %.1f s (%.0f m abeam)"), Elapsed, T.Abeam / 100.f);
+		}
+		else if (!T.bStruck && T.Ahead < -3000.f)
+		{
+			T.bStruck = true;   // passed clear
+			Director->Score += 100;
+			UE_LOG(LogDC, Log, TEXT("Twister passed clear at %.1f s (%.0f m abeam)"), Elapsed, T.Abeam / 100.f);
+		}
+		if (Gone >= 1.f)
+		{
+			if (AActor* A = T.Actor.Get()) { A->Destroy(); }
+			Twisters.RemoveAt(i);
+		}
+	}
 }
 
 void ADCMaelstrom::UpdateView(float DeltaSeconds)

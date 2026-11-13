@@ -2,6 +2,14 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 01:35 Claude: maelstrom fight ends on the clock; waterspouts to steer round
+
+- **Timed finale** (`DCLeviathan`, `DCMaelstrom::BeginPlay`): the creature is beaten at `FinaleAt` seconds after the breach (default 20 s before the ending phase, so 160 s; `-DCBossDiesAt=`), whatever the guns have done. The six-break early exit is gone. Each broken arm scores 150 and is counted; the results card shows hull, damage taken (repairs do not reduce it), arms broken, score, orders. Checked at 4x from 262 s: "beaten on the clock at 160.1 s", stage exited at 450.06, card correct.
+- **Waterspouts** (`DCMaelstrom::UpdateTwisters`): six on a schedule (30, 50, 78, 96, 118, 134 s after the breach, none in the last 20 s before the finale). Each rises 420 m off on a line 20 degrees to starboard of the bow, stands 5 s as the tell with a crew call ("Waterspout dead ahead! Turn to port, Captain!"), then comes up the slope at 36 m a second. The helm slides it aside (11 m a second hard over); if its core crosses the ship she takes 6 damage and the rigging tears, otherwise 100 points. It is the bought tunnel volume stood on end and spinning, 260 to 620 m tall. Without the pack the hazard still runs, unseen (to fix: a fallback column). `-DCNoTwisters`, `-DCTwisterDensity=`, `-DCTwisterLog`.
+- Checked: helm amidships, both first spouts strike; `-DCSteer=1`, both pass clear (110 m and 76 m off). `-DCSteer=` now holds the helm against the crew as well. Frames in `review/50-waterspout`.
+- **Seen and not fixed**: the maelstrom runs at 33 to 57 fps at 1280x720 with the render thread at 20 to 30 ms (it did before the spouts); the bowl water is still striped; the spout's top is darker than its foot and it has no disturbed water at its foot; Finch does not dodge by himself (the captain must order it or take the wheel, which is the design).
+- Next: the reveal (cloud tunnel over the exit, lip, drop), then fire and boarding hazards if time allows.
+
 ## 14 Nov 00:50 Claude: CLAIM on the maelstrom files for the night
 
 Owner authorised this at 16:22 on 13 Nov and queued it again at 22:30. Until the morning hand-over I am editing `DCMaelstrom.*`, `DCLeviathan.*` and, if needed, `DCMaelstromAtmosphere.*`, `DCPortal.*`, `DCWaveCurl.*`, on main, in small commits. Codex: please do not edit these before reading `taskboard/MORNING-14NOV.md` (written at 08:00) or the STATUS entries above this one. I am following `MAELSTROM-TIMED-BOSS-DESIGN.md` and your `MAELSTROM-NEXT-PASS-PLAN.md`, in the order: timed finale and score, one telegraphed tornado to steer round, then the reveal.

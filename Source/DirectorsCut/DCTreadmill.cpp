@@ -202,7 +202,7 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 	// Test hook: -DCSteer=1 holds the helm hard over (starboard) for the whole run.
 	static float ForcedSteer = 0.f;
 	static const bool bForced = FParse::Value(FCommandLine::Get(), TEXT("DCSteer="), ForcedSteer);
-	if (bForced) { Steer = ForcedSteer; }
+	if (bForced) { Steer = ForcedSteer; bSteerForced = true; }
 	// The helm takes a moment to bite and the ship carries her swing after it is eased: she turns, she is not slid sideways.
 	// (In the trough she is given half as much helm again: it is a wide channel and there is a slope to climb.)
 	LaneVelocity = FMath::FInterpTo(LaneVelocity, Steer * LaneSpeed * SteerAuthority * (Director->TroughRise > 1.f ? 1.5f : 1.f), DeltaSeconds, 1.1f);

@@ -52,7 +52,9 @@ public:
 	static ADCTreadmill* Get(const UObject* WorldContext);
 
 	/** -1 (port) .. +1 (starboard). Set every frame by whoever has the helm. */
-	void SetSteer(float InSteer) { Steer = FMath::Clamp(InSteer, -1.f, 1.f); }
+	void SetSteer(float InSteer) { if (!bSteerForced) { Steer = FMath::Clamp(InSteer, -1.f, 1.f); } }
+	/** Test hook -DCSteer=: the helm is held where the switch put it, whoever has the wheel. */
+	bool bSteerForced = false;
 	float GetSteer() const { return Steer; }
 	float GetLaneOffset() const { return LaneOffset; }
 	/** How fast the ship is crossing the sea sideways as a fraction of full helm (-1 port .. 1 starboard): she gathers way into a turn and carries it out of one. */

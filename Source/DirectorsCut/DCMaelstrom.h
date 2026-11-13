@@ -90,6 +90,23 @@ private:
 	bool bOceanHidden = false;
 	TWeakObjectPtr<class UCameraComponent> CaptainCamera;
 	FVector OriginalEye = FVector::ZeroVector;
+	/** Waterspouts the creature raises in the ship's path. Each stands up ahead for a few seconds (the tell),
+	 *  then comes down the current at the ship; the helm carries her to one side of it or she is struck. */
+	struct FTwister
+	{
+		TWeakObjectPtr<class AHeterogeneousVolume> Actor;
+		TWeakObjectPtr<UMaterialInstanceDynamic> MID;
+		float RaisedAt = 0.f;     // seconds after the breach
+		float Ahead = 0.f;        // cm ahead of the ship
+		float Abeam = 0.f;        // cm to starboard of her course
+		bool bStruck = false;
+		bool bCalled = false;
+	};
+	TArray<FTwister> Twisters;
+	UPROPERTY() TArray<TObjectPtr<UMaterialInstanceDynamic>> TwisterMIDs;
+	int32 TwistersRaised = 0;
+	void UpdateTwisters(float DeltaSeconds);
+	void ClearTwisters();
 	bool bActive = false;
 	bool bHadView = false;
 	bool bAutomaticHelmView = true;
