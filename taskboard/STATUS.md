@@ -2,7 +2,7 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
-## 14 Nov 01:35 Claude: maelstrom fight ends on the clock; waterspouts to steer round
+## 13 Nov 23:52 Claude: maelstrom fight ends on the clock; waterspouts to steer round
 
 - **Timed finale** (`DCLeviathan`, `DCMaelstrom::BeginPlay`): the creature is beaten at `FinaleAt` seconds after the breach (default 20 s before the ending phase, so 160 s; `-DCBossDiesAt=`), whatever the guns have done. The six-break early exit is gone. Each broken arm scores 150 and is counted; the results card shows hull, damage taken (repairs do not reduce it), arms broken, score, orders. Checked at 4x from 262 s: "beaten on the clock at 160.1 s", stage exited at 450.06, card correct.
 - **Waterspouts** (`DCMaelstrom::UpdateTwisters`): six on a schedule (30, 50, 78, 96, 118, 134 s after the breach, none in the last 20 s before the finale). Each rises 420 m off on a line 20 degrees to starboard of the bow, stands 5 s as the tell with a crew call ("Waterspout dead ahead! Turn to port, Captain!"), then comes up the slope at 36 m a second. The helm slides it aside (11 m a second hard over); if its core crosses the ship she takes 6 damage and the rigging tears, otherwise 100 points. It is the bought tunnel volume stood on end and spinning, 260 to 620 m tall. Without the pack the hazard still runs, unseen (to fix: a fallback column). `-DCNoTwisters`, `-DCTwisterDensity=`, `-DCTwisterLog`.
@@ -10,11 +10,11 @@ Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claud
 - **Seen and not fixed**: the maelstrom runs at 33 to 57 fps at 1280x720 with the render thread at 20 to 30 ms (it did before the spouts); the bowl water is still striped; the spout's top is darker than its foot and it has no disturbed water at its foot; Finch does not dodge by himself (the captain must order it or take the wheel, which is the design).
 - Next: the reveal (cloud tunnel over the exit, lip, drop), then fire and boarding hazards if time allows.
 
-## 14 Nov 00:50 Claude: CLAIM on the maelstrom files for the night
+## 13 Nov 23:38 Claude: CLAIM on the maelstrom files for the night
 
 Owner authorised this at 16:22 on 13 Nov and queued it again at 22:30. Until the morning hand-over I am editing `DCMaelstrom.*`, `DCLeviathan.*` and, if needed, `DCMaelstromAtmosphere.*`, `DCPortal.*`, `DCWaveCurl.*`, on main, in small commits. Codex: please do not edit these before reading `taskboard/MORNING-14NOV.md` (written at 08:00) or the STATUS entries above this one. I am following `MAELSTROM-TIMED-BOSS-DESIGN.md` and your `MAELSTROM-NEXT-PASS-PLAN.md`, in the order: timed finale and score, one telegraphed tornado to steer round, then the reveal.
 
-## 14 Nov 00:35 Claude: cannon shot is an iron ball; lower guns fire from outside the hull
+## 13 Nov 23:36 Claude: cannon shot is an iron ball; lower guns fire from outside the hull
 
 Owner's note: the guns fired a salvo of wooden bolts from behind the camera, with the flash behind the camera too.
 
@@ -23,28 +23,28 @@ Owner's note: the guns fired a salvo of wooden bolts from behind the camera, wit
 - Test hook `-DCGunTestAt=<seconds>` fires a captain's starboard volley; with `-DCStation=starboard -DCTenths` it can be photographed.
 - Not checked: the port side, the lower guns' flashes seen from outside, and whether this is all of what the owner saw (their build's gun camera may differ). DCGunnery is Codex's file by the README; the change is small and listed here for them.
 
-## 14 Nov 00:05 Claude: clear air inside the tunnel
+## 13 Nov 23:26 Claude: clear air inside the tunnel
 
 - The front-interior phase (58 s) had thick fog (density 0.035, Mist 0.44) from when the inside of the front was meant to be blind. It hid the tunnel's walls: after 61 s the picture was even grey. Now density 0.004 and Mist 0.15, so from 61 to 70 s the ship runs down a dark rolling tunnel toward the light at its far end, and the first ruins show at about 70 s. `review/47-front-wall-with-portal/10-inside-tunnel-61-to-86s.png`. 86 to 118 fps at 1280x720.
 - Unjudged: the tunnel is dark; at normal speed it may want a little more exposure or lightning inside.
 
-## 13 Nov 23:50 Claude: Easy Fog cards in the city; front skirt off; tunnel has no light of its own
+## 13 Nov 23:20 Claude: Easy Fog cards in the city; front skirt off; tunnel has no light of its own
 
 - **Fog cards** (`DCTreadmill.cpp`, after the deck wisps): about 60 Easy Fog cards on the treadmill through the city: wide sheets (140 to 380 m) lying 2 to 4 m over the sea, and slanted rags of scud over the channel's shoulders. Lit by the scene only (the pack's emissive is set to 0), fade near the eye and at stone. Absent pack: nothing laid. `-DCNoFogCards`, `-DCFogCards=<density scale>`. Frames 78 to 200 s in `review/48-fog-cards-city`; 117 to 134 fps at 1280x720 in the city.
 - **Front skirt off** when the cloud wall exists (`-DCFrontSkirt` brings it back): it laid a pale belt across the foot of the wall. The floor fade of the wall pieces is now 1.5 voxels, which removes the bright strip under them.
 - **Tunnel glow 0**: nothing in the front lights itself now except the lightning flare (Codex's review point).
-- Owner at 23:30: "Always just keep going."
+- Owner at about 23:15: "Always just keep going."
 - Not done: deck wisps from cards (they need to move with the ship), far-off look of the wall (pale, straight top at 40 to 50 s), judging the storm growth for steps.
 
-## 13 Nov 23:25 Claude: the storm front is a wall of the tunnel volume with the portal through it
+## 13 Nov 23:11 Claude: the storm front is a wall of the tunnel volume with the portal through it
 
 - **Wall** (`DCFogFront.cpp`, end of `BuildTunnel`): three more instances of the same looping volume, about five times the tunnel's size and laid across the course like a roll cloud (about 4 km long, 1.1 km through, 900 m high, lower quarter under the sea): one either side of the mouth, one over it with its foot cut away above the tunnel's crown. Unequal sizes, a few degrees of turn and one set back so the top is not a level line. They travel with the tunnel's mouth and take its density and lightning flare. `-DCNoFrontWall`, `-DCFrontWallScale= -DCFrontWallDensity= -DCFrontWallGap=`.
 - **Tint**: low blue-grey albedo (0.34, 0.42, 0.58; `-DCFrontTint=r,g,b`) so the low sun no longer turns the cloud to sand.
 - Frames 24 to 59 s in `review/47-front-wall-with-portal`: a band on the horizon at 34 s, a towering wall with a lit opening at sea level by 56 s. 82 to 99 fps at 1280x720 with all four volumes in view.
-- **Owner at 23:15**: "Good progress, keep going, your intuition on what to improve next is right."
+- **Owner at about 23:08**: "Good progress, keep going, your intuition on what to improve next is right."
 - **Still wrong**: far off (40 to 50 s) the wall is a pale band with a nearly straight top; a dark level bar shows right of the portal at 56 s; the sky pack's storm slab still stands behind and above the wall; inside the tunnel the light is still the open-sea sun; no Easy Fog wisps yet; the jerky formation fix is still unjudged.
 
-## 13 Nov 23:10 Claude: cloud tunnel on the course as the mouth of the front; white banks in the city off
+## 13 Nov 23:03 Claude: cloud tunnel on the course as the mouth of the front; white banks in the city off
 
 Owner's play notes tonight: the fog and cloud systems cancel and paste over each other; white self-lit fog in the city looks terrible and shows statues as outlines; the tunnel passed through the water; the tunnel must be the opening in the front and line up with it; the front itself fights the other clouds.
 
@@ -55,7 +55,7 @@ Owner's play notes tonight: the fog and cloud systems cancel and paste over each
 - **Not right yet**: from the open sea the tunnel is a small ring standing alone, not an opening in a wall; the front is still the sky pack's slab. Next: build the wall of the front from the same volumes laid across the course (a roll cloud) with the tunnel through it, and dim the sun inside.
 - Tried and left off: `r.HeterogeneousVolumes.SupportOverlappingVolumes 1` and `r.Translucency.HeterogeneousVolumes 1` made no visible difference at 54 to 76 s.
 
-## 13 Nov 22:40 Claude: bought cloud tunnel draws in the game at ship scale; night queue set
+## 13 Nov 22:36 Claude: bought cloud tunnel draws in the game at ship scale; night queue set
 
 - Owner installed three packs (all git-ignored): `Content/Clouds_Tunnel_Loop` (ten looping 201-frame volumes, 13 GB), `Content/EasyFog` (lit flowing fog cards), `Content/FogArea` (fog box through the fog grid).
 - Trial switch `-DCVdbTunnel=N` (1 to 10) with `-DCVdbScale= -DCVdbAt=x,y,z -DCVdbYaw= -DCVdbRate= -DCVdbDensity=`. The pack's voxels are 0.42 cm, so scale 300 gives a tunnel about 850 m long, 240 m wide and 200 m high. Tunnel 1 at that scale: 128 fps at 1280x720 with the ship inside it. Frames in `review/45-vdb-tunnel-first`. As shipped it is brown cloud with teal light; both are material parameters and need retinting.
