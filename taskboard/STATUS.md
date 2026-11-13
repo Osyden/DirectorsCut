@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 17:03 — Claude: eighth build verified; lightning with the sharp banks checked; evening hand-over written
+
+- **Build:** `Builds/2026-11-13_1645_2a0837e_cloud-city` runs: 132 fps open sea, 123 and 118 in the city at 1600x900. This is the build to play.
+- Lightning with the sharp banks captured in tenths of a second: the cloud brightens and settles, no white-out (picture in review set 43).
+- [EVENING-13NOV.md](EVENING-13NOV.md) is the hand-over for the owner.
+
 ## Fri 13 Nov 16:45 — Claude: seventh build; sharp banks made cheaper; the curtains before the great figures are sharp cloud too
 
 - **Build:** `Builds/2026-11-13_1630_7323c3e_big-trough` runs (133 fps open sea, 95 in the city at 1600x900). It has the big trough and the sharp walls at their first, costlier setting. The two changes below are after it.
