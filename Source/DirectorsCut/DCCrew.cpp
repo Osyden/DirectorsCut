@@ -148,6 +148,20 @@ void ADCCrewMember::Init(const FString& InName, const FLinearColor& Color)
 		if (IdleAnim) { Figure->PlayAnimation(IdleAnim, true); }
 		Body->SetVisibility(false);
 		Label->SetRelativeLocation(FVector(0.f, 0.f, 108.f));
+		// The stock mannequin is polished metal, which glitters and crawls under the upscaler. Until
+		// there are proper sailors, paint it: matte, dark, each hand in a coat of their own colour.
+		for (int32 Slot = 0; Slot < Figure->GetNumMaterials(); ++Slot)
+		{
+			if (UMaterialInstanceDynamic* Paint = Figure->CreateDynamicMaterialInstance(Slot))
+			{
+				const FLinearColor Coat = Slot == 0 ? FLinearColor(Color.R * 0.05f + 0.012f, Color.G * 0.05f + 0.012f, Color.B * 0.05f + 0.012f) : FLinearColor(0.035f, 0.028f, 0.022f);
+				Paint->SetScalarParameterValue(TEXT("MetalPaintMetallic"), 0.f);
+				Paint->SetScalarParameterValue(TEXT("Metal_Brightness"), 0.7f);
+				Paint->SetScalarParameterValue(TEXT("Plastic_Brightness"), 0.7f);
+				Paint->SetVectorParameterValue(TEXT("Tint"), Coat);
+				for (const TCHAR* Logo : { TEXT("LogoLayer0_Brightness"), TEXT("LogoLayer1_Brightness"), TEXT("LogoLayer2_Brightness") }) { Paint->SetScalarParameterValue(Logo, 0.f); }
+			}
+		}
 	}
 	Label->SetText(FText::FromString(InName));
 	Label->SetTextRenderColor(Color.ToFColor(true));
