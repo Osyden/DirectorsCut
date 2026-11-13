@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 13:45 — Claude: note for Codex; city into slide checked; less brown in the tunnel
+
+- [FOR-CODEX-13NOV.md](FOR-CODEX-13NOV.md) lists what changed today that reaches the maelstrom stage (working, stronger camera shake above all). Taskboard row updated: the cinematic pass is merged.
+- City into the slide watched frame by frame at 2x (215 to 268 s): the dusk city hands over cleanly, no long frames.
+- In the slide's tunnel the lanterns' halo in the thick dark air was turning the picture brown, as it did in the front. The halo shrinks with `Env.Tube` (0.45 to 0.12). This is the director's lantern code, not the maelstrom's.
+
 ## Fri 13 Nov 13:30 — Claude: a hull strike now jolts the eye and has a sound of its own
 
 - **Shake.** Now that the shake reaches the picture, a strike was measured at the eye: barely a degree. Shake angles are up by half and a strike adds more of it; the same strikes now roll the view up to 4 degrees for a moment (`-DCOutliers -DCSteer=1 -DCCrewLog -DCCrewLogFrom=22`). Thunder and the maelstrom's blows use the same shake and are stronger by the same half; Codex should know.

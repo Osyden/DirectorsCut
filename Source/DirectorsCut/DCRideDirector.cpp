@@ -636,6 +636,8 @@ void ADCRideDirector::TickLamps()
 	{
 		const float Flicker = 0.85f + 0.15f * FMath::Sin(RideTime * 9.f + i * 2.1f) * FMath::Sin(RideTime * 5.3f + i);
 		Lamps[i]->SetIntensity(LampIntensity * Dark * Flicker);
+		// In the tunnel of the slide the air is thick and dark, and four lanterns scattering in it turn the whole view brown: a smaller halo there.
+		Lamps[i]->SetVolumetricScatteringIntensity(FMath::Lerp(0.45f, 0.12f, FMath::Clamp(Env.Tube, 0.f, 1.f)));
 	}
 	for (UMaterialInstanceDynamic* Glass : LampGlows)
 	{
