@@ -126,8 +126,8 @@ void ADCWeatherFX::BuildSplashes()
 	TArray<FVector> Verts; TArray<int32> Tris; TArray<FVector> Normals; TArray<FVector2D> UVs; TArray<FColor> Colors;
 	FCollisionQueryParams Params(TEXT("DCSplash"), true);
 	FRandomStream Rng(31);
-	const float Half = 7.f;
-	for (int32 i = 0; i < 12000 && Verts.Num() < 5000 * 4; ++i)
+	const float Half = 4.5f;
+	for (int32 i = 0; i < 16000 && Verts.Num() < 7000 * 12; ++i)
 	{
 		const float X = Rng.FRandRange(-2000.f, 2650.f);
 		const float Y = Rng.FRandRange(-560.f, 560.f);
@@ -148,8 +148,9 @@ void ADCWeatherFX::BuildSplashes()
 		// Open decks only: rain does not reach the gun deck below, which the probes get to through the gratings.
 		if (!bFound || Hit.ImpactPoint.Z < Director->SeaLevelZ + 240.f) { continue; }
 		const FVector C = Hit.ImpactPoint + FVector(0.f, 0.f, 1.2f);
-		const FColor Rand(Rng.RandRange(0, 255), Rng.RandRange(0, 255), Rng.RandRange(0, 255), 255);
-		const int32 B = Verts.Num();
+		// Alpha 0: the quad lying on the deck (the ring). Alpha 255: two crossed upright cards (the crown of thrown water).
+		FColor Rand(Rng.RandRange(0, 255), Rng.RandRange(0, 255), Rng.RandRange(0, 255), 0);
+		int32 B = Verts.Num();
 		for (int32 c = 0; c < 4; ++c)
 		{
 			Verts.Add(C + FVector((c & 1) ? Half : -Half, (c >> 1) ? Half : -Half, 0.f));
@@ -157,6 +158,21 @@ void ADCWeatherFX::BuildSplashes()
 			Colors.Add(Rand);
 		}
 		Tris.Append({ B, B + 2, B + 1, B + 1, B + 2, B + 3 });
+		Rand.A = 255;
+		const float Turn = Rng.FRandRange(0.f, UE_PI);
+		const float Wide = Rng.FRandRange(3.f, 4.5f), High = Rng.FRandRange(4.f, 7.f);
+		for (int32 Card = 0; Card < 2; ++Card)
+		{
+			const FVector Along(FMath::Cos(Turn + Card * UE_HALF_PI), FMath::Sin(Turn + Card * UE_HALF_PI), 0.f);
+			B = Verts.Num();
+			for (int32 c = 0; c < 4; ++c)
+			{
+				Verts.Add(C + Along * ((c & 1) ? Wide : -Wide) + FVector(0.f, 0.f, (c >> 1) ? High : 0.f));
+				UVs.Add(FVector2D(c & 1, c >> 1));
+				Colors.Add(Rand);
+			}
+			Tris.Append({ B, B + 2, B + 1, B + 1, B + 2, B + 3 });
+		}
 	}
 	for (const TPair<FString, int32>& S : SplashSurfaces) { UE_LOG(LogDC, Log, TEXT("WeatherFX: level surface under the rain: %s (%d probes)"), *S.Key, S.Value); }
 	if (Verts.Num() == 0) { UE_LOG(LogDC, Warning, TEXT("WeatherFX: no deck found for rain splashes")); return; }
@@ -174,6 +190,6 @@ void ADCWeatherFX::BuildSplashes()
 	Splashes->CreateMeshSection(0, Verts, Tris, Normals, UVs, Colors, TArray<FProcMeshTangent>(), false);
 	SplashMID = UMaterialInstanceDynamic::Create(Base, this);
 	Splashes->SetMaterial(0, SplashMID);
-	UE_LOG(LogDC, Log, TEXT("WeatherFX: %d rain splash points on the ship"), Verts.Num() / 4);
+	UE_LOG(LogDC, Log, TEXT("WeatherFX: %d rain splash points on the ship"), Verts.Num() / 12);
 	{ FBox Box(Verts); int32 Low = 0; for (const FVector& V : Verts) { if (V.Z < Director->SeaLevelZ + 150.f) { ++Low; } } UE_LOG(LogDC, Log, TEXT("WeatherFX: splash bounds %s to %s, %d corners within 1.5 m of the sea"), *Box.Min.ToString(), *Box.Max.ToString(), Low); }
 }

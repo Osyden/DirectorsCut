@@ -1,8 +1,10 @@
 """Builds /Game/DC/Materials/M_Splash: rain striking the deck.
 
 Run with the editor closed:  Tools/py.sh Tools/make_splash_material.py
-The mesh (DCWeatherFX.cpp) is a few thousand small quads lying on the deck. Each quad plays a
-splash over and over: a bright point of impact, then a ring that widens and fades. The vertex
+The mesh (DCWeatherFX.cpp) is a few thousand splash points on the deck, each a small quad lying
+flat (vertex alpha 0) and two crossed upright cards (vertex alpha 1). Each plays a splash over and
+over, alive for a fifth of its cycle: a spike and a little crown of thrown water on the cards, a
+point of light and a quick thin ring on the flat quad. The vertex
 colour gives each quad its own timing; every cycle the quad shifts a little, so drops do not
 keep landing on the same spots.
   Tint    colour (rgb) and amount (a): at low amounts only some of the quads are active
@@ -27,13 +29,34 @@ return float3((h1 - 0.5) * 36.0, (h2 - 0.5) * 36.0, 0.0);
 """
 
 OPACITY = COMMON + """
-float on = step(h1 * 0.999, saturate(Tint.a));
-float2 p = (UV - 0.5) * 2.0;
-float r = length(p);
-float fade = (1.0 - age) * (1.0 - age);
-float ring = saturate(1.0 - abs(r - 0.15 - age * 0.75) / 0.06) * fade;
-float core = saturate(1.0 - r / 0.16) * saturate(1.0 - age * 6.0);
-return saturate((ring * 0.28 + core * 0.7) * on);
+// A drop's splash lives a fraction of a second: most of each cycle the spot is bare deck.
+float life = 0.2;
+float a = age / life;
+float on = step(h1 * 0.999, saturate(Tint.a)) * step(age, life);
+float o;
+if (VC.a > 0.5)
+{
+    // The crown: an upright card (two, crossed). A thin shell of water thrown up and outward, which
+    // rises, opens and falls back, with a spike in the middle at the first instant.
+    float u = abs(UV.x - 0.5) * 2.0;
+    float v = UV.y;
+    float h = max(sin(saturate(a) * 3.14159), 0.001);
+    float open = 0.12 + 0.75 * a;
+    float shell = saturate(1.0 - abs(u - open * (0.35 + 0.65 * v / h)) / 0.16);
+    float crown = shell * step(v, h) * (1.0 - 0.7 * v / h);
+    float spike = saturate(1.0 - u / 0.1) * step(v, h * 0.9) * saturate(1.0 - a * 2.5);
+    o = (crown * 0.55 + spike * 0.8) * (1.0 - 0.5 * a);
+}
+else
+{
+    // On the deck itself: a point of light at the strike, then a thin ring that widens and is gone.
+    float2 p = (UV - 0.5) * 2.0;
+    float r = length(p);
+    float ring = saturate(1.0 - abs(r - 0.2 - a * 0.7) / 0.07) * (1.0 - a) * (1.0 - a);
+    float core = saturate(1.0 - r / 0.2) * saturate(1.0 - a * 4.0);
+    o = ring * 0.22 + core * 0.6;
+}
+return saturate(o * on);
 """
 
 path = PKG + "/" + NAME
@@ -60,7 +83,10 @@ def custom(code, out_type, names, x, y):
 
 time = mel.create_material_expression(mat, unreal.MaterialExpressionTime, -1100, 300)
 uv = mel.create_material_expression(mat, unreal.MaterialExpressionTextureCoordinate, -1100, 400)
-vc = mel.create_material_expression(mat, unreal.MaterialExpressionVertexColor, -1100, 550)
+vc3 = mel.create_material_expression(mat, unreal.MaterialExpressionVertexColor, -1100, 550)
+vc = mel.create_material_expression(mat, unreal.MaterialExpressionAppendVector, -850, 550)
+mel.connect_material_expressions(vc3, "", vc, "A")
+mel.connect_material_expressions(vc3, "A", vc, "B")
 tint = mel.create_material_expression(mat, unreal.MaterialExpressionVectorParameter, -1100, 750)
 tint.set_editor_property("parameter_name", "Tint")
 tint.set_editor_property("default_value", unreal.LinearColor(0.6, 0.7, 0.8, 1.0))
@@ -69,7 +95,7 @@ mel.connect_material_expressions(tint, "", tint4, "A")
 mel.connect_material_expressions(tint, "A", tint4, "B")
 rate = mel.create_material_expression(mat, unreal.MaterialExpressionScalarParameter, -1100, 950)
 rate.set_editor_property("parameter_name", "Rate")
-rate.set_editor_property("default_value", 2.2)
+rate.set_editor_property("default_value", 1.6)
 
 w = custom(WPO, unreal.CustomMaterialOutputType.CMOT_FLOAT3, ["T", "VC", "Rate"], -500, 0)
 mel.connect_material_expressions(time, "", w, "T")
