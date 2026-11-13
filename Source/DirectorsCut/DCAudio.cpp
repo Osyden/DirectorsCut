@@ -106,6 +106,7 @@ void ADCAudio::BeginPlay()
 	{
 		Director->OnLightning.AddUObject(this, &ADCAudio::OnLightning);
 		Director->OnShipHit.AddUObject(this, &ADCAudio::OnShipHit);
+		Director->OnHullStrike.AddUObject(this, &ADCAudio::OnHullStrike);
 	}
 
 	// The storm bell: the ship asset has a bell, a strike sound and a swing animation.
@@ -260,6 +261,29 @@ void ADCAudio::BeginPlay()
 		}
 		Impacts.Add(ToPcm16(S, 0.95f));
 	}
+	// Scrapes: the hull dragged along stone. A low groan that grips and lets go many times a second
+	// (timber sticking and slipping), with a band of grit over it that rises as it grips.
+	for (int32 v = 0; v < 2; ++v)
+	{
+		const float Len = 1.7f;
+		const int32 TN = static_cast<int32>(Rate * Len);
+		TArray<float> S; S.SetNumUninitialized(TN);
+		FOnePole Lp; FBandPass Bp;
+		float Phase = 0.f;
+		const float GripRate = Rng.FRandRange(6.f, 10.f);
+		for (int32 i = 0; i < TN; ++i)
+		{
+			const float T = static_cast<float>(i) / Rate;
+			const float X = Rng.FRandRange(-1.f, 1.f);
+			const float Whole = FMath::Pow(FMath::Sin(UE_PI * T / Len), 0.6f);
+			const float Grip = 0.5f + 0.5f * FMath::Sin(TwoPi * GripRate * T + 3.f * FMath::Sin(TwoPi * 1.3f * T));
+			Phase += (58.f + 26.f * Grip) / Rate;
+			const float Groan = Lp.Low(2.f * FMath::Frac(Phase) - 1.f, 420.f, Rate) * Grip;
+			const float Grit = Bp.Tick(X, 900.f + 700.f * Grip, 2.f, Rate) * (0.35f + 0.65f * Grip);
+			S[i] = (Groan * 1.1f + Grit * 0.9f) * Whole;
+		}
+		Scrapes.Add(ToPcm16(S, 0.9f));
+	}
 	// Roar: the kraken. A falling growl with a rasp, like a ship's hull groaning under water.
 	{
 		const float Len = 5.f;
@@ -289,6 +313,7 @@ void ADCAudio::BeginPlay()
 	DumpWav(TEXT("loop_drone"), *Drone.Pcm); DumpWav(TEXT("loop_fire_crackle"), *Crackle.Pcm); DumpWav(TEXT("kraken_roar"), KrakenRoar);
 	for (int32 i = 0; i < Thunder.Num(); ++i) { DumpWav(*FString::Printf(TEXT("thunder_%d"), i), Thunder[i]); }
 	for (int32 i = 0; i < Impacts.Num(); ++i) { DumpWav(*FString::Printf(TEXT("hull_impact_%d"), i), Impacts[i]); }
+	for (int32 i = 0; i < Scrapes.Num(); ++i) { DumpWav(*FString::Printf(TEXT("hull_scrape_%d"), i), Scrapes[i]); }
 	UE_LOG(LogDC, Log, TEXT("Audio: synthesised weather layers in %.0f ms"), (FPlatformTime::Seconds() - Start) * 1000.0);
 }
 
@@ -419,6 +444,12 @@ void ADCAudio::OnShipHit(float Amount)
 	{
 		PlayOneShot(Impacts[FMath::RandRange(0, Impacts.Num() - 1)], FMath::Clamp(0.5f + Amount * 0.15f, 0.5f, 1.3f));
 	}
+}
+
+void ADCAudio::OnHullStrike(const FVector& Where, float Strength)
+{
+	// The blow itself is OnShipHit (splash and crunch); this is the stone dragging along her side after it.
+	if (Scrapes.Num()) { PlayOneShot(Scrapes[FMath::RandRange(0, Scrapes.Num() - 1)], FMath::Clamp(0.35f + 0.4f * Strength, 0.3f, 0.85f)); }
 }
 
 void ADCAudio::DumpWav(const TCHAR* Name, const TArray<uint8>& Pcm) const

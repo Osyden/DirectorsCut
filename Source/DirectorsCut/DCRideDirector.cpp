@@ -297,7 +297,7 @@ void ADCRideDirector::StrikeHull(const FVector& Where, float Strength, bool bGri
 	const float Along = FMath::Clamp(Where.X / 2200.f, -1.f, 1.f);
 	PendingJolt += FVector(-Side * 16.f, FMath::Abs(Along) * Along * 7.f, -Side * Along * 9.f) * Strength;
 	DamageShip(bGrinding ? 0.5f : 1.f + 3.f * Strength);
-	Trauma = FMath::Min(1.f, Trauma + 0.3f * Strength);
+	Trauma = FMath::Min(1.f, Trauma + (bGrinding ? 0.15f : 0.2f + 0.45f * Strength));
 	OnHullStrike.Broadcast(Where, Strength);
 }
 

@@ -451,9 +451,9 @@ void ADCPlayerCharacter::TickCameraFeel(float DeltaSeconds)
 	const float Shake = FMath::Square(Director->Trauma) + Rush * 0.12f + Env.Tube * 0.03f;
 	const float T = GetWorld()->GetTimeSeconds();
 	const FRotator Jitter(
-		Shake * 2.2f * FMath::PerlinNoise1D(T * 17.f),
-		Shake * 1.6f * FMath::PerlinNoise1D(T * 15.f + 40.f),
-		Shake * 3.5f * FMath::PerlinNoise1D(T * 13.f + 80.f));
+		Shake * 3.4f * FMath::PerlinNoise1D(T * 17.f),
+		Shake * 2.4f * FMath::PerlinNoise1D(T * 15.f + 40.f),
+		Shake * 5.f * FMath::PerlinNoise1D(T * 13.f + 80.f));
 	// The captain's eye leans with the deck under him: a good part of her roll and pitch, taken in the
 	// direction he is looking, so the horizon tilts as she rolls and the rail rises and falls against it.
 	const FVector DeckUp = Director->DeckTransform.GetRotation().GetUpVector();

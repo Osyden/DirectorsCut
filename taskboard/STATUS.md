@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 13:30 — Claude: a hull strike now jolts the eye and has a sound of its own
+
+- **Shake.** Now that the shake reaches the picture, a strike was measured at the eye: barely a degree. Shake angles are up by half and a strike adds more of it; the same strikes now roll the view up to 4 degrees for a moment (`-DCOutliers -DCSteer=1 -DCCrewLog -DCCrewLogFrom=22`). Thunder and the maelstrom's blows use the same shake and are stronger by the same half; Codex should know.
+- **Sound.** Every strike on stone now also plays a scrape: a 1.7 s groan that grips and slips with grit over it, two variants, synthesised like the other effects (`DCAudio`, on the director's new `OnHullStrike`). `-DCDumpAudio` writes them to `Saved/AudioDump/hull_scrape_*.wav`; they measure as sustained and brighter than the thud (rms 0.14 to 0.16 against 0.09 to 0.11). **Nobody has heard them.** I cannot listen; this needs the owner's ears.
+
 ## Fri 13 Nov 13:25 — Claude: correction: the deck lean was not working, nor was the camera shake; both are now
 
 - Measuring the captain on the banked deck (`-DCSteer=1 -DCCrewLog -DCCrewLogFrom=114 -DCRunThrough`), the camera's roll read 0.00 while the ship lay over 10 to 17 degrees. The lean I reported at 11:50 was not reaching the picture: the camera takes its direction from the controller, which overwrites any rotation set on the component. The tilted horizon in that screenshot was the trough's sea, not the camera. The same line carried the camera shake from hull strikes and thunder, so **that had never shown either**, since it was written.

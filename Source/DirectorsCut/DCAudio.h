@@ -49,6 +49,9 @@ protected:
 
 	FLayer Wind, Sea, Rain, Rumble, Drone, Crackle;
 	TArray<TArray<uint8>> Impacts;
+	/** Stone grinding along the planking: a groan that sticks and slips, with grit over it. */
+	TArray<TArray<uint8>> Scrapes;
+	void OnHullStrike(const FVector& Where, float Strength);
 	TArray<uint8> KrakenRoar;
 	float MaelstromTime = 0.f;
 	int32 RoarsPlayed = 0;
