@@ -25,6 +25,8 @@ Engine: Unreal Engine 5.8.4 (launcher build) with Visual Studio 2022.
 
 The water plugin's waves are fixed to the world, and in this game the ship stands still while the scenery scrolls, so by default the sea does not stream past the hull. `Tools/pyx.sh Tools/patch_drw_current.py` adds a steady 12 m/s current to the plugin's wave shader in the engine's plugin folder (it keeps the original beside it as `.dc_backup`; `--undo` restores it). The patch only acts when the game asks for it, so other projects using the plugin are unaffected. Nothing from the plugin is copied into this repo. `-DCCurrent=0` on the game command line turns the current off.
 
+Foam where the sea meets ruins, rocks and the hull is a second patch to the same plugin, this time to its two near ocean materials (`M_DRW_High`, `M_DRW_Med`) in the engine's plugin folder. Run both steps with the editor closed: `Tools/pyx.sh Tools/patch_drw_shorefoam.py` (keeps the originals beside them as `.dc_backup`, or restores them if already there), then `Tools/py.sh Tools/patch_drw_shorefoam.py 20` (adds the foam). `Tools/pyx.sh Tools/patch_drw_shorefoam.py --undo` restores the plugin's own files. Unlike the current, this one is on by default wherever those materials are used, so undo it before using the plugin in another project (or set the `DCShoreFoam` material parameter to 0 there). Without the patch the game runs, with no foam round the ruins.
+
 ## Everyday commands (Git Bash, editor closed)
 
 - `Tools/build.sh` builds the editor target.

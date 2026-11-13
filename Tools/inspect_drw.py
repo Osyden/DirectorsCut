@@ -7,6 +7,7 @@ if mpc:
     for p in mpc.get_editor_property("vector_parameters"):
         unreal.log_warning("DC_RESULT mpc vector %s = %s" % (p.get_editor_property("parameter_name"), p.get_editor_property("default_value")))
 reg = unreal.AssetRegistryHelpers.get_asset_registry()
+reg.scan_paths_synchronous(["/DynamicRealWater"], True)
 for a in reg.get_assets_by_path("/DynamicRealWater/Materials/OceanLOD", recursive=True):
     m = a.get_asset()
     try:

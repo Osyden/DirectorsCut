@@ -2,6 +2,16 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 11:31 — Claude: foam on the water round ruins, rocks and hull; first dated build
+
+- **Foam that lies on the sea.** `Tools/patch_drw_shorefoam.py` raises the existing foam input of the water plugin's two near ocean materials wherever something solid is close: by the distance field (which catches the hull) and by how little water lies over whatever is seen through the surface (which catches the ruins; they turned out not to be in the distance field). A thin white line where the water touches, torn lace beyond it, washing in and out and drifting aft. It is part of the water's shading, so it sits on the real waves with no gap. Two-step run and `--undo` are in SETUP.md. This edits plugin files in the engine folder (backups beside them).
+- **The painted foam band on the stone and the wake ribbon are off** (`-DCWaterline`, `-DCWakeRibbon` bring them back): both were what the owner called fake. The ribbon's height sampling still runs because the ship rides on it. There is now no wake astern beyond the foam at the hull; a proper one is open.
+- A first try read scene depth with the ordinary node, which does not compile in a water material: the sea vanished. The water-specific node works. Noted in case the materials are touched again.
+- 151 to 155 fps at 1600x900 in the city with the foam. Review set 33.
+- **Dated build:** `Builds/2026-11-13_1115_bcf9f60_fog-banks` (before the foam). Runs: 141 fps open sea, 148 in the city at 720p. The first run of the new `package.sh` wrote to a wrongly named folder; moved into place by hand and the script is fixed.
+- Sea foam strength in the storm tried at 1.0 and 2.0 against the present 0.41: little visible difference from the deck; left alone.
+- Next: rain splash look; wisps and banks tuning; black wall for the front; then the half-pipe sea and ship handling.
+
 ## Fri 13 Nov 11:14 — Claude: fog banks that glow and flare; veined storm ceiling; cloud faces tried and parked
 
 - **Banks read from the deck now.** They were dim grey in the dim light, so the fog itself was dull. Each bank now gives off light in proportion to its density: the sky's glow all the time (`Director->FogGlow`), and a blue-white flare while the sky pack's lightning light is on. That light also scatters in the volumetric fog now (it did not before). Result: pale billowing banks on the water to either hand with dark ruins standing out of them. 139 to 144 fps at 1600x900 through the city. Review set 32.

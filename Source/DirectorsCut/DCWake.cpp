@@ -158,7 +158,11 @@ void ADCWake::Tick(float DeltaSeconds)
 	const FDCEnvState& Env = Director->GetEnv();
 	const float Want = (Env.Tube > 0.3f || Env.Whirl > 0.3f) ? 0.f : 1.f;
 	Shown = FMath::FInterpConstantTo(Shown, Want, DeltaSeconds, 0.7f);
-	Mesh->SetVisibility(Shown > 0.01f);
+	// The ribbon itself is no longer drawn (owner, 13 Nov: it looked fake and stood off the water). The sea's
+	// own material now makes foam against the hull (Tools/patch_drw_shorefoam.py). The heights are still
+	// asked for: the ship rides on them. -DCWakeRibbon shows the ribbon again.
+	static const bool bRibbon = FParse::Param(FCommandLine::Get(), TEXT("DCWakeRibbon"));
+	Mesh->SetVisibility(bRibbon && Shown > 0.01f);
 	if (Shown <= 0.01f) { return; }
 
 	// Lay the ribbon on the waves. Every third station asks the plugin for the surface height where
