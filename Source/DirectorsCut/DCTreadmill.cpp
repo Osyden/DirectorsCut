@@ -798,12 +798,27 @@ void ADCTreadmill::SpawnAtlantis()
 			{
 				if (Rng.FRand() < 0.18f) { continue; }   // a gap: a look out to the side
 				FDCFogBankDesc D;
-				D.Radii = FVector(Rng.FRandRange(8000.f, 13000.f), Rng.FRandRange(6000.f, 10000.f), Rng.FRandRange(2200.f, 4200.f));
+				D.Radii = FVector(Rng.FRandRange(10000.f, 16000.f), Rng.FRandRange(8000.f, 13000.f), Rng.FRandRange(2400.f, 4600.f));
 				D.Density = Rng.FRandRange(0.04f, 0.065f);
 				D.Size = Rng.FRandRange(5000.f, 8000.f);
-				D.Erode = Rng.FRandRange(0.6f, 0.85f);
+				D.Erode = Rng.FRandRange(0.4f, 0.65f);
 				D.Drift = FVector(Rng.FRandRange(-350.f, -150.f), Side * Rng.FRandRange(-60.f, 160.f), 0.f);
 				Lay(D, X + Rng.FRandRange(-3000.f, 3000.f), Side * (D.Radii.Y + Rng.FRandRange(3500.f, 7000.f)), SeaZ + D.Radii.Z * 0.35f);
+			}
+		}
+		// Behind the walls, further out on either hand: wide low fields of thinner fog, so that the city
+		// beyond the channel stands in it to the knees wherever the eye goes.
+		for (float X = 20000.f; X < 350000.f; X += Rng.FRandRange(22000.f, 30000.f))
+		{
+			for (float Side : { -1.f, 1.f })
+			{
+				FDCFogBankDesc D;
+				D.Radii = FVector(Rng.FRandRange(18000.f, 26000.f), Rng.FRandRange(14000.f, 22000.f), Rng.FRandRange(2000.f, 3400.f));
+				D.Density = Rng.FRandRange(0.014f, 0.024f);
+				D.Size = Rng.FRandRange(8000.f, 12000.f);
+				D.Erode = Rng.FRandRange(0.45f, 0.6f);
+				D.Drift = FVector(Rng.FRandRange(-250.f, -100.f), Side * Rng.FRandRange(-40.f, 120.f), 0.f);
+				Lay(D, X + Rng.FRandRange(-6000.f, 6000.f), Side * Rng.FRandRange(30000.f, 46000.f), SeaZ + D.Radii.Z * 0.3f);
 			}
 		}
 		// Curtains before the great figures and the temples.

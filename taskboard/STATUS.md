@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 13:10 — Claude: third dated build; more fog to either hand
+
+- **Build:** `Builds/2026-11-13_1300_734c009_dusk-city` (dusk city, lightning on cue, grade, grey front interior, bow spray). Runs: 140 fps open sea, 142 in the city at 720p. Whole voyage in the editor build at 3x with the bot captain: every phase, ending reached, hull 80, no errors.
+- **Banks seen from above** were separate puffs with clear water between. The walls along the channel are bigger and less eaten away, and a second, outer row of wide low fields lies beyond them (300 to 460 m off the course) so the city stands knee-deep in fog wherever the eye goes. 137 to 152 fps at 1600x900. Picture in review set 38. Not in the build above.
+- Open sea checked again at 38 and 50 s from the deck: the front is a dark tower dead ahead with lit edges, about 35 degrees up at ten seconds out. Good, but it does not fill the sky like `storm-front-portal.jpg`. Left as it is.
+
 ## Fri 13 Nov 12:58 — Claude: spray over the bow
 
 - When the stem drives down into a sea faster than 70 cm/s, a cloud of spray is thrown up at the bow, carried aft over the forecastle and gone in two and a half seconds (`DCWeatherFX::TickBowSpray`). It is a small volume of real mist in the same material as the fog banks, so it is lit by the sky, the lightning and the lanterns. About 17 a voyage, heavier in the city's sea than on the open sea. `-DCBowSpray=` sets the plunge that throws it, `-DCNoBowSpray` turns it off, `-DCSprayLog` writes each one.
