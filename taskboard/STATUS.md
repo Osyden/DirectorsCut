@@ -2,6 +2,13 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 14:31 — Claude: owner's message on fog and the VDB pack; heterogeneous volumes tried and do not draw; fourth build
+
+- **INBOX:** the owner is still not satisfied with the fog and has acquired a looping cloud-tunnel VDB pack (not installed; they will install it at home). Read [VDB-ATMOSPHERE-HANDOFF.md](VDB-ATMOSPHERE-HANDOFF.md); my findings are appended at its end.
+- **Tried the renderer such a pack needs, without the pack:** one heterogeneous volume beside the course (`-DCHeteroTest`). It registers and reports visible, and does not draw, under every combination I tried. Cause not found. This is the first thing to settle when the pack is installed (open its demo map in this project), and a reason not to buy more packs before it is.
+- The softness the owner dislikes is the fog grid's own: the banks cannot be sharper than it is, whatever is sampled into them.
+- **Build:** `Builds/2026-11-13_1406_606526a_camera-and-strikes` runs (131 fps open sea, 134 city, 720p). It has everything up to the 4K check, including the working lean and shake and the strike scrape.
+
 ## Fri 13 Nov 14:06 — Claude: frame rate at 4K with everything in
 
 - True 3840x2160 (`-RenderOffscreen -ForceRes`, DLSS at 67%, editor build, 3x run): 98 fps open sea at 30 s, 96 under the front, 100 inside it, 101 and 98 in the city, 90 late in the city. This morning's hand-over gave 84 to 102 for the same test, so the day's fog banks, foam, trough, grade and lightning have cost nothing measurable. Five frames scaled to 1080p are in review set 39.

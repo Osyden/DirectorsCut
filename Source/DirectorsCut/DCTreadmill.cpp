@@ -1,6 +1,7 @@
 #include "DCTreadmill.h"
 #include "Components/LocalFogVolumeComponent.h"
 #include "DCFogBank.h"
+#include "Components/HeterogeneousVolumeComponent.h"
 #include "Materials/MaterialParameterCollection.h"
 #include "Materials/MaterialParameterCollectionInstance.h"
 #include "DCRideDirector.h"
@@ -860,6 +861,41 @@ void ADCTreadmill::SpawnAtlantis()
 		W.Drift = FVector(-900.f, 260.f, 0.f);
 		W.Stretch = FVector(3.f, 1.f, 0.6f);
 		if (ADCFogBank* Wisps = ADCFogBank::Spawn(World, W, 77)) { Wisps->SetActorLocation(FVector(500.f, 0.f, SeaZ + 800.f)); }
+	}
+
+	// Trial (-DCHeteroTest): one bank drawn by the engine's heterogeneous-volume renderer instead of the
+	// volumetric fog grid. It is ray-marched at its own resolution with its own shadows, so it can be
+	// sharp, and seen from any distance; the fog grid is coarse and ends 700 m out.
+	if (FParse::Param(FCommandLine::Get(), TEXT("DCHeteroTest")))
+	{
+		UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, FParse::Param(FCommandLine::Get(), TEXT("DCHeteroPlain")) ? TEXT("/Game/DC/Materials/M_HeteroTest.M_HeteroTest") : TEXT("/Game/DC/Materials/M_FogVolume.M_FogVolume"));
+		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		AActor* Holder = World->SpawnActor<AActor>(AActor::StaticClass(), FTransform::Identity, Params);
+		if (Base && Holder)
+		{
+			UHeterogeneousVolumeComponent* H = NewObject<UHeterogeneousVolumeComponent>(Holder);
+			H->SetMobility(EComponentMobility::Movable);
+			Holder->SetRootComponent(H);
+			float Res = 128.f; FParse::Value(FCommandLine::Get(), TEXT("DCHeteroRes="), Res);
+			H->VolumeResolution = FIntVector(Res, Res, Res);
+			H->bPivotAtCentroid = true;
+			const FVector Radii(12000.f, 9000.f, 6000.f);
+			H->SetWorldScale3D(Radii * 2.f / Res);
+			UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(Base, Holder);
+			MID->SetVectorParameterValue(TEXT("Radii"), FLinearColor(Radii.X, Radii.Y, Radii.Z, 0.f));
+			float HDensity = 0.05f, HErode = 0.7f; FParse::Value(FCommandLine::Get(), TEXT("DCHeteroDensity="), HDensity); FParse::Value(FCommandLine::Get(), TEXT("DCHeteroErode="), HErode);
+			MID->SetScalarParameterValue(TEXT("Density"), HDensity);
+			MID->SetScalarParameterValue(TEXT("Size"), 6000.f);
+			MID->SetScalarParameterValue(TEXT("Erode"), HErode);
+			MID->SetVectorParameterValue(TEXT("Floor"), FLinearColor(SeaZ - 150.f, 0.f, 0.f, 500.f));
+			MID->SetVectorParameterValue(TEXT("Glow"), FLinearColor(0.2f, 0.25f, 0.32f));
+			H->SetMaterial(0, MID);
+			H->RegisterComponent();
+			float At = 90000.f; FParse::Value(FCommandLine::Get(), TEXT("DCHeteroAt="), At);
+			Register(Holder, FVector(At, -14000.f, SeaZ + 3000.f), 1.5f, false, 1.f, 0.f, false);
+			UE_LOG(LogDC, Log, TEXT("Hetero test: volume registered %.0f cm ahead; bounds %s; registered %d visible %d material %s"), At, *H->Bounds.ToString(), H->IsRegistered(), H->IsVisible(), *GetNameSafe(H->GetMaterial(0)));
+		}
 	}
 
 	// The portal out of the city: on the ship's course, at the distance covered by the time the slide begins.

@@ -47,6 +47,8 @@ if unreal.EditorAssetLibrary.does_asset_exist(path):
 mat = unreal.AssetToolsHelpers.get_asset_tools().create_asset(NAME, PKG, unreal.Material, unreal.MaterialFactoryNew())
 mat.set_editor_property("material_domain", unreal.MaterialDomain.MD_VOLUME)
 mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_ADDITIVE)
+# Also usable on the engine's heterogeneous volumes (ray-marched, with their own shadows), not only in the fog grid.
+mat.set_editor_property("used_with_heterogeneous_volumes", True)
 
 
 def custom(code, out_type, names, x, y):
