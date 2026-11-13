@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 08:05 — Claude: last entry of the night; Builds/Next at dc7fef4
+
+- Fog banks on the ship's own course thinned: sailing through one is a veil now, not a white-out.
+- `Builds/Next` rebuilt at `dc7fef4` and run: 128 fps open sea and in the front (720p), no slow frames besides the test screenshots. This is the build to play; see [MORNING-13NOV.md](MORNING-13NOV.md).
+- Open for the next session, in order of value: crew characters (owner's call on a pack); hands-on check of the moving deck, wheel and guns; sound and microphone check; storm clouds still white rather than dark; recover the tenth of frame rate the ship's motion costs.
+
 ## Fri 13 Nov 07:48 — Claude: Builds/Next at c000aea, verified at normal speed
 
 - `Builds/Next` rebuilt with the front-entry changes. Normal-speed run of the package to 100 s: 124 fps open sea, 131 inside the front, 93 in Atlantis (720p); no slow frame at all through the entry into the front (58 to 64 s), only the three test screenshots.
