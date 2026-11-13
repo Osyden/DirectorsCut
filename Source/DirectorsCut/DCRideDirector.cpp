@@ -944,6 +944,24 @@ void ADCRideDirector::TickUDS()
 				}
 			}
 		}
+		// Test hook: -DCFogGrid=4,256 sets the fog grid (pixels a cell across the screen, cells in depth; the
+		// quality settings give 8 and 128). Its cells limit how sharp a bank of fog can be. A first try at
+		// 4,256 cost a tenth of the frame rate and showed no difference in the one view compared, so it is not the default.
+		{
+			static bool bGridSet = false;
+			FString Grid;
+			if (!bGridSet && RideTime > 1.f && FParse::Value(FCommandLine::Get(), TEXT("DCFogGrid="), Grid, false))
+			{
+				bGridSet = true;
+				FString A, B;
+				if (Grid.Split(TEXT(","), &A, &B))
+				{
+					if (IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricFog.GridPixelSize"))) { V->Set(FCString::Atoi(*A), ECVF_SetByCode); }
+					if (IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricFog.GridSizeZ"))) { V->Set(FCString::Atoi(*B), ECVF_SetByCode); }
+					UE_LOG(LogDC, Log, TEXT("Fog grid: %s"), *Grid);
+				}
+			}
+		}
 		// The trough in the sea belongs to the city too: it comes with the mist and is gone before the slide.
 		{
 			static float TroughFull = 650.f; static bool bTroughRead = false;   // test hook: -DCTrough= (cm of rise at the channel's edge; 0 = flat)
