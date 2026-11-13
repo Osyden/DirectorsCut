@@ -169,8 +169,8 @@ void ADCRideDirector::BuildDefaultPhases()
 	}
 	{
 		FDCEnvState& E = Add(EDCPhase::Ending, 600.f, 15.f);
-		E.FogColor = FLinearColor(0.7f, 0.6f, 0.5f); E.FogDensity = 0.006f; E.CloudCover = 0.3f; E.CloudBase = 220000.f;
-		E.SunColor = FLinearColor(1.f, 0.8f, 0.6f); E.SunIntensity = 6.f; E.SunPitch = -6.f;
+		E.FogColor = FLinearColor(0.7f, 0.6f, 0.5f); E.FogDensity = 0.0012f; E.CloudCover = 0.16f; E.CloudBase = 220000.f;
+		E.SunColor = FLinearColor(1.f, 0.8f, 0.6f); E.SunIntensity = 7.f; E.SunPitch = -8.f; E.SunYaw = 166.f; E.SkyIntensity = 1.f; // a low sun ahead, a little to port of the mast: sailing out into the morning
 		E.SeaRoughness = 1.f; E.ShipSpeed = 600.f; E.WaveHeight = 60.f; E.Foam = 0.4f; E.Exposure = 1.0f;
 	}
 }
