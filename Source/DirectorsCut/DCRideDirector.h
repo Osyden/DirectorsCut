@@ -67,6 +67,11 @@ public:
 	float Trauma = 0.f;
 	/** A slow lean of the captain's view with the ship's motion, used while the plugin sea (which cannot be rocked) is shown. Degrees. */
 	FRotator DeckSway = FRotator::ZeroRotator;
+	/** How the ship is moved off her resting place by the sea this frame (she rides the plugin sea's waves).
+	 *  Things that live on deck keep their positions for the ship at rest and are placed through this. */
+	FTransform DeckTransform = FTransform::Identity;
+	FVector DeckToWorld(const FVector& AtRest) const { return DeckTransform.TransformPosition(AtRest); }
+	UPROPERTY() TObjectPtr<AActor> ShipActor;
 	float WhiteOut = 0.f;
 	int32 HintStage = 0;
 

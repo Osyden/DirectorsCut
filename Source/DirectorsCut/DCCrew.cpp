@@ -205,6 +205,21 @@ void ADCCrewMember::SetHelmOrder(EDCAction Action)
 void ADCCrewMember::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	const ADCRideDirector* Dir = ADCRideDirector::Get(this);
+	const FTransform Deck = Dir ? Dir->DeckTransform : FTransform::Identity;
+	// Placed by someone else since last frame (spawned, or sent to a new post)? Take that as the new place on deck.
+	if (!GetActorLocation().Equals(LastPlaced, 0.05f))
+	{
+		DeckPos = Deck.InverseTransformPosition(GetActorLocation());
+		DeckRot = FRotator(0.f, GetActorRotation().Yaw, 0.f);
+	}
+	TickCrew(DeltaSeconds);
+	SetActorLocationAndRotation(Deck.TransformPosition(DeckPos), Deck.GetRotation() * DeckRot.Quaternion());
+	LastPlaced = GetActorLocation();
+}
+
+void ADCCrewMember::TickCrew(float DeltaSeconds)
+{
 
 	// Face the name tag at the player.
 	if (APlayerCameraManager* Cam = GetWorld()->GetFirstPlayerController() ? GetWorld()->GetFirstPlayerController()->PlayerCameraManager : nullptr)
@@ -224,18 +239,18 @@ void ADCCrewMember::Tick(float DeltaSeconds)
 	if (State == EDCCrewState::Moving)
 	{
 		const FVector Target = Station->Location + FVector(0.f, 0.f, 90.f);
-		const FVector Here = GetActorLocation();
+		const FVector Here = DeckPos;
 		const FVector NewLoc = FMath::VInterpConstantTo(Here, Target, DeltaSeconds, MoveSpeed);
-		SetActorLocation(NewLoc);
+		DeckPos = NewLoc;
 		const FVector Dir = (Target - Here).GetSafeNormal2D();
-		if (!Dir.IsNearlyZero()) { SetActorRotation(FRotator(0.f, Dir.Rotation().Yaw, 0.f)); }
+		if (!Dir.IsNearlyZero()) { DeckRot = FRotator(0.f, Dir.Rotation().Yaw, 0.f); }
 		SetWalking(true);
 		if (FVector::DistSquared(NewLoc, Target) < 25.f)
 		{
 			State = EDCCrewState::Operating;
 			// Face the work: the helmsman looks forward, gunners look out over their rail.
 			const float Yaw = Station->Type == EDCStationType::Cannons ? (Station->Side == EDCSide::Port ? -90.f : 90.f) : 0.f;
-			SetActorRotation(FRotator(0.f, Yaw, 0.f));
+			DeckRot = FRotator(0.f, Yaw, 0.f);
 			SetWalking(false);
 		}
 		return;
@@ -538,15 +553,15 @@ void UDCCrewSubsystem::Report(const FString& Text, bool bUrgent)
 
 bool ADCCrewMember::MoveToward(const FVector& Target, float DeltaSeconds)
 {
-	const FVector Here = GetActorLocation();
+	const FVector Here = DeckPos;
 	if (FVector::DistSquared(Here, Target) < 25.f)
 	{
 		SetWalking(false);
 		return true;
 	}
-	SetActorLocation(FMath::VInterpConstantTo(Here, Target, DeltaSeconds, MoveSpeed));
+	DeckPos = FMath::VInterpConstantTo(Here, Target, DeltaSeconds, MoveSpeed);
 	const FVector Dir = (Target - Here).GetSafeNormal2D();
-	if (!Dir.IsNearlyZero()) { SetActorRotation(FRotator(0.f, Dir.Rotation().Yaw, 0.f)); }
+	if (!Dir.IsNearlyZero()) { DeckRot = FRotator(0.f, Dir.Rotation().Yaw, 0.f); }
 	SetWalking(true);
 	return false;
 }
@@ -569,13 +584,13 @@ void ADCCrewMember::TickTroubles(float DeltaSeconds, FDCStation* Station)
 
 	// Fire watch: go to the nearest fire, work on it, come back to the buckets when the deck is clear.
 	FVector Fire;
-	if (Troubles->NearestFire(GetActorLocation(), Fire))
+	if (Troubles->NearestFire(DeckPos, Fire))
 	{
-		FVector Away = (GetActorLocation() - Fire).GetSafeNormal2D();
+		FVector Away = (DeckPos - Fire).GetSafeNormal2D();
 		if (Away.IsNearlyZero()) { Away = FVector(-1.f, 0.f, 0.f); }
 		if (MoveToward(Fire + Away * 120.f + FVector(0.f, 0.f, 90.f), DeltaSeconds))
 		{
-			SetActorRotation(FRotator(0.f, (-Away).Rotation().Yaw, 0.f));
+			DeckRot = FRotator(0.f, (-Away).Rotation().Yaw, 0.f);
 			WorkTime += DeltaSeconds;
 			if (WorkTime > 3.f)
 			{

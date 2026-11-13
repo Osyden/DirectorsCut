@@ -163,6 +163,8 @@ void ADCWeatherFX::BuildSplashes()
 	Splashes->SetHiddenInSceneCapture(true);
 	Splashes->SetupAttachment(RootComponent);
 	Splashes->RegisterComponent();
+	// The points were found on the ship as she lies this frame; from here on they ride with her.
+	if (Director->ShipActor && Director->ShipActor->GetRootComponent()) { Splashes->AttachToComponent(Director->ShipActor->GetRootComponent(), FAttachmentTransformRules::KeepWorldTransform); }
 	Splashes->CreateMeshSection(0, Verts, Tris, Normals, UVs, Colors, TArray<FProcMeshTangent>(), false);
 	SplashMID = UMaterialInstanceDynamic::Create(Base, this);
 	Splashes->SetMaterial(0, SplashMID);

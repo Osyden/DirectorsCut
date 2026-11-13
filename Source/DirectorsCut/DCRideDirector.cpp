@@ -423,7 +423,8 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 	// wrong. While that sea is shown the world stays still and the captain's view leans a little instead.
 	const float RockScale = Ocean ? FMath::Clamp(FMath::Max(Env.Tube, Env.Whirl) * 2.f, 0.f, 1.f) : 1.f;
 	WorldRock = FTransform(FRotator(Pitch * RockScale, 0.f, Roll * RockScale), FVector(0.f, 0.f, Heave * RockScale));
-	DeckSway = FRotator(Pitch * 0.3f, 0.f, Roll * 0.3f) * (1.f - RockScale);
+	// The ship herself now rides the plugin sea (DCGameMode moves her), so the view no longer leans.
+	DeckSway = FRotator::ZeroRotator;
 	// On the wall of the maelstrom the sea slopes toward the centre. Tilt the whole sea the other way so
 	// the water is level under the ship and the funnel, not the deck, is what leans.
 	const float R0 = WhirlCenter.Size();
@@ -579,6 +580,12 @@ void ADCRideDirector::AdoptLampGlass(AActor* Ship)
 {
 	// The lantern glass on the ship becomes the flame: every glass pane is given a self-lit material
 	// that the lamps drive, so the lanterns themselves glow and bloom exactly where they hang.
+	ShipActor = Ship;
+	// The lantern lights hang on the ship, so they move with her.
+	if (Ship && Ship->GetRootComponent())
+	{
+		for (UPointLightComponent* Lamp : Lamps) { if (Lamp) { Lamp->AttachToComponent(Ship->GetRootComponent(), FAttachmentTransformRules::KeepWorldTransform); } }
+	}
 	UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Bolt.M_Bolt"));
 	if (!Ship || !Base) { return; }
 	TInlineComponentArray<UStaticMeshComponent*> Parts(Ship);

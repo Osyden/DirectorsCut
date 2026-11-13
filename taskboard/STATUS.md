@@ -2,6 +2,14 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 06:19 — Claude: the ship rides the sea
+
+- **Ship motion** (the playtest's "ship needs bobbing"): the hull now heaves, pitches and rolls with the plugin sea's waves. The wake already asks for the water height down both sides of the hull; the ship is leaned and lifted toward that plane, eased and scaled down (0.8). Measured on the open sea: heave about 10 cm either way, pitch 0.75 degrees, roll 0.6; more in the storm. Off in the tunnel and the maelstrom, where Codex's stage moves the world instead. `-DCNoShipMotion` keeps her still, `-DCShipMotion=1.0` sets the amount.
+- **Riding with her:** the crew (their reckoning stays in the ship-at-rest frame and they are placed through the deck's transform each frame), the lantern lights, and the deck rain splashes. Not yet: deck fires and the HUD's station markers (a few centimetres off as she moves). The view lean added earlier is removed.
+- **Cost:** about 10 to 14 per cent frame rate, from moving the whole rig each frame: open sea 128 to 117 fps, Atlantis 109 to 94 (720p, editor build).
+- Full voyage at triple speed with the bot captain passes with it on: no crash, 91 to 182 fps along the way.
+- Not yet tried by hand: walking the deck while she moves, the helm and gun stations.
+
 ## Fri 13 Nov 06:09 — Claude: package verified; set 29
 
 Review set: `taskboard/review/29-wake-current-wash-line/` (hull wash, wake astern, wash line on a ruin, the ship seen from abeam in sun and in the storm; 1920x1080).

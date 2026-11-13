@@ -690,29 +690,7 @@ void ADCGameMode::Tick(float DeltaSeconds)
 			TestWavPath.Empty();
 		}
 	}
-	if (Ship && !Ship->GetActorLocation().Equals(ShipSpawnLocation, 1.f))
-	{
-		UE_LOG(LogDC, Verbose, TEXT("Ship drifted to %s; pinning"), *Ship->GetActorLocation().ToString());
-		// Whatever in the ship's blueprint is moving it must be stopped, not fought: pinning the hull
-		// back every frame leaves it trembling under the crew. Its looping timelines are the bobbing.
-		// The ship's blueprint switches physics back on for its base plate after it begins play. With no
-		// water system of its own to float on, the hull then fell a few centimetres every frame and was
-		// put back every frame: a constant tremble under a crew that stood still. Stop the simulation
-		// itself, every time it is found running.
-		TArray<UPrimitiveComponent*> ShipPrims;
-		Ship->GetComponents(ShipPrims);
-		for (UPrimitiveComponent* P : ShipPrims)
-		{
-			if (P->IsSimulatingPhysics())
-			{
-				UE_LOG(LogDC, Log, TEXT("Ship: physics found running on %s at ride time %.1f; stopped"), *P->GetName(), ADCRideDirector::Get(this) ? ADCRideDirector::Get(this)->RideTime : 0.f);
-				P->SetPhysicsLinearVelocity(FVector::ZeroVector);
-				P->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
-				P->SetSimulatePhysics(false);
-			}
-		}
-		Ship->SetActorLocationAndRotation(ShipSpawnLocation, ShipSpawnRotation, false, nullptr, ETeleportType::ResetPhysics);
-	}
+	TickShipMotion(DeltaSeconds);
 	if (!AutoShotTimes.IsValidIndex(AutoShotIndex))
 	{
 		return;
@@ -766,4 +744,58 @@ void ADCGameMode::Tick(float DeltaSeconds)
 	{
 		FPlatformMisc::RequestExit(false);
 	}
+}
+
+void ADCGameMode::TickShipMotion(float DeltaSeconds)
+{
+	if (!Ship) { return; }
+	ADCRideDirector* Dir = ADCRideDirector::Get(this);
+
+	// The ship's blueprint switches physics back on for its base plate after it begins play. With no
+	// water system of its own to float on, the hull then fell a few centimetres every frame and was
+	// put back every frame: a constant tremble under a crew that stood still. Stop the simulation
+	// itself, whenever it is found running.
+	static int32 Frame = 0;
+	UPrimitiveComponent* Root = Cast<UPrimitiveComponent>(Ship->GetRootComponent());
+	if ((Root && Root->IsSimulatingPhysics()) || (++Frame % 120) == 0)
+	{
+		TArray<UPrimitiveComponent*> ShipPrims;
+		Ship->GetComponents(ShipPrims);
+		for (UPrimitiveComponent* P : ShipPrims)
+		{
+			if (P->IsSimulatingPhysics())
+			{
+				UE_LOG(LogDC, Log, TEXT("Ship: physics found running on %s at ride time %.1f; stopped"), *P->GetName(), Dir ? Dir->RideTime : 0.f);
+				P->SetPhysicsLinearVelocity(FVector::ZeroVector);
+				P->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+				P->SetSimulatePhysics(false);
+			}
+		}
+	}
+
+	// She rides the plugin sea: the wake already knows the height of the water down both sides of the
+	// hull, so the hull is leaned and lifted toward that plane, a good deal less than the water itself
+	// (a ship averages the waves under her) and slowly. Off in the tunnel and the maelstrom, where the
+	// stage moves the world round her instead. -DCNoShipMotion keeps her still.
+	static const bool bStill = FParse::Param(FCommandLine::Get(), TEXT("DCNoShipMotion"));
+	static float Amount = 0.8f;
+	static bool bRead = false;
+	if (!bRead) { bRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCShipMotion="), Amount); }
+	float Rise = 0.f, SlopeX = 0.f, SlopeY = 0.f;
+	const ADCWake* Wake = bStill ? nullptr : ADCWake::Get(this);
+	if (!Wake || !Wake->GetSeaUnderHull(Rise, SlopeX, SlopeY)) { Rise = SlopeX = SlopeY = 0.f; }
+	const float MaxPitch = FMath::Tan(FMath::DegreesToRadians(2.5f)), MaxRoll = FMath::Tan(FMath::DegreesToRadians(4.5f));
+	ShipHeave = FMath::FInterpTo(ShipHeave, FMath::Clamp(Rise * Amount, -70.f, 70.f), DeltaSeconds, 1.6f);
+	ShipSlope.X = FMath::FInterpTo(ShipSlope.X, FMath::Clamp(SlopeX * Amount, -MaxPitch, MaxPitch), DeltaSeconds, 1.3f);
+	ShipSlope.Y = FMath::FInterpTo(ShipSlope.Y, FMath::Clamp(SlopeY * Amount, -MaxRoll, MaxRoll), DeltaSeconds, 1.3f);
+
+	// Deck up = the normal of that plane; turned about the waterline amidships.
+	const FVector Up = FVector(-ShipSlope.X, -ShipSlope.Y, 1.f).GetSafeNormal();
+	const FQuat Lean = FRotationMatrix::MakeFromZX(Up, FVector::ForwardVector).ToQuat();
+	const FVector Pivot(0.f, 0.f, Dir ? Dir->SeaLevelZ : 0.f);
+	const FTransform Deck(Lean, Pivot - Lean.RotateVector(Pivot) + FVector(0.f, 0.f, ShipHeave));
+	if (Dir) { Dir->DeckTransform = Deck; }
+	const FTransform Rest(ShipSpawnRotation, ShipSpawnLocation);
+	const FTransform Now = Rest * Deck;
+	Ship->SetActorLocationAndRotation(Now.GetLocation(), Now.GetRotation(), false, nullptr, ETeleportType::TeleportPhysics);
 }

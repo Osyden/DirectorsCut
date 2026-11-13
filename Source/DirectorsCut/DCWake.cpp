@@ -3,6 +3,7 @@
 #include "DCTypes.h"
 #include "ProceduralMeshComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "EngineUtils.h"
 
 namespace
 {
@@ -189,4 +190,36 @@ void ADCWake::Tick(float DeltaSeconds)
 	const float Light = FMath::Lerp(0.16f, 1.f, Day);
 	MID->SetVectorParameterValue(TEXT("Tint"), FLinearColor(0.82f * Light, 0.9f * Light, 0.96f * Light, Shown * FMath::Clamp(0.55f + 0.3f * Speed, 0.f, 1.f)));
 	MID->SetScalarParameterValue(TEXT("Speed"), 1200.f * Speed);
+}
+
+ADCWake* ADCWake::Get(const UObject* WorldContext)
+{
+	UWorld* World = WorldContext ? WorldContext->GetWorld() : nullptr;
+	if (!World) { return nullptr; }
+	for (TActorIterator<ADCWake> It(World); It; ++It) { return *It; }
+	return nullptr;
+}
+
+bool ADCWake::GetSeaUnderHull(float& OutRise, float& OutSlopeX, float& OutSlopeY) const
+{
+	if (!bBuilt || !Mesh || Shown < 0.5f || Heights.Num() < Stations.Num() * 2) { return false; }
+	// Least squares for z = a + b x, and the difference between the sides for the roll, over the
+	// stations that lie along the hull (not the wake astern).
+	double N = 0, Sx = 0, Sz = 0, Sxx = 0, Sxz = 0, Port = 0, Star = 0, PortN = 0, StarN = 0, Beam = 0;
+	for (int32 s = 0; s < Stations.Num(); ++s)
+	{
+		const FStation& S = Stations[s];
+		if (S.Inner.X < WakeSternX || S.Inner.X > WakeBowX) { continue; }
+		const double X = S.Inner.X, Z = Heights[s * 2] - Director->SeaLevelZ;
+		N += 1; Sx += X; Sz += Z; Sxx += X * X; Sxz += X * Z;
+		const double Y = FMath::Lerp(S.Inner.Y, S.Outer.Y, 0.2f);
+		if (Y < 0) { Port += Z; PortN += 1; Beam -= Y; } else { Star += Z; StarN += 1; Beam += Y; }
+	}
+	const double Den = N * Sxx - Sx * Sx;
+	if (N < 6 || PortN < 3 || StarN < 3 || FMath::Abs(Den) < 1.0) { return false; }
+	const double B = (N * Sxz - Sx * Sz) / Den;
+	OutSlopeX = static_cast<float>(B);
+	OutRise = static_cast<float>((Sz - B * Sx) / N);
+	OutSlopeY = static_cast<float>((Star / StarN - Port / PortN) / FMath::Max(Beam / N * 2.0, 100.0));
+	return true;
 }

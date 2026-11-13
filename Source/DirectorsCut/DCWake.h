@@ -23,6 +23,10 @@ class ADCWake : public AActor
 public:
 	ADCWake();
 	virtual void Tick(float DeltaSeconds) override;
+	/** The plane of the sea under the hull this frame, from the heights sampled along both sides:
+	 *  how far the water stands above the flat sea level amidships (cm) and its slope fore-and-aft and athwartships (rise per cm). False until the wake is showing. */
+	bool GetSeaUnderHull(float& OutRise, float& OutSlopeX, float& OutSlopeY) const;
+	static ADCWake* Get(const UObject* WorldContext);
 
 protected:
 	void Build();

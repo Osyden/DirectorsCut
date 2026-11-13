@@ -39,6 +39,12 @@ class ADCCrewMember : public AActor
 public:
 	ADCCrewMember();
 	virtual void Tick(float DeltaSeconds) override;
+	/** Where this hand stands on the ship at rest. All the crew's own reckoning is done there; Tick
+	 *  then puts the body where the deck is this frame, so the hands move with the ship as she rides the sea. */
+	FVector DeckPos = FVector::ZeroVector;
+	FRotator DeckRot = FRotator::ZeroRotator;
+	FVector LastPlaced = FVector(FLT_MAX);
+	void TickCrew(float DeltaSeconds);
 
 	void Init(const FString& InName, const FLinearColor& Color);
 	void AssignStation(int32 StationIndex);

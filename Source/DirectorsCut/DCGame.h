@@ -58,6 +58,10 @@ protected:
 	FVector ShipPart(const TCHAR* Name, const FVector& Fallback) const;
 
 	UPROPERTY() TObjectPtr<AActor> Ship;
+	/** The ship rides the sea: heave, pitch and roll, eased toward the plane of the water under the hull. */
+	float ShipHeave = 0.f;
+	FVector2D ShipSlope = FVector2D::ZeroVector;
+	void TickShipMotion(float DeltaSeconds);
 	UPROPERTY() TObjectPtr<ADCRideDirector> Director;
 	UPROPERTY() TObjectPtr<ADCTreadmill> Treadmill;
 
