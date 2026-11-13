@@ -457,6 +457,22 @@ void ADCGameMode::StartPlay()
 			if (P->IsSimulatingPhysics()) { UE_LOG(LogDC, Log, TEXT("Disabling physics on %s"), *P->GetName()); P->SetSimulatePhysics(false); }
 			if (P->GetName() == TEXT("HullShip")) { Bounds = P->Bounds.GetBox(); }
 		}
+		// The asset's own blueprint also bobs the ship on its water system every frame. Pinning it back
+		// each frame left the hull trembling a centimetre or two under a crew that stood still, so the
+		// blueprint's own tick is switched off; its components (sails, flags) keep theirs.
+		if (!FParse::Param(FCommandLine::Get(), TEXT("DCShipTick"))) { Ship->SetActorTickEnabled(false); }
+		if (FParse::Param(FCommandLine::Get(), TEXT("DCShipDump")))
+		{
+			UE_LOG(LogDC, Log, TEXT("ShipDump actor class %s, root %s (%s), mobility %d"), *Ship->GetClass()->GetName(), *Ship->GetRootComponent()->GetName(), *Ship->GetRootComponent()->GetClass()->GetName(), static_cast<int32>(Ship->GetRootComponent()->Mobility));
+			for (UActorComponent* C : Ship->GetComponents())
+			{
+				const UPrimitiveComponent* P = Cast<UPrimitiveComponent>(C);
+				if (!P || P->IsSimulatingPhysics() || C->IsComponentTickEnabled())
+				{
+					UE_LOG(LogDC, Log, TEXT("ShipDump %s (%s) tick=%d sim=%d"), *C->GetName(), *C->GetClass()->GetName(), C->IsComponentTickEnabled() ? 1 : 0, (P && P->IsSimulatingPhysics()) ? 1 : 0);
+				}
+			}
+		}
 		Ship->SetActorLocationAndRotation(ShipSpawnLocation, ShipSpawnRotation, false, nullptr, ETeleportType::ResetPhysics);
 		UE_LOG(LogDC, Log, TEXT("Ship %s bounds min %s max %s"), *Ship->GetName(), *Bounds.Min.ToString(), *Bounds.Max.ToString());
 		Treadmill->ShipHalfLength = Bounds.GetExtent().X;
@@ -588,6 +604,27 @@ void ADCGameMode::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	// Frame rate in real time, whatever the test time dilation.
 	SmoothedFps = FMath::Lerp(SmoothedFps, 1.f / FMath::Max(FApp::GetDeltaTime(), 0.0001), 0.05f);
+	// Test hook: -DCHitch logs every frame longer than 25 ms, and -DCCrewLog logs where each hand's
+	// body and head are every frame for ride times 20 to 24 s, to catch jitter.
+	{
+		static const bool bHitch = FParse::Param(FCommandLine::Get(), TEXT("DCHitch"));
+		static const bool bCrewLog = FParse::Param(FCommandLine::Get(), TEXT("DCCrewLog"));
+		const ADCRideDirector* Dir = ADCRideDirector::Get(this);
+		const double Ms = FApp::GetDeltaTime() * 1000.0;
+		if (bHitch && Dir && Ms > 25.0 && GetWorld()->GetTimeSeconds() > 5.f) { UE_LOG(LogDC, Log, TEXT("Hitch %.0f ms at ride time %.1f"), Ms, Dir->RideTime); }
+		if (bCrewLog && Dir && Dir->RideTime > 20.f && Dir->RideTime < 24.f)
+		{
+			if (Ship) { const UPrimitiveComponent* Hull = nullptr; TArray<UPrimitiveComponent*> Ps; Ship->GetComponents(Ps); for (UPrimitiveComponent* P : Ps) { if (P->GetName() == TEXT("HullShip")) { Hull = P; } } const FVector SL = Ship->GetActorLocation(); const FRotator SR = Ship->GetActorRotation(); const FVector HL = Hull ? Hull->GetComponentLocation() : FVector::ZeroVector; const FRotator HR = Hull ? Hull->GetComponentRotation() : FRotator::ZeroRotator; UE_LOG(LogDC, Log, TEXT("ShipLog t=%.3f ship=%.3f,%.3f,%.3f rot=%.3f,%.3f,%.3f hull=%.3f,%.3f,%.3f hullrot=%.3f,%.3f,%.3f"), Dir->RideTime, SL.X, SL.Y, SL.Z, SR.Pitch, SR.Yaw, SR.Roll, HL.X, HL.Y, HL.Z, HR.Pitch, HR.Yaw, HR.Roll); }
+			for (TActorIterator<ADCCrewMember> It(GetWorld()); It; ++It)
+			{
+				const USkeletalMeshComponent* Fig = It->FindComponentByClass<USkeletalMeshComponent>();
+				const FVector A = It->GetActorLocation();
+				const FVector Head = Fig ? Fig->GetBoneLocation(TEXT("head")) : FVector::ZeroVector;
+				const FVector Pelvis = Fig ? Fig->GetBoneLocation(TEXT("pelvis")) : FVector::ZeroVector;
+				UE_LOG(LogDC, Log, TEXT("CrewLog %s t=%.3f actor=%.2f,%.2f,%.2f head=%.2f,%.2f,%.2f pelvisZ=%.2f yaw=%.1f"), *It->CrewName, Dir->RideTime, A.X, A.Y, A.Z, Head.X, Head.Y, Head.Z, Pelvis.Z, It->GetActorRotation().Yaw);
+			}
+		}
+	}
 	// -DCRestartAt=20 reloads the level once after that many seconds, as the R key does (tests that a second voyage works).
 	static bool bRestartTested = false;
 	float RestartAt = 0.f;
@@ -654,6 +691,24 @@ void ADCGameMode::Tick(float DeltaSeconds)
 	if (Ship && !Ship->GetActorLocation().Equals(ShipSpawnLocation, 1.f))
 	{
 		UE_LOG(LogDC, Verbose, TEXT("Ship drifted to %s; pinning"), *Ship->GetActorLocation().ToString());
+		// Whatever in the ship's blueprint is moving it must be stopped, not fought: pinning the hull
+		// back every frame leaves it trembling under the crew. Its looping timelines are the bobbing.
+		// The ship's blueprint switches physics back on for its base plate after it begins play. With no
+		// water system of its own to float on, the hull then fell a few centimetres every frame and was
+		// put back every frame: a constant tremble under a crew that stood still. Stop the simulation
+		// itself, every time it is found running.
+		TArray<UPrimitiveComponent*> ShipPrims;
+		Ship->GetComponents(ShipPrims);
+		for (UPrimitiveComponent* P : ShipPrims)
+		{
+			if (P->IsSimulatingPhysics())
+			{
+				UE_LOG(LogDC, Log, TEXT("Ship: physics found running on %s at ride time %.1f; stopped"), *P->GetName(), ADCRideDirector::Get(this) ? ADCRideDirector::Get(this)->RideTime : 0.f);
+				P->SetPhysicsLinearVelocity(FVector::ZeroVector);
+				P->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+				P->SetSimulatePhysics(false);
+			}
+		}
 		Ship->SetActorLocationAndRotation(ShipSpawnLocation, ShipSpawnRotation, false, nullptr, ETeleportType::ResetPhysics);
 	}
 	if (!AutoShotTimes.IsValidIndex(AutoShotIndex))
