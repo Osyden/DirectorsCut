@@ -132,7 +132,9 @@ void ADCRideDirector::BuildDefaultPhases()
 		// First the inside of the cloud front: close and blind. Grey, not black: thick cloud in daylight is a
 		// white-out, and in the dark the lanterns turned the whole view to brown soup. A little of the city's
 		// mist (below the level at which the sea's trough begins) brings the running wisps and the lightning in the fog.
-		E.FogColor = FLinearColor(0.1f, 0.14f, 0.18f); E.FogDensity = 0.035f; E.FogHeightFalloff = 0.002f; E.CloudCover = 1.f; E.CloudBase = 50000.f; E.Mist = 0.44f;
+		// (13 Nov night: the front now has a tunnel of cloud for a mouth. The air inside it is kept nearly clear,
+		// so its rolling walls and the light at its far end are what is seen; the thick air was hiding them.)
+		E.FogColor = FLinearColor(0.1f, 0.14f, 0.18f); E.FogDensity = 0.004f; E.FogHeightFalloff = 0.002f; E.CloudCover = 1.f; E.CloudBase = 50000.f; E.Mist = 0.15f;
 		E.SunColor = FLinearColor(0.5f, 0.7f, 0.8f); E.SunIntensity = 1.6f; E.SunPitch = -20.f; E.SkyIntensity = 0.6f;
 		E.SeaColor = FLinearColor(0.01f, 0.03f, 0.035f); E.SeaRoughness = 2.5f; E.Rain = 0.7f; E.LightningRate = 8.f; E.ShipSpeed = 1500.f; E.WaveHeight = 130.f; E.Foam = 0.7f; E.Exposure = 0.6f;
 	}

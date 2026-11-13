@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 00:05 Claude: clear air inside the tunnel
+
+- The front-interior phase (58 s) had thick fog (density 0.035, Mist 0.44) from when the inside of the front was meant to be blind. It hid the tunnel's walls: after 61 s the picture was even grey. Now density 0.004 and Mist 0.15, so from 61 to 70 s the ship runs down a dark rolling tunnel toward the light at its far end, and the first ruins show at about 70 s. `review/47-front-wall-with-portal/10-inside-tunnel-61-to-86s.png`. 86 to 118 fps at 1280x720.
+- Unjudged: the tunnel is dark; at normal speed it may want a little more exposure or lightning inside.
+
 ## 13 Nov 23:50 Claude: Easy Fog cards in the city; front skirt off; tunnel has no light of its own
 
 - **Fog cards** (`DCTreadmill.cpp`, after the deck wisps): about 60 Easy Fog cards on the treadmill through the city: wide sheets (140 to 380 m) lying 2 to 4 m over the sea, and slanted rags of scud over the channel's shoulders. Lit by the scene only (the pack's emissive is set to 0), fade near the eye and at stone. Absent pack: nothing laid. `-DCNoFogCards`, `-DCFogCards=<density scale>`. Frames 78 to 200 s in `review/48-fog-cards-city`; 117 to 134 fps at 1280x720 in the city.
