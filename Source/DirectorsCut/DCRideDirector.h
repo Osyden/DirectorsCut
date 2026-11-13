@@ -136,6 +136,8 @@ protected:
 	UPROPERTY() TObjectPtr<AActor> UDSWeather;
 	/** The sky pack's travelling storm: the front on the horizon that the ship sails into. */
 	UPROPERTY() TObjectPtr<AActor> UDSStorm;
+	/** The pack's rain and lightning effects, loaded before they are needed. */
+	UPROPERTY() TArray<TObjectPtr<UObject>> UDSPreloaded;
 	float StormRadius = 1400000.f;
 	void SetupUDS();
 	void SetupOcean();

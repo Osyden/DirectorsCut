@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 06:01 — Claude: half-second freeze at the storm front removed
+
+- Entering the front at 58 s froze the game for 0.5 s (measured with `-DCHitch`). Two causes: the whole drowned city was spawned in that one frame, and the sky pack loaded its rain effect at that moment. The city is now built in the first seconds of the voyage (under the title), placed further off by the distance still to run, hidden, and revealed a couple of actors a frame once the fog begins; the pack's rain and lightning effects are loaded at start. The frame at 58 s is now 79 ms. Remaining single frames of 30 to 60 ms at 61 s (the pack loading thunder and lightning pieces).
+- Positions in the city are unchanged in seek tests; in a continuous run the city is where it was to within the open-sea speed times a frame.
+
 ## Fri 13 Nov 05:52 — Claude: white water along the hull and a wake astern
 
 - **Hull wash and wake** (`DCWake`, `M_Wake`, `Tools/make_wake_material.py`): foam along both sides from the bow wave aft and a wake 90 m astern, its pattern running aft at the ship's speed. It is fitted to the real hull at the waterline and rides on the plugin sea's waves (120 surface-height queries a frame; no measurable cost: open sea 132 fps, Atlantis 101 to 105). Hidden in the tunnel and the maelstrom. `-DCNoWake` removes it.

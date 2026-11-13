@@ -803,6 +803,13 @@ void ADCRideDirector::SetupUDS()
 		}
 	}
 
+	// The pack loads its rain and lightning effects the moment they are first wanted, which froze the
+	// game for a quarter of a second as the ship entered the front. Load them now, under the title.
+	for (const TCHAR* Path : { TEXT("/Game/UltraDynamicSky/Particles/Rain.Rain"), TEXT("/Game/UltraDynamicSky/Particles/Obscured_Lightning.Obscured_Lightning"), TEXT("/Game/UltraDynamicSky/Particles/Lightning_Strike.Lightning_Strike") })
+	{
+		if (UObject* Loaded = LoadObject<UObject>(nullptr, Path, nullptr, LOAD_NoWarn | LOAD_Quiet)) { UDSPreloaded.Add(Loaded); }
+	}
+
 	bUDS = true;
 	UE_LOG(LogDC, Log, TEXT("Sky: Ultra Dynamic Sky in use%s"), UDSStorm ? TEXT(", with its radial storm as the front") : TEXT(""));
 }

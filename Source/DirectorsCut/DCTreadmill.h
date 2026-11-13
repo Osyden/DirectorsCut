@@ -84,6 +84,10 @@ protected:
 	float SceneryTimer = 3.f;
 	void SpawnAtlantis();
 	bool bAtlantisBuilt = false;
+	/** The drowned city is built in the first seconds of the voyage, further off by the distance still to
+	 *  run, and kept hidden until the fog: building it all in the frame the fog began froze the game for half a second. */
+	TArray<TWeakObjectPtr<AActor>> AtlantisHidden;
+	float SpawnAhead = 0.f;
 	bool bOutliersBuilt = false;
 	void SpawnOutliers();
 	/** How far ahead the portal stands when the city is laid out: the distance sailed before the slide starts. */

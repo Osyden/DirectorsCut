@@ -65,7 +65,7 @@ void ADCTreadmill::SpawnObject(bool bHostile, const FVector& Base, const FVector
 
 	FDCWorldObject& Obj = Objects.AddDefaulted_GetRef();
 	Obj.Actor = Actor;
-	Obj.Base = Base;
+	Obj.Base = Base + FVector(SpawnAhead, 0.f, 0.f);
 	Obj.Radius = Radius;
 	Obj.bHostile = bHostile;
 	Obj.Health = Health;
@@ -82,7 +82,7 @@ void ADCTreadmill::Register(AActor* Actor, const FVector& Base, float Radius, bo
 	Obj.Health = Health;
 	Obj.Yaw = Yaw;
 	Obj.bSolid = bSolid;
-	Actor->SetActorLocation(Base);
+	Actor->SetActorLocation(Obj.Base);
 }
 
 void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
@@ -191,10 +191,32 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 		bOutliersBuilt = true;
 		SpawnOutliers();
 	}
-	if (!bAtlantisBuilt && Director->GetPhase() == EDCPhase::Fog)
+	// The fog begins at 58 s; until then the ship runs at the open-sea speed. (The test harness seeks
+	// in the first frames, so wait a moment before trusting the ride time.)
+	const float FogStart = 58.f;
+	if (!bAtlantisBuilt && (Director->GetPhase() == EDCPhase::Fog || Director->RideTime > 2.5f))
 	{
 		bAtlantisBuilt = true;
+		const bool bEarly = Director->GetPhase() == EDCPhase::OpenSea && Director->RideTime < FogStart;
+		SpawnAhead = bEarly ? Env.ShipSpeed * (FogStart - Director->RideTime) : 0.f;
+		const int32 Before = Objects.Num();
 		SpawnAtlantis();
+		SpawnAhead = 0.f;
+		if (bEarly)
+		{
+			for (int32 i = Before; i < Objects.Num(); ++i)
+			{
+				if (AActor* A = Objects[i].Actor.Get()) { A->SetActorHiddenInGame(true); AtlantisHidden.Add(A); }
+			}
+		}
+	}
+	if (AtlantisHidden.Num() && Director->GetPhase() != EDCPhase::OpenSea)
+	{
+		// A couple a frame: showing them all at once still cost a quarter of a second. They are inside the front and out of sight meanwhile.
+		for (int32 n = 0; n < 2 && AtlantisHidden.Num(); ++n)
+		{
+			if (AActor* A = AtlantisHidden.Pop().Get()) { A->SetActorHiddenInGame(false); }
+		}
 	}
 	SpawnForPhase(Director->GetPhase(), DeltaSeconds * Director->TimeScale);
 	TickIncoming(DeltaSeconds);
