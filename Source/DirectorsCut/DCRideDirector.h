@@ -52,6 +52,10 @@ public:
 	UPROPERTY(EditAnywhere) TArray<FDCPhaseDef> Phases;
 	UPROPERTY(EditAnywhere) float SeaLevelZ = 0.f;
 	UPROPERTY(BlueprintReadOnly) float ShipHealth = 100.f;
+	/** All the damage the ship has taken on the voyage, repaired or not. */
+	UPROPERTY(BlueprintReadOnly) float DamageTaken = 0.f;
+	/** Arms of the creature broken by the guns. */
+	UPROPERTY(BlueprintReadOnly) int32 ArmsBroken = 0;
 	UPROPERTY(BlueprintReadOnly) int32 Score = 0;
 
 	FDCOnPhaseChanged OnPhaseChanged;

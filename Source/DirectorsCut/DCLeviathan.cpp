@@ -153,6 +153,23 @@ void ADCLeviathan::UpdateEncounter(float Elapsed, const FTransform& Arena, float
 	{
 		UpdateArm(Index, Elapsed, bCanDamage);
 	}
+	// The end comes on the clock, so the music can be cut to it. What the guns did is in the score.
+	if (DefeatedAt < 0.f && Elapsed >= FinaleAt && LastElapsed >= 0.f)
+	{
+		DefeatedAt = Elapsed;
+		if (PainAudio->Sound)
+		{
+			const ADCAudio* Mix = Cast<ADCAudio>(UGameplayStatics::GetActorOfClass(GetWorld(), ADCAudio::StaticClass()));
+			PainAudio->SetVolumeMultiplier(1.f * (Mix ? Mix->MasterVolume : 0.8f));
+			PainAudio->SetPitchMultiplier(0.6f);
+			PainAudio->Play();
+		}
+		if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
+		{
+			Crew->Report(ArmsBroken >= 4 ? TEXT("It is letting go! We have broken it, Captain! Hold our course!") : TEXT("It is letting go! The sea is taking it back! Hold our course, Captain!"), true);
+		}
+		UE_LOG(LogDC, Log, TEXT("Leviathan: beaten on the clock at %.1f s after the breach, %d arms broken"), Elapsed, ArmsBroken);
+	}
 	if (!bAnnounced && Elapsed >= FirstPeekAt + 6.f)
 	{
 		bAnnounced = true;
@@ -244,7 +261,7 @@ void ADCLeviathan::UpdateArm(int32 Index, float Elapsed, bool bCanDamage)
 		Arm.bBrokenThisCycle = true;
 		Arm.BrokenAt = Elapsed;
 		++ArmsBroken;
-		if (ArmsBroken >= BreaksToDefeat && DefeatedAt < 0.f) { DefeatedAt = Elapsed; }
+		if (ADCRideDirector* Tally = ADCRideDirector::Get(this)) { Tally->ArmsBroken = ArmsBroken; Tally->Score += 150; }
 		if (PainAudio->Sound)
 		{
 			const ADCAudio* Mix = Cast<ADCAudio>(UGameplayStatics::GetActorOfClass(GetWorld(), ADCAudio::StaticClass()));
@@ -254,7 +271,7 @@ void ADCLeviathan::UpdateArm(int32 Index, float Elapsed, bool bCanDamage)
 		}
 		if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
 		{
-			Crew->Report(DefeatedAt >= 0.f ? TEXT("It is letting go! Hold our course, Captain!") : TEXT("That arm is pulling back! Keep firing at the bright joints!"), true);
+			Crew->Report(TEXT("That arm is pulling back! Keep firing at the bright joints!"), true);
 		}
 	}
 	const float Side = Index % 2 == 0 ? -1.f : 1.f;

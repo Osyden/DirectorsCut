@@ -142,6 +142,13 @@ void ADCMaelstrom::BeginPlay()
 		}
 	}
 	Boss = GetWorld()->SpawnActor<ADCLeviathan>();
+	if (Boss)
+	{
+		// The creature is beaten 20 s before the ending phase begins, which is how long its arms take to
+		// withdraw. -DCBossDiesAt=<seconds after the breach> moves it (the ending then follows 20 s later).
+		Boss->FinaleAt = EndingStart - BreachStart - 20.f;
+		FParse::Value(FCommandLine::Get(), TEXT("DCBossDiesAt="), Boss->FinaleAt);
+	}
 	Atmosphere = GetWorld()->SpawnActor<ADCMaelstromAtmosphere>();
 	SetStageVisible(false);
 	UE_LOG(LogDC, Log, TEXT("Maelstrom stage: %.1f km across, %.0f m deep, breach %.1f ending %.1f"), Radius / 50000.f, Depth / 100.f, BreachStart, EndingStart);

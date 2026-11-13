@@ -268,7 +268,7 @@ void ADCHUD::DrawHUD()
 			const int32 Hull = FMath::RoundToInt(D->ShipHealth);
 			DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.62f * A), W * 0.2f, H * 0.2f, W * 0.6f, 220.f * S);
 			Centered(Hull > 60 ? TEXT("SHE CAME THROUGH") : (Hull > 20 ? TEXT("BATTERED, BUT AFLOAT") : TEXT("BARELY AFLOAT")), H * 0.2f + 22.f * S, 3.5f, G, Big);
-			Centered(FString::Printf(TEXT("Hull %d%%        Score %d        Orders given %d"), Hull, D->Score, Orders), H * 0.2f + 112.f * S, 1.8f, Wh, Font);
+			Centered(FString::Printf(TEXT("Hull %d%%     Damage taken %d     Arms broken %d     Score %d     Orders %d"), Hull, FMath::RoundToInt(D->DamageTaken), D->ArmsBroken, D->Score, Orders), H * 0.2f + 112.f * S, 1.6f, Wh, Font);
 			Centered(TEXT("R  sail again          Esc  quit"), H * 0.2f + 160.f * S, 1.4f, Wh, Font);
 		}
 	}

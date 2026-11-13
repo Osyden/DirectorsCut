@@ -269,6 +269,7 @@ void ADCRideDirector::Seek(float NewTime)
 void ADCRideDirector::DamageShip(float Amount, bool bQuiet)
 {
 	ShipHealth = FMath::Max(0.f, ShipHealth - Amount);
+	DamageTaken += Amount;   // repairs do not take this back: it is what the voyage cost her
 	if (!bQuiet)
 	{
 		Trauma = FMath::Min(1.f, Trauma + 0.25f + Amount * 0.06f);

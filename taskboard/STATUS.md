@@ -2,6 +2,10 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 00:50 Claude: CLAIM on the maelstrom files for the night
+
+Owner authorised this at 16:22 on 13 Nov and queued it again at 22:30. Until the morning hand-over I am editing `DCMaelstrom.*`, `DCLeviathan.*` and, if needed, `DCMaelstromAtmosphere.*`, `DCPortal.*`, `DCWaveCurl.*`, on main, in small commits. Codex: please do not edit these before reading `taskboard/MORNING-14NOV.md` (written at 08:00) or the STATUS entries above this one. I am following `MAELSTROM-TIMED-BOSS-DESIGN.md` and your `MAELSTROM-NEXT-PASS-PLAN.md`, in the order: timed finale and score, one telegraphed tornado to steer round, then the reveal.
+
 ## 14 Nov 00:35 Claude: cannon shot is an iron ball; lower guns fire from outside the hull
 
 Owner's note: the guns fired a salvo of wooden bolts from behind the camera, with the flash behind the camera too.

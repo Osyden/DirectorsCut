@@ -28,7 +28,9 @@ public:
 
 	UPROPERTY(EditAnywhere) float BodyScale = 18.f;
 	UPROPERTY(EditAnywhere) float StrikeDamage = 2.5f;
-	UPROPERTY(EditAnywhere) int32 BreaksToDefeat = 6;
+	/** Seconds after the breach at which the creature is beaten, whatever the guns have done: the music is cut to it.
+	 *  Broken arms make it flinch and add to the score; they no longer end the fight early. */
+	UPROPERTY(EditAnywhere) float FinaleAt = 160.f;
 	UPROPERTY(BlueprintReadOnly) int32 ArmsBroken = 0;
 
 private:
