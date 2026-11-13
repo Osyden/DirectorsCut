@@ -28,6 +28,8 @@ struct FDCFogBankDesc
 	FLinearColor Tint = FLinearColor(0.8f, 0.86f, 0.95f);
 	/** Stays round the ship (wisps across the deck) instead of lying in the sea. */
 	bool bOnDeck = false;
+	/** Above 0, only the crests of the noise are fog: streaks with clear air between. */
+	float Wisp = 0.f;
 };
 
 /**

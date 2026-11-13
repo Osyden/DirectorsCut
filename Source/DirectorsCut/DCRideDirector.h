@@ -114,6 +114,8 @@ public:
 	bool bUDS = false;
 	/** The storm front in the cloud volume: world X of its face, strength 0..1, radius of its tunnel mouth. Set by ADCFogFront. */
 	float StormFrontX = 400000.f;
+	/** Light that thick fog gives off per unit of density this frame: the glow of the sky in it, and lightning. Read by the fog banks. */
+	FLinearColor FogGlow = FLinearColor::Black;
 	/** 0..1: how far the storm front has grown from a smudge on the horizon into the full wall. */
 	float StormGrowth = 1.f;
 	float StormFrontStrength = 0.f;
@@ -152,6 +154,7 @@ protected:
 	/** The pack's rain and lightning effects, loaded before they are needed. */
 	UPROPERTY() TArray<TObjectPtr<UObject>> UDSPreloaded;
 	float StormRadius = 1400000.f;
+	TWeakObjectPtr<class UDirectionalLightComponent> UDSLightning;
 
 	void SetupUDS();
 	void SetupOcean();

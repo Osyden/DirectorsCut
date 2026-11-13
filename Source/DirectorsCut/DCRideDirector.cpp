@@ -864,6 +864,18 @@ void ADCRideDirector::TickUDS()
 		SkyNum(UDSSky, TEXT("Foggy Height Fog Falloff"), FMath::Lerp(0.015, (double)Falloff, K));
 		SkyNum(UDSSky, TEXT("Overcast Brightness Day"), FMath::Lerp(0.2, 1.0, K));
 		SkyNum(UDSSky, TEXT("Fog Color Intensity Scale"), FMath::Lerp(1.0, 3.0, K));
+		// The banks of fog glow with the sky's light, and flare blue-white while the pack's lightning light is on.
+		{
+			static float GlowScale = 1.f; static bool bGlowRead = false;   // test hook: -DCFogGlow=
+			if (!bGlowRead) { bGlowRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCFogGlow="), GlowScale); }
+			if (!UDSLightning.IsValid() && UDSWeather)
+			{
+				TInlineComponentArray<UDirectionalLightComponent*> Lights(UDSWeather);
+				for (UDirectionalLightComponent* L : Lights) { if (L->GetName().Contains(TEXT("Lightning"))) { UDSLightning = L; L->SetVolumetricScatteringIntensity(6.f); } }
+			}
+			const float Struck = UDSLightning.IsValid() && UDSLightning->IsVisible() ? FMath::Clamp(UDSLightning->Intensity / 5.f, 0.f, 3.f) : 0.f;
+			FogGlow = (FLinearColor(0.5f, 0.62f, 0.8f) * (0.35f * Env.SkyIntensity) + FLinearColor(0.6f, 0.75f, 1.f) * (2.5f * Struck)) * GlowScale;
+		}
 		// Looking into the sun on the open sea, strong scattering in the air whites the picture out; in the mist of the city it is what makes the shafts.
 		SkyNum(UDSSky, TEXT("Sun Volumetric Scattering Intensity"), FMath::Lerp(0.6, 3.0, K));
 	}

@@ -39,6 +39,7 @@ ADCFogBank* ADCFogBank::Spawn(UWorld* World, const FDCFogBankDesc& InDesc, int32
 	Bank->MID->SetVectorParameterValue(TEXT("Stretch"), FLinearColor(InDesc.Stretch.X, InDesc.Stretch.Y, InDesc.Stretch.Z, 0.f));
 	Bank->MID->SetScalarParameterValue(TEXT("Seed"), static_cast<float>(Seed % 97));
 	Bank->MID->SetScalarParameterValue(TEXT("Density"), 0.f);
+	Bank->MID->SetScalarParameterValue(TEXT("Wisp"), InDesc.Wisp);
 	const float SeaZ = Bank->Director ? Bank->Director->SeaLevelZ : 0.f;
 	// No fog below the sea, and it gathers over the first few metres above it.
 	Bank->MID->SetVectorParameterValue(TEXT("Floor"), FLinearColor(SeaZ - 150.f, 0.f, 0.f, 500.f));
@@ -60,6 +61,7 @@ void ADCFogBank::Tick(float DeltaSeconds)
 	// A revealing curtain parts in a few seconds; everything else comes and goes slowly.
 	Amount = FMath::FInterpConstantTo(Amount, bRevealed ? 0.f : 1.f, DeltaSeconds, bRevealed ? 0.22f : 0.5f);
 	const float Now = Amount * Weather * Scale;
+	if (Now > 0.f) { MID->SetVectorParameterValue(TEXT("Glow"), Director->FogGlow); }
 	if (FMath::Abs(Now - Shown) > 0.002f || (Now == 0.f) != (Shown == 0.f))
 	{
 		Shown = Now;

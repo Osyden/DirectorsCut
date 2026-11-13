@@ -12,6 +12,8 @@ bank has billows, holes and a ragged edge and changes as it is watched.
   Erode    0 = a smooth blob .. 1 = torn to rags
   Drift    cm a second the billows travel (world axes), w unused
   Stretch  how much the billows are drawn out along each world axis (1,1,1 = round)
+  Wisp     above 0, only noise over this level is fog: streaks with clear air between (deck wisps)
+  Glow     light the fog gives off per unit of density (set every frame: sky light and lightning)
   Seed     offsets the pattern so two banks do not match
   Radii    half the length of the ellipsoid along each world axis, cm (the mesh is scaled to match)
   Floor    world height (cm) below which there is no fog (the sea), w = cm over which it fades in
@@ -33,6 +35,8 @@ float3 q = (WP - Drift.xyz * T) / (Size * Stretch.xyz) + Seed * 0.173;
 float n = NZ(q) * 0.62 + NZ(q * 2.63 + 0.37) * 0.38;
 // Noise eats the bank from its skin inward: the heart stays thick, the edge is ragged.
 float d = saturate(body * (1.0 + 1.6 * Erode) - n * 1.9 * Erode);
+// Wisps: only the crests of the noise are fog at all, the rest is clear air between streaks.
+if (Wisp > 0.0) { float w = saturate((n - Wisp) / (1.0 - Wisp)); d = body * w * sqrt(w); }
 float lift = saturate((WP.z - Floor.x) / max(Floor.w, 1.0));
 return Density * d * lift;
 """
@@ -90,12 +94,19 @@ _, radii = vector("Radii", (5000.0, 5000.0, 2000.0, 0.0), 1100)
 shape = mel.create_material_expression(mat, unreal.MaterialExpressionTextureObject, -1300, 1200)
 shape.set_editor_property("texture", unreal.load_asset("/Engine/EngineSky/VolumetricClouds/T_VolumeNoiseShape128"))
 
-e = custom(EXT, unreal.CustomMaterialOutputType.CMOT_FLOAT1, ["WP", "Centre", "Radii", "T", "Density", "Size", "Erode", "Drift", "Stretch", "Seed", "Floor", "Shape"], -500, 300)
-for node, name in [(wp, "WP"), (centre, "Centre"), (radii, "Radii"), (time, "T"), (density, "Density"), (size, "Size"), (erode, "Erode"), (drift, "Drift"), (stretch, "Stretch"), (seed, "Seed"), (floor, "Floor"), (shape, "Shape")]:
+wisp = scalar("Wisp", 0.0, 1300)
+glow, _ = vector("Glow", (0.0, 0.0, 0.0, 0.0), 1400)
+e = custom(EXT, unreal.CustomMaterialOutputType.CMOT_FLOAT1, ["WP", "Centre", "Radii", "T", "Density", "Size", "Erode", "Drift", "Stretch", "Seed", "Floor", "Wisp", "Shape"], -500, 300)
+for node, name in [(wp, "WP"), (centre, "Centre"), (radii, "Radii"), (time, "T"), (density, "Density"), (size, "Size"), (erode, "Erode"), (drift, "Drift"), (stretch, "Stretch"), (seed, "Seed"), (floor, "Floor"), (wisp, "Wisp"), (shape, "Shape")]:
     mel.connect_material_expressions(node, "", e, name)
 # In the volume domain, base colour is the albedo and subsurface colour the extinction.
 mel.connect_material_property(tint, "", unreal.MaterialProperty.MP_BASE_COLOR)
 mel.connect_material_property(e, "", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)
+# Its own light: thick fog glows with the light of the whole sky, and flares when lightning is inside it.
+em = mel.create_material_expression(mat, unreal.MaterialExpressionMultiply, -200, 600)
+mel.connect_material_expressions(glow, "", em, "A")
+mel.connect_material_expressions(e, "", em, "B")
+mel.connect_material_property(em, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
 
 mel.recompile_material(mat)
 unreal.log_warning("DC_RESULT M_FogVolume saved=%s" % unreal.EditorAssetLibrary.save_asset(path, only_if_is_dirty=False))
