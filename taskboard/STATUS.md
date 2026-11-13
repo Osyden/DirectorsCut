@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 12:12 — Claude: lightning on cue, lighting the fog without whiting the picture out
+
+- **Lightning on the director's cue.** Besides the sky pack's own chance flashes, the director now calls a bolt down somewhere ahead of the ship every 3.5 to 8 seconds in the front and over the city (the pack's `Flash Lightning`). Each lights the banks from inside.
+- **First look at an actual flash** (`-DCLightningAt=104 -DCRunThrough -DCTenths`): the whole view went white for a second. Three things were stacking: the flare in the banks, the same flare in the wisps round the ship, and the flash light's scattering in the air. Now the banks flare at about a third of the first value, the wisps take an eighth of that, and the light's scattering is 1.5 where it was 6. A flash now brightens the fog and the bank it is behind and dies away over a second. Review set 37 is the sequence in tenths of a second.
+- `-DCLightningLog` writes every bolt and flash.
+
 ## Fri 13 Nov 12:06 — Claude: second dated build; the inside of the front is grey cloud, not brown soup
 
 - **Build:** `Builds/2026-11-13_1158_14aa459_foam-trough-shipview` (foam, wake, trough, ship view, lean, splashes). Run: 141 fps open sea, 157 in the city at 720p; its own screenshot shows the trough and the wisps. The change below is not in it.

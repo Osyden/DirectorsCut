@@ -61,7 +61,7 @@ void ADCFogBank::Tick(float DeltaSeconds)
 	// A revealing curtain parts in a few seconds; everything else comes and goes slowly.
 	Amount = FMath::FInterpConstantTo(Amount, bRevealed ? 0.f : 1.f, DeltaSeconds, bRevealed ? 0.22f : 0.5f);
 	const float Now = Amount * Weather * Scale;
-	if (Now > 0.f) { MID->SetVectorParameterValue(TEXT("Glow"), Director->FogGlow); }
+	if (Now > 0.f) { MID->SetVectorParameterValue(TEXT("Glow"), Director->FogGlow + Director->FogFlare * (Desc.bOnDeck ? 0.12f : 1.f)); }
 	if (FMath::Abs(Now - Shown) > 0.002f || (Now == 0.f) != (Shown == 0.f))
 	{
 		Shown = Now;

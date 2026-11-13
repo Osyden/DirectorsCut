@@ -907,6 +907,23 @@ void ADCRideDirector::TickUDS()
 			if (!bTroughRead) { bTroughRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCTrough="), TroughFull); }
 			TroughRise = TroughFull * FMath::Clamp((Env.Mist - 0.45f) / 0.3f, 0.f, 1.f);
 		}
+		// Lightning on the director's cue as well as the pack's own chance: in the front and over the city a
+		// bolt falls somewhere ahead of the ship every few seconds, so the fog is lit from inside often
+		// enough to be seen. -DCLightningAt=110 forces one at that ride time (for pictures).
+		{
+			static float ForcedAt = -1.f; static bool bForcedRead = false;
+			if (!bForcedRead) { bForcedRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCLightningAt="), ForcedAt); }
+			NextBolt -= GetWorld()->GetDeltaSeconds();
+			const bool bForced = ForcedAt >= 0.f && RideTime >= ForcedAt;
+			if (bForced || (NextBolt <= 0.f && Env.LightningRate > 4.f && Env.Mist > 0.3f))
+			{
+				if (bForced) { ForcedAt = -1.f; }
+				NextBolt = FMath::FRandRange(3.5f, 8.f) * 10.f / FMath::Max(Env.LightningRate, 1.f);
+				const float Side = FMath::RandBool() ? 1.f : -1.f;
+				if (FParse::Param(FCommandLine::Get(), TEXT("DCLightningLog"))) { UE_LOG(LogDC, Log, TEXT("Lightning: director calls a bolt at ride time %.2f"), RideTime); }
+				SkyCall(UDSWeather, TEXT("Flash Lightning"), FVector(FMath::FRandRange(40000.f, 140000.f), Side * FMath::FRandRange(15000.f, 80000.f), SeaLevelZ));
+			}
+		}
 		// The banks of fog glow with the sky's light, and flare blue-white while the pack's lightning light is on.
 		{
 			static float GlowScale = 1.f; static bool bGlowRead = false;   // test hook: -DCFogGlow=
@@ -914,11 +931,13 @@ void ADCRideDirector::TickUDS()
 			if (!UDSLightning.IsValid() && UDSWeather)
 			{
 				TInlineComponentArray<UDirectionalLightComponent*> Lights(UDSWeather);
-				for (UDirectionalLightComponent* L : Lights) { if (L->GetName().Contains(TEXT("Lightning"))) { UDSLightning = L; L->SetVolumetricScatteringIntensity(6.f); } }
+				for (UDirectionalLightComponent* L : Lights) { if (L->GetName().Contains(TEXT("Lightning"))) { UDSLightning = L; L->SetVolumetricScatteringIntensity(1.5f); } }
 			}
 			const float Struck = UDSLightning.IsValid() && UDSLightning->IsVisible() ? FMath::Clamp(UDSLightning->Intensity / 5.f, 0.f, 3.f) : 0.f;
+			if (Struck > 0.f && LightningNow <= 0.f && FParse::Param(FCommandLine::Get(), TEXT("DCLightningLog"))) { UE_LOG(LogDC, Log, TEXT("Lightning: flash light on (%.1f) at ride time %.2f"), UDSLightning->Intensity, RideTime); }
 			LightningNow = Struck;
-			FogGlow = (FLinearColor(0.5f, 0.62f, 0.8f) * (0.35f * Env.SkyIntensity) + FLinearColor(0.6f, 0.75f, 1.f) * (2.5f * Struck)) * GlowScale;
+			FogGlow = FLinearColor(0.5f, 0.62f, 0.8f) * (0.35f * Env.SkyIntensity) * GlowScale;
+			FogFlare = FLinearColor(0.6f, 0.75f, 1.f) * (0.9f * Struck) * GlowScale;
 		}
 		// Looking into the sun on the open sea, strong scattering in the air whites the picture out; in the mist of the city it is what makes the shafts.
 		SkyNum(UDSSky, TEXT("Sun Volumetric Scattering Intensity"), FMath::Lerp(0.6, 3.0, K));

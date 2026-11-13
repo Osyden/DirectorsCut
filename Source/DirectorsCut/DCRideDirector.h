@@ -125,8 +125,12 @@ public:
 	float TroughHalfWidth = 5000.f;
 	/** Light that thick fog gives off per unit of density this frame: the glow of the sky in it, and lightning. Read by the fog banks. */
 	FLinearColor FogGlow = FLinearColor::Black;
+	/** The extra light lightning puts into the fog banks while it lasts (the wisps round the ship take little of it: a flash must not white the whole view out). */
+	FLinearColor FogFlare = FLinearColor::Black;
 	/** 0..3: how bright the lightning is this instant (the sky pack's flash light). */
 	float LightningNow = 0.f;
+	/** Seconds until the director next calls a bolt down. */
+	float NextBolt = 4.f;
 	/** 0..1: how far the storm front has grown from a smudge on the horizon into the full wall. */
 	float StormGrowth = 1.f;
 	float StormFrontStrength = 0.f;
