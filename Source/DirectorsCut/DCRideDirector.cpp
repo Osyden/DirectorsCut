@@ -765,6 +765,10 @@ void ADCRideDirector::SetupUDS()
 	// A low cloud base and a deep layer: the clouds stand up as towers instead of lying as a flat deck.
 	SkyNum(UDSSky, TEXT("Bottom Altitude"), 0.2);
 	SkyNum(UDSSky, TEXT("Layer Height Scale"), 4.0);
+	// Denser and less eaten away: solid heads with crisp edges instead of loose popcorn.
+	SkyNum(UDSSky, TEXT("3D Erosion Intensity"), 0.7);
+	SkyNum(UDSSky, TEXT("High Frequency Noise Amount"), 0.1);
+	SkyNum(UDSSky, TEXT("Extinction Scale"), 20.0);
 	SkyOverrides(UDSSky, TEXT("DCSky="));
 	UGameplayStatics::FinishSpawningActor(UDSSky, FTransform::Identity);
 
