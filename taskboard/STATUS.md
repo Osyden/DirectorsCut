@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 12:58 — Claude: spray over the bow
+
+- When the stem drives down into a sea faster than 70 cm/s, a cloud of spray is thrown up at the bow, carried aft over the forecastle and gone in two and a half seconds (`DCWeatherFX::TickBowSpray`). It is a small volume of real mist in the same material as the fog banks, so it is lit by the sky, the lightning and the lanterns. About 17 a voyage, heavier in the city's sea than on the open sea. `-DCBowSpray=` sets the plunge that throws it, `-DCNoBowSpray` turns it off, `-DCSprayLog` writes each one.
+- Honest reading of the captures (sequence in review set 38): from outside it is a soft pale cloud at the bow, more sea-smoke than hard white spray; from the helm, 35 m back in the fog, it is hard to pick out. It is not the sheet of white water of the owner's pictures. That needs particles or a sprite sheet, which the project has none of.
+
 ## Fri 13 Nov 12:49 — Claude: the drowned city is a storm at dusk
 
 - Set against `fog-city-reveal.jpg` and `fog-to-maelstrom-portal.jpg`, the city was still far too light: a grey day. Both pictures are a storm at dusk in which the fog is the brightest thing and the lanterns the only warmth. The city's sun is now 0.8 (was 3) and its sky light 0.5 (was 1: the 0.55 it was meant to have had been swallowed by a comment on the same line since the day it was written). The fog banks keep their own glow, so they now stand out pale against dark stone and a near-black sea, and each lightning flash lifts the whole scene. This is the closest the game has been to the owner's pictures. Review set 38 (nine frames, 70 to 236 s; two caught mid-flash).

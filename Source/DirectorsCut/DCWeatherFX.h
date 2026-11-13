@@ -38,4 +38,14 @@ protected:
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> EmberMID;
 	UPROPERTY() TObjectPtr<ADCRideDirector> Director;
 	float FlashBoost = 0.f;
+
+	/** Spray over the bow: when she drives her head down into a sea, a cloud of it is thrown up at the
+	 *  stem, carried aft and to leeward across the forecastle, and falls away. Each is a small volume of
+	 *  real mist (M_FogVolume), so it is lit like the fog and the lanterns shine in it. */
+	struct FBowSpray { TObjectPtr<class UStaticMeshComponent> Mesh; TObjectPtr<UMaterialInstanceDynamic> MID; float Age = -1.f; float Strength = 0.f; float Side = 0.f; };
+	FBowSpray BowSprays[3];
+	UPROPERTY() TArray<TObjectPtr<UObject>> BowSprayRefs;
+	void TickBowSpray(float DeltaSeconds);
+	float LastBowHeight = 0.f;
+	float BowSprayCooldown = 0.f;
 };

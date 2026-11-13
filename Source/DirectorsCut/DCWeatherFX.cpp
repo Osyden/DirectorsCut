@@ -79,6 +79,8 @@ void ADCWeatherFX::Tick(float DeltaSeconds)
 	const FDCEnvState& Env = Director->GetEnv();
 	FlashBoost = FMath::Max(0.f, FlashBoost - DeltaSeconds * 4.f);
 
+	TickBowSpray(DeltaSeconds);
+
 	// Splashes on the deck, once the ship is there to be rained on.
 	if (!bSplashesBuilt && Director->RideTime > 1.f) { BuildSplashes(); }
 	if (Splashes && SplashMID)
@@ -113,6 +115,77 @@ void ADCWeatherFX::Tick(float DeltaSeconds)
 	Embers->SetVisibility(EmberAmount > 0.01f);
 	EmberMID->SetVectorParameterValue(TEXT("Motion"), FLinearColor(-260.f, 9.f, 5.f, 0.5f));
 	EmberMID->SetVectorParameterValue(TEXT("Tint"), FLinearColor(30.f, 7.f, 0.6f, 0.9f * EmberAmount));
+}
+
+void ADCWeatherFX::TickBowSpray(float DeltaSeconds)
+{
+	static const bool bOff = FParse::Param(FCommandLine::Get(), TEXT("DCNoBowSpray"));
+	if (bOff || !Director->HasPluginSea() || DeltaSeconds <= 0.f) { return; }
+	const FDCEnvState& Env = Director->GetEnv();
+	const float SeaZ = Director->SeaLevelZ;
+	// How fast the stem is going down, from where the deck's frame puts it.
+	const float BowHeight = Director->DeckToWorld(FVector(2500.f, 0.f, SeaZ)).Z - SeaZ;
+	const float Falling = (LastBowHeight - BowHeight) / DeltaSeconds;
+	LastBowHeight = BowHeight;
+	BowSprayCooldown -= DeltaSeconds;
+	const bool bSeaway = Env.Tube < 0.3f && Env.Whirl < 0.3f && Env.WaveHeight > 60.f;
+	static float Threshold = 70.f; static bool bRead = false;   // test hook: -DCBowSpray= (cm/s of plunge that throws spray; lower = more often)
+	if (!bRead) { bRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCBowSpray="), Threshold); }
+	if (bSeaway && BowSprayCooldown <= 0.f && Falling > Threshold && BowHeight < 10.f)
+	{
+		for (FBowSpray& S : BowSprays)
+		{
+			if (S.Age >= 0.f) { continue; }
+			if (!S.Mesh)
+			{
+				UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_FogVolume.M_FogVolume"));
+				UStaticMesh* Sphere = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+				if (!Base || !Sphere) { return; }
+				S.Mesh = NewObject<UStaticMeshComponent>(this);
+				S.Mesh->SetMobility(EComponentMobility::Movable);
+				S.Mesh->SetStaticMesh(Sphere);
+				S.Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+				S.Mesh->SetCastShadow(false);
+				S.Mesh->SetUsingAbsoluteLocation(true); S.Mesh->SetUsingAbsoluteRotation(true); S.Mesh->SetUsingAbsoluteScale(true);
+				S.Mesh->SetupAttachment(RootComponent);
+				S.Mesh->RegisterComponent();
+				S.MID = UMaterialInstanceDynamic::Create(Base, this);
+				S.Mesh->SetMaterial(0, S.MID);
+				BowSprayRefs.Add(S.Mesh); BowSprayRefs.Add(S.MID);
+				S.MID->SetVectorParameterValue(TEXT("Tint"), FLinearColor(0.95f, 0.97f, 1.f));
+				S.MID->SetScalarParameterValue(TEXT("Size"), 700.f);
+				S.MID->SetScalarParameterValue(TEXT("Erode"), 0.75f);
+				S.MID->SetVectorParameterValue(TEXT("Drift"), FLinearColor(-500.f, 0.f, 250.f, 0.f));
+				S.MID->SetVectorParameterValue(TEXT("Floor"), FLinearColor(SeaZ - 100.f, 0.f, 0.f, 150.f));
+			}
+			S.Age = 0.f;
+			S.Strength = FMath::Clamp(Falling / 180.f, 0.45f, 1.3f) * FMath::Clamp(Env.WaveHeight / 150.f, 0.5f, 1.3f);
+			S.Side = FMath::RandBool() ? 1.f : -1.f;
+			S.MID->SetScalarParameterValue(TEXT("Seed"), FMath::FRandRange(0.f, 90.f));
+			BowSprayCooldown = FMath::FRandRange(2.2f, 4.5f);
+			if (FParse::Param(FCommandLine::Get(), TEXT("DCSprayLog"))) { UE_LOG(LogDC, Log, TEXT("Bow spray: stem falling %.0f cm/s, strength %.2f, at ride time %.2f"), Falling, S.Strength, Director->RideTime); }
+			break;
+		}
+	}
+	for (FBowSpray& S : BowSprays)
+	{
+		if (S.Age < 0.f || !S.Mesh) { continue; }
+		S.Age += DeltaSeconds;
+		const float Life = 2.6f;
+		const float A = S.Age / Life;
+		if (A >= 1.f) { S.Age = -1.f; S.Mesh->SetVisibility(false); continue; }
+		// Thrown up fast at the stem, opening out as it is carried aft over the forecastle, thinning as it goes.
+		const float Up = 1.f - FMath::Square(1.f - FMath::Min(A * 2.2f, 1.f));
+		const FVector At = Director->DeckToWorld(FVector(2550.f - A * 1500.f, S.Side * (120.f + A * 380.f), SeaZ + 200.f + Up * 650.f - A * A * 250.f));
+		const FVector Radii = FVector(380.f + A * 900.f, 420.f + A * 700.f, 420.f + Up * 500.f) * (0.8f + 0.3f * S.Strength);
+		S.Mesh->SetWorldLocation(At);
+		S.Mesh->SetWorldScale3D(Radii / 50.f);
+		S.Mesh->SetVisibility(true);
+		S.MID->SetVectorParameterValue(TEXT("Radii"), FLinearColor(Radii.X, Radii.Y, Radii.Z, 0.f));
+		const float Thick = FMath::Min(A * 9.f, 1.f) * FMath::Square(1.f - A);
+		S.MID->SetScalarParameterValue(TEXT("Density"), 0.3f * S.Strength * Thick);
+		S.MID->SetVectorParameterValue(TEXT("Glow"), (Director->FogGlow + FLinearColor(0.5f, 0.55f, 0.62f) * (0.12f + 0.25f * FMath::Clamp(Env.SunIntensity / 6.f, 0.f, 1.f))) * 1.6f);
+	}
 }
 
 void ADCWeatherFX::BuildSplashes()
