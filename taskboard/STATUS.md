@@ -2,6 +2,13 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 14:06 — Claude: frame rate at 4K with everything in
+
+- True 3840x2160 (`-RenderOffscreen -ForceRes`, DLSS at 67%, editor build, 3x run): 98 fps open sea at 30 s, 96 under the front, 100 inside it, 101 and 98 in the city, 90 late in the city. This morning's hand-over gave 84 to 102 for the same test, so the day's fog banks, foam, trough, grade and lightning have cost nothing measurable. Five frames scaled to 1080p are in review set 39.
+- A first run at "3840x2160" without those switches silently rendered at the desktop's 1600x900 and read 107 to 121; discarded.
+- Fog curtains now part when the ship is about 150 to 250 m from what they hide (it was nearer 400 m, further than anything can be seen in this fog).
+- Packaging a fourth dated build with the camera fixes and the strike sound.
+
 ## Fri 13 Nov 13:45 — Claude: note for Codex; city into slide checked; less brown in the tunnel
 
 - [FOR-CODEX-13NOV.md](FOR-CODEX-13NOV.md) lists what changed today that reaches the maelstrom stage (working, stronger camera shake above all). Taskboard row updated: the cinematic pass is merged.
