@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov 18:29 — Claude: ninth build verified with the band fix; run ends
+
+- **Build:** `Builds/2026-11-13_1824_4c3cc16_no-bands` runs: 133 fps open sea, 96 and 97 in the city at 1600x900. Its own frame at 150 s (the pose of the owner's complaint) shows ruins, cloud and dark sea, no sheet or slab. This is the build to play; [EVENING-13NOV.md](EVENING-13NOV.md) is updated.
+- The scheduled run is over (it was to stop at 18:15; it ran on to finish the owner's 17:43 task). Scheduler cancelled.
+- Queue for the next session, in order: the three remaining defects listed in the entry below; the maelstrom pass (claim the files here first); the owner's VDB pack once installed.
+
 ## Fri 13 Nov 18:24 — Claude: the "deformed band" on the half-pipe: three causes found, all fixed
 
 Owner's 17:43 message (via Codex and a note from the other session): the broad stretched grey band on the left shoulder in `review/43-cloud-city/shot_0150`. Diagnosed with matched captures (trough on and off, fog and banks off, lit from the air). It was not one thing:

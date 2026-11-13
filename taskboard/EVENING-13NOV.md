@@ -4,9 +4,9 @@ What changed while you were at work, what to play, and what only you can judge. 
 
 ## Play this build
 
-`E:\projects\directorscut\Builds\2026-11-13_1645_2a0837e_cloud-city\Windows\DirectorsCut.exe`
+`E:\projects\directorscut\Builds\2026-11-13_1824_4c3cc16_no-bands\Windows\DirectorsCut.exe`
 
-It ran at 132 fps on the open sea and 118 to 123 in the drowned city at 1600x900. At true 4K (DLSS 67%, editor build) it gives 94 on the open sea and 77 to 91 in the city; this morning the city was 90 to 101, so the sharp cloud costs about a seventh there. Every build of the day is kept in `Builds\` (eight dated folders plus the two older ones; `Builds\INDEX.txt` lists them) for the dev log.
+It has the fix for the deformed band on the half-pipe (the 18:2x entries in STATUS) and ran at 133 fps on the open sea and 96 to 97 in the drowned city at 1600x900. At true 4K (DLSS 67%, editor build) it gives 94 on the open sea and 77 to 91 in the city; this morning the city was 90 to 101, so the sharp cloud costs about a seventh there. Every build of the day is kept in `Builds\` (eight dated folders plus the two older ones; `Builds\INDEX.txt` lists them) for the dev log.
 
 ## Your notes from this morning, and where they stand
 
@@ -20,7 +20,7 @@ It ran at 132 fps on the open sea and 118 to 123 in the drowned city at 1600x900
 | Foam fake and off the water | Foam is now part of the sea's own shading round ruins, rocks and hull, with a wake astern. The painted band and the ribbon are off. |
 | Ship motion too little | Roughly doubled, with a slow swell; the captain's view leans with the deck. |
 | Hit reactions and sounds | Ruins are solid: she is shouldered off, lurches, the view shakes, a thud and a new scrape play, the crew call it. |
-| Half-pipe sea (and at 16:22: much larger, partly fog-covered) | In, then enlarged: 90 m to each shoulder, 14 m up there, cloud walls standing on the upper slopes. Hard over she climbs 79 m out and 10 m up, banked 18 degrees, and slides back when the wheel is let go. |
+| Half-pipe sea (16:22: much larger, partly fog-covered; 17:43: fix the deformed band) | 90 m to each shoulder, 11 m up there, level beyond it where the city stands, cloud walls on the shoulders. Hard over she holds 66 m out and 9 m up. The band was a temple base made of one hugely stretched block, hanging over lower water, plus a wrong water normal: all three fixed (review set 44). |
 
 ## Also new
 
