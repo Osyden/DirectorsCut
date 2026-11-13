@@ -635,8 +635,10 @@ void ADCTreadmill::SpawnAtlantis()
 			C->SetMobility(EComponentMobility::Movable);
 			Bank->SetRootComponent(C);
 			C->SetWorldScale3D(FVector(Radius / 500.f));
-			C->RadialFogExtinction = 0.1f * BankDensity;
-			C->HeightFogExtinction = 0.16f * BankDensity;
+			// The banks the ship sails through are thinner than those to either hand: a veil, not a white-out.
+			const float Thin = Side == 0.f ? 0.45f : 1.f;
+			C->RadialFogExtinction = 0.1f * BankDensity * Thin;
+			C->HeightFogExtinction = 0.16f * BankDensity * Thin;
 			C->HeightFogFalloff = 100.f * Radius / Thick;
 			C->FogPhaseG = 0.6f;
 			C->FogAlbedo = FLinearColor(0.78f, 0.84f, 0.92f);
