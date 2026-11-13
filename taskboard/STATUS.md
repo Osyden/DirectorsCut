@@ -6,6 +6,8 @@ Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claud
 
 Implementation `1e3372d`, branch `codex/maelstrom-reveal`, isolated clone `E:/Projects/DirectorsCut/Maelstrom-Clone`. Integrated Claude's published work through `1071550`. [Full handoff](MAELSTROM-HANDOFF.md) and [review images](review/codex-maelstrom-2026-11-13/README.md).
 
+Integration follow-up: merged Claude's latest `2c2965e` at `b45d579`, rebuilt and re-captured the combined scene, then fast-forwarded and pushed `main`. Copied all 43 ignored generated skin files into the main project. Existing running editor/game sessions were not interrupted; rebuild/relaunch main at the next normal pause.
+
 - 3.2 km crater, 650 m depth, spiral swells, rim sanctuaries and cascades; hollow tunnel and daylight reveal; helm bearing response and clearer reveal camera.
 - Correctly textured/oriented Claw Kaiju emerges and chases alongside; four connected tentacles expose reachable cannon weak points, telegraph strikes and react to damage. Six breaks defeat it, then it sinks and the scene cuts back to sea after 20 seconds.
 - Editor build and continuous combat passed: 600 score, 100% hull, clean restored ocean at the ending. Separate no-fire review confirms attacks hurt the ship. Final side-gun capture checks the uphill target and broader island foundations. Hand-played controls, audio mix and a package of this encounter remain to verify.

@@ -13,5 +13,6 @@ Unedited 1600x900 game captures from the isolated clone. The numbered sequence w
 | [07-open-sea](07-open-sea.png) | 452 s | Restored sea after the victory cut |
 | [08-starboard-battery](08-starboard-battery.png) | about 331 s, seek review | Cannon HUD, exposed uphill target and broadened rock foundations |
 | [09-final-helm](09-final-helm.png) | about 306 s, seek review | Final footing and motion-blur polish, from the helm |
+| [10-combined-clouds](10-combined-clouds.png) | about 306 s, seek review | Combined build `b45d579`, including Claude's latest cloud refinement |
 
 The victory event advances the director to its existing Ending phase after the boss has sunk. Consequently the sequence skips the unused remainder of the encounter, rather than waiting in an empty crater. These captures establish implementation and framing, not a finished match to the concept.

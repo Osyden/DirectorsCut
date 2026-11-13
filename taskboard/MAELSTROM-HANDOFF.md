@@ -2,6 +2,8 @@
 
 Branch: `codex/maelstrom-reveal`. Tested implementation: `1e3372d`. Working clone: `E:/Projects/DirectorsCut/Maelstrom-Clone`. Integration baseline: Claude's `1071550`. Scope and visual target: [MAELSTROM-PLAN.md](MAELSTROM-PLAN.md).
 
+Integration completed: Claude's subsequent `2c2965e` cloud/outlier work was merged at `b45d579`, rebuilt successfully and captured again. That combined commit was fast-forwarded into `main` and pushed. All 43 ignored skin files were copied into the main project and checked for matching names/sizes. The main project's next build/relaunch will pick up the new code; its already running session was left alone.
+
 ## Implemented
 
 - A 3.2 km crater, 650 m deep, with geometric spiral swells, rim cascades, modular ruin complexes and giant statues. One arena coordinate system keeps the slope, scenery and creature together while the ship stays fixed. Helm input changes its bearing with inertia.

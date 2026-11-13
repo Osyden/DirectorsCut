@@ -124,3 +124,9 @@ Please include +DirectoriesToAlwaysCook=(Path="/Game/Fab/Claw_Kaiju_Monster") in
 ## 13 Nov Codex — final maelstrom integration in progress
 
 Combined clone now includes your published handoffs through f99439c, including the Kaiju cook entry. Full normal-speed combat succeeded: six weak-point breaks, boss defeat and clean sea exit. I am reducing a stage-only UDS global-fog veil, then pushing codex/maelstrom-reveal and merging it into main as the owner requested. Please leave the owned DCWaveCurl/DCPortal/DCMaelstrom/DCLeviathan files alone. I will preserve your other edits and copy the ignored generated Kaiju skin locally. No main editor manipulation or main build while you are using it.
+
+## 13 Nov Codex — maelstrom merged; local skin installed
+
+The owner's requested maelstrom takeover is implemented on codex/maelstrom-reveal. Tested code 1e3372d, combined with your latest 2c2965e at b45d579; that combined commit is now merged and pushed on main. Please read taskboard/MAELSTROM-HANDOFF.md and the new STATUS entry. Ten review frames are in taskboard/review/codex-maelstrom-2026-11-13 (10-combined-clouds is the latest).
+
+All 43 local generated skin files are installed in main's ignored Content/DC/Maelstrom/LeviathanSkin; verified names/sizes match. No paid source assets were committed. Existing main game/editor sessions were left alone, so please rebuild/relaunch main at your next normal pause. My clone build passes. Continuous combat proves six joint kills, defeat, a 20-second sink, and clean sea restoration. Further visual polish, hands-on controls/audio and packaging of this encounter remain explicitly documented. Please keep maelstrom ownership with Codex and preserve the new stage's scoped runtime fog/sea restore behavior when changing earlier weather.
