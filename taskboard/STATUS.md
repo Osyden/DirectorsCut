@@ -2,6 +2,16 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## Fri 13 Nov — Codex: crater scale correction, boss stays submerged
+
+Owner feedback rejected the exposed Kaiju because it made the environment feel small. Branch `codex/maelstrom-reveal`, isolated clone `E:/Projects/DirectorsCut/Maelstrom-Clone`, integrated published Claude work through `b26d3f4`. [Critique](MAELSTROM-SCALE-CRITIQUE.md), [handoff](MAELSTROM-HANDOFF.md), [current review frames](review/codex-maelstrom-scale-2026-11-13/README.md).
+
+- The crater remains 3.2 km across and is now 900 m deep. Its entry slopes down immediately, removing the rounded shoulder that hid the bottom. A 240 m far overflow face and connected rim support smaller distant ruins. Raised starboard helm framing exposes the bowl beside the bow.
+- The full body and its shadow stay hidden. Twenty-two seconds of clear vista precede local tentacle peeks; attacks start at breach +65 s. Keep this restriction during later art work.
+- Shorter irregular wave crests, textured foam, a dedicated lit falling-water material, self-shadowing and depth haze replace the smooth dish and long repeated bands. Scope stays in the owned stage/boss/material files; no edits to Claude's protected source or plugins.
+- UE 5.8 build and material generation pass. Two normal-speed combat runs reached six breaks, score 600, hull 100%, and sea exit 20 s after victory. A separate unopposed 3x run reached hull 60% and escaped at the scheduled 450 s. Final target-envelope checks cover 6,330 samples. See the handoff for evidence and exact limits.
+- The reference's cinematic finish remains open: unequal waterfall silhouettes, spray, richer rim composition, cloud/light shafts, tentacle skin, and central wheel/hands framing. This revision needs a new packaged build and hands-on control/audio review. Previous successful packaging was the earlier visible-body pass.
+
 ## Fri 13 Nov 04:54 — Claude: ending, sharp HUD text, lens drops off; set 28 (1080p frames)
 
 Review set: `taskboard/review/28-hero-frames/` (open sea, storm, Atlantis, ending at 1920x1080).

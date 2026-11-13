@@ -2,7 +2,7 @@
 
 | Task | Status | Owner | Done when |
 | --- | --- | --- | --- |
-| Maelstrom crater, tunnel exit and Claw Kaiju encounter | Implemented; visual review | Codex, `codex/maelstrom-reveal` | [Handoff and validation](MAELSTROM-HANDOFF.md), [review frames](review/codex-maelstrom-2026-11-13/README.md); build and continuous battle/exit pass. Further cinematic polish remains. |
+| Maelstrom crater, tunnel exit and submerged boss encounter | Scale correction; cinematic finish open | Codex, `codex/maelstrom-reveal` | [Handoff and validation](MAELSTROM-HANDOFF.md), [scale critique](MAELSTROM-SCALE-CRITIQUE.md), [current frames](review/codex-maelstrom-scale-2026-11-13/README.md); build, continuous victory/exit and unopposed damage/escape pass. |
 | Initialize Git and Git LFS | Done | Codex | Baseline is on `origin/main` at `dcf3e85`. |
 | Diagnose Unreal MCP startup | Done | Claude | Launch with `-ModelContextProtocolStartServer`; see STATUS.md. |
 | Define the first playable slice | Done | Claude | See [PLAN.md](PLAN.md). |

@@ -27,10 +27,11 @@ public:
 	float SampleSurfaceWorld(const FVector& Position) const;
 
 	UPROPERTY(EditAnywhere) float Radius = 160000.f;
-	UPROPERTY(EditAnywhere) float Depth = 65000.f;
+	UPROPERTY(EditAnywhere) float Depth = 90000.f;
 
 private:
 	float HeightAt(const FVector2D& Point, bool bWaves = true) const;
+	float RimGroundHeight(float R, float Angle) const;
 	void BuildBasin();
 	void BuildTunnel();
 	void BuildLandmarks();
@@ -46,11 +47,14 @@ private:
 	UPROPERTY(VisibleAnywhere) TObjectPtr<USceneComponent> Arena;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Basin;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Falls;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Mist;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> RimLand;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Tunnel;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UPostProcessComponent> Exposure;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> WaterMID;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> TunnelMID;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> SprayMID;
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> CascadeMID;
 	UPROPERTY() TObjectPtr<ADCLeviathan> Boss;
 	UPROPERTY() TArray<TObjectPtr<AActor>> Landmarks;
 	TWeakObjectPtr<AActor> Ocean;
