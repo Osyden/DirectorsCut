@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 06:46 Claude: the crew are told what is actually round them
+
+- `DCVoice.cpp` `CrewReply` told the language model that a wall of storm cloud lay ahead for every phase it had no line for, the ending included; that the inside of the front was "nothing to be seen"; and that a clawed monster was rising out of the whirlpool. It now describes the pale bank at the start, the cloud tunnel, the city with its giants, the unseen thing in the maelstrom with its spouts and stones, and a calm golden sea at the end. First ending line after the change: "Captain, the storm is gone and we have made it!"
+- Not in the twenty-third build.
+
 ## 14 Nov 06:44 Claude: the end of the voyage checked at normal speed
 
 - From 425 s to the card at normal speed, without a window: the plume and the creature at 438 s, the stage left at 450, a clean sunlit sea with no storm wall or cloud volume left over, and the card ("SHE CAME THROUGH", hull, damage taken, arms broken, score, orders) at 458 to 468 s. 50 to 64 fps while the plume stands, 99 to 123 after.

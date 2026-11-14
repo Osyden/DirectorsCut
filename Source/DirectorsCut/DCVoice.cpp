@@ -446,11 +446,13 @@ void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const 
 	{
 		switch (D->GetPhase())
 		{
-		case EDCPhase::Fog: Situation = D->RideTime < 80.f ? TEXT("inside the storm front: dark, heavy rain, lightning, nothing to be seen") : TEXT("mist among the vast ruins of a drowned city, temples and statues looming, rocks and fallen columns in the water"); break;
+		case EDCPhase::OpenSea: if (D->RideTime < 26.f) { Situation = TEXT("open sea in sunshine, a fair wind, a pale bank of cloud low on the horizon ahead"); } break;
+		case EDCPhase::Fog: Situation = D->RideTime < 76.f ? TEXT("sailing through a tunnel of rolling storm cloud, dark, rain, lightning inside the cloud walls, a pale light at the far end") : TEXT("mist among the vast ruins of a drowned city, temples and statues looming, rocks and fallen columns in the water, stone giants wading in from the banks to hurl burning rock"); break;
 		case EDCPhase::Slide: Situation = TEXT("the sea is dropping away beneath the ship"); break;
 		case EDCPhase::Hell: Situation = TEXT("a burning channel of fire and demons"); break;
 		case EDCPhase::Breach: Situation = TEXT("the ship bursts out into a vast storm"); break;
-		case EDCPhase::Maelstrom: Situation = TEXT("a giant whirlpool crater, a colossal clawed sea monster rising out of it, its arms reaching for the ship"); break;
+		case EDCPhase::Maelstrom: Situation = TEXT("a giant whirlpool crater, something colossal unseen beneath it, its arms reaching for the ship, waterspouts and burning stones coming at her"); break;
+		case EDCPhase::Ending: Situation = TEXT("the storm is behind us: calm open sea in low golden sunlight, the ship battered but afloat, the crew relieved"); break;
 		default: break;
 		}
 		if (!Context.IsEmpty()) { Situation += FString::Printf(TEXT("; hull at %d percent"), FMath::RoundToInt(D->ShipHealth)); }
