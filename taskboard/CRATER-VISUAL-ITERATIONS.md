@@ -1,0 +1,71 @@
+# Crater visual iterations — 14 November
+
+User authorized recurring visual improvement and parallel workers. The Codex app heartbeat `directorscut-crater-visual-iterations` is active every 30 minutes in the existing maelstrom chat. This is implementation work with actual render review, not status polling. Latest user feedback takes precedence.
+
+## Ownership and priorities
+
+- Integration checkout: `E:/Projects/DirectorsCut/Maelstrom-Saturday`, branch `codex/maelstrom-saturday`. Start checkpoint `e7d7f8b`.
+- Cliff/temple worker: `Crater-Workers/Cliffs`, `codex/crater-cliffs-pass2`. Owns cliff generator, terrain, geometric tests and rock material generator. Sends any `BuildLandmarks` changes to the integrator.
+- Water/foam worker: `Crater-Workers/Foam`, `codex/crater-foam-pass2`. Owns water shaders, water material generator and `DCMaelstromBreakers.cpp`.
+- Waterfall worker: `Crater-Workers/Waterfalls`, `codex/crater-vdb-prototype`. Owns offline VDB generator and its documented output contract.
+- Integrator owns shared `DCMaelstrom.cpp/.h`, runtime waterfall integration, import/material tooling, route review, builds and captures. Workers do not run Unreal or modify this checkout.
+
+Preserve the 3.2 km crater, 900 m depth, descending spiral and ship-centric transform. Boss mechanics remain deferred. Cloud/sky/light composition and early-game files remain with their respective chats. Keep public Git free of vendor assets and large generated volume caches.
+
+## Immediate visual failures
+
+Actual `maelstrom-cliffs-14nov` captures show an excessively broad bright talus band, a largely continuous dark cliff face, narrow ribbon waterfalls, and broad flat foam patches over water that still reads as terrain. Temples now clear the skyline, but geology, whitewater and motion require further work. Passing a build does not establish visual quality.
+
+1. Give the cliff a convincing large-scale fractured structure and reduce the bright rubble shelf while preserving shoreline clearance and the supported temple skyline.
+2. Generate a compact gravity-driven falling-spray loop and impact plume. Match one actual cliff contact before multiplying volumes. Add the receiving surface-foam trail rather than expecting a VDB to provide surface flow.
+3. Break up broad/regular foam and crest patterns using physically scaled sources and flow, then inspect the route and bank silhouettes from the moving deck camera.
+
+## Original waterfall generation and import
+
+Blender's `E:/Utilities/Blender/5.3/python/bin/python.exe` includes `openvdb` and NumPy. `Tools/generate_waterfall_vdb.py` now generates deterministic periodic ballistic whitewater and a separate impact-mist sequence. This is an art-directed particle/volume prototype, not a liquid solver with cliff collisions. The fine candidate has 0.5 m voxels, 96 frames at 24 fps, a four-second loop, and 69.66 MiB of VDB files. Generation took 12.70 seconds locally. Loop continuity, bounds, density normalization and write/read checks pass.
+
+```powershell
+& 'E:/Utilities/Blender/5.3/python/bin/python.exe' Tools/generate_waterfall_vdb.py --output Saved/GeneratedWaterfallsFine --voxel-m 0.5 --emission-rate 14000 --fps 24 --duration 4
+$env:DC_WATERFALL_DIR = "$PWD/Saved/GeneratedWaterfallsFine"
+& 'E:/Utilities/UE_5.8/Engine/Binaries/Win64/UnrealEditor-Cmd.exe' "$PWD/DirectorsCut.uproject" -run=pythonscript "-script=$PWD/Tools/import_procedural_waterfalls.py" -unattended -nosplash -nullrhi
+```
+
+Native Unreal import of both fine sequences passed: Falling 77x44x167, Impact 105x53x27. Materials use scene-lit scattering/extinction without emission. Generated volume caches under `/Game/DC/Maelstrom/ProceduralWaterfalls` are ignored by Git; regenerate before using the prototype. Existing `/Game/DC` cooking rules include them when present. The source export from this pass is also available at `E:/Projects/DirectorsCut/Crater-Workers/Waterfalls/Saved/GeneratedWaterfallsFine`.
+
+Enable with `-DCProceduralFalls`; use `-DCFallCamera` for a close review. Playback derives from frame count over four seconds; custom exports accept `-DCWaterfallLoopSeconds=` or explicit `-DCFallFPS=`. It spawns only one physically sized lower reach and its impact; it is NOT enabled by default. Seek/exit clears actors and the debug camera. The trace-range override restores only a value it actually changed and still owns. Other existing fog/encounter code already requests longer ranges, so the first suspicion that the 300 m default hid the volume was not established as the cause.
+
+## Review and checkpoint requirements
+
+Serialize integration/build/render operations. Inspect active Unreal/UBT processes; do not close or interrupt another chat's editor, tests or builds. Use offscreen review helpers to preserve the user's keyboard. Check source/material generation, geometry seams and clearance, entry/descent/exit and backward seek when affected. Compare matched captures with `References/maelstrom-direction.jpg`; record what is visually improved, rejected and still deficient. Examine motion/loop seams separately from stills and log volume streaming/runtime cost. Commit/push validated checkpoints to the owned branch; no automatic main merge or publication.
+
+## Actual review and rejection record
+
+- Pass A (`Saved/SceneReview/crater-iteration-a`): removed the overly broad bright talus but exposed a smooth curtain. Rejected for visual quality.
+- Pass B (`Saved/SceneReview/crater-iteration-b`, 282/300/340/420/451): staggered cliff shelves still look like rounded clay and the foreground remains a broad pale film. Scale, supported temple silhouettes and entry/exit remain intact; the result is not close to the reference.
+- Foam-only B (`Saved/SceneReview/crater-foam-mask-b`, 300/340): most of the pale water in the beauty render is black or finely speckled in the foam mask. The broad pale film is therefore not primarily dense foam. The few dense patches still have overly smooth boundaries.
+- Waterfall close B (`Saved/SceneReview/waterfall-close-b`, continuous 305.8–306.2 across a loop boundary): the imported VDB exists, but its lower column hangs in front of the slope. Feed 8 has 164.5 m of horizontal retreat and 129.8 m of rise; the prototype assumes only 10 m retreat over its lower 80 m. Foot-only placement is insufficient. The old surface core also crosses a black ledge seam. Keep the volume opt-in, fit a lower segment to the actual revised cliff profile, then re-evaluate. Consecutive stills do not establish motion quality.
+
+The foam worker traced an integration bug in the installed water plugin: `Surface.a` is a wave roughness mask, not ready-to-use perceptual roughness or unresolved-normal variance. The material had used it directly as a roughness lower bound (commonly 0.5–1). The corrected shader uses bounded clear-water roughness and blends foam separately. No vendor shader code was copied.
+
+The route review also found that the ship could move sideways by a direction change of about 25–34 degrees while its visible yaw changed only about 3 degrees. The new steering heading follows the actual displaced route tangent, limited to 12 degrees for camera comfort; the centreline, dimensions and speed are unchanged. Neutral-heading/opposing-steering tests were added.
+
+Representative actual captures are retained under `taskboard/review/crater-iterations-14nov`: `rejected-b_0300.png`, `foam-mask-b_0300.png`, and `rejected-waterfall-b_03060.png`. These are diagnostic/rejected images, not target-quality examples.
+
+### Final C review
+
+`Saved/SceneReview/crater-iteration-c` contains the final 282/300/340/420/451 captures. The 300/340 deck views show more readable rock fractures and clearer liquid reflections than B. This is an intermediate improvement, not visual acceptance: the overall cliff still leans across its fixed toe/rim endpoints, the surface is dark and repetitive, the hydraulic banks remain too broad/smooth, and the falls remain thin bright ribbons. The 420 view also shows a sharp hanging/vertical triangular feature near the upper-left water/rock boundary and a pinched star pattern in the lower water. Isolate geometry versus material coordinates there before further detail work.
+
+`Saved/SceneReview/cliff-close-c/shot_0300.png` shows that the new rock planes become blocky and flat up close. Dark ledge crossings still interrupt the water core. The VDB has the same rejected foot-only placement. Preserve this close-up as a failure case; do not promote C as a final cliff asset. The corresponding retained files are `current-c_0300.png`, `current-c_0340.png`, `lower-descent-c_0420.png` and `cliff-close-c_0300.png` under the review folder.
+
+## Build and regression evidence
+
+Final Editor and Game builds pass (`Saved/CraterIterationEditorBuildC.log`, `CraterIterationGameBuildC.log`). Rock/water generation passes with texture diagnostics confirming sRGB colour, normal-map compression and a connected world-space normal (`CraterIterationMaterialsC.log`). Both `DirectorsCut.Maelstrom.CliffContinuity` and `RouteAndSteering` pass (`CraterIterationTestsC.log`, 20:16 UTC). The generator's density/period/roundtrip checks and native import are independent of these Unreal tests.
+
+Pass B entry/descent/exit captures completed and cleared both prototype volume actors; the sky controller restored its 29 properties. The close review logs a non-Nanite virtual-shadow-map marking overflow. Do not suppress that warning or call performance verified; investigate baking the generated rock to a static Nanite/LOD asset and profiling shadow coverage separately. Existing UDS editor-utility, Pawn EnableInput and experimental Toolset Python startup errors are still present in review logs; there was no fatal error or new maelstrom material compile failure. The project has not been packaged or merged to main by this pass.
+
+## Next scheduled passes
+
+1. Use final C as the matched baseline. Resolve the lower-descent hanging triangle/pinched water coordinates and the close cliff's blocky planes/dark ledge crossings. Keep the new readable deck-distance fracture structure without turning it into repetitive shelves. Match the reference's readable fractured walls and skyline architecture. Do not hide defects under more fog.
+2. Fit the original volume to an actual lower cliff segment, with its start attached to a real water core and its impact on the receiving water. Preserve metre-scale voxels. Only then consider multiple independently phased falls.
+3. Resolve remaining smooth, large white foam patches and the broad hydraulic-bank geometry. The outer shoulder is about 24 m tall/65 m half-width; material tuning alone cannot remove that silhouette. Compare displacement and pixel-normal amplitudes before globally weakening wave detail.
+4. Review continuous deck-camera motion, steering and entry/exit. Measure performance in a dedicated run without another chat using the GPU; current sparse samples are not a benchmark.

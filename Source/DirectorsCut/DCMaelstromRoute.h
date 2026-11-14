@@ -51,6 +51,18 @@ namespace DCMaelstromRoute
         return (Point(Seconds+.05f,Radius)-Point(Seconds-.05f,Radius)).GetSafeNormal();
     }
 
+    inline float SteeringYaw(float Seconds, float Radius, float Offset, float RadialVelocity)
+    {
+        const FVector2D Center = Tangent(Seconds, Radius);
+        const FVector2D Travel = (Point(Seconds+.05f, Radius, Offset+RadialVelocity*.05f)
+            - Point(Seconds-.05f, Radius, Offset-RadialVelocity*.05f)).GetSafeNormal();
+        const float CenterYaw = FMath::RadiansToDegrees(FMath::Atan2(Center.Y, Center.X));
+        const float TravelYaw = FMath::RadiansToDegrees(FMath::Atan2(Travel.Y, Travel.X));
+        // Let the hull visibly turn into its actual travel, while retaining a
+        // comfortable broadside camera and a stable distant horizon.
+        return FMath::Clamp(FMath::FindDeltaAngleDegrees(CenterYaw, TravelYaw), -12.f, 12.f);
+    }
+
     // Geometry and steering share this width, including the narrowing throat.
     inline float WidthScale(float Seconds)
     {

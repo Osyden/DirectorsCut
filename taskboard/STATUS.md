@@ -2,6 +2,13 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 20:21 Codex: scheduled crater iterations, three workers and measured shader fix
+
+- App automation `directorscut-crater-visual-iterations` is ACTIVE every 30 minutes in the existing maelstrom chat. Three isolated workers contributed cliffs/temple support, water/foam and original procedural VDB generation. [Current handoff, actual rejected captures and next steps](CRATER-VISUAL-ITERATIONS.md).
+- Corrected a verified raw FFT-wave-mask/perceptual-roughness mismatch; source-driven foam now has gaps. Cliffs use fractured planes rather than smooth giant terraces, with middle-scale rock normals. Steering now turns toward the displaced trajectory, bounded to 12 degrees. Crater dimensions, central route and temple supports preserved; cloud/sky and early-game code untouched.
+- Original 24 fps VDB sequences generate and import successfully. Actual close-ups reject their current cliff attachment, so runtime remains opt-in. No purchase required for further procedural experimentation; do not treat this prototype as a finished waterfall replacement.
+- Final Editor/Game builds, material generation, cliff/route automation and entry/descent/exit captures pass. Visual target remains unmet: smooth banks, ribbon falls, blocky close cliff faces, some dark ledge seams and a lower-descent geometry artifact remain. VSM non-Nanite marking overflow also remains. Own review branch only; no main merge/package.
+
 ## 14 Nov Codex: dedicated cliffs and temple skyline
 
 - Replaced heightfield cliffs and both old scaled-crag paths with a parametric geological wall/cap generator. Temples now sit on supported low plateau pads against sky; references drive the skyline hierarchy. [Implementation, rejected trials, actual captures and verification](MAELSTROM-CLIFFS-14NOV.md).

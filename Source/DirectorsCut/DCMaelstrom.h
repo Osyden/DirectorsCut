@@ -62,7 +62,19 @@ private:
 	void BuildFoamSource();
 	void BuildWhitewater();
 	void UpdateWhitewater();
-	struct FWaterFeed { FVector Foot; float Width; float Seed; TArray<FVector2D> Trail; };
+	void UpdateProceduralFalls();
+	void ClearProceduralFalls();
+	struct FProceduralFall
+	{
+		TWeakObjectPtr<class AHeterogeneousVolume> Actor;
+		int32 Frames = 1;
+	};
+	TArray<FProceduralFall> ProceduralFalls;
+	bool bProceduralFallsTried = false;
+	float PreviousFallTraceDistance = -1.f;
+	float AppliedFallTraceDistance = -1.f;
+	TWeakObjectPtr<class ACameraActor> FallReviewCamera;
+	struct FWaterFeed { FVector Foot; float Width; float Seed; TArray<FVector2D> Trail; FVector Lip = FVector::ZeroVector; };
 	TArray<FWaterFeed> WaterFeeds;
 	UPROPERTY() TObjectPtr<UProceduralMeshComponent> Whitewater;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> WhitewaterMID;

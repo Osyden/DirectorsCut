@@ -32,6 +32,15 @@ bool FDCMaelstromRouteTest::RunTest(const FString& Parameters)
         TestTrue(TEXT("Banks follow the same route across the atan seam"),FMath::Abs(SecondsAtAngle(Wrapped)-T)<.005f);
     }
     TestTrue(TEXT("Final approach reaches the inner throat"),RadialFraction(180.f)<.13f);
+    for(float T : {20.f,65.f,100.f,160.f})
+    {
+        TestTrue(TEXT("Neutral hull heading follows the spiral"),FMath::Abs(SteeringYaw(T,160000.f,0.f,0.f))<.001f);
+        const float Port=SteeringYaw(T,160000.f,0.f,-1000.f);
+        const float Starboard=SteeringYaw(T,160000.f,0.f,1000.f);
+        TestTrue(TEXT("Hull headings turn with opposing steering trajectories"),Port*Starboard<0.f);
+        TestTrue(TEXT("Steered visual heading stays comfortable"),FMath::Abs(Port)<=12.f && FMath::Abs(Starboard)<=12.f);
+        TestTrue(TEXT("Fast steering visibly turns the hull instead of side slipping"),FMath::Abs(Port)>3.f && FMath::Abs(Starboard)>3.f);
+    }
     for(float T=0.f;T<180.f;T+=1.f)
     {
         TestTrue(TEXT("The spiral consistently tightens inward"),RadialFraction(T+1.f)<=RadialFraction(T));

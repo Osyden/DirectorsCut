@@ -585,6 +585,7 @@ void ADCMaelstrom::Tick(float DeltaSeconds)
 		}
 	}
 	if (bActive) { UpdateBreakers(); UpdateWhitewater(); UpdateTerrainShadows(); }
+	UpdateProceduralFalls();
 	UpdateContacts(DeltaSeconds);
 	static const bool SceneReview=FParse::Param(FCommandLine::Get(),TEXT("DCSceneReview"));
 	if (Boss) { Boss->UpdateEncounter(Elapsed, GetArenaTransform(), Radius, Depth, bActive && !SceneReview); }
@@ -713,7 +714,8 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
     ShipRadius=P.Size();
     const float Angle=DCMaelstromRoute::Angle(Elapsed);
     const FVector2D Forward=DCMaelstromRoute::Tangent(FMath::Max(-7.9f,Elapsed),Radius);
-    const float Bearing=-FMath::RadiansToDegrees(FMath::Atan2(Forward.Y,Forward.X))-RouteVelocity*.003f;
+    const float Bearing=-FMath::RadiansToDegrees(FMath::Atan2(Forward.Y,Forward.X))
+        -DCMaelstromRoute::SteeringYaw(FMath::Max(-7.9f,Elapsed),Radius,RouteOffset,RouteVelocity*Riding);
     const FRotator Rotation(0.f,Bearing,0.f);
     const FVector2D Ahead=DCMaelstromRoute::Point(Elapsed+.10f,Radius,RouteOffset);
     const FVector2D Behind=DCMaelstromRoute::Point(Elapsed-.10f,Radius,RouteOffset);
@@ -1538,6 +1540,7 @@ void ADCMaelstrom::RestoreAtmosphere()
 
 void ADCMaelstrom::EndPlay(const EEndPlayReason::Type Reason)
 {
+	ClearProceduralFalls();
 	WaterBridge.Reset(WaterMID);
 	RestoreView();
 	RestoreAtmosphere();

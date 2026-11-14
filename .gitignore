@@ -62,3 +62,6 @@ Content/ParagonRampage/
 Content/GiantDemon*/
 Content/Giant_Demon*/
 Content/Demon*/
+
+# Original procedural waterfall caches; regenerate with Tools/generate_waterfall_vdb.py.
+Content/DC/Maelstrom/ProceduralWaterfalls/
