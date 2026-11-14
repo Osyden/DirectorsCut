@@ -778,8 +778,8 @@ void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
 	static const bool bOff = FParse::Param(FCommandLine::Get(), TEXT("DCNoTwisters"));
 	// The volume is played slowly with blocking streaming: without blocking it streams in at a coarse level and at
 	// 4K the spout is a smooth grey slab with straight sides; blocking at 30 frames a second or more costs 8 to 15 ms
-	// of render thread. At 14 it keeps its detail at 66 to 74 fps in 4K, and the spin of the whole column carries the motion.
-	static float TwisterDensity = 0.7f, TwisterRate = 14.f; static bool bDensityRead = false, bTwisterBlocking = true;   // test hooks: -DCTwisterDensity= -DCTwisterRate= -DCTwisterNoBlocking
+	// of render thread. At 24 it keeps its detail at 60 to 68 fps in 4K (66 to 74 at 14, but 14 pictures a second may show as a flicker in the boil).
+	static float TwisterDensity = 0.7f, TwisterRate = 24.f; static bool bDensityRead = false, bTwisterBlocking = true;   // test hooks: -DCTwisterDensity= -DCTwisterRate= -DCTwisterNoBlocking
 	if (!bDensityRead) { bDensityRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCTwisterDensity="), TwisterDensity); FParse::Value(FCommandLine::Get(), TEXT("DCTwisterRate="), TwisterRate); bTwisterBlocking = !FParse::Param(FCommandLine::Get(), TEXT("DCTwisterNoBlocking")); }
 	while (!bOff && TwistersRaised < UE_ARRAY_COUNT(RaiseAt) && Elapsed >= RaiseAt[TwistersRaised])
 	{

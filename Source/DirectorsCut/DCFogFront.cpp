@@ -283,7 +283,7 @@ void ADCFogFront::BuildTunnel()
 		M->SetVectorParameterValue(TEXT("Tint"), StormTint);
 		M->SetVectorParameterValue(TEXT("Glow"), FLinearColor(0.45f, 0.6f, 1.f) * Temp);
 		C->SetMaterial(0, M);
-		C->StartFrame = 0.f; C->EndFrame = 200.f; C->FrameRate = Rate * 0.5f; C->Frame = P.Frame; C->bPlaying = true; C->bLooping = true;
+		C->StartFrame = 0.f; C->EndFrame = 200.f; C->FrameRate = Rate * 0.75f; C->Frame = P.Frame; C->bPlaying = true; C->bLooping = true;
 		C->bIssueBlockingRequests = true;
 		FWallPiece W;
 		W.Actor = A; W.MID = M; W.Scale = WallScale * P.Size; W.Density = WallDensity; W.Yaw = P.Yaw;
