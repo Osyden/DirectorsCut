@@ -57,9 +57,12 @@ struct StoneNoise {
  }
 }; StoneNoise sn;
 float3 p=P*.01;
-// Tilted, interrupted bedding. Broad transitions avoid painted contour lines.
-float bedding=p.z*.075+dot(p.xy,float2(.0014,-.0011));
-float strata=sn.value(float3(p.xy*.011,bedding+sn.value(p*.006)*1.7));
+// Mineral regions follow irregular 3D volumes, not horizontal strata. The old
+// height-biased field reinforced the continuous curtain visible in review A.
+float3 warp=float3(sn.value(p*.009),sn.value(p*.009+19.2),sn.value(p*.009-31.7));
+float mineralMass=sn.value(p*.016+warp*1.8);
+float fracture=sn.value(p*.057+warp*.7);
+float strata=saturate(.70*mineralMass+.30*fracture);
 float streaks=sn.value(float3(p.xy*.12,p.z*.004));
 float wet=saturate(Wet)*lerp(.65,1,smoothstep(.28,.72,streaks));
 return float4(strata,streaks,wet,saturate(Recess));
@@ -77,7 +80,8 @@ float3 tz=Texture2DSample(RockColor,RockColorSampler,uz/4).rgb;
 float3 mineral=tx*w.x+ty*w.y+tz*w.z;
 float luminance=dot(mineral,float3(.2126,.7152,.0722));
 // Mineral variation without the source ground texture's saturated dirt tint.
-float3 stone=lerp(float3(.255,.265,.265),float3(.305,.295,.272),Weather.x);
+float mineralMix=smoothstep(.24,.76,Weather.x);
+float3 stone=lerp(float3(.175,.198,.215),float3(.335,.321,.290),mineralMix);
 float grain=clamp(.70+luminance*.90,.72,1.16);
 float runoff=lerp(.90,1.03,Weather.y);
 return stone*grain*runoff*lerp(1,.78,Weather.w)*lerp(1,.62,Weather.z);

@@ -13,6 +13,8 @@ bool FDCCliffGeneratorTest::RunTest(const FString& Parameters)
     bool Finite=true,OutsideWater=true,Seam=true,Connected=true,InwardFaces=true;
     bool NarrowTalus=true,LowCap=true;
     float MinFan=MAX_flt,MaxFan=0.f;
+    int32 SteepSamples=0,FaceSamples=0;
+    float MinFaceRadius=MAX_flt,MaxFaceRadius=0.f;
     for(const FSection& S:Sections)
     {
         for(int32 Row=0;Row<=160;++Row)
@@ -31,6 +33,13 @@ bool FDCCliffGeneratorTest::RunTest(const FString& Parameters)
                     const FVector Along=Point(S,A+.0001f,V,.5f)-Point(S,A-.0001f,V,.5f);
                     const FVector Normal=FVector::CrossProduct(Up,Along).GetSafeNormal();
                     InwardFaces &= FVector::DotProduct(Normal,FVector(FMath::Cos(A),FMath::Sin(A),0))<0;
+                    if(S.LipRadius-S.ToeRadius>30000.f)
+                    {
+                        const float RadialRise=Point(S,A,V+.0001f,.5f).Size2D()
+                            -Point(S,A,V-.0001f,.5f).Size2D();
+                        ++FaceSamples;
+                        SteepSamples+=FMath::Abs(RadialRise/Up.Z)<.25f ? 1 : 0;
+                    }
                 }
             }
         }
@@ -44,7 +53,12 @@ bool FDCCliffGeneratorTest::RunTest(const FString& Parameters)
             NarrowTalus &= Fan<=(S.LipRadius-S.ToeRadius)*.30f+1.f;
             NarrowTalus &= Foot.Z-Toe.Z<=(S.TopZ-S.WaterZ)*.18f;
             if(S.LipRadius-S.ToeRadius>30000.f)
-            { MinFan=FMath::Min(MinFan,Fan); MaxFan=FMath::Max(MaxFan,Fan); }
+            {
+                MinFan=FMath::Min(MinFan,Fan); MaxFan=FMath::Max(MaxFan,Fan);
+                const float FaceR=Point(S,A,.456f,0.f).Size2D();
+                MinFaceRadius=FMath::Min(MinFaceRadius,FaceR);
+                MaxFaceRadius=FMath::Max(MaxFaceRadius,FaceR);
+            }
             for(float CapV:{.84f,.90f,.96f,1.f})
             { LowCap &= FMath::Abs(Point(S,A,CapV,0.f).Z-S.TopZ)<350.f; }
         }
@@ -59,6 +73,11 @@ bool FDCCliffGeneratorTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("Talus stays a minority of cliff footprint and height"),NarrowTalus);
     TestTrue(TEXT("Debris fans vary instead of forming a constant-width apron"),MaxFan>MinFan*1.25f);
     TestTrue(TEXT("Plateau behind temples stays low"),LowCap);
+    // Shape acceptance guards: the rejected curtain was a shared curved slope
+    // with weak relief. A substantial part of the wall must expose steep faces,
+    // and large rock masses must occupy different radial positions at midheight.
+    TestTrue(TEXT("Cliffs expose near-vertical faces rather than only a smooth slope"),SteepSamples>FaceSamples*.20f);
+    TestTrue(TEXT("Staggered rock masses break the continuous curtain"),MaxFaceRadius-MinFaceRadius>22000.f);
     return true;
 }
 #endif

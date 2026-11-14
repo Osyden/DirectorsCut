@@ -42,18 +42,62 @@ namespace DCCliffGenerator
 
     struct FFaceRelief { float Offset; float Recess; };
 
+    // A formation's failure planes end at different elevations. Sampling the
+    // complete profile at jittered centres avoids one continuous curved bed
+    // around the basin; neighbouring buttresses expose different lit faces.
+    inline float FormationProfile(float A,float T)
+    {
+        constexpr int32 Period=32;
+        const float X=(A+.007f*Facet(A,1.7f,11))*Period;
+        const int32 Cell=FMath::FloorToInt(X);
+        float Total=0.f,Weight=0.f;
+        for(int32 I=Cell-1;I<=Cell+1;++I)
+        {
+            const float Centre=I+.18f+.64f*Hash(I,71,Period);
+            const float D=FMath::Abs(X-Centre);
+            // Broad planar fronts and unequal transition widths. This is not
+            // a regular grid of giant cliff panels or a sinusoidal wave wall.
+            const float W=FMath::Max(0.f,1.f-D/(.68f+.30f*Hash(I,72,Period)));
+            const float W2=W*W;
+            const float Break=.13f+.57f*Hash(I,73,Period);
+            const float Width=.075f+.10f*Hash(I,74,Period);
+            const float Upper=.50f+.30f*Hash(I,75,Period);
+            const float Profile=.07f*T+.68f*FMath::SmoothStep(Break,Break+Width,T)
+                +.25f*FMath::SmoothStep(Upper,Upper+.13f,T);
+            Total+=W2*Profile; Weight+=W2;
+        }
+        return Weight>SMALL_NUMBER ? Total/Weight : T;
+    }
+
     inline FFaceRelief FaceRelief(float A,float T)
     {
-        const float WarpA=A+Facet(A,T*.7f,16)*.0023f;
-        const float Mass=Facet(WarpA+.001f,T*1.8f,24);
-        const float Fault=Facet(WarpA,T*7.f,96);
-        const float Broken=Facet(WarpA+.002f,T*29.f,288);
-        const float Chips=Facet(WarpA,T*97.f,1152);
-        // Sparse oblique cleaves follow the generated fracture field. They
-        // stop across formations rather than continuing as rings or panels.
-        const float Cleave=FMath::SmoothStep(.42f,.88f,FMath::Abs(Fault))
-            *FMath::SmoothStep(.05f,.65f,Facet(A+.007f,T*3.2f+11.f,40));
-        return {Mass*6200.f+Fault*3100.f+Broken*1150.f+Chips*220.f+Cleave*950.f,Cleave};
+        constexpr int32 Period=57;
+        const float Warp=A+.0026f*Facet(A,T*1.7f,19);
+        const float X=Warp*Period;
+        const int32 Cell=FMath::FloorToInt(X);
+        float Buttress=0.f,Gully=0.f;
+        for(int32 I=Cell-2;I<=Cell+2;++I)
+        {
+            const float H=Hash(I,19,Period);
+            // Each buttress leans and terminates independently. Linear flanks
+            // form broad oblique rock planes instead of rounded noise pillows.
+            const float Centre=I+.12f+.76f*H+(T-.5f)*(.30f-.60f*Hash(I,23,Period));
+            const float D=X-Centre;
+            const float Width=D<0.f ? .20f+.33f*Hash(I,29,Period) : .25f+.42f*Hash(I,31,Period);
+            const float Flank=FMath::Clamp(1.f-FMath::Abs(D)/Width,0.f,1.f);
+            const float Crown=.40f+.51f*Hash(I,37,Period);
+            const float HeightMask=FMath::SmoothStep(.015f,.15f,T)
+                *(1.f-FMath::SmoothStep(Crown-.10f,Crown+.08f,T));
+            Buttress+=Flank*HeightMask*(6500.f+9500.f*H);
+            const float CutCentre=I+.74f+.23f*Hash(I,41,Period)
+                +.16f*Facet(A+.002f,T*3.1f,23);
+            const float CutWidth=.07f+.10f*Hash(I,43,Period);
+            const float Cut=FMath::Clamp(1.f-FMath::Abs(X-CutCentre)/CutWidth,0.f,1.f);
+            Gully+=Cut*(.35f+.65f*FMath::SmoothStep(.06f,.72f,T));
+        }
+        const float Broken=Facet(Warp+.002f,T*11.f,173);
+        const float Chips=Facet(Warp,T*41.f,509);
+        return {-Buttress+Gully*7800.f+Broken*1800.f+Chips*360.f,FMath::Clamp(Gully,0.f,1.f)};
     }
 
     inline float Joint(float Around,float Height)
@@ -87,19 +131,18 @@ namespace DCCliffGenerator
             // The face rises mostly vertically. Outward lean and recessed beds
             // are geometric; detail is not obtained by stretching a rock prop.
             Z=FMath::Lerp(BottomZ,S.TopZ,T);
-            // Lower and upper steep faces are separated by an unequal recessed
-            // shoulder. Its height varies around the rim, preventing a new ring.
-            const float Shoulder=.58f+.12f*Facet(A,1.2f,20);
-            const float RadialT=.30f*T+.70f*FMath::SmoothStep(.12f,Shoulder,T);
+            // Faulted masses retreat at separate elevations; a shared smooth
+            // cross section previously made the whole crater a concave curtain.
+            const float RadialT=FormationProfile(A,T);
             R=FMath::Lerp(FaceFoot,S.LipRadius,RadialT);
             const float Envelope=FMath::SmoothStep(0.f,.06f,T)*(1-FMath::SmoothStep(.90f,1.f,T));
             const float DetailScale=FMath::Min(1.f,Gap/30000.f);
             const float Raw=FaceRelief(A,T).Offset*DetailScale;
             // Smoothly bound relief above the shoreline even on the narrow
             // inlet. A hard radial clamp would create obvious flat cut planes.
-            const float Limit=FMath::Max(100.f,FMath::Min(10000.f,(R-S.ToeRadius)*.78f));
-            R+=Envelope*Raw/(1.f+FMath::Abs(Raw)/Limit);
-            R+=Drainage*Envelope*1500.f;
+            const float Limit=FMath::Max(100.f,FMath::Min(24000.f,(R-S.ToeRadius)*.85f));
+            R+=Envelope*Raw/FMath::Sqrt(1.f+FMath::Square(Raw/Limit));
+            R+=Drainage*Envelope*4200.f*DetailScale;
         }
         else
         {
