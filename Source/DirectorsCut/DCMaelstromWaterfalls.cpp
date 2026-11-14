@@ -140,21 +140,42 @@ void ADCMaelstrom::UpdateProceduralFalls()
                 // Nine lateral tracks preserve local ledges and creases across
                 // the source width instead of extruding one centreline through
                 // adjacent rock. They use the identical rendered-triangle query.
-                TArray<TSharedPtr<FJsonValue>> Offsets, CrossSections;
+                TArray<TSharedPtr<FJsonValue>> Offsets, CrossSections, TrackContacts, TrackContactV;
+                TArray<float> ContactVByTrack;
+                const float LowerStartV = FMath::Lerp(.84f, Feed.ContactV, LowerU[0]);
                 for (int32 X = 0; X < 9; ++X)
-                { Offsets.Add(MakeShared<FJsonValueNumber>(Feed.Width * (X / 4.f - 1.f))); }
+                {
+                    const float Across = Feed.Width * (X / 4.f - 1.f);
+                    Offsets.Add(MakeShared<FJsonValueNumber>(Across));
+                    const DCCliffGenerator::FFirstWaterContact Hit = DCCliffGenerator::FirstWaterContact(
+                        [&](float T) { return SampleWaterfallCorePoint(Angle, .84f * (1.f - T), Across); },
+                        [&](const FVector2D& P, float& Height) { return SampleReceivingWater(P, Height); });
+                    if (!Hit.bFound)
+                    {
+                        UE_LOG(LogTemp, Warning, TEXT("DC_WATERFALL_PROFILE source=%d lateral track=%d has no valid water contact"), Feed.SourceIndex, X);
+                        return;
+                    }
+                    const float TrackV = .84f * (1.f - Hit.Progress);
+                    ContactVByTrack.Add(TrackV);
+                    TrackContactV.Add(MakeShared<FJsonValueNumber>(TrackV));
+                    TrackContacts.Add(MakeShared<FJsonValueArray>(FallVectorJson(LocalFrame.InverseTransformPosition(Hit.Position))));
+                }
                 for (float U : LowerU)
                 {
                     TArray<TSharedPtr<FJsonValue>> Section;
+                    const float Progress = (U - LowerU[0]) / FMath::Max(.0001f, 1.f - LowerU[0]);
                     for (int32 X = 0; X < 9; ++X)
                     {
                         Section.Add(MakeShared<FJsonValueArray>(FallVectorJson(LocalFrame.InverseTransformPosition(
-                            CorePoint(U, Feed.Width * (X / 4.f - 1.f))))));
+                            SampleWaterfallCorePoint(Angle, FMath::Lerp(LowerStartV, ContactVByTrack[X], Progress),
+                                Feed.Width * (X / 4.f - 1.f))))));
                     }
                     CrossSections.Add(MakeShared<FJsonValueArray>(Section));
                 }
                 Profile->SetArrayField(TEXT("cross_offsets_cm"), Offsets);
                 Profile->SetArrayField(TEXT("cross_sections_local_cm"), CrossSections);
+                Profile->SetArrayField(TEXT("cross_contact_v"), TrackContactV);
+                Profile->SetArrayField(TEXT("cross_contact_core_local_cm"), TrackContacts);
                 Profile->SetStringField(TEXT("surface_contract"), TEXT("shared rendered-triangle core sampler; ends at first valid receiving-water ContactV; no upward contact blend"));
                 // Surface samples, not a horizontal impact plane: the local
                 // receiving water slopes into the spiral and changes across it.

@@ -228,9 +228,15 @@ class FittedWaterfall(Waterfall):
                               "unmatched_source_mass_fraction": float(self.strength[~self.contact_valid].sum()/max(self.strength.sum(), 1e-9))}
         self.impact_birth = np.mod(self.birth + self.flight, args.duration)
         self.foot = self.fall_positions(self.flight)
+        entry_height, _ = self.water_surface(self.foot[:, :2])
+        entry_depth = np.maximum(0, entry_height-self.foot[:, 2])[self.contact_valid]
+        self.contact_stats.update({"entry_depth_m_median": float(np.median(entry_depth)),
+                                   "entry_depth_m_p95": float(np.percentile(entry_depth, 95)),
+                                   "entry_depth_m_max": float(entry_depth.max()),
+                                   "surface_impact_model": "surface response at entry XY/time; no simulated underwater bubble transit"})
         # The submerged core endpoint is never lifted. Surface spray is a
         # separate response, anchored above the water at the entry XY/time.
-        self.foot[:, 2] = self.water_surface(self.foot[:, :2])[0] + .15
+        self.foot[:, 2] = entry_height + .15
         current = np.asarray(profile["current_local_cm_s"], dtype=float) / 100
         current[2] = 0
         self.current = current
