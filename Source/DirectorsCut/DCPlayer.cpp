@@ -196,7 +196,7 @@ void ADCPlayerCharacter::TickOnFoot(APlayerController* PC)
 	for (int32 i = 0; i < Stations.Num(); ++i)
 	{
 		if (Stations[i].Type != EDCStationType::Helm && Stations[i].Type != EDCStationType::Cannons) { continue; }
-		if (Stations[i].Type == EDCStationType::Cannons && (!Guns || Guns->NumGuns(Stations[i].Side) == 0)) { continue; }
+		if (Stations[i].Type == EDCStationType::Cannons && (!Stations[i].bPlayerGun || !Guns || Guns->NumGuns(Stations[i].Side) == 0)) { continue; }
 		const FVector Feet = GetActorLocation() - FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
 		const FVector D = Stations[i].Location - Feet;
 		if (FMath::Abs(D.Z) < 115.f && D.Size() < BestDist)
@@ -222,7 +222,7 @@ void ADCPlayerCharacter::EnterStation(APlayerController* PC, int32 Index)
 	if (S->Type == EDCStationType::Cannons)
 	{
 		const ADCGunnery* Guns = ADCGunnery::Get(this);
-		if (!Guns || Guns->NumGuns(S->Side) == 0) { return; }
+		if (!S->bPlayerGun || !Guns || Guns->NumGuns(S->Side) == 0) { return; }
 	}
 
 	// Whoever was here steps aside.
@@ -343,6 +343,16 @@ void ADCPlayerCharacter::TickCannons(APlayerController* PC)
 	FRotator AimRotation = GunCamera->GetActorRotation();
 	AimRotation.Yaw = SideYaw + FMath::Clamp(FMath::FindDeltaAngleDegrees(SideYaw, AimRotation.Yaw) + DX * LookSensitivity * 10.f, -62.f, 62.f);
 	AimRotation.Pitch = FMath::Clamp(AimRotation.Pitch + DY * LookSensitivity * 10.f, -62.f, 12.f);
+	if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
+	{
+		if (const FDCStation* Station = Crew->GetStation(ActiveStation))
+		{
+			const float Sign = ActiveSide == EDCSide::Port ? -1.f : 1.f;
+			const FVector Eye = Station->Location + FVector(0.f, -Sign * 80.f, 250.f);
+			const ADCRideDirector* Director = ADCRideDirector::Get(this);
+			GunCamera->SetActorLocation(Director ? Director->DeckToWorld(Eye) : Eye);
+		}
+	}
 	GunCamera->SetActorRotation(AimRotation);
 
 	ADCGunnery* Guns = ADCGunnery::Get(this);
@@ -351,9 +361,9 @@ void ADCPlayerCharacter::TickCannons(APlayerController* PC)
 	const bool bAutoFire = FParse::Param(FCommandLine::Get(), TEXT("DCAutoFire"));
 	if (bGunSolution && Guns->IsReady(ActiveSide) && (PC->WasInputKeyJustPressed(EKeys::LeftMouseButton) || bAutoFire))
 	{
-		Guns->FireBroadside(ActiveSide, Target, 6, true);
+		Guns->FireGun(Guns->GetPlayerGun(ActiveSide), Target, true);
 	}
-	Prompt = TEXT("Mouse  aim     LMB  fire broadside     E  leave guns");
+	Prompt = TEXT("Mouse  aim     LMB  fire cannon     E  leave guns");
 }
 
 void ADCPlayerCharacter::DebugTakeStation(EDCStationType Type, EDCSide Side)

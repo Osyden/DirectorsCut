@@ -80,6 +80,12 @@ public:
 	/** Register a hostile that something else moves. The treadmill destroys the actor when its health runs out. */
 	void AddExternalHostile(AActor* Actor, float Radius, float Health, bool bUrgent = false);
 	int32 NumObjects() const { return Objects.Num(); }
+	AActor* GetHostileActor(int32 Index) const
+	{
+		return Objects.IsValidIndex(Index) && Objects[Index].bHostile ? Objects[Index].Actor.Get() : nullptr;
+	}
+	bool IsUrgentHostile(int32 Index) const { return Objects.IsValidIndex(Index) && Objects[Index].bUrgent; }
+	float GetHostileRadius(int32 Index) const { return Objects.IsValidIndex(Index) ? Objects[Index].Radius * 0.6f : 0.f; }
 	int32 NumHostiles() const;
 
 	/** (Was 300 m, inside what can be seen in the city: rocks and statues appeared out of nothing ahead. Owner, 14 Nov.) */

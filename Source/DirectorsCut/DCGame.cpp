@@ -192,7 +192,7 @@ void ADCHUD::DrawHUD()
 				{
 					const FDCStation& Station = Stations[Index];
 					const bool bGun = Station.Type == EDCStationType::Cannons && Guns && Guns->NumGuns(Station.Side) > 0;
-					if (!bGun && Station.Type != EDCStationType::Helm) { continue; }
+					if ((!bGun && Station.Type != EDCStationType::Helm) || (bGun && !Station.bPlayerGun)) { continue; }
 					const FVector Spot = (D ? D->DeckToWorld(Station.Location) : Station.Location) + FVector(0.f, 0.f, 150.f);   // the ship moves on the sea; stations are kept for the ship at rest
 					if (FVector::DistSquared(Spot, Captain->GetActorLocation()) > FMath::Square(3600.f)) { continue; }
 					FVector2D Screen;
@@ -200,7 +200,7 @@ void ADCHUD::DrawHUD()
 						Screen.X < 75.f * S || Screen.X > W - 75.f * S || Screen.Y < 115.f * S || Screen.Y > H * 0.72f) { continue; }
 
 					const bool bNear = Index == Captain->GetNearbyStation();
-					const TCHAR* Name = !bGun ? TEXT("HELM") : Station.Side == EDCSide::Port ? TEXT("PORT GUNS") : TEXT("STARBOARD GUNS");
+					const TCHAR* Name = !bGun ? TEXT("HELM") : Station.Side == EDCSide::Port ? TEXT("PORT CANNON") : TEXT("STARBOARD CANNON");
 					const FString Text = bNear ? FString::Printf(TEXT("[E]  %s"), Name) : FString(Name);
 					float TW, TH;
 					CrispSize(Text, TW, TH, Font, S);
@@ -228,7 +228,7 @@ void ADCHUD::DrawHUD()
 			}
 			DrawRect(Sight, X - S, Y - S, 2.f * S, 2.f * S);
 
-			FString State = Side == EDCSide::Port ? TEXT("PORT BATTERY") : TEXT("STARBOARD BATTERY");
+			FString State = Side == EDCSide::Port ? TEXT("PORT CANNON") : TEXT("STARBOARD CANNON");
 			if (!bReady) { State += FString::Printf(TEXT("   RELOADING %.1fs"), Guns->GetReloadSeconds(Side)); }
 			else { State += bInRange ? TEXT("   READY") : TEXT("   AIM AT WATER OR A TARGET"); }
 
@@ -512,6 +512,26 @@ void ADCGameMode::StartPlay()
 	Crew->AddStation(EDCStationType::Helm, EDCSide::None, DeckAt(Wheel.X - 110.f, Wheel.Y, Wheel.Z + 120.f));
 	Crew->AddStation(EDCStationType::Cannons, EDCSide::Port, DeckAt(GunP.X, GunP.Y + 150.f, MainTop));
 	Crew->AddStation(EDCStationType::Cannons, EDCSide::Starboard, DeckAt(GunS.X, GunS.Y - 150.f, MainTop));
+	if (ADCGunnery* Guns = ADCGunnery::Get(this))
+	{
+		for (EDCSide Side : { EDCSide::Port, EDCSide::Starboard })
+		{
+			if (FDCStation* Player = Crew->GetStation(Crew->FindStation(EDCStationType::Cannons, Side)))
+			{ Player->GunIndex = Guns->GetPlayerGun(Side); }
+		}
+		for (int32 Gun = 0; Gun < Guns->GetGunCount(); ++Gun)
+		{
+			const EDCSide Side = Guns->GetGunSide(Gun);
+			if (Gun == Guns->GetPlayerGun(Side)) { continue; }
+			// Accessible upper-deck guns only; below-deck ports have no walkable route.
+			const FVector Spot = Guns->GetGunStation(Gun);
+			if (Spot.Z < MainTop - 80.f) { continue; }
+			Crew->AddStation(EDCStationType::Cannons, Side, DeckAt(Spot.X, Spot.Y, MainTop));
+			FDCStation* Station = Crew->GetStation(Crew->GetStations().Num() - 1);
+			Station->GunIndex = Gun;
+			Station->bPlayerGun = false;
+		}
+	}
 	Crew->AddStation(EDCStationType::Fire, EDCSide::None, DeckAt(GunS.X - 200.f, 60.f, MainTop));
 	Crew->AddStation(EDCStationType::Rigging, EDCSide::None, DeckAt(GunS.X + 420.f, 120.f, MainTop));
 
@@ -554,6 +574,8 @@ void ADCGameMode::StartPlay()
 	}
 
 	Crew->ExecuteOrder(TEXT("Finch, take the helm"));
+	Crew->ExecuteOrder(TEXT("Marlow, man the port guns"));
+	Crew->ExecuteOrder(TEXT("Odessa, man the starboard guns"));
 
 	// Unattended test hooks: -DCOrders=hard_to_port;port_battery_fire and -DCStation=helm|port|starboard.
 	FString OrderList;

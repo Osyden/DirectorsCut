@@ -1,19 +1,63 @@
 #include "DCGunnery.h"
 #include "DCTreadmill.h"
 #include "DCMaelstrom.h"
+#include "DCRideDirector.h"
+#include "DCCrew.h"
+#include "Components/StaticMeshComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/PrimitiveComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
-#include "Engine/PointLight.h"
-#include "Components/PointLightComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "Particles/ParticleSystem.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "EngineUtils.h"
 #include "UObject/ConstructorHelpers.h"
 
 namespace
 {
+	int32 TraceHostile(const ADCTreadmill* Treadmill, const FVector& Start, const FVector& End, FVector& OutPoint)
+	{
+		if (!Treadmill) { return INDEX_NONE; }
+		const FVector Delta = End - Start;
+		const double LengthSquared = Delta.SizeSquared();
+		if (LengthSquared < UE_SMALL_NUMBER) { return INDEX_NONE; }
+		double First = 2.0;
+		int32 Result = INDEX_NONE;
+		for (int32 I = 0; I < Treadmill->NumObjects(); ++I)
+		{
+			const AActor* Actor = Treadmill->GetHostileActor(I);
+			if (!Actor || Actor->IsHidden()) { continue; }
+			const FVector Offset = Start - Actor->GetActorLocation();
+			const double Radius = Treadmill->GetHostileRadius(I) + 15.f;
+			const double B = FVector::DotProduct(Offset, Delta);
+			const double C = Offset.SizeSquared() - Radius * Radius;
+			const double Discriminant = B * B - LengthSquared * C;
+			if (Discriminant < 0.0) { continue; }
+			const double Fraction = C <= 0.0 ? 0.0 : (-B - FMath::Sqrt(Discriminant)) / LengthSquared;
+			if (Fraction >= 0.0 && Fraction <= 1.0 && Fraction < First)
+			{ First = Fraction; Result = I; }
+		}
+		if (Result != INDEX_NONE) { OutPoint = Start + Delta * First; }
+		return Result;
+	}
+
+	void IgnoreInactiveWater(UWorld* World, FCollisionQueryParams& Query)
+	{
+		for (TActorIterator<AActor> It(World); It; ++It)
+		{
+			// Identify the actual inactive water, never infer it from hit height/normal.
+			if (It->GetClass()->GetPathName().StartsWith(TEXT("/DynamicRealWater/")))
+			{ Query.AddIgnoredActor(*It); }
+		}
+		if (const ADCRideDirector* D = ADCRideDirector::Get(World))
+		{
+			if (const UPrimitiveComponent* Sea = Cast<UPrimitiveComponent>(D->GetSea()))
+			{ Query.AddIgnoredComponent(Sea); }
+		}
+	}
+
 	/** Find the first air-to-water crossing, including a slope rising into the shot. */
 	bool IntersectMaelstromSurface(const ADCMaelstrom* Maelstrom, const FVector& Start, const FVector& End, FVector& OutPoint)
 	{
@@ -89,6 +133,7 @@ void ADCGunnery::Init(AActor* Ship, float InSeaLevelZ)
 		Iron->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.02f, 0.02f, 0.022f));
 		Balls->SetMaterial(0, Iron);
 	}
+	Guns.Reset();
 	Muzzles[0].Reset();
 	Muzzles[1].Reset();
 	if (Ship)
@@ -103,33 +148,50 @@ void ADCGunnery::Init(AActor* Ship, float InSeaLevelZ)
 			const FVector Loc = P->Bounds.Origin;
 			if (FMath::Abs(Loc.Y) < 200.f || P->Bounds.BoxExtent.Y <= P->Bounds.BoxExtent.X) { continue; }
 			const int32 SideIdx = Loc.Y < 0.f ? 0 : 1;
-			FVector Muzzle = Loc + FVector(0.f, FMath::Sign(Loc.Y) * P->Bounds.BoxExtent.Y, 20.f);
-			// The guns below decks sit a metre inside the hull by that reckoning, so their flash and shot started
-			// inside the ship. Find the ship's side abreast of the gun and start just outside it.
-			FHitResult Side;
-			FCollisionQueryParams Q(SCENE_QUERY_STAT(DCMuzzle), true);
-			const FVector Out(Muzzle.X, FMath::Sign(Loc.Y) * 1500.f, Muzzle.Z);
-			if (Ship->ActorLineTraceSingle(Side, Out, FVector(Muzzle.X, 0.f, Muzzle.Z), ECC_Visibility, Q) && FMath::Abs(Side.ImpactPoint.Y) > FMath::Abs(Muzzle.Y))
-			{
-				Muzzle.Y = Side.ImpactPoint.Y + FMath::Sign(Loc.Y) * 25.f;
-			}
-			else if (Muzzle.Z < 470.f) { Muzzle.Y += FMath::Sign(Loc.Y) * 110.f; }   // no hit on the hull: the ports are about a metre deep
+			// The Brigantine mesh is authored with its origin at the bore opening.
+			// Bounds include the carriage behind it and are not a muzzle socket.
+			const FVector Muzzle = P->GetComponentLocation();
 			Muzzles[SideIdx].Add(Muzzle);
+			FGun& Gun = Guns.AddDefaulted_GetRef();
+			Gun.Component = Cast<USkeletalMeshComponent>(P);
+			Gun.LocalMuzzle = P->GetComponentTransform().InverseTransformPosition(Muzzle);
+			Gun.Side = SideIdx == 0 ? EDCSide::Port : EDCSide::Starboard;
+			Gun.Station = Loc + FVector(0.f, -FMath::Sign(Loc.Y) * 150.f, 180.f);
 		}
+	}
+	// Stable identity: the named upper-deck gun at each existing player station.
+	Guns.Sort([](const FGun& A, const FGun& B) { return A.Component->GetName() < B.Component->GetName(); });
+	for (EDCSide Side : { EDCSide::Port, EDCSide::Starboard })
+	{
+		int32 Best = INDEX_NONE;
+		float BestDistance = TNumericLimits<float>::Max();
+		const TCHAR* Name = Side == EDCSide::Port ? TEXT("SK_Cannon_2-L9") : TEXT("SK_Cannon_2-R9");
+		for (int32 Index = 0; Index < Guns.Num(); ++Index)
+		{
+			FGun& Gun = Guns[Index];
+			if (Gun.Side != Side) { continue; }
+			const FVector Location = Gun.Component->Bounds.Origin;
+			const float Distance = Gun.Component->GetName() == Name ? -1.f : FVector::DistSquared(Location, FVector(-110.f, Side == EDCSide::Port ? -317.f : 317.f, 542.f));
+			if (Distance < BestDistance) { Best = Index; BestDistance = Distance; }
+		}
+		if (Guns.IsValidIndex(Best)) { Guns[Best].bPlayer = true; }
 	}
 	UE_LOG(LogDC, Log, TEXT("Gunnery: %d port guns, %d starboard guns"), Muzzles[0].Num(), Muzzles[1].Num());
 
 	// Effects that ship with the vessel asset; optional.
 	MuzzleEffectClass = LoadClass<AActor>(nullptr, TEXT("/Game/Brigantine/BP/Cannon/BP_EffectExplosionStartCannon.BP_EffectExplosionStartCannon_C"));
 	ImpactEffectClass = LoadClass<AActor>(nullptr, TEXT("/Game/Brigantine/BP/Cannon/BP_EffectExplosionEnd.BP_EffectExplosionEnd_C"));
-	UE_LOG(LogDC, Log, TEXT("Gunnery effects: muzzle=%s, impact=%s"),
-		*GetNameSafe(MuzzleEffectClass.Get()), *GetNameSafe(ImpactEffectClass.Get()));
+	WaterImpact = LoadObject<UParticleSystem>(nullptr, TEXT("/Game/ParagonRampage/FX/Particles/Abilities/RipNToss/FX/P_Rampage_Rock_HitWorld_WaterImpact.P_Rampage_Rock_HitWorld_WaterImpact"));
+	StoneImpact = LoadObject<UParticleSystem>(nullptr, TEXT("/Game/ParagonRampage/FX/Particles/Abilities/RipNToss/FX/P_Rampage_Rock_HitWorld.P_Rampage_Rock_HitWorld"));
+	CreatureImpact = LoadObject<UParticleSystem>(nullptr, TEXT("/Game/ParagonRampage/FX/Particles/Abilities/RipNToss/FX/P_Rampage_Rock_HitCharacter.P_Rampage_Rock_HitCharacter"));
+	UE_LOG(LogDC, Log, TEXT("Gunnery effects: muzzle=%s, water=%s, stone=%s, creature=%s"),
+		*GetNameSafe(MuzzleEffectClass.Get()), *GetNameSafe(WaterImpact.Get()), *GetNameSafe(StoneImpact.Get()), *GetNameSafe(CreatureImpact.Get()));
 }
 
 bool ADCGunnery::ResolveAim(EDCSide Side, const FVector& Origin, const FVector& Direction, FVector& OutTarget) const
 {
 	constexpr float MinRange = 650.f;
-	constexpr float MaxRange = 18000.f;
+	constexpr float MaxRange = 20000.f;
 	const float Sign = Side == EDCSide::Port ? -1.f : 1.f;
 	float Distance = MaxRange;
 	bool bSurface = false;
@@ -149,6 +211,7 @@ bool ADCGunnery::ResolveAim(EDCSide Side, const FVector& Origin, const FVector& 
 
 	FCollisionQueryParams Query(SCENE_QUERY_STAT(DCGunAim), false, this);
 	if (GunShip.IsValid()) { Query.AddIgnoredActor(GunShip.Get()); }
+	IgnoreInactiveWater(GetWorld(), Query);
 	FHitResult Hit;
 	if (GetWorld()->LineTraceSingleByChannel(Hit, Origin, Origin + Direction * Distance, ECC_Visibility, Query))
 	{
@@ -160,7 +223,14 @@ bool ADCGunnery::ResolveAim(EDCSide Side, const FVector& Origin, const FVector& 
 	{
 		OutTarget = Origin + Direction * Distance;
 	}
-	return bSurface && Distance >= MinRange && Sign * OutTarget.Y >= 1000.f;
+	FVector HostilePoint;
+	if (TraceHostile(ADCTreadmill::Get(this), Origin, OutTarget, HostilePoint) != INDEX_NONE)
+	{
+		OutTarget = HostilePoint;
+		Distance = FVector::Distance(Origin, OutTarget);
+		bSurface = true;
+	}
+	return bSurface && Distance >= MinRange && Sign * OutTarget.Y >= 1000.f && CanAimGun(GetPlayerGun(Side), OutTarget);
 }
 
 FString ADCGunnery::GetPlayerImpactLabel(EDCSide Side) const
@@ -170,41 +240,92 @@ FString ADCGunnery::GetPlayerImpactLabel(EDCSide Side) const
 	return bImpactHit[Index] ? TEXT("HIT") : TEXT("SPLASH");
 }
 
+int32 ADCGunnery::GetPlayerGun(EDCSide Side) const
+{
+	for (int32 I = 0; I < Guns.Num(); ++I) { if (Guns[I].Side == Side && Guns[I].bPlayer) { return I; } }
+	return INDEX_NONE;
+}
+
+EDCSide ADCGunnery::GetGunSide(int32 Gun) const { return Guns.IsValidIndex(Gun) ? Guns[Gun].Side : EDCSide::None; }
+FVector ADCGunnery::GetGunStation(int32 Gun) const { return Guns.IsValidIndex(Gun) ? Guns[Gun].Station : FVector::ZeroVector; }
+FVector ADCGunnery::GetMuzzle(int32 Gun) const
+{
+	return Guns.IsValidIndex(Gun) && Guns[Gun].Component.IsValid()
+		? Guns[Gun].Component->GetComponentTransform().TransformPosition(Guns[Gun].LocalMuzzle) : FVector::ZeroVector;
+}
+bool ADCGunnery::IsGunReady(int32 Gun) const { return Guns.IsValidIndex(Gun) && Guns[Gun].Component.IsValid() && Guns[Gun].Reload <= 0.f; }
+float ADCGunnery::GetReloadSeconds(EDCSide Side) const
+{
+	const int32 Gun = GetPlayerGun(Side);
+	return Guns.IsValidIndex(Gun) ? Guns[Gun].Reload : 0.f;
+}
+int32 ADCGunnery::NumGuns(EDCSide Side) const
+{
+	int32 Count = 0;
+	for (const FGun& Gun : Guns) { if (Gun.Side == Side) { ++Count; } }
+	return Count;
+}
+bool ADCGunnery::CanAimGun(int32 Gun, const FVector& Target) const
+{
+	if (!Guns.IsValidIndex(Gun) || !Guns[Gun].Component.IsValid() || Target.ContainsNaN()) { return false; }
+	const FVector Delta = Target - GetMuzzle(Gun);
+	const FVector Local = GunShip.IsValid() ? GunShip->GetActorTransform().InverseTransformVectorNoScale(Delta) : Delta;
+	const float Sign = Guns[Gun].Side == EDCSide::Port ? -1.f : 1.f;
+	return Delta.SizeSquared() <= FMath::Square(21000.f) && Sign * Local.Y > 100.f
+		&& FMath::Abs(Local.X) <= Sign * Local.Y * 1.9f;
+}
+bool ADCGunnery::FindCrewTarget(int32 Gun, FVector& OutTarget) const
+{
+	const ADCTreadmill* Treadmill = ADCTreadmill::Get(this);
+	if (!Treadmill || !Guns.IsValidIndex(Gun)) { return false; }
+	float Best = TNumericLimits<float>::Max();
+	bool bFound = false;
+	FCollisionQueryParams Query(SCENE_QUERY_STAT(DCCrewGunSight), false, this);
+	if (GunShip.IsValid()) { Query.AddIgnoredActor(GunShip.Get()); }
+	IgnoreInactiveWater(GetWorld(), Query);
+	for (int32 I = 0; I < Treadmill->NumObjects(); ++I)
+	{
+		AActor* Target = Treadmill->GetHostileActor(I);
+		if (!Target || Target->IsHidden() || !CanAimGun(Gun, Target->GetActorLocation())) { continue; }
+		const FVector Point = Target->GetActorLocation();
+		FHitResult Hit;
+		if (GetWorld()->LineTraceSingleByChannel(Hit, GetMuzzle(Gun), Point, ECC_Visibility, Query)
+			&& Hit.GetActor() != Target) { continue; }
+		const float Priority = FVector::Distance(GetMuzzle(Gun), Point) - (Treadmill->IsUrgentHostile(I) ? 40000.f : 0.f);
+		if (Priority < Best) { Best = Priority; OutTarget = Point; bFound = true; }
+	}
+	return bFound;
+}
+bool ADCGunnery::FireGun(int32 Gun, const FVector& Target, bool bPlayer)
+{
+	if (!IsGunReady(Gun) || !CanAimGun(Gun, Target) || bPlayer != Guns[Gun].bPlayer) { return false; }
+	Guns[Gun].Reload = ReloadTime;
+	const FVector Muzzle = GetMuzzle(Gun);
+	Pending.Add({ Gun, Target, bPlayer ? Guns[Gun].Side : EDCSide::None });
+	UE_LOG(LogDC, Log, TEXT("Cannon fired gun=%s player=%d muzzle=%s target=%s"),
+		*Guns[Gun].Component->GetName(), bPlayer, *Muzzle.ToCompactString(), *Target.ToCompactString());
+	return true;
+}
 bool ADCGunnery::FireBroadside(EDCSide Side, const FVector& Target, int32 MaxGuns, bool bPlayerVolley)
 {
-	const int32 SideIdx = Side == EDCSide::Port ? 0 : 1;
-	if (Side == EDCSide::None || MaxGuns <= 0 || ReloadLeft[SideIdx] > 0.f || Muzzles[SideIdx].Num() == 0) { return false; }
-	ReloadLeft[SideIdx] = ReloadTime;
-	UE_LOG(LogDC, Verbose, TEXT("Broadside %s (%s) at %s"), SideIdx == 0 ? TEXT("port") : TEXT("starboard"),
-		bPlayerVolley ? TEXT("player") : TEXT("crew"), *Target.ToCompactString());
-
-	// Use the guns nearest the target along the hull, and spread their fall of shot a little.
-	TArray<FVector> Guns = Muzzles[SideIdx];
-	Guns.Sort([&Target, bPlayerVolley](const FVector& A, const FVector& B)
+	// Compatibility for unattended callers: one trigger always means one cannonball.
+	if (MaxGuns <= 0) { return false; }
+	if (bPlayerVolley) { return FireGun(GetPlayerGun(Side), Target, true); }
+	for (int32 I = 0; I < Guns.Num(); ++I)
 	{
-		// Let the captain see the deck battery fire before the lower-deck guns join in.
-		if (bPlayerVolley && (A.Z > 470.f) != (B.Z > 470.f)) { return A.Z > B.Z; }
-		return FMath::Abs(A.X - Target.X) < FMath::Abs(B.X - Target.X);
-	});
-	const int32 N = FMath::Min(MaxGuns, Guns.Num());
-	for (int32 i = 0; i < N; ++i)
-	{
-		FPendingShot S;
-		S.Muzzle = Guns[i];
-		const float Spread = bPlayerVolley ? 120.f : 250.f;
-		S.Target = i == 0 ? Target : Target + FVector(FMath::FRandRange(-Spread, Spread), FMath::FRandRange(-Spread, Spread), 0.f);
-		S.Delay = i * 0.12f;
-		S.PlayerSide = bPlayerVolley ? Side : EDCSide::None;
-		Pending.Add(S);
+		if (Guns[I].Side == Side && !Guns[I].bPlayer && FireGun(I, Target)) { return true; }
 	}
-	return true;
+	return false;
 }
 
 void ADCGunnery::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+#if !UE_BUILD_SHIPPING
+	if (FParse::Param(FCommandLine::Get(), TEXT("DCCannonVerify"))) { TickVerification(); }
+#endif
 
-	for (float& R : ReloadLeft) { R = FMath::Max(0.f, R - DeltaSeconds); }
+	for (FGun& Gun : Guns) { Gun.Reload = FMath::Max(0.f, Gun.Reload - DeltaSeconds); }
 	// Test hook: -DCGunTestAt=<seconds> fires a captain's starboard volley abeam at that time after start.
 	{
 		static float TestAt = -1.f; static bool bRead = false;
@@ -224,32 +345,22 @@ void ADCGunnery::Tick(float DeltaSeconds)
 	for (int32 i = Pending.Num() - 1; i >= 0; --i)
 	{
 		FPendingShot& P = Pending[i];
-		P.Delay -= DeltaSeconds;
-		if (P.Delay > 0.f) { continue; }
+		if (!Guns.IsValidIndex(P.Gun) || !Guns[P.Gun].Component.IsValid()) { Pending.RemoveAtSwap(i); continue; }
+		const FVector Muzzle = GetMuzzle(P.Gun);
 
 		// Solve for the launch velocity that lands on the target after FlightTime under our gravity.
-		const FVector Delta = P.Target - P.Muzzle;
+		const FVector Delta = P.Target - Muzzle;
 		const float FlightTime = FMath::Clamp(Delta.Size() / ShotSpeed, 0.5f, 3.f);
 		FShot S;
-		S.Pos = P.Muzzle;
+		S.Pos = Muzzle;
 		S.Vel = Delta / FlightTime + FVector(0.f, 0.f, 0.5f * Gravity * FlightTime);
 		S.Life = FlightTime + 0.8f;
 		S.PlayerSide = P.PlayerSide;
 		Shots.Add(S);
 
-		if (APointLight* Flash = GetWorld()->SpawnActor<APointLight>(P.Muzzle, FRotator::ZeroRotator, Params))
-		{
-			UPointLightComponent* Light = Cast<UPointLightComponent>(Flash->GetLightComponent());
-			Light->SetMobility(EComponentMobility::Movable);
-			Light->SetCastShadows(false);
-			Light->SetLightColor(FLinearColor(1.f, 0.54f, 0.19f));
-			Light->SetIntensity(45000.f);
-			Light->SetAttenuationRadius(700.f);
-			Flash->SetLifeSpan(0.075f);
-		}
 		if (MuzzleEffectClass)
 		{
-			if (AActor* Fx = GetWorld()->SpawnActor<AActor>(MuzzleEffectClass, P.Muzzle, S.Vel.Rotation(), Params))
+			if (AActor* Fx = GetWorld()->SpawnActor<AActor>(MuzzleEffectClass, Muzzle, S.Vel.Rotation(), Params))
 			{
 				Fx->SetLifeSpan(4.f);
 			}
@@ -264,9 +375,12 @@ void ADCGunnery::Tick(float DeltaSeconds)
 	{
 		FShot& S = Shots[i];
 		bool bHitTarget = false;
+		bool bCreatureHit = false;
+		FVector ImpactNormal = FVector::UpVector;
 		bool bSplash = false;
 		FCollisionQueryParams Query(SCENE_QUERY_STAT(DCGunShot), false, this);
 		if (GunShip.IsValid()) { Query.AddIgnoredActor(GunShip.Get()); }
+		IgnoreInactiveWater(GetWorld(), Query);
 		// Limit step length so fast shots cannot skip small targets at low frame rates.
 		float Remaining = FMath::Min(DeltaSeconds, S.Life);
 		while (Remaining > UE_SMALL_NUMBER && !bHitTarget && !bSplash)
@@ -293,26 +407,35 @@ void ADCGunnery::Tick(float DeltaSeconds)
 			}
 			FHitResult Hit;
 			bool bGeometry = GetWorld()->LineTraceSingleByChannel(Hit, Previous, S.Pos, ECC_Visibility, Query);
-			// In the maelstrom the open sea is hidden but its flat sheet at sea level still stops a trace. A ball fired
-			// down the bowl's slope burst on it a few metres from the ship's side and never reached anything below her.
-			if (bGeometry && Maelstrom && FMath::Abs(Hit.ImpactPoint.Z - SeaLevelZ) < 25.f && Hit.ImpactNormal.Z > 0.95f)
+			if (bGeometry) { S.Pos = Hit.ImpactPoint; ImpactNormal = Hit.ImpactNormal; }
+			bHitTarget = bGeometry;
+			FVector HostilePoint;
+			int32 Hostile = TraceHostile(Treadmill, Previous, S.Pos, HostilePoint);
+			if (Hostile == INDEX_NONE && bGeometry && Treadmill)
 			{
-				static const bool bGunLogSheet = FParse::Param(FCommandLine::Get(), TEXT("DCGunLog"));
-				if (bGunLogSheet) { UE_LOG(LogDC, Log, TEXT("Shot passed the hidden sea sheet (%s.%s)"), *GetNameSafe(Hit.GetActor()), *GetNameSafe(Hit.GetComponent())); }
-				bGeometry = false;
+				// A creature's authored collider may extend beyond its fallback target sphere.
+				for (int32 Target = 0; Target < Treadmill->NumObjects(); ++Target)
+				{
+					if (Treadmill->GetHostileActor(Target) == Hit.GetActor())
+					{ Hostile = Target; HostilePoint = S.Pos; break; }
+				}
 			}
-			if (bGeometry) { S.Pos = Hit.ImpactPoint; }
-			bHitTarget = (Treadmill && Treadmill->DamageNear(S.Pos, 250.f, 1.f, true) > 0) || bGeometry;
+			if (Hostile != INDEX_NONE)
+			{
+				S.Pos = HostilePoint;
+				ImpactNormal = -S.Vel.GetSafeNormal();
+				Treadmill->DamageObject(Hostile, 1.f);
+				bHitTarget = true;
+				bCreatureHit = true;
+				bSplash = false;
+			}
 			const float SurfaceZ = Maelstrom ? Maelstrom->SampleSurfaceWorld(S.Pos) : SeaLevelZ;
 			if (bGeometry && S.Pos.Z > SurfaceZ + 10.f) { bSplash = false; }
 		}
 		S.Life -= DeltaSeconds;
 		if (bHitTarget || bSplash || S.Life <= 0.f)
 		{
-			if (bSplash && !bHitTarget && Treadmill)
-			{
-				bHitTarget = Treadmill->DamageNear(S.Pos, HitRadius, 1.f, false) > 0;
-			}
+			// Water misses do not deal area damage to creatures or rocks.
 			if (S.PlayerSide != EDCSide::None && (bHitTarget || bSplash))
 			{
 				const int32 Index = S.PlayerSide == EDCSide::Port ? 0 : 1;
@@ -322,8 +445,15 @@ void ADCGunnery::Tick(float DeltaSeconds)
 			}
 			static const bool bGunLog = FParse::Param(FCommandLine::Get(), TEXT("DCGunLog"));
 			if (bGunLog) { UE_LOG(LogDC, Log, TEXT("Shot ended at %s: hit %d splash %d life %.2f"), *S.Pos.ToCompactString(), bHitTarget, bSplash, S.Life); }
-			if (bSplash) { Splashes.Add({S.Pos, 0.f}); }
-			if (ImpactEffectClass && (bHitTarget || bSplash))
+			UParticleSystem* Effect = bHitTarget ? (bCreatureHit ? CreatureImpact.Get() : StoneImpact.Get()) : (bSplash ? WaterImpact.Get() : nullptr);
+			if (Effect)
+			{
+				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), Effect, S.Pos,
+					bHitTarget ? FRotationMatrix::MakeFromZ(ImpactNormal).Rotator() : FRotator::ZeroRotator,
+					FVector(bHitTarget ? 0.55f : 0.7f));
+			}
+			else if (bSplash && !bHitTarget) { Splashes.Add({S.Pos, 0.f}); }
+			else if (ImpactEffectClass && bHitTarget)
 			{
 				if (AActor* Fx = GetWorld()->SpawnActor<AActor>(ImpactEffectClass, S.Pos, FRotator::ZeroRotator, Params))
 				{
@@ -339,8 +469,6 @@ void ADCGunnery::Tick(float DeltaSeconds)
 	Trails->ClearInstances();
 	for (const FShot& S : Shots)
 	{
-		const FVector Direction = S.Vel.GetSafeNormal();
-		Trails->AddInstance(FTransform(Direction.Rotation(), S.Pos - Direction * 70.f, FVector(1.3f, 0.05f, 0.05f)), true);
 		Balls->AddInstance(FTransform(FQuat::Identity, S.Pos, FVector(0.3f)), true);
 	}
 
@@ -368,3 +496,59 @@ void ADCGunnery::Tick(float DeltaSeconds)
 		}
 	}
 }
+
+#if !UE_BUILD_SHIPPING
+void ADCGunnery::TickVerification()
+{
+	// Opt-in integration scenario in the actual ship/map, never used in normal play.
+	const float Time = GetWorld()->GetTimeSeconds();
+	if (VerificationStage == 0 && Time > 1.f)
+	{
+		VerificationStage = 1;
+		UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>();
+		Crew->ExecuteOrder(TEXT("Marlow, man the starboard guns"));
+		Crew->ExecuteOrder(TEXT("Odessa, man the starboard guns"));
+		const int32 Marlow = Crew->FindCrewGun(EDCSide::Starboard, TEXT("Marlow"));
+		const int32 Odessa = Crew->FindCrewGun(EDCSide::Starboard, TEXT("Odessa"));
+		auto Check = [this](bool bPassed, const TCHAR* What)
+		{
+			UE_LOG(LogDC, Display, TEXT("CANNON VERIFY %s: %s"), bPassed ? TEXT("PASS") : TEXT("FAIL"), What);
+			bVerificationFailed |= !bPassed;
+		};
+		Check(Marlow != INDEX_NONE && Odessa != INDEX_NONE && Marlow != Odessa, TEXT("two crew have distinct guns on one side"));
+		Crew->ExecuteOrder(TEXT("Marlow, repair the rigging"));
+		Crew->ExecuteOrder(TEXT("Marlow, man the starboard guns"));
+		Check(Crew->FindCrewGun(EDCSide::Starboard, TEXT("Marlow")) == Marlow, TEXT("gun reservation survives repair duty"));
+		const FDCStation* M = Crew->GetStation(Marlow);
+		const FDCStation* O = Crew->GetStation(Odessa);
+		Check(M && O && M->GunIndex != GetPlayerGun(EDCSide::Starboard) && O->GunIndex != GetPlayerGun(EDCSide::Starboard), TEXT("crew never take the player gun"));
+		const int32 Before = Pending.Num();
+		Check(FireGun(GetPlayerGun(EDCSide::Port), FVector(0.f, -8000.f, SeaLevelZ), true), TEXT("player port gun fires"));
+		Check(FireGun(GetPlayerGun(EDCSide::Starboard), FVector(0.f, 8000.f, SeaLevelZ), true), TEXT("player starboard gun fires independently"));
+		Check(Pending.Num() == Before + 2, TEXT("one ball queued per trigger"));
+		Check(!FireGun(GetPlayerGun(EDCSide::Starboard), FVector(0.f, 8000.f, SeaLevelZ), true), TEXT("same gun cannot bypass reload"));
+		Check(M && O && IsGunReady(M->GunIndex) && IsGunReady(O->GunIndex), TEXT("player reload does not lock crew guns"));
+		Check(M && !FireGun(M->GunIndex, FVector(0.f, 8000.f, SeaLevelZ), true), TEXT("player cannot fire an NPC gun"));
+		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		AActor* Target = GetWorld()->SpawnActor<AActor>(FVector(0.f, 5000.f, SeaLevelZ + 1200.f), FRotator::ZeroRotator, Params);
+		UStaticMeshComponent* Mesh = NewObject<UStaticMeshComponent>(Target);
+		Target->SetRootComponent(Mesh);
+		Mesh->SetStaticMesh(LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere")));
+		Mesh->SetCollisionProfileName(TEXT("BlockAll"));
+		Mesh->RegisterComponent();
+		Target->SetActorLocation(FVector(0.f, 5000.f, SeaLevelZ + 1200.f));
+		Target->SetActorScale3D(FVector(4.f));
+		VerificationTarget = Target;
+		ADCTreadmill::Get(this)->AddExternalHostile(Target, 200.f, 1.f, true);
+	}
+	else if (VerificationStage == 1 && Time > 12.f)
+	{
+		VerificationStage = 2;
+		bVerificationFailed |= VerificationTarget.IsValid();
+		UE_LOG(LogDC, Display, TEXT("CANNON VERIFY %s: NPCs walk to their guns and damage a real collision target"), VerificationTarget.IsValid() ? TEXT("FAIL") : TEXT("PASS"));
+		UE_LOG(LogDC, Display, TEXT("CANNON VERIFICATION %s"), bVerificationFailed ? TEXT("FAILED") : TEXT("PASSED"));
+		FPlatformMisc::RequestExitWithStatus(false, bVerificationFailed ? 1 : 0);
+	}
+}
+#endif
