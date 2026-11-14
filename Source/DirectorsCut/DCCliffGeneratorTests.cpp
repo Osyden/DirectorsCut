@@ -118,4 +118,40 @@ bool FDCCliffWaterContactTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("Upper triangle follows the mesh diagonal"),FMath::Abs(Upper.Z-400.f)<.1f);
     return true;
 }
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDCFirstReceivingWaterTest,"DirectorsCut.Maelstrom.FirstReceivingWaterContact",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FDCFirstReceivingWaterTest::RunTest(const FString& Parameters)
+{
+    using namespace DCCliffGenerator;
+    const auto Water=[](const FVector2D& P,float& Height)
+    {
+        if(P.SizeSquared()>100.f || P.SizeSquared()<1.f) { return false; }
+        Height=0.f; return true;
+    };
+    const auto SideEntry=FirstWaterContact([](float T){return FVector(20.f-15.f*T,0,-5);},Water);
+    TestTrue(TEXT("Extrapolated water outside coverage cannot become a contact"),SideEntry.bFound && FMath::Abs(SideEntry.Progress-2.f/3.f)<.00001f);
+    TestTrue(TEXT("Submerged side-entry endpoint is not lifted into an upward curl"),FMath::Abs(SideEntry.Position.Z+5.f)<.001f);
+    TestTrue(TEXT("Impact can use mean water separately from the core endpoint"),SideEntry.WaterHeight==0.f);
+
+    const auto DipThenRise=FirstWaterContact([](float T){return FVector(5,0,1000.f*(1.f-4.f*T+3.f*T*T));},Water);
+    TestTrue(TEXT("First intersection wins over a later upward return"),DipThenRise.bFound && FMath::Abs(DipThenRise.Progress-1.f/3.f)<.00001f);
+    const auto NeverCovered=FirstWaterContact([](float T){return FVector(20,0,-T*100.f);},Water);
+    TestFalse(TEXT("A path entirely outside the water mesh has no receiving contact"),NeverCovered.bFound);
+
+    bool BranchesCovered=true,NoEarlierContact=true;
+    for(int32 Lane=0;Lane<33;++Lane)
+    {
+        const float Across=(Lane-16)*.18f;
+        const auto Path=[Across](float T){return FVector(20.f-15.f*T,Across,50.f-80.f*T);};
+        const auto Hit=FirstWaterContact(Path,Water);
+        float H=0.f;
+        BranchesCovered &= Hit.bFound && Water(FVector2D(Hit.Position),H) && Hit.Position.Z<=H;
+        const FVector Earlier=Path(FMath::Max(0.f,Hit.Progress-.0001f));
+        NoEarlierContact &= !Water(FVector2D(Earlier),H) || Earlier.Z>H;
+    }
+    TestTrue(TEXT("All lateral branch endpoints lie in covered water at or below mean surface"),BranchesCovered);
+    TestTrue(TEXT("Lateral branch paths stop at first entry"),NoEarlierContact);
+    return true;
+}
 #endif

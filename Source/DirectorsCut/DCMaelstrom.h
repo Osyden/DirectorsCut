@@ -74,7 +74,10 @@ private:
 	float PreviousFallTraceDistance = -1.f;
 	float AppliedFallTraceDistance = -1.f;
 	TWeakObjectPtr<class ACameraActor> FallReviewCamera;
-	struct FWaterFeed { FVector Foot; float Width; float Seed; TArray<FVector2D> Trail; FVector Lip = FVector::ZeroVector; int32 SourceIndex = INDEX_NONE; };
+	struct FWaterFeed { FVector Foot; float Width; float Seed; TArray<FVector2D> Trail; FVector Lip = FVector::ZeroVector; int32 SourceIndex = INDEX_NONE;
+		float ContactV=0.f; FVector ContactPoint=FVector::ZeroVector; };
+	bool SampleReceivingWater(const FVector2D& Point,float& OutMeanHeight) const;
+	FVector SampleWaterfallCorePoint(float Angle,float V,float Across=0.f) const;
 	TArray<FWaterFeed> WaterFeeds;
 	UPROPERTY() TObjectPtr<UProceduralMeshComponent> Whitewater;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> WhitewaterMID;

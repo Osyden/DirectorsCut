@@ -39,6 +39,27 @@ FVector2D CurrentAt(const FVector2D& P,float Radius)
 }
 }
 
+bool ADCMaelstrom::SampleReceivingWater(const FVector2D& Point,float& OutMeanHeight) const
+{
+    const float R=Point.Size();
+    if(R<120.f || R>WaterEdgeRadius(FMath::Atan2(Point.Y,Point.X))) { return false; }
+    OutMeanHeight=HeightAt(Point,false);
+    return true;
+}
+
+FVector ADCMaelstrom::SampleWaterfallCorePoint(float Angle,float V,float Across) const
+{
+    const FProcMeshSection* Section=Cliffs ? Cliffs->GetProcMeshSection(0) : nullptr;
+    if(!Section || Section->ProcVertexBuffer.Num()!=(DCCliffGenerator::MeshSectors+1)*(DCCliffGenerator::MeshRows+1))
+    { return FVector::ZeroVector; }
+    const auto VertexAt=[Section](int32 Side,int32 Row)
+    { return Section->ProcVertexBuffer[Row*(DCCliffGenerator::MeshSectors+1)+Side].Position; };
+    const FVector Center=DCCliffGenerator::SampleRenderedSurface(Angle,V,VertexAt);
+    const float SampleAngle=Angle+Across/FMath::Max(Center.Size2D(),1.0);
+    return DCCliffGenerator::SampleRenderedSurface(SampleAngle,V,VertexAt)
+        +DCCliffGenerator::WaterContactOffset(SampleAngle,V);
+}
+
 void ADCMaelstrom::BuildWhitewater()
 {
     FRandomStream Random(71421);
@@ -50,6 +71,7 @@ void ADCMaelstrom::BuildWhitewater()
         TEXT("Whitewater requires the generated cliff mesh"))) { return; }
     const auto CliffVertex=[&](int32 Side,int32 Row)
     { return CliffSection->ProcVertexBuffer[Row*(CliffSectors+1)+Side].Position; };
+    const auto ReceivingWater=[this](const FVector2D& P,float& H) { return SampleReceivingWater(P,H); };
     float MinimumCoreClearance=MAX_flt;
     // Narrow, unequal tributaries enter at distinct points along the course.
     // Their width remains metres even where the fall is hundreds of metres tall.
@@ -60,20 +82,28 @@ void ADCMaelstrom::BuildWhitewater()
         if(W<=0.f) { continue; }
         const float Edge=WaterEdgeRadius(Angle);
         if(Edge>GetRimRadius(Angle)*.97f) { continue; }
-        const FVector2D End=FVector2D(FMath::Cos(Angle),FMath::Sin(Angle))*(Edge-900.f);
         const float StartAngle=Angle;
         const FVector StartSurface=DCCliffGenerator::SampleRenderedSurface(StartAngle,.84f,CliffVertex);
         // Increasing sample angle moves in the positive circumferential direction.
         // The old endpoint used the opposite vector and twisted the last6%.
         const FVector2D Across(-FMath::Sin(Angle),FMath::Cos(Angle));
         const float Seed=Random.FRand();
+        const auto Contact=DCCliffGenerator::FirstWaterContact(
+            [&](float T){return SampleWaterfallCorePoint(Angle,.84f*(1.f-T));},ReceivingWater);
+        if(!ensureMsgf(Contact.bFound,TEXT("Waterfall source has no covered receiving-water contact"))) { continue; }
         FWaterFeed& Source=WaterFeeds.AddDefaulted_GetRef();
         Source.SourceIndex=Feed;
-        Source.Foot=FVector(End,HeightAt(End)); Source.Width=W; Source.Seed=Seed;
+        Source.ContactV=.84f*(1.f-Contact.Progress); Source.ContactPoint=Contact.Position;
+        Source.Foot=FVector(FVector2D(Contact.Position),Contact.WaterHeight); Source.Width=W; Source.Seed=Seed;
         Source.Lip=StartSurface;
-        FVector2D Drift=End;
+        UE_LOG(LogTemp,Display,TEXT("DC_WATERFALL_RECEIVING_CONTACT feed=%d V=%.7f core=%s surface=%s submerged_depth_cm=%.2f coverage_margin_cm=%.3f"),
+            Feed,Source.ContactV,*Source.ContactPoint.ToCompactString(),*Source.Foot.ToCompactString(),
+            Source.Foot.Z-Source.ContactPoint.Z,WaterEdgeRadius(FMath::Atan2(Source.Foot.Y,Source.Foot.X))-Source.Foot.Size2D());
+        FVector2D Drift(Source.Foot);
         for(int32 Step=0;Step<24;++Step)
         {
+            float MeanHeight=0.f;
+            if(!SampleReceivingWater(Drift,MeanHeight)) { break; }
             Source.Trail.Add(Drift);
             Drift+=CurrentAt(Drift,Radius)*1.2f;
         }
@@ -94,6 +124,44 @@ void ADCMaelstrom::BuildWhitewater()
                 const float R=DCCliffGenerator::SampleRenderedSurface(Angle,SurfaceV,CliffVertex).Size2D();
                 return FStreamSection{U,Bend,Width,R,Angle+Bend/FMath::Max(R,1.f)};
             };
+            // Track first contact across the complete branch width, not just
+            // its centre. A sloping shoreline reaches each part at a different V.
+            constexpr int32 ContactTracks=33;
+            TArray<float,TInlineAllocator<ContactTracks>> ContactVs;
+            bool bAllContactsValid=true;
+            float LowestEndpointClearance=MAX_flt,HighestEndpointClearance=-MAX_flt;
+            for(int32 Track=0;Track<ContactTracks;++Track)
+            {
+                const float Side=2.f*Track/(ContactTracks-1)-1.f;
+                const auto Hit=DCCliffGenerator::FirstWaterContact([&](float T)
+                {
+                    const float SurfaceV=.84f*(1.f-T);
+                    const FStreamSection S=StreamSection(SurfaceV);
+                    return SampleWaterfallCorePoint(Angle,SurfaceV,S.Bend+Side*S.Width);
+                },ReceivingWater);
+                ContactVs.Add(Hit.bFound ? .84f*(1.f-Hit.Progress) : .84f);
+                float MeanHeight=0.f;
+                const bool bCovered=Hit.bFound && SampleReceivingWater(FVector2D(Hit.Position),MeanHeight);
+                const float Clearance=bCovered ? Hit.Position.Z-MeanHeight : MAX_flt;
+                bAllContactsValid &= bCovered && Clearance<=.1f;
+                if(bCovered)
+                {
+                    LowestEndpointClearance=FMath::Min(LowestEndpointClearance,Clearance);
+                    HighestEndpointClearance=FMath::Max(HighestEndpointClearance,Clearance);
+                }
+            }
+            if(!ensureMsgf(bAllContactsValid,TEXT("Waterfall branch endpoint lies outside covered receiving water"))) { continue; }
+            const auto ContactVAt=[&](const FVector2D& Parameter)
+            {
+                const FStreamSection S=StreamSection(Parameter.Y);
+                const float Side=(Parameter.X-S.Angle)*S.Radius/FMath::Max(2.f*S.Width,1.f)+.5f;
+                const float Track=FMath::Clamp(Side,0.f,1.f)*(ContactTracks-1);
+                const int32 Index=FMath::Min(FMath::FloorToInt(Track),ContactTracks-2);
+                return FMath::Lerp(ContactVs[Index],ContactVs[Index+1],Track-Index);
+            };
+            UE_LOG(LogTemp,Display,TEXT("DC_WATERFALL_FIRST_CONTACT feed=%d branch=%d tracks=%d V=%.6f..%.6f endpoint_mean_clearance_cm=%.2f..%.2f covered=1"),
+                Feed,Branch,ContactTracks,FMath::Min(ContactVs[0],ContactVs.Last()),FMath::Max(ContactVs[0],ContactVs.Last()),
+                LowestEndpointClearance,HighestEndpointClearance);
             constexpr int32 PathSteps=144;
             TArray<float,TInlineAllocator<PathSteps+1>> Distances;
             FVector Previous=FVector::ZeroVector;
@@ -103,7 +171,6 @@ void ADCMaelstrom::BuildWhitewater()
                 const FStreamSection Stream=StreamSection(SurfaceV);
                 FVector P=DCCliffGenerator::SampleRenderedSurface(Stream.Angle,SurfaceV,CliffVertex)
                     +DCCliffGenerator::WaterContactOffset(Stream.Angle,SurfaceV);
-                P=FMath::Lerp(P,Source.Foot+FVector(Across*Stream.Bend,40.f),FMath::SmoothStep(.94f,1.f,Stream.U));
                 Distances.Add(Step ? Distances.Last()+FVector::Dist(P,Previous) : 0.f);
                 Previous=P;
             }
@@ -122,13 +189,13 @@ void ADCMaelstrom::BuildWhitewater()
                     FVector Sample=Corner.Position+DCCliffGenerator::WaterContactOffset(SampleAngle,Corner.Parameter.Y);
                     if(Stream.U<.94f)
                     { MinimumCoreClearance=FMath::Min(MinimumCoreClearance,static_cast<float>(FVector::DotProduct(Sample-Corner.Position,RockNormal))); }
-                    Sample=FMath::Lerp(Sample,Source.Foot+FVector(Across*(Stream.Bend+SideOffset),40.f),FMath::SmoothStep(.94f,1.f,Stream.U));
                     const float Path=Stream.U*PathSteps;
                     const int32 Step=FMath::Min(FMath::FloorToInt(Path),PathSteps-1);
                     const float Distance=FMath::Lerp(Distances[Step],Distances[Step+1],Path-Step);
                     V.Add(Sample);
                     UV.Add(FVector2D(X,Distance*.01f));
-                    C.Add(FLinearColor(Stream.Width/10000.f,BranchSeed,Stream.U,1.f).ToFColor(false));
+                    const float Progress=FMath::Clamp(Stream.U/FMath::Max(.001f,1.f-ContactVAt(Corner.Parameter)/.84f),0.f,1.f);
+                    C.Add(FLinearColor(Stream.Width/10000.f,BranchSeed,Progress,1.f).ToFColor(false));
                 }
                 const FVector WaterNormal=FVector::CrossProduct(V[First+2]-V[First],V[First+1]-V[First]).GetSafeNormal();
                 const FProcMeshTangent Tangent(FVector(Across,0.f),false);
@@ -158,6 +225,9 @@ void ADCMaelstrom::BuildWhitewater()
                     ClipCorePolygon(Polygon,[](const FVector2D& P){return .84f-static_cast<float>(P.Y);});
                     ClipCorePolygon(Polygon,[&](const FVector2D& P){const FStreamSection S=StreamSection(P.Y); return static_cast<float>(P.X-S.Angle)*S.Radius+S.Width;});
                     ClipCorePolygon(Polygon,[&](const FVector2D& P){const FStreamSection S=StreamSection(P.Y); return S.Width-static_cast<float>(P.X-S.Angle)*S.Radius;});
+                    // Discard everything beyond first contact, including any
+                    // later upward curl or re-emergence of the underlying rock.
+                    ClipCorePolygon(Polygon,[&](const FVector2D& P){return static_cast<float>(P.Y)-ContactVAt(P);});
                     for(int32 Corner=1;Corner+1<Polygon.Num();++Corner)
                     { AddTriangle(Polygon[0],Polygon[Corner],Polygon[Corner+1]); }
                 }
@@ -186,15 +256,23 @@ void ADCMaelstrom::BuildWhitewater()
                 +Direction*Random.FRandRange(-350.f,900.f);
             const int32 First=V.Num();
             constexpr int32 Rows=8,Cols=12;
+            TArray<bool,TInlineAllocator<(Rows+1)*(Cols+1)>> Covered;
             for(int32 Y=0;Y<=Rows;++Y) for(int32 X=0;X<=Cols;++X)
             {
                 const float U=static_cast<float>(X)/Cols,T=static_cast<float>(Y)/Rows;
                 const FVector2D P=FVector2D(Feed.Foot)+Offset+Across*((U-.5f)*Width*2.f)
                     +Direction*(T*H*1.4f);
                 const float Crown=.45f+.55f*FMath::Sin(U*UE_PI);
-                V.Add(FVector(P,HeightAt(P)+40.f+FMath::Sin(T*UE_PI)*H*Crown));
+                float MeanHeight=Feed.Foot.Z;
+                Covered.Add(SampleReceivingWater(P,MeanHeight));
+                V.Add(FVector(P,MeanHeight+40.f+FMath::Sin(T*UE_PI)*H*Crown));
                 UV.Add(FVector2D(U,T)); C.Add(FLinearColor(1.f,FMath::Frac(Feed.Seed+Fan*.173f),0.f,.48f).ToFColor(false));
-                if(Y<Rows && X<Cols) { const int32 A=First+Y*(Cols+1)+X,B=A+Cols+1; I.Append({A,B,A+1,A+1,B,B+1}); }
+            }
+            for(int32 Y=0;Y<Rows;++Y) for(int32 X=0;X<Cols;++X)
+            {
+                const int32 A=Y*(Cols+1)+X,B=A+Cols+1;
+                if(Covered[A] && Covered[B] && Covered[A+1] && Covered[B+1])
+                { I.Append({First+A,First+B,First+A+1,First+A+1,First+B,First+B+1}); }
             }
         }
     }
@@ -223,7 +301,9 @@ void ADCMaelstrom::UpdateWhitewater()
             const float A=FMath::FRand()*UE_TWO_PI;
             const float R=FMath::FRandRange(0.f,Feed.Width*.75f);
             const FVector2D P=FVector2D(Feed.Foot)+FVector2D(FMath::Cos(A),FMath::Sin(A))*R;
-            ContactParticles.Add({FVector(P,HeightAt(P)+80.f),
+            float MeanHeight=0.f;
+            if(!SampleReceivingWater(P,MeanHeight)) { continue; }
+            ContactParticles.Add({FVector(P,MeanHeight+80.f),
                 FVector(Velocity*.45f+FVector2D(FMath::FRandRange(-400.f,400.f),FMath::FRandRange(-400.f,400.f)),FMath::FRandRange(650.f,1550.f)),
                 0.f,FMath::FRandRange(1.f,2.5f),FMath::FRandRange(3.f,16.f)});
         }

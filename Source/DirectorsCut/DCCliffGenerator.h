@@ -9,6 +9,38 @@ namespace DCCliffGenerator
     inline constexpr int32 MeshSectors=1536,MeshRows=160;
     inline constexpr float TempleAngles[]={-143.f,-109.f,-76.f,-38.f,2.f,38.f,77.f,112.f,144.f};
 
+    struct FFirstWaterContact
+    {
+        bool bFound=false;
+        float Progress=1.f,WaterHeight=0.f;
+        FVector Position=FVector::ZeroVector;
+    };
+
+    /** Stop at first entry into covered water, including a submerged side entry.
+     * Never lift Position to WaterHeight: that recreates the terminal curl. */
+    template<typename PathSampler,typename WaterSampler>
+    inline FFirstWaterContact FirstWaterContact(const PathSampler& Path,const WaterSampler& WaterAt,int32 Steps=2048)
+    {
+        const auto Submerged=[&](float T,FVector& P,float& Height)
+        { P=Path(T); return WaterAt(FVector2D(P),Height) && P.Z<=Height; };
+        FVector P; float Height=0.f;
+        if(Submerged(0.f,P,Height)) { return {true,0.f,Height,P}; }
+        for(int32 Step=1;Step<=Steps;++Step)
+        {
+            float High=static_cast<float>(Step)/Steps;
+            if(!Submerged(High,P,Height)) { continue; }
+            float Low=static_cast<float>(Step-1)/Steps;
+            for(int32 Iteration=0;Iteration<20;++Iteration)
+            {
+                const float Mid=(Low+High)*.5f;
+                if(Submerged(Mid,P,Height)) { High=Mid; } else { Low=Mid; }
+            }
+            Submerged(High,P,Height);
+            return {true,High,Height,P};
+        }
+        return {};
+    }
+
     /** Interpolate the same diagonal as BuildTerrain, not the analytic surface
      * between its vertices. VertexAt(Side,Row) may read the rendered section. */
     template<typename VertexSampler>
