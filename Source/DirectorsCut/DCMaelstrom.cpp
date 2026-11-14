@@ -937,7 +937,7 @@ void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
 		{
 			// The tunnel stood on end: its long axis upright, turning as it comes. 260 m high and 70 m through at the least.
 			const float Scale = Height / 282.f * FMath::Lerp(0.45f, 1.f, Rise);
-			A->SetActorTransform(FTransform(FRotator(0.f, Director->RideTime * 70.f, 90.f), Foot, FVector(Scale)));
+			A->SetActorTransform(FTransform(FRotator(0.f, Director->RideTime * 70.f, 90.f), Foot, FVector(Scale * 0.62f, Scale, Scale * 0.62f)));
 			if (UHeterogeneousVolumeComponent* C = A->FindComponentByClass<UHeterogeneousVolumeComponent>())
 			{
 				// Wherever the turned volume's box has landed, stand it with its foot on the water at Foot.

@@ -2,6 +2,10 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 07:01 Claude: waterspout narrower
+
+- At 4K the spout near the ship was a slab a third of the view wide. It is now 0.62 as wide for the same height (about 70 m through at 400 m tall): a column, with the bowl seen either side of it. `review/50-waterspout/20-narrower-304-to-312s.png`. Its strike width is unchanged (26 m either side).
+
 ## 14 Nov 06:59 Claude: 4K speed with everything in
 
 - True 3840x2160, editor build, bot captain: open sea with the wall close 71 to 77 fps, entering the tunnel 56, inside 67, city 91 to 98 (74 with a giant throwing), maelstrom 55 to 61 with a spout up and 43 to 45 in single frames as it passes the ship.
