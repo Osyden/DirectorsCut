@@ -80,6 +80,18 @@ bool FDCCliffGeneratorTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("Fractured escarpment includes near-vertical local faces"),SteepSamples>FaceSamples*.10f);
     const float RadialRange=MaxFaceRadius-MinFaceRadius;
     TestTrue(TEXT("Rock masses vary without becoming crater-wide shelves"),RadialRange>2000.f && RadialRange<(Sections[0].LipRadius-Sections[0].ToeRadius)*.60f);
+    float MaxRelief=0.f,AcrossChange=0.f,UpChange=0.f;
+    for(int32 Side=0;Side<256;++Side) for(int32 Row=8;Row<56;++Row)
+    {
+        const float A=Side/256.f,T=Row/64.f;
+        const float Offset=FaceRelief(A,T).Offset;
+        MaxRelief=FMath::Max(MaxRelief,FMath::Abs(Offset));
+        // Approximately equal 10m steps on a 10km circumference / 500m face.
+        AcrossChange+=FMath::Abs(FaceRelief(A+.001f,T).Offset-Offset);
+        UpChange+=FMath::Abs(FaceRelief(A,T+.02f).Offset-Offset);
+    }
+    TestTrue(TEXT("Local fracture projection stays below 25m, not giant cap shelves"),MaxRelief<2500.f);
+    TestTrue(TEXT("Fracture relief persists vertically rather than making horizontal shelves"),AcrossChange>UpChange*2.f);
     return true;
 }
 

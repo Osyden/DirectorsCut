@@ -110,7 +110,12 @@ namespace DCCliffGenerator
     // hundred-metre clay shelves; fracture volumes now establish the faces.
     inline float FormationProfile(float A,float T)
     {
-        return .72f*T+.28f*T*T+.055f*Facet(A,1.9f,17)*FMath::Sin(T*UE_PI);
+        // A continuous battered foot and shoulder surround a steeper main
+        // escarpment. The old nearly linear radial ramp was a cone once its
+        // giant overhangs were removed. Vary the inflection height around the
+        // crater; no shared horizontal ledge or discontinuous radial terrace.
+        const float Phase=.85f*Facet(A,1.9f,17);
+        return T+.14f*(FMath::Sin(T*UE_TWO_PI+Phase)-FMath::Sin(Phase));
     }
 
     inline float FractureMass(float A,float T,int32 Period,float HeightCells,float Amplitude)
@@ -137,12 +142,28 @@ namespace DCCliffGenerator
 
     inline FFaceRelief FaceRelief(float A,float T)
     {
-        const float Major=FractureMass(A,T,23,3.7f,21000.f);
-        const float Blocks=FractureMass(A+.0021f,T+.17f,97,11.f,5200.f);
-        const float Chips=FractureMass(A+.0013f,T+.31f,257,31.f,1450.f);
-        // Shadow tint follows exposed fissures between the middle-scale masses.
-        const float Recess=1.f-FMath::SmoothStep(250.f,1700.f,Blocks);
-        return {-Major-Blocks-Chips,Recess};
+        // The rejected 23-cell masses projected ~90m and put several hundred
+        // metres of horizontal cap on each block. Tall, narrower fracture
+        // volumes retain broken planes without turning the crater into shelves.
+        const float Buttresses=FractureMass(A,T,89,1.6f,2100.f);
+        const float Blocks=FractureMass(A+.0021f,T+.17f,227,6.3f,850.f);
+        const float Chips=FractureMass(A+.0013f,T+.31f,509,19.f,240.f);
+        // Unequally spaced joints continue vertically across those volumes.
+        // A V-shaped eroded cleft retreats into the rock; it is not another
+        // horizontal band. Physical widths are roughly 15-25m on the far rim.
+        constexpr int32 JointCount=83;
+        const float X=A*JointCount;
+        const int32 Cell=FMath::FloorToInt(X);
+        float Erosion=0.f;
+        for(int32 I=Cell-1;I<=Cell+1;++I)
+        {
+            const float H0=Hash(I,71,JointCount),H1=Hash(I,73,JointCount),H2=Hash(I,79,JointCount);
+            const float Drift=(H1-.5f)*.32f*(T-.5f)+.035f*FMath::Sin(T*5.f+H2*6.f);
+            const float Distance=FMath::Abs(X-(I+.15f+.70f*H0+Drift));
+            const float Cut=FMath::Max(0.f,1.f-Distance/(.08f+.10f*H2));
+            Erosion=FMath::Max(Erosion,Cut*(350.f+650.f*H1));
+        }
+        return {-Buttresses-Blocks-Chips+Erosion,FMath::Clamp(Erosion/1000.f,0.f,1.f)};
     }
 
     inline float Joint(float Around,float Height)
