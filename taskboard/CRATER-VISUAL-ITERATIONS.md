@@ -2,6 +2,8 @@
 
 User authorized recurring visual improvement and parallel workers. The Codex app heartbeat `directorscut-crater-visual-iterations` is active every 30 minutes in the existing maelstrom chat. This is implementation work with actual render review, not status polling. Latest user feedback takes precedence.
 
+Latest completed continuation: [inlet seam, inner-flow regularity, rendered cliff contact and fitted waterfall review](CRATER-SEAMS-FITTED-FALLS-14NOV.md). The giant triangle and inner star pinch described in the older C review below have been corrected; waterfall quality and the broad banks remain unfinished.
+
 ## Ownership and priorities
 
 - Integration checkout: `E:/Projects/DirectorsCut/Maelstrom-Saturday`, branch `codex/maelstrom-saturday`. Start checkpoint `e7d7f8b`.
@@ -65,7 +67,7 @@ Pass B entry/descent/exit captures completed and cleared both prototype volume a
 
 ## Next scheduled passes
 
-1. Use final C as the matched baseline. Resolve the lower-descent hanging triangle/pinched water coordinates and the close cliff's blocky planes/dark ledge crossings. Keep the new readable deck-distance fracture structure without turning it into repetitive shelves. Match the reference's readable fractured walls and skyline architecture. Do not hide defects under more fog.
-2. Fit the original volume to an actual lower cliff segment, with its start attached to a real water core and its impact on the receiving water. Preserve metre-scale voxels. Only then consider multiple independently phased falls.
+1. Use the latest seam/fitted-falls handoff, not the older C defect list. Preserve the now-corrected inlet seam and finite inner flow. Resolve the close cliff's blocky planes and physically implausible water wrapping around ledges. Do not hide defects under more fog.
+2. The volume now follows an exported cliff segment, but the receiving-water dip/curl and weak mist-like appearance are not accepted. Trim at the first valid water contact, align impact and foam there, and introduce short detached falling reaches. Only then consider multiple independently phased falls.
 3. Resolve remaining smooth, large white foam patches and the broad hydraulic-bank geometry. The outer shoulder is about 24 m tall/65 m half-width; material tuning alone cannot remove that silhouette. Compare displacement and pixel-normal amplitudes before globally weakening wave detail.
 4. Review continuous deck-camera motion, steering and entry/exit. Measure performance in a dedicated run without another chat using the GPU; current sparse samples are not a benchmark.

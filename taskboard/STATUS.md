@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov Codex scheduled continuation: inlet and water-flow artifacts corrected
+
+- Fixed the angular shoreline discontinuity behind the inlet: the largest sampled neighboring mesh edge drops from 785 m to 12.5 m, retaining 35 m steering clearance. Replaced the singular inner texture backtrace; matched beauty/normal renders confirm the giant stretched triangle and star pinch are gone. [Evidence, captures and next work](CRATER-SEAMS-FITTED-FALLS-14NOV.md).
+- Surface falls now share actual cliff triangles, clear overhangs without upward penetration, and no longer twist at their endpoint. One original VDB is fitted to a measured 234.9 m lower reach, with stable source IDs and matching current/receiving-water samples. It remains opt-in: close renders still show weak mist, overly attached ribbon water, and a submerged dip needing first-contact trimming.
+- Final Editor/Game builds, material generation, native VDB import, three engine tests and the production-source geometry/flow probe pass. Entry/descent/exit captures clear volumes and restore sky/fog. No main merge/package; cloud/sky and early-game code untouched. See the note for screenshot timing limitations and remaining shadow cost.
+
 ## 14 Nov 20:21 Codex: scheduled crater iterations, three workers and measured shader fix
 
 - App automation `directorscut-crater-visual-iterations` is ACTIVE every 30 minutes in the existing maelstrom chat. Three isolated workers contributed cliffs/temple support, water/foam and original procedural VDB generation. [Current handoff, actual rejected captures and next steps](CRATER-VISUAL-ITERATIONS.md).

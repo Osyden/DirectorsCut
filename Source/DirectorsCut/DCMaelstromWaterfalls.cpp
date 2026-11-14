@@ -9,6 +9,7 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/Pawn.h"
+#include "ProceduralMeshComponent.h"
 #include "DCMaelstromRoute.h"
 #include "DCCliffGenerator.h"
 #include "ProceduralMeshComponent.h"
@@ -293,6 +294,9 @@ void ADCMaelstrom::UpdateProceduralFalls()
     }
     if (ACameraActor* Camera = FallReviewCamera.Get())
     {
+        // Isolate the volume from the existing opaque core and impact sheets;
+        // otherwise those can be mistaken for generated spray in a still.
+        if (FParse::Param(FCommandLine::Get(), TEXT("DCFallVolumesOnly"))) { Whitewater->SetVisibility(false); }
         if (ProceduralFalls.Num())
         {
             if (AActor* Fall = ProceduralFalls[0].Actor.Get())
@@ -310,6 +314,8 @@ void ADCMaelstrom::ClearProceduralFalls()
 {
     if (ACameraActor* Camera = FallReviewCamera.Get())
     {
+        if (FParse::Param(FCommandLine::Get(), TEXT("DCFallVolumesOnly")))
+        { Whitewater->SetVisibility(bActive && Elapsed >= -7.f); }
         if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
         {
             if (PC->GetViewTarget() == Camera) { PC->SetViewTarget(PC->GetPawn()); }

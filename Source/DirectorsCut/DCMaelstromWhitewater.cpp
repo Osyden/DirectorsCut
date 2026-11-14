@@ -68,6 +68,7 @@ void ADCMaelstrom::BuildWhitewater()
         const FVector2D Across(-FMath::Sin(Angle),FMath::Cos(Angle));
         const float Seed=Random.FRand();
         FWaterFeed& Source=WaterFeeds.AddDefaulted_GetRef();
+        Source.SourceIndex=Feed;
         Source.Foot=FVector(End,HeightAt(End)); Source.Width=W; Source.Seed=Seed;
         Source.Lip=StartSurface;
         FVector2D Drift=End;
