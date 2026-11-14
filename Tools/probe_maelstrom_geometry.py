@@ -179,6 +179,10 @@ def main():
     code = SHIM + block(engine, "namespace FMathPerlinHelpers") + ";\n"
     code += block(engine, "float FMath::PerlinNoise2D")
     code += block(route, "namespace DCMaelstromRoute")
+    if "DCMaelstromBankWaves::" in breakers:
+        code = code.replace("using int32=int32_t;", "using int32=int32_t; using uint32=uint32_t;")
+        code = code.replace("struct FMath {", "struct FMath { static int32 FloorToInt(float x){return int32(std::floor(x));}")
+        code += block(read("Source/DirectorsCut/DCMaelstromBankWaves.h"), "namespace DCMaelstromBankWaves")
     code += block(source, "float RimVariation")
     for name in ("GetRimRadius", "GetOverflowAmount", "GetRimJoin", "RimElevation", "BaseHeightAt", "HeightAt"):
         code += block(source, "float ADCMaelstrom::" + name)

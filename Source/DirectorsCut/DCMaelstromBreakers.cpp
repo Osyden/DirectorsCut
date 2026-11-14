@@ -1,5 +1,6 @@
 #include "DCMaelstrom.h"
 #include "DCMaelstromRoute.h"
+#include "DCMaelstromBankWaves.h"
 #include "DCRideDirector.h"
 #include "Engine/Texture2D.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -95,7 +96,10 @@ float ADCMaelstrom::BreakerHeight(const FVector2D& Point,float* Foam) const
         Cap=FMath::Max(Cap,(1.f-FMath::SmoothStep(65.f,340.f,FMath::Abs(Across)))*Edge*Broken);
     }
     if(Foam) { *Foam=Cap; }
-    return Height;
+    // Geometry-only bank pass: keep the existing foam source population so the
+    // new packets cannot become a repeated contour/white-ribbon texture.
+    return Height+DCMaelstromBankWaves::Height(Point,Radius,
+        [this](float Angle) { return WaterEdgeRadius(Angle); });
 }
 
 void ADCMaelstrom::UpdateBreakers()

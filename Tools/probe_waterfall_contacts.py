@@ -166,6 +166,8 @@ def main():
     code = make_shim(read("Source/DirectorsCut/DCMaelstrom.h"))
     code += block(engine, "namespace FMathPerlinHelpers") + ";\n" + block(engine, "float FMath::PerlinNoise2D")
     code += block(read("Source/DirectorsCut/DCMaelstromRoute.h"), "namespace DCMaelstromRoute")
+    if "DCMaelstromBankWaves::" in read("Source/DirectorsCut/DCMaelstromBreakers.cpp"):
+        code += block(read("Source/DirectorsCut/DCMaelstromBankWaves.h"), "namespace DCMaelstromBankWaves")
     code += block(read("Source/DirectorsCut/DCCliffGenerator.h"), "namespace DCCliffGenerator")
     code += block(source, "float RimVariation")
     for name in ("GetRimRadius", "GetOverflowAmount", "GetRimJoin", "RimElevation", "BaseHeightAt", "HeightAt", "RimGroundHeight"):
