@@ -41,6 +41,10 @@ private:
 		bool bTargetRegistered = false;
 		bool bBrokenThisCycle = false;
 		bool bStruck = false;
+		bool bEmerged = false;
+		bool bHasWaterContact = false;
+		FVector WaterContact = FVector::ZeroVector;
+		float NextSprayAt = 0.f;
 		float BrokenAt = -1000.f;
 	};
 

@@ -273,16 +273,12 @@ foam_fine_uvs = []
 if foam_texture:
     for index, coordinate in enumerate(("q", "q2")):
         raft_uv = custom(water,NOISE+FLOW+"float2 p="+coordinate+r""";
-// The stream invariant follows the actual 3.5m/s inward, 8m/s tangential flow.
-// An integer angular repeat closes the atan seam. Long cells become ragged
-// 10-30m wide threads, rather than round 83m snow-like islands.
-float radius=max(length(p),60.0);
-float spiralAngle=atan2(p.y,p.x)+(8.0/3.5)*log(radius/900.0);
-float crossWarp=(wn.noise(p*0.027)-0.5)*0.45;
-float2 spiralUV=float2(spiralAngle*(192.0/6.28318530718)+crossWarp,radius/115.0);
-return lerp(spiralUV,float2(p.y/18.0,p.x/105.0),saturate(Tunnel));
+// Distorted planar cells have a physical scale and no angular seam or rings.
+float2 warp=float2(wn.noise(p*0.031),wn.noise(p*0.027+19.3))-0.5;
+float2 cell=float2(p.x*.8+p.y*.6,-p.x*.6+p.y*.8)+warp*13.0;
+return lerp(cell/float2(9.0,17.0),float2(p.y/18.0,p.x/65.0),saturate(Tunnel));
 """,FLOAT2,base_inputs,100+index*100)
-        cell_uv = custom(water,FLOW+"float2 p="+coordinate+"; return float2(p.x*0.8+p.y*0.6,-p.x*0.6+p.y*0.8)/12.0;",FLOAT2,base_inputs,300+index*100)
+        cell_uv = custom(water,FLOW+"float2 p="+coordinate+"; return float2(p.x*0.8+p.y*0.6,-p.x*0.6+p.y*0.8)/4.5;",FLOAT2,base_inputs,300+index*100)
         foam_fine_uvs.append(cell_uv)
         foam_inputs["Raft"+str(index)] = texture_sample(water,"FoamPattern",foam_texture,raft_uv,y=100+index*100)
         foam_inputs["Cells"+str(index)] = texture_sample(water,"FoamPattern",foam_texture,cell_uv,y=300+index*100)
@@ -295,20 +291,19 @@ float shelf=saturate(Flatten)*(1.0-smoothstep(1200.0,3500.0,length(P.xy*float2(0
 crest*=1.0-shelf*0.85;
 float wave=lerp(wn.waves(q,T),wn.waves(q2,T),blend);
 float activeCrest=smoothstep(0.48,0.80,wave);
-float packet0=smoothstep(0.32,0.65,wn.noise(q*0.016+17.0));
-float packet1=smoothstep(0.32,0.65,wn.noise(q2*0.016+17.0));
+float packet0=smoothstep(0.32,0.65,wn.noise(q*0.038+17.0));
+float packet1=smoothstep(0.32,0.65,wn.noise(q2*0.038+17.0));
 float packets=lerp(packet0,packet1,blend);
-float radius=max(length(UV*100.0),60.0);
-float angle=atan2(UV.y,UV.x)+(8.0/3.5)*log(radius/900.0);
-float2 strandFrame=float2(cos(angle),sin(angle))*72.0;
-float strands=smoothstep(0.48,0.73,wn.fbm(strandFrame));
+float strand0=wn.fbm(float2(q.x*.032+q.y*.014,q.y*.011-q.x*.007));
+float strand1=wn.fbm(float2(q2.x*.032+q2.y*.014,q2.y*.011-q2.x*.007));
+float strands=smoothstep(.40,.68,lerp(strand0,strand1,blend));
 float streamBreak=lerp(wn.noise(q*0.025),wn.noise(q2*0.025),blend);
 // Alpha is authored from the upstream rim sector, so a tongue starts beneath
 // a real fall and bends down the basin instead of whitening every rim sector.
 float overflow=saturate(Overflow)*smoothstep(0.18,0.72,Supply)
     *smoothstep(0.42,0.78,VC.g)*(1.0-shelf)
-    *lerp(0.08,1.0,strands)*(0.30+0.70*streamBreak);
-float agitation=(crest*0.92+activeCrest*0.08)*lerp(0.08,1.0,packets);
+    *lerp(0.04,1.0,strands)*smoothstep(.23,.70,streamBreak);
+float agitation=(crest*0.55+activeCrest*0.45)*lerp(0.08,1.0,packets);
 agitation=max(agitation,overflow*0.95);
 """
 if foam_texture:
@@ -340,7 +335,7 @@ if fft_foam:
     if foam_texture:
         live_foam_inputs.update({"C0":foam_inputs["Cells0"],"C1":foam_inputs["Cells1"],"T":time})
         live_foam_code="float blend=abs(frac(T*0.07)*2.0-1.0); float detail=0.40+0.60*lerp(saturate((C0.r-0.014)*2.6),saturate((C1.r-0.014)*2.6),blend);\n"
-    live_foam_code+="float liveWeight=saturate(Enabled)*step(0.5,Count); return max(Fallback,saturate(Live*1.35)*detail*liveWeight);"
+    live_foam_code+="float liveWeight=saturate(Enabled)*step(0.5,Count); return max(Fallback,saturate(Live*.42)*detail*liveWeight);"
     foam=custom(water,live_foam_code,FLOAT,live_foam_inputs,1350)
 color = custom(water, r"""
 float3 body=lerp(float3(0.012,0.043,0.052),float3(0.005,0.020,0.028),saturate(VC.b));

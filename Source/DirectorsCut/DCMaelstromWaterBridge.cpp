@@ -8,6 +8,8 @@
 #include "Materials/MaterialParameterCollection.h"
 #include "Materials/MaterialParameterCollectionInstance.h"
 #include "UObject/UnrealType.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 
 namespace
 {
@@ -47,7 +49,8 @@ namespace
 
 bool FDCMaelstromWaterBridge::Update(UWorld* World, UMaterialInstanceDynamic* Material, bool bActive)
 {
-	if (!bActive || !IsValid(World) || !IsValid(Material))
+	static const bool bNoFFT = FParse::Param(FCommandLine::Get(),TEXT("DCMaelstromNoFFT"));
+	if (bNoFFT || !bActive || !IsValid(World) || !IsValid(Material))
 	{
 		Reset(Material);
 		return false;

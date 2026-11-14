@@ -1,4 +1,5 @@
 #include "DCMaelstrom.h"
+#include "DCMaelstromRoute.h"
 #include "DCRideDirector.h"
 #include "DCRuins.h"
 #include "DCKraken.h"
@@ -33,16 +34,23 @@
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
 #include "UObject/UnrealType.h"
+#include "Sound/SoundBase.h"
 
 ADCMaelstrom::ADCMaelstrom()
 {
 	PrimaryActorTick.bCanEverTick = true;
-	PrimaryActorTick.TickGroup = TG_PostUpdateWork;
+	// Update the stage camera after pawn movement but BEFORE the camera manager
+	// caches its view (between PostPhysics and PostUpdateWork).
+	PrimaryActorTick.TickGroup = TG_PostPhysics;
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 	Arena = CreateDefaultSubobject<USceneComponent>(TEXT("BasinFrame"));
 	Arena->SetupAttachment(RootComponent);
 	Basin = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("Basin"));
 	Basin->SetupAttachment(Arena);
+	ContactMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("ContactSpray"));
+	ContactMesh->SetupAttachment(RootComponent);
+	ContactMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	ContactMesh->SetCastShadow(false);
 	Falls = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("RimCascades"));
 	Falls->SetupAttachment(Arena);
 	RimLand = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("ContinuousRim"));
@@ -55,10 +63,9 @@ ADCMaelstrom::ADCMaelstrom()
 		Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		Mesh->SetCastShadow(false);
 	}
-	// The crater must shade its own lower slopes. Without this depth cue, every
-	// surface receives the same grazing sunlight and reads as a shallow pool.
-	Basin->SetCastShadow(true);
-	RimLand->SetCastShadow(true);
+	// The high density water mesh must not fill the virtual shadow marking queue.
+	Basin->SetCastShadow(false); // A single half-million-triangle movable shadow caster overflows VSM marking. Rim rocks supply local shadows.
+	RimLand->SetCastShadow(false);
 	Exposure = CreateDefaultSubobject<UPostProcessComponent>(TEXT("RevealExposure"));
 	Exposure->SetupAttachment(RootComponent);
 	Exposure->bUnbound = true;
@@ -87,6 +94,8 @@ ADCMaelstrom* ADCMaelstrom::Get(const UObject* Context)
 void ADCMaelstrom::BeginPlay()
 {
 	Super::BeginPlay();
+	ContactSound=LoadObject<USoundBase>(nullptr,TEXT("/Game/Sonniss/water_impact.water_impact"),nullptr,LOAD_NoWarn|LOAD_Quiet);
+	if (UMaterialInterface* SprayMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Maelstrom/M_ContactSpray.M_ContactSpray"))) { ContactMesh->SetMaterial(0, SprayMat); }
 	Director = ADCRideDirector::Get(this);
 	if (!Director) { SetActorTickEnabled(false); return; }
 	AddTickPrerequisiteActor(Director);
@@ -100,7 +109,7 @@ void ADCMaelstrom::BeginPlay()
 		if (Phase.Phase == EDCPhase::Breach || Phase.Phase == EDCPhase::Maelstrom)
 		{
 			Phase.BlendTime = Phase.Phase == EDCPhase::Breach ? 5.f : 3.f;
-			Phase.Env.FogDensity = 0.0008f;
+			Phase.Env.FogDensity = 0.0015f;
 			Phase.Env.FogHeightFalloff = 0.0018f;
 			Phase.Env.Mist = 0.f;
 			Phase.Env.Rain = 0.f;
@@ -110,7 +119,7 @@ void ADCMaelstrom::BeginPlay()
 			Phase.Env.SunYaw = 230.f;
 			Phase.Env.CloudCover = 0.16f;
 			Phase.Env.CloudBase = 260000.f;
-			Phase.Env.SkyIntensity = 2.0f;
+			Phase.Env.SkyIntensity = 1.2f;
 			Phase.Env.Exposure = -0.15f;
 			Phase.Env.LightningRate = 0.f;
 		}
@@ -204,7 +213,7 @@ float ADCMaelstrom::RimElevation(float Angle) const
 	return RimVariation(Angle) * (3500.f * FMath::Sin(Angle * 3.f - 0.5f) + 1600.f * FMath::Sin(Angle * 8.f + 1.2f));
 }
 
-float ADCMaelstrom::HeightAt(const FVector2D& Point, bool bWaves) const
+float ADCMaelstrom::BaseHeightAt(const FVector2D& Point) const
 {
 	const float R = Point.Size();
 	const float A = FMath::Atan2(Point.Y, Point.X);
@@ -231,38 +240,41 @@ float ADCMaelstrom::HeightAt(const FVector2D& Point, bool bWaves) const
 		const float Profile = (M0 + M1 - 2.f) * T * T * T + (3.f - 2.f * M0 - M1) * T * T + M0 * T;
 		Height = LipHeight - LipDrop * Profile;
 	}
-	if (!bWaves) { return Height; }
-	const float Warp = FMath::PerlinNoise2D(Point / 31000.f);
-	const float Phase = R * 0.00058f + A * 4.f + Warp * 4.f + FMath::PerlinNoise2D(Point / 11000.f) * 2.2f + FMath::PerlinNoise2D(Point / 4500.f) * 2.f + FMath::Sin(A * 3.f + U * 9.f);
-	const float Crest = FMath::Pow(FMath::Max(0.f, FMath::Sin(Phase)), 3.f) - 0.3f;
-	const float Cross = FMath::Sin(Point.X * 0.00019f - Point.Y * 0.00013f + Warp * 3.f);
-	const float Patch = FMath::SmoothStep(0.25f, 0.7f, 0.5f + FMath::PerlinNoise2D(Point / 4500.f + FVector2D(17.3f, -8.7f)));
-	const float Broken = FMath::Clamp(0.7f + FMath::PerlinNoise2D(Point / 18000.f), 0.15f, 1.2f) * FMath::Lerp(0.15f, 1.f, Patch);
-	const float Amplitude = FMath::Lerp(1000.f, 380.f, Approach);
-	const float RimFade = 1.f - FMath::SmoothStep(0.89f, 1.02f, U) * 0.85f;
-	const float EntryWaves = Amplitude * (Crest * Broken + Cross * 0.3f);
-	// Cross seas with unequal wavelengths and directions form long breaking crests,
-	// rather than isotropic terrain mounds or one repeating set of parallel ribs.
-	const FVector2D Bent = Point + 6500.f * FVector2D(
-		FMath::PerlinNoise2D(Point / 22000.f + FVector2D(4.7f, 13.2f)),
-		FMath::PerlinNoise2D(Point / 25000.f + FVector2D(-7.9f, 6.1f)));
-	struct FWave { FVector2D Direction; float Length; float Height; float Phase; };
-	static const FWave Waves[] = {
-		{FVector2D(0.958f, 0.287f), 14200.f, 500.f, 1.3f},
-		{FVector2D(0.427f, 0.904f), 8700.f, 330.f, 4.7f},
-		{FVector2D(0.836f,-0.548f), 5300.f, 180.f, 2.8f},
-		{FVector2D(-0.572f,0.820f),21100.f, 700.f, 0.2f},
-		{FVector2D(0.752f, 0.659f), 3400.f, 100.f, 5.9f},
-		{FVector2D(0.101f,-0.995f), 6400.f, 260.f, 3.1f}
-	};
-	float FarWaves = 0.f;
-	for (const FWave& Wave : Waves)
-	{
-		const float PhaseAngle = FVector2D::DotProduct(Bent, Wave.Direction) * UE_TWO_PI / Wave.Length + Wave.Phase;
-		const float Envelope = FMath::Clamp(0.70f + FMath::PerlinNoise2D(Point / (Wave.Length * 1.8f) + FVector2D(Wave.Phase, -Wave.Phase)), 0.2f, 1.2f);
-		FarWaves += Wave.Height * Envelope * (FMath::Sin(PhaseAngle) + 0.22f * FMath::Cos(2.f * PhaseAngle + 0.7f));
-	}
-	return Height + FMath::Lerp(EntryWaves, FarWaves, RimVariation(A)) * RimFade * FMath::SmoothStep(0.05f, 0.2f, U);
+	return Height;
+}
+
+float ADCMaelstrom::HeightAt(const FVector2D& Point, bool bWaves) const
+{
+    float Height = BaseHeightAt(Point);
+    const float R = Point.Size(), A = FMath::Atan2(Point.Y, Point.X);
+    const float U = R / GetRimRadius(A);
+    const float Arc = FMath::Fmod(A - UE_PI + UE_TWO_PI, UE_TWO_PI);
+    // The orbit's shoulders are broken standing waves, with an open inner view.
+    const float RouteT = DCMaelstromRoute::SecondsAtAngle(A);
+    const float RouteR = Radius * DCMaelstromRoute::RadialFraction(RouteT);
+    const float Across = R - RouteR;
+    const float Lane = FMath::SmoothStep(.025f, .10f, Arc) * (1.f - FMath::SmoothStep(1.5f,1.8f,Arc));
+    // A broad current channel on the crater slope, not a ship balanced on a
+    // vertical overflow face. Blend it back into the bowl beyond the banks.
+    const float CenterHeight = BaseHeightAt(FVector2D(FMath::Cos(A),FMath::Sin(A))*RouteR);
+    const float Channel = 1.f-FMath::SmoothStep(6500.f,16500.f,FMath::Abs(Across));
+    // Retain a downhill face towards the abyss. A nearly level shelf here
+    // hid the drop behind a swimming-pool horizon from an eight-metre eye.
+    const float ChannelHeight = CenterHeight + Across*.28f + FMath::Square(Across/10500.f)*(Across>0.f ? 850.f : 250.f);
+    Height=FMath::Lerp(Height,ChannelHeight,Lane*Channel);
+    const float ShoulderVariation = .75f + .20f * FMath::Sin(Arc*23.f) + .12f*FMath::Sin(Arc*57.f+.8f);
+    const float Outer = FMath::Exp(-FMath::Square((Across-10500.f)/3000.f));
+    const float Inner = FMath::Exp(-FMath::Square((Across+10500.f)/2700.f));
+    Height += Lane * ShoulderVariation * (Outer*1700.f + Inner*200.f);
+    if (!bWaves) { return Height; }
+    // Unequal, crossing swell packets; no polar sinusoid producing concentric ribs.
+    const FVector2D Q = Point + FVector2D(FMath::PerlinNoise2D(Point/27000.f),FMath::PerlinNoise2D(Point/31000.f+FVector2D(21,5)))*2200.f;
+    const float Wave = 430.f*FMath::Sin(FVector2D::DotProduct(Q,FVector2D(.91f,.41f))*UE_TWO_PI/17800.f)
+        + 240.f*FMath::Sin(FVector2D::DotProduct(Q,FVector2D(.64f,-.77f))*UE_TWO_PI/9500.f+1.8f)
+        + 110.f*FMath::Sin(FVector2D::DotProduct(Q,FVector2D(.28f,.96f))*UE_TWO_PI/4100.f+4.1f);
+    const float Envelope = FMath::Clamp(.65f+FMath::PerlinNoise2D(Point/19000.f),.15f,1.f);
+    const float CalmLane = 1.f - .65f*Lane*FMath::Exp(-FMath::Square(Across/6500.f));
+    return Height + Wave*Envelope*CalmLane*(1.f-FMath::SmoothStep(.88f,1.03f,U)*.8f)*FMath::SmoothStep(.08f,.22f,U);
 }
 
 float ADCMaelstrom::RimGroundHeight(float R, float Angle) const
@@ -294,8 +306,9 @@ void ADCMaelstrom::BuildBasin()
 			Normals.Add(FVector(-DX, -DY, 1.f).GetSafeNormal());
 			Tangents.Add(FProcMeshTangent(FVector(1.f, 0.f, DX).GetSafeNormal(), false));
 			UVs.Add(P / 10000.f);
-			const float Approach = FMath::Pow(FMath::Max(0.f, -FMath::Cos(A)), 8.f);
-			const float Crest = FMath::Clamp((Z - HeightAt(P, false)) / FMath::Lerp(1600.f, 250.f, Approach), 0.f, 1.f);
+			// Only swell displacement is a crest. Channel shaping must not paint
+			// the entire raised bank with an uninterrupted band of foam.
+			const float Crest = FMath::Clamp((Z - HeightAt(P, false)) / 650.f, 0.f, 1.f);
 			const float UpstreamAngle = A + (8.f / 3.5f) * FMath::Loge(FMath::Clamp(R / GetRimRadius(A), 0.08f, 1.f));
 			Colors.Add(FLinearColor(Crest, R / GetRimRadius(A), FMath::Clamp(-Z / Depth, 0.f, 1.f), GetOverflowAmount(UpstreamAngle)).ToFColor(false));
 			if (Ring < Rings && Side < Sectors)
@@ -479,11 +492,25 @@ float ADCMaelstrom::SampleSurfaceWorld(const FVector& Position) const
 		const float Side = FMath::Clamp(static_cast<float>(TubePoint.Y), -8999.f, 8999.f);
 		return TubeTransform.TransformPosition(FVector(TubePoint.X, Side, 9000.f - FMath::Sqrt(81000000.f - Side * Side))).Z;
 	}
-	const FVector Local = GetArenaTransform().InverseTransformPosition(Position);
-	const float BasinHeight = GetArenaTransform().TransformPosition(FVector(Local.X, Local.Y, HeightAt(FVector2D(Local.X, Local.Y)))).Z;
-	// Match the water material's hull shelf. Small shader ripples are deliberately excluded.
-	return FMath::Lerp(Director ? Director->SeaLevelZ : 230.f, BasinHeight,
-		FMath::SmoothStep(1200.f, 3500.f, static_cast<float>(FVector2D(Position.X * 0.5, Position.Y * 2.0).Size())));
+    const FTransform Transform = GetArenaTransform();
+    // Solve the world-vertical ray; replacing local Z alone changes XY when pitched.
+    float Z = Director ? Director->SeaLevelZ : 230.f;
+    const FVector LocalUp = Transform.InverseTransformVectorNoScale(FVector::UpVector);
+    for (int32 Iteration=0; Iteration<7; ++Iteration)
+    {
+        const FVector Local = Transform.InverseTransformPosition(FVector(Position.X,Position.Y,Z));
+        const FVector2D P(Local.X,Local.Y);
+        const float H = HeightAt(P);
+        const float DX = (HeightAt(P+FVector2D(100,0))-HeightAt(P-FVector2D(100,0)))/200.f;
+        const float DY = (HeightAt(P+FVector2D(0,100))-HeightAt(P-FVector2D(0,100)))/200.f;
+        const float Derivative = LocalUp.Z-DX*LocalUp.X-DY*LocalUp.Y;
+        if (FMath::Abs(Derivative)<.15f) { break; }
+        const float Error = Local.Z-H;
+        Z -= FMath::Clamp(Error/Derivative,-150000.f,150000.f);
+        if(FMath::Abs(Error)<.5f) { break; }
+    }
+    return FMath::Lerp(Director ? Director->SeaLevelZ : 230.f, Z,
+        FMath::SmoothStep(1200.f,3500.f,static_cast<float>(FVector2D(Position.X*.5f,Position.Y*2.f).Size())));
 }
 
 void ADCMaelstrom::DisableLegacyEncounter()
@@ -536,11 +563,24 @@ void ADCMaelstrom::SetOceanVisible(bool bVisible)
 			}
 		}
 	}
-	for (const TWeakObjectPtr<AActor>& Grid : OceanGrids)
+	auto ShowOcean = [this,bVisible](AActor* Actor)
 	{
-		if (Grid.IsValid()) { Grid->SetActorHiddenInGame(!bVisible); }
-	}
-	if (Ocean.IsValid()) { Ocean->SetActorHiddenInGame(!bVisible); }
+		if (!IsValid(Actor)) { return; }
+		Actor->SetActorHiddenInGame(!bVisible);
+		const TWeakObjectPtr<AActor> Key(Actor);
+		if (!bVisible)
+		{
+			if (!OceanCollisionBeforeHide.Contains(Key)) { OceanCollisionBeforeHide.Add(Key, Actor->GetActorEnableCollision()); }
+			// An invisible flat ocean must not intercept manual gun aim in the crater.
+			Actor->SetActorEnableCollision(false);
+		}
+		else if (const bool* Saved = OceanCollisionBeforeHide.Find(Key))
+		{
+			Actor->SetActorEnableCollision(*Saved); OceanCollisionBeforeHide.Remove(Key);
+		}
+	};
+	for (const TWeakObjectPtr<AActor>& Grid : OceanGrids) { ShowOcean(Grid.Get()); }
+	ShowOcean(Ocean.Get());
 	bOceanHidden = !bVisible;
 }
 
@@ -564,6 +604,7 @@ void ADCMaelstrom::Tick(float DeltaSeconds)
 		SetStageVisible(bActive);
 		if (!bActive)
 		{
+			ClearTwisters();
 			RestoreView();
 			RestoreAtmosphere();
 			if (!Ocean.IsValid())
@@ -586,6 +627,7 @@ void ADCMaelstrom::Tick(float DeltaSeconds)
 			if (USceneComponent* OldSea = Director->GetSea()) { OldSea->SetVisibility(false, true); }
 		}
 	}
+	UpdateContacts(DeltaSeconds);
 	if (Boss) { Boss->UpdateEncounter(Elapsed, GetArenaTransform(), Radius, Depth, bActive); }
 	if (bActive) { UpdateTwisters(DeltaSeconds); UpdateBoulders(DeltaSeconds); UpdateSpawnlings(DeltaSeconds); UpdatePlume(); }
 	if (ADCAudio* Sound = Cast<ADCAudio>(UGameplayStatics::GetActorOfClass(GetWorld(), ADCAudio::StaticClass())))
@@ -609,35 +651,117 @@ void ADCMaelstrom::Tick(float DeltaSeconds)
 	PreviousTime = Director->RideTime;
 }
 
+void ADCMaelstrom::EmitWaterContact(const FVector& Position, float Strength)
+{
+	if (!bActive || Elapsed < 0.f) { return; }
+	const FTransform Frame = GetArenaTransform();
+	FVector Surface = Position;
+	Surface.Z = SampleSurfaceWorld(Surface) + 35.f;
+	if (ContactSound && Strength>=1.f && Elapsed>NextContactSoundAt)
+	{
+		const ADCAudio* Mix=Cast<ADCAudio>(UGameplayStatics::GetActorOfClass(GetWorld(),ADCAudio::StaticClass()));
+		const float Distance=FVector2D(Position.X,Position.Y).Size();
+		const float Volume=(Mix ? Mix->MasterVolume : .8f)*FMath::Clamp(1.f-Distance/60000.f,.08f,1.f)*.8f;
+		UGameplayStatics::PlaySoundAtLocation(this,ContactSound,Surface,Volume,FMath::FRandRange(.78f,.95f));
+		NextContactSoundAt=Elapsed+.3f;
+	}
+	const int32 Count = FMath::Clamp(FMath::RoundToInt(Strength * 45.f), 8, 110);
+	for (int32 I = 0; I < Count && ContactParticles.Num() < 900; ++I)
+	{
+		const float Angle = FMath::FRand() * UE_TWO_PI;
+		const FVector Radial(FMath::Cos(Angle), FMath::Sin(Angle), 0.f);
+		const FVector Start = Surface + Radial * FMath::FRandRange(50.f, 350.f) * Strength;
+		const FVector Velocity = Radial * FMath::FRandRange(250.f, 750.f) * FMath::Sqrt(Strength)
+			+ FVector(0.f, 0.f, FMath::FRandRange(550.f, 1500.f) * FMath::Sqrt(Strength));
+		ContactParticles.Add({Frame.InverseTransformPosition(Start), Frame.InverseTransformVectorNoScale(Velocity),
+			0.f, FMath::FRandRange(1.0f, 2.4f), FMath::FRandRange(35.f, 130.f) * FMath::Sqrt(Strength)});
+	}
+}
+
+void ADCMaelstrom::UpdateContacts(float DeltaSeconds)
+{
+	if (!bActive || Elapsed < 0.f)
+	{
+		ContactParticles.Reset(); ContactMesh->ClearAllMeshSections(); NextWakeAt = 0.f; return;
+	}
+	const float DT = FMath::Min(DeltaSeconds * Director->TimeScale, .1f);
+	const FTransform Frame = GetArenaTransform();
+	// Foam and droplets remain in the basin frame as the ship passes them.
+	if (Elapsed > NextWakeAt && Elapsed > 12.f)
+	{
+		EmitWaterContact(FVector(2600.f, -750.f, 0.f), .14f);
+		EmitWaterContact(FVector(2600.f, 750.f, 0.f), .14f);
+		NextWakeAt = Elapsed + .16f;
+	}
+	FVector Eye; FRotator View;
+	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0)) { PC->GetPlayerViewPoint(Eye, View); }
+	else { Eye = FVector(0.f, 0.f, Director->SeaLevelZ + 800.f); }
+	const FVector Gravity = Frame.InverseTransformVectorNoScale(FVector(0.f, 0.f, -980.f));
+	TArray<FVector> V, N;
+	TArray<FVector2D> UV;
+	TArray<FColor> C;
+	TArray<int32> Tri;
+	TArray<FProcMeshTangent> Tangents;
+	for (int32 I = ContactParticles.Num()-1; I >= 0; --I)
+	{
+		FContactParticle& P = ContactParticles[I];
+		P.Age += DT;
+		if (P.Age >= P.Life) { ContactParticles.RemoveAtSwap(I); continue; }
+		P.Velocity += Gravity * DT;
+		P.Position += P.Velocity * DT;
+		const FVector Center = Frame.TransformPosition(P.Position);
+		const FVector Normal = (Eye-Center).GetSafeNormal();
+		FVector Right = FVector::CrossProduct(FVector::UpVector, Normal).GetSafeNormal();
+		if (Right.IsNearlyZero()) { Right=FVector::RightVector; }
+		const FVector Up = FVector::CrossProduct(Normal, Right);
+		const float Size = P.Size * (1.f + P.Age * .7f);
+		const float Alpha = FMath::SmoothStep(0.f, .08f, P.Age) * (1.f-FMath::SmoothStep(.2f,1.f,P.Age/P.Life));
+		const int32 Start = V.Num();
+		for (int32 Corner=0; Corner<4; ++Corner)
+		{
+			const float X=(Corner==0 || Corner==3) ? -1.f : 1.f;
+			const float Y=Corner<2 ? -1.f : 1.f;
+			V.Add(ContactMesh->GetComponentTransform().InverseTransformPosition(Center+(Right*X+Up*Y)*Size));
+			N.Add(Normal); UV.Add(FVector2D((X+1.f)*.5f,(Y+1.f)*.5f));
+			C.Add(FLinearColor(1.f,1.f,1.f,Alpha).ToFColor(false)); Tangents.Add(FProcMeshTangent(Right,false));
+		}
+		Tri.Append({Start,Start+1,Start+2,Start,Start+2,Start+3});
+	}
+	ContactMesh->CreateMeshSection(0,V,Tri,N,UV,C,Tangents,false);
+}
+
 void ADCMaelstrom::UpdateStage(float DeltaSeconds)
 {
-	// Over the lip and down: a little under half of the whole descent is made in the twenty seconds after
-	// the ship clears the tunnel, so the rim climbs away overhead and the bowl opens below her; the rest is the
-	// slow sinking spiral of the fight. (It was one even glide over the whole fight, which did not read as a drop.)
-	static float Plunge = 0.42f; static bool bPlungeRead = false;   // test hook: -DCPlunge=0..1
-	if (!bPlungeRead) { bPlungeRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCPlunge="), Plunge); }
-	// She hangs on the lip for three seconds after clearing the tunnel (the tunnel is gone at 10 s), then goes over.
-	const float Descent = Plunge * FMath::SmoothStep(12.f, 30.f, Elapsed) + (1.f - Plunge) * FMath::SmoothStep(30.f, EndingStart - BreachStart - 15.f, Elapsed);
-	ShipRadius = Radius * FMath::Lerp(0.985f, 0.78f, Descent);
-	const ADCTreadmill* Treadmill = ADCTreadmill::Get(this);
-	const float HelmTarget = Treadmill ? Treadmill->GetSteer() * Treadmill->SteerAuthority : 0.f;
-	if (PreviousTime < 0.f || Director->RideTime < PreviousTime || Director->RideTime - PreviousTime > 1.f) { HelmTurn = 0.f; }
-	HelmTurn = FMath::FInterpTo(HelmTurn, HelmTarget, DeltaSeconds, 1.5f);
-	// Read the shared helm state without changing the treadmill. Turning moves the
-	// crater's bearing with inertia; the surface under the fixed hull stays anchored.
-	const float Bearing = 40.f + 9.f * Descent - HelmTurn * 4.f;
-	const FRotator Rotation(0.f, Bearing, 0.f);
-	const FVector Center = Rotation.RotateVector(FVector(ShipRadius, 0.f, 0.f));
-	const float Heave = FMath::Sin(Director->RideTime * 0.85f) * 35.f;
-	// Going over, the whole bowl tips up ahead of her by a few degrees and settles back: from the deck that is the
-	// bow dropping away, which is what makes it a fall and not a glide.
-	static float TipDegrees = 6.f; static bool bTipRead = false;   // test hook: -DCLipTip=<degrees>
-	if (!bTipRead) { bTipRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCLipTip="), TipDegrees); }
-	const float Tip = TipDegrees * FMath::SmoothStep(12.f, 17.f, Elapsed) * (1.f - FMath::SmoothStep(22.f, 32.f, Elapsed));
-	const FQuat Over(FVector::RightVector, FMath::DegreesToRadians(-Tip));
-	const FVector Flat = Center + FVector(0.f, 0.f, Director->SeaLevelZ - HeightAt(FVector2D(-ShipRadius, 0.f)) + Heave);
-	const FVector Ship(0.f, 0.f, Director->SeaLevelZ);
-	Arena->SetWorldLocationAndRotation(Ship + Over.RotateVector(Flat - Ship), Over * Rotation.Quaternion());
+	// Pause at the lip, descend into a broad current channel, then orbit on it.
+    const ADCTreadmill* Treadmill = ADCTreadmill::Get(this);
+    float Input = Treadmill ? Treadmill->GetSteer()*Treadmill->SteerAuthority : 0.f;
+    static float ReviewSteer = 2.f;
+    static const bool bReviewSteer = FParse::Value(FCommandLine::Get(),TEXT("DCMaelstromSteer="),ReviewSteer);
+    if (bReviewSteer) { Input=FMath::Clamp(ReviewSteer,-1.f,1.f); }
+    const bool Reset = PreviousTime<0.f || Director->RideTime<PreviousTime || Director->RideTime-PreviousTime>1.f;
+    if (Reset) { RouteOffset=0.f; RouteVelocity=0.f; HelmTurn=0.f; ContactParticles.Reset(); NextWakeAt=0.f; NextContactSoundAt=-100.f; }
+    const float DT = FMath::Min(DeltaSeconds*Director->TimeScale,.1f);
+    const float Riding = FMath::SmoothStep(12.f,30.f,Elapsed);
+    // Smooth hydraulic restoring force at the visible banks. Centre stays free to steer.
+    DCMaelstromRoute::AdvanceSteering(Input,DT,Riding,HelmTurn,RouteOffset,RouteVelocity);
+    const FVector2D P = DCMaelstromRoute::Point(Elapsed,Radius,RouteOffset);
+    ShipRadius=P.Size();
+    const float Angle=DCMaelstromRoute::Angle(Elapsed);
+    const float OrbitHeading=90.f-FMath::RadiansToDegrees(Angle-UE_PI);
+    const float Bearing=FMath::Lerp(40.f,OrbitHeading,FMath::SmoothStep(18.f,38.f,Elapsed))-RouteVelocity*.003f;
+    const FRotator Rotation(0.f,Bearing,0.f);
+    const float Tip=6.f*FMath::SmoothStep(12.f,17.f,Elapsed)*(1.f-FMath::SmoothStep(22.f,32.f,Elapsed));
+    const float BankRoll=FMath::Clamp(RouteVelocity*.0014f+RouteOffset*.00018f,-3.5f,3.5f)*Riding;
+    const FQuat Over=FRotator(-Tip+.6f*FMath::Sin(Elapsed*.65f)*Riding,0.f,BankRoll).Quaternion();
+    const FQuat Pose=Over*Rotation.Quaternion();
+    const FVector Ship(0.f,0.f,Director->SeaLevelZ);
+    const float Heave=FMath::Sin(Director->RideTime*.85f)*25.f;
+    Arena->SetWorldLocationAndRotation(Ship-Pose.RotateVector(FVector(P.X,P.Y,HeightAt(P)))+FVector(0,0,Heave),Pose);
+    if(Elapsed>NextRouteLog && FParse::Param(FCommandLine::Get(),TEXT("DCMaelstromRouteLog")))
+    {
+        NextRouteLog=Elapsed+5.f;
+        UE_LOG(LogDC,Log,TEXT("MAEL_ROUTE t=%.1f arc=%.1f radius=%.1fm offset=%.1fm velocity=%.1fm/s"),Elapsed,FMath::RadiansToDegrees(Angle-UE_PI),ShipRadius*.01f,RouteOffset*.01f,RouteVelocity*.01f);
+    }
 	const float ExitX = FMath::Clamp(26000.f - Elapsed * 4000.f, -15000.f, 145000.f);
 	const float Entry = FMath::SmoothStep(SlideStart, SlideStart + 7.f, Director->RideTime);
 	const float LengthScale = FMath::Lerp(0.5f, 1.f, Entry);
@@ -716,7 +840,7 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
 				Fog->SetFogHeightFalloff(FMath::Lerp(Saved.Falloff, 0.0018f, Clear));
 				// UDS maps the phase's weather input to a much denser fog (~0.0062).
 				// Clamp the rendered component here so the abyss stays legible.
-				Fog->SetFogDensity(FMath::Lerp(Fog->FogDensity, 0.0008f, Clear));
+				Fog->SetFogDensity(FMath::Lerp(Fog->FogDensity, 0.0015f, Clear));
 				Fog->SetVolumetricFogDistance(FMath::Lerp(Saved.Distance, 400000.f, Clear));
 				if (!bReportedFog && Clear >= 1.f)
 				{
@@ -782,7 +906,7 @@ void ADCMaelstrom::UpdateThroat(float ExitX)
 namespace
 {
 	// Test hooks: -DCSpawnlingScale= (the mesh is 47 m long at 1), -DCSpawnlingSunk= (share of its height under water), -DCSpawnlingYaw=.
-	float SpawnlingScale = 0.6f, SpawnlingSunk = 0.1f, SpawnlingYaw = 0.f;
+	float SpawnlingScale = 0.6f, SpawnlingSunk = 0.48f, SpawnlingYaw = 0.f;
 	struct FSpawnlingHooks
 	{
 		FSpawnlingHooks()
@@ -836,6 +960,7 @@ void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
 		FTwister T;
 		T.RaisedAt = RaiseAt[Index];
 		T.Ahead = Start;
+		T.RouteOffsetAtSpawn = RouteOffset;
 		// In her path, a little to one side: she must turn away from it, and either way will do.
 		T.Abeam = (Index % 2 == 0 ? 1.f : -1.f) * FMath::FRandRange(400.f, 1800.f);
 		if (Base && Volume)
@@ -925,19 +1050,20 @@ void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
 		}
 		if (Age > Tell) { T.Ahead -= Run * DeltaSeconds * Director->TimeScale; }
 		// The helm carries the ship across the current; seen from her deck the spout slides the other way.
-		T.Abeam -= HelmTurn * 1500.f * DeltaSeconds * Director->TimeScale;
+		const float Across = T.Abeam + T.RouteOffsetAtSpawn - RouteOffset;
 		const float Rise = FMath::SmoothStep(0.f, Tell, Age);
 		const float Gone = 1.f - FMath::SmoothStep(-26000.f, -9000.f, T.Ahead);
 		// It comes up the slope from the abyss, on a line a little to starboard of the bow, where the helm's view looks.
-		FVector Foot = FRotator(0.f, 20.f, 0.f).RotateVector(FVector(T.Ahead, T.Abeam, 0.f));
+		FVector Foot = FRotator(0.f, 20.f, 0.f).RotateVector(FVector(T.Ahead, Across, 0.f));
 		Foot.Z = SampleSurfaceWorld(Foot);
 		// Tall enough to stand well over the ship however far down the slope its foot is.
 		const float Height = FMath::Clamp(Director->SeaLevelZ - Foot.Z + 22000.f, 26000.f, 62000.f);
 		if (AHeterogeneousVolume* A = T.Actor.Get())
 		{
-			// The tunnel stood on end: its long axis upright, turning as it comes. 260 m high and 70 m through at the least.
+			// A narrow core leaves a readable gap to steer through; the old cloud
+			// skirt obscured hundreds of metres of sea around a much smaller hit area.
 			const float Scale = Height / 282.f * FMath::Lerp(0.45f, 1.f, Rise);
-			A->SetActorTransform(FTransform(FRotator(0.f, Director->RideTime * 70.f, 90.f), Foot, FVector(Scale * 0.62f, Scale, Scale * 0.62f)));
+			A->SetActorTransform(FTransform(FRotator(0.f, Director->RideTime * 70.f, 90.f), Foot, FVector(Scale * 0.38f, Scale, Scale * 0.38f)));
 			if (UHeterogeneousVolumeComponent* C = A->FindComponentByClass<UHeterogeneousVolumeComponent>())
 			{
 				// Wherever the turned volume's box has landed, stand it with its foot on the water at Foot.
@@ -967,12 +1093,12 @@ void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
 			const FQuat Lie = FQuat::FindBetweenNormals(FVector::UpVector, Up) * FQuat(FVector::UpVector, FMath::DegreesToRadians(Director->RideTime * 40.f));
 			// It boils up first: the patch of white water is there in a second and a half, before the column has risen.
 			const float Boil = FMath::SmoothStep(0.f, 1.5f, Age);
-			const float Across = Height * 0.9f * FMath::Lerp(0.4f, 1.f, Boil);
-			S->SetActorTransform(FTransform(Lie, Foot + Up * 250.f, FVector(Across / 1160.f, Across / 1160.f, Across / 1160.f * 2.5f)));
-			if (UMaterialInstanceDynamic* M = T.SkirtMID.Get()) { M->SetScalarParameterValue(TEXT("Fog Density"), 3.5f * Boil * (1.f - Gone)); }
+			const float SkirtWidth = Height * 0.25f * FMath::Lerp(0.4f, 1.f, Boil);
+			S->SetActorTransform(FTransform(Lie, Foot + Up * 100.f, FVector(SkirtWidth / 1160.f, SkirtWidth / 1160.f, SkirtWidth / 1160.f * .55f)));
+			if (UMaterialInstanceDynamic* M = T.SkirtMID.Get()) { M->SetScalarParameterValue(TEXT("Fog Density"), .85f * Boil * (1.f - Gone)); }
 		}
 		// Struck: the spout's core passes over the ship.
-		if (!T.bStruck && Age > Tell && FMath::Abs(T.Ahead) < 3000.f && FMath::Abs(T.Abeam) < 2600.f)
+		if (!T.bStruck && Age > Tell && FMath::Abs(Foot.X) < 3000.f && FMath::Abs(Foot.Y) < 2600.f)
 		{
 			T.bStruck = true;
 			Director->DamageShip(3.f);
@@ -1030,9 +1156,11 @@ void ADCMaelstrom::UpdateSpawnlings(float DeltaSeconds)
 			C->SetMobility(EComponentMobility::Movable);
 			C->SetSkeletalMesh(Mesh);
 			C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			if (Crawl) { C->PlayAnimation(Crawl, true); }
-			// The pack's own materials draw pale jade here; give it the dark wet hide the creature's arms have.
-			if (UMaterialInterface* Hide = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Kraken.M_Kraken"), nullptr, LOAD_NoWarn | LOAD_Quiet))
+			if (Crawl) { C->PlayAnimation(Crawl, true); C->SetPlayRate(.45f); }
+			// Prefer the installed UDIM skin with its authored normal maps; keep a fallback for machines without it.
+			UMaterialInterface* Hide = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Maelstrom/LeviathanSkin/M_LeviathanSkin.M_LeviathanSkin"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+			if (!Hide) { Hide=LoadObject<UMaterialInterface>(nullptr,TEXT("/Game/DC/Materials/M_Kraken.M_Kraken"),nullptr,LOAD_NoWarn|LOAD_Quiet); }
+			if (Hide)
 			{
 				UMaterialInstanceDynamic* HideMID = UMaterialInstanceDynamic::Create(Hide, A);
 				HideMID->SetVectorParameterValue(TEXT("Skin"), FLinearColor(0.035f, 0.048f, 0.045f));
@@ -1041,6 +1169,8 @@ void ADCMaelstrom::UpdateSpawnlings(float DeltaSeconds)
 			}
 			A->SetActorScale3D(FVector(SpawnlingScale));
 			S.Actor = A;
+			S.SafeDistance=FMath::Max(3500.f,(Mesh->GetBounds().BoxExtent.Size()+Mesh->GetBounds().Origin.Size())*SpawnlingScale+1800.f);
+			S.NextSprayAt=Elapsed;
 			// Somewhere to start, so the treadmill's first reading of it is on the right side.
 			A->SetActorLocation(FVector(1500.f, S.Side * (S.Abeam + 600.f), Director->SeaLevelZ));
 			// The guns' target is an unseen actor that rides with it. When the treadmill destroys that, the
@@ -1084,7 +1214,7 @@ void ADCMaelstrom::UpdateSpawnlings(float DeltaSeconds)
 			const float Down = (Elapsed - S.SunkAt) / 4.f;
 			FVector Where(1500.f, S.Side * (S.Abeam + 600.f), 0.f);
 			Where.Z = SampleSurfaceWorld(Where) - 37.f * 100.f * SpawnlingScale * (SpawnlingSunk + Down * 1.1f);
-			A->SetActorLocationAndRotation(Where, FRotator(0.f, (S.Side < 0.f ? 90.f : -90.f) + SpawnlingYaw, 50.f * FMath::SmoothStep(0.f, 1.f, Down)));
+			A->SetActorLocationAndRotation(Where, FRotator(0.f, (S.Side < 0.f ? 90.f : -90.f) + SpawnlingYaw, (S.bAttacked ? -8.f : 50.f) * FMath::SmoothStep(0.f, 1.f, Down)));
 			if (Down >= 1.f) { A->Destroy(); Spawnlings.RemoveAt(i); }
 			continue;
 		}
@@ -1095,27 +1225,28 @@ void ADCMaelstrom::UpdateSpawnlings(float DeltaSeconds)
 		}
 		// Fast across the open water, then slowly up to the hull over the last 200 m, which is where the batteries can
 		// reach it. (At 13 m a second all the way the guns, which do not lead a target, put every ball behind it.)
-		S.Abeam -= (S.Abeam > 20000.f ? 1300.f : 500.f) * DeltaSeconds * Director->TimeScale;
+		S.Abeam = FMath::Max(S.SafeDistance-600.f,S.Abeam-(S.Abeam>20000.f ? 1300.f : 500.f)*DeltaSeconds*Director->TimeScale);
 		FVector Where(1500.f, S.Side * (S.Abeam + 600.f), 0.f);
 		// Half under: its back and claws break the surface.
 		Where.Z = SampleSurfaceWorld(Where) - 37.f * 100.f * SpawnlingScale * SpawnlingSunk;
 		// It comes on facing the ship.
 		A->SetActorLocationAndRotation(Where, FRotator(0.f, (S.Side < 0.f ? 90.f : -90.f) + SpawnlingYaw, 0.f));
 		if (AActor* Mark = S.Mark.Get()) { Mark->SetActorLocation(Where + FVector(0.f, 0.f, 37.f * 50.f * SpawnlingScale)); }
-		if (S.Abeam <= 0.f || Elapsed > Finale)
+		if (Elapsed>S.NextSprayAt) { EmitWaterContact(Where, .35f); S.NextSprayAt=Elapsed+.5f; }
+		if (S.Abeam + 600.f <= S.SafeDistance || Elapsed > Finale)
 		{
-			if (S.Abeam <= 0.f)
+			if (S.Abeam + 600.f <= S.SafeDistance)
 			{
 				Director->DamageShip(5.f);
 				ADCTroubles* Troubles = ADCTroubles::Get(this);
 				if (Troubles) { Troubles->TearRigging(); }
-				if (Troubles && Troubles->DeckPoints.Num() && Troubles->NumFires() < Troubles->MaxFires) { Troubles->StartFire(Troubles->DeckPoints[FMath::RandRange(0, Troubles->DeckPoints.Num() - 1)]); }
-				if (Crew) { Crew->Report(TEXT("It is on the hull! It is tearing at us!"), true); }
-				UE_LOG(LogDC, Log, TEXT("Spawnling reached the hull at %.1f s"), Elapsed);
+				// A water strike damages the rigging; only burning stones ignite the deck.
+				EmitWaterContact(Where,2.f);
+				if (Crew) { Crew->Report(TEXT("Brace! Its wake is breaking over the rail!"), true); }
+				UE_LOG(LogDC, Log, TEXT("Spawnling wake attack outside hull at %.1f s"), Elapsed);
 			}
 			if (AActor* Mark = S.Mark.Get()) { Mark->Destroy(); }
-			A->Destroy();
-			Spawnlings.RemoveAt(i);
+			S.bAttacked=true; S.SunkAt=Elapsed; // Withdraw outside the collision envelope instead of walking through the hull.
 		}
 	}
 }
@@ -1140,7 +1271,7 @@ void ADCMaelstrom::UpdatePlume()
 	// The one sight of the creature: in its last seconds it heaves half out of the water at the heart of the crater,
 	// more than a kilometre off and inside the plume, a shape some four hundred metres high, and goes down.
 	static const bool bNoCarcass = FParse::Param(FCommandLine::Get(), TEXT("DCNoCarcass"));
-	static float CarcassScale = 18.f; static bool bCarcassRead = false;   // test hook: -DCCarcassScale= (the mesh is 37 m high at 1)
+	static float CarcassScale = 11.f; static bool bCarcassRead = false;   // test hook: -DCCarcassScale= (the mesh is 37 m high at 1)
 	if (!bCarcassRead) { bCarcassRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCCarcassScale="), CarcassScale); }
 	if (!bNoCarcass && !Carcass.IsValid() && Since < 1.f)
 	{
@@ -1155,7 +1286,9 @@ void ADCMaelstrom::UpdatePlume()
 			C->SetSkeletalMesh(Mesh);
 			C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 			C->SetCastShadow(false);
-			if (UMaterialInterface* Hide = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Kraken.M_Kraken"), nullptr, LOAD_NoWarn | LOAD_Quiet))
+			UMaterialInterface* Hide = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Maelstrom/LeviathanSkin/M_LeviathanSkin.M_LeviathanSkin"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+			if (!Hide) { Hide=LoadObject<UMaterialInterface>(nullptr,TEXT("/Game/DC/Materials/M_Kraken.M_Kraken"),nullptr,LOAD_NoWarn|LOAD_Quiet); }
+			if (Hide)
 			{
 				UMaterialInstanceDynamic* HideMID = UMaterialInstanceDynamic::Create(Hide, Body);
 				HideMID->SetVectorParameterValue(TEXT("Skin"), FLinearColor(0.035f, 0.048f, 0.045f));
@@ -1178,7 +1311,7 @@ void ADCMaelstrom::UpdatePlume()
 		const float High = 3700.f * CarcassScale;
 		// Up to two thirds out of the water in four seconds, held, then under by nineteen.
 		const float Out = FMath::SmoothStep(0.f, 4.f, Since) * (1.f - FMath::SmoothStep(9.f, 19.f, Since));
-		At.Z += High * (0.66f * Out - 1.f);
+		At.Z += High * (0.40f * Out - 1.f);
 		// Facing the ship.
 		const FVector ToShip = FVector(0.f, 0.f, Director->SeaLevelZ) - At;
 		Body->SetActorLocationAndRotation(At, FRotator(0.f, FMath::RadiansToDegrees(FMath::Atan2(ToShip.Y, ToShip.X)), 0.f));
@@ -1246,6 +1379,7 @@ void ADCMaelstrom::UpdateBoulders(float DeltaSeconds)
 		B.From = FRotator(0.f, 40.f + FMath::FRandRange(-12.f, 12.f), 0.f).RotateVector(FVector(52000.f, 0.f, 0.f));
 		B.From.Z = SampleSurfaceWorld(B.From);
 		B.Fall = FVector(FMath::FRandRange(-900.f, 900.f), FMath::FRandRange(-250.f, 250.f), Director->SeaLevelZ + 620.f);
+		B.RouteOffsetAtSpawn=RouteOffset; B.TargetAcross=B.Fall.Y;
 		FActorSpawnParameters Params;
 		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 		if (AStaticMeshActor* A = GetWorld()->SpawnActor<AStaticMeshActor>(B.From, FRotator::ZeroRotator, Params))
@@ -1306,7 +1440,7 @@ void ADCMaelstrom::UpdateBoulders(float DeltaSeconds)
 	{
 		FBoulder& B = Boulders[i];
 		// The helm carries the ship out from under it.
-		B.Fall.Y -= HelmTurn * 1500.f * DeltaSeconds * Director->TimeScale;
+		B.Fall.Y = B.TargetAcross + B.RouteOffsetAtSpawn - RouteOffset;
 		const float U = (Elapsed - B.ThrownAt) / Flight;
 		const FVector Where = FMath::Lerp(B.From, B.Fall, FMath::Clamp(U, 0.f, 1.f)) + FVector(0.f, 0.f, 4.f * Apex * U * (1.f - U));
 		if (AActor* A = B.Actor.Get()) { A->SetActorLocation(Where); A->SetActorRotation(FRotator(Elapsed * 200.f, Elapsed * 130.f, 0.f)); }
@@ -1337,7 +1471,7 @@ void ADCMaelstrom::UpdateBoulders(float DeltaSeconds)
 			}
 			if (Crew) { Crew->Report(TEXT("We are struck! Fire on deck!"), true); }
 		}
-		else { Director->Score += 100; }
+		else { Director->Score += 100; EmitWaterContact(B.Fall, 2.5f); }
 		if (UClass* Burst = LoadClass<AActor>(nullptr, TEXT("/Game/Brigantine/BP/Cannon/BP_EffectExplosionEnd.BP_EffectExplosionEnd_C"), nullptr, LOAD_NoWarn | LOAD_Quiet))
 		{
 			FActorSpawnParameters Params;
@@ -1377,7 +1511,8 @@ void ADCMaelstrom::UpdateView(float DeltaSeconds)
 		const float Look = FMath::SmoothStep(4.f, 10.f, Elapsed);
 		const FVector DesiredWorld = Captain->GetActorLocation() + FVector(-20.f * Offset, 180.f * Offset, 64.f + 216.f * Offset);
 		Camera->SetWorldLocation(DesiredWorld);
-		Camera->AddAdditiveOffset(FTransform(FRotator(-12.f * Look, 38.f * Look, 0.f)), 0.f);
+		const float OrbitLook = FMath::Lerp(38.f,58.f,FMath::SmoothStep(25.f,45.f,Elapsed));
+		Camera->AddAdditiveOffset(FTransform(FRotator(-12.f * Look, OrbitLook * Look, 0.f)), 0.f);
 	}
 	// Over the lip: the view opens out as she starts down and closes again as she settles into the spiral.
 	const float Over = FMath::SmoothStep(11.f, 16.f, Elapsed) * (1.f - FMath::SmoothStep(20.f, 32.f, Elapsed));

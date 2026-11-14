@@ -2,6 +2,13 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov Codex: maelstrom orbit/contact pass, isolated review branch
+
+- Branch `codex/maelstrom-saturday`, based on `cf49b3b`; project `E:/Projects/DirectorsCut/Maelstrom-Saturday`. [Changes, tests and remaining gaps](MAELSTROM-14NOV-CODEX.md).
+- Continuous descending orbit, bounded lateral steering and matching hazard displacement. Swimmers stop outside the hull and withdraw after a wake attack; tentacles strike water outboard with contact spray. Smaller lit weak points replace the oversized glowing bulbs.
+- Editor target builds; route/steering automation passes at 30 and 120 fps. Offscreen encounter and close-up checks are documented in the handoff. This is not a claim of reference-quality visuals or a packaged release.
+- Early-game, player, gunnery, crew, HUD, treadmill and global sky/weather files untouched. Review/cherry-pick the branch before merging into the active project; the overnight packaged executable does not contain these changes.
+
 ## 14 Nov 07:54 Claude: END OF THE OVERNIGHT RUN. Claim on the maelstrom files released
 
 - Last build, from the last source of the night: `Builds/2026-11-14_0748_69449a3_handover/Windows/DirectorsCut.exe`, run from its exe start to ending card at 2x with the bot captain, no errors (six giants killed, both spawnlings sunk, beaten on the clock; eleven blows on stone, two on the stem, hull 12 at the card).

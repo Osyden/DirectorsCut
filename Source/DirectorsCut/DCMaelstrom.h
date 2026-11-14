@@ -25,6 +25,8 @@ public:
 	static ADCMaelstrom* Get(const UObject* Context);
 	bool IsActive() const { return bActive; }
 	float GetElapsed() const { return Elapsed; }
+	float GetRouteOffset() const { return RouteOffset; }
+	void EmitWaterContact(const FVector& Position, float Strength = 1.f);
 	FTransform GetArenaTransform() const;
 	float SampleSurfaceWorld(const FVector& Position) const;
 	float GetRimRadius(float Angle) const;
@@ -37,7 +39,9 @@ public:
 
 private:
 	float HeightAt(const FVector2D& Point, bool bWaves = true) const;
+	float BaseHeightAt(const FVector2D& Point) const;
 	float RimElevation(float Angle) const;
+	void UpdateContacts(float DeltaSeconds);
 	float RimGroundHeight(float R, float Angle) const;
 	void BuildBasin();
 	void BuildTunnel();
@@ -53,6 +57,12 @@ private:
 	UPROPERTY() TObjectPtr<ADCRideDirector> Director;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<USceneComponent> Arena;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Basin;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> ContactMesh;
+	struct FContactParticle { FVector Position, Velocity; float Age, Life, Size; };
+	TArray<FContactParticle> ContactParticles;
+	float NextWakeAt = 0.f;
+	UPROPERTY() TObjectPtr<class USoundBase> ContactSound;
+	float NextContactSoundAt = -100.f;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Falls;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> RimLand;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Tunnel;
@@ -86,6 +96,7 @@ private:
 	TArray<FStageFogVolume> StageFogVolumes;
 	bool bAtmosphereAdjusted = false;
 	TArray<TWeakObjectPtr<AActor>> OceanGrids;
+	TMap<TWeakObjectPtr<AActor>, bool> OceanCollisionBeforeHide;
 	float NextOceanScan = 0.f;
 	bool bOceanHidden = false;
 	TWeakObjectPtr<class UCameraComponent> CaptainCamera;
@@ -98,6 +109,7 @@ private:
 		TWeakObjectPtr<UMaterialInstanceDynamic> MID;
 		float RaisedAt = 0.f;     // seconds after the breach
 		float Ahead = 0.f;        // cm ahead of the ship
+		float RouteOffsetAtSpawn = 0.f;
 		float Abeam = 0.f;        // cm to starboard of her course
 		bool bStruck = false;
 		bool bCalled = false;
@@ -118,6 +130,8 @@ private:
 		TWeakObjectPtr<AActor> Actor;
 		float ThrownAt = 0.f;     // seconds after the breach
 		FVector From = FVector::ZeroVector;
+		float RouteOffsetAtSpawn = 0.f;
+		float TargetAcross = 0.f;
 		FVector Fall = FVector::ZeroVector;   // where it comes down, in the ship's space
 		TArray<TWeakObjectPtr<class UStaticMeshComponent>> Tail;
 	};
@@ -140,6 +154,9 @@ private:
 		float Side = 1.f;         // -1 port, +1 starboard
 		float Abeam = 0.f;        // cm off the ship's side
 		bool bWarned = false;
+		bool bAttacked = false;
+		float SafeDistance = 4000.f;
+		float NextSprayAt = 0.f;
 	};
 	TArray<FSpawnling> Spawnlings;
 	int32 SpawnlingsSent = 0;
@@ -160,4 +177,7 @@ private:
 	float PreviousTime = -1.f;
 	float ShipRadius = 0.f;
 	float HelmTurn = 0.f;
+	float RouteOffset = 0.f;
+	float RouteVelocity = 0.f;
+	float NextRouteLog = 0.f;
 };

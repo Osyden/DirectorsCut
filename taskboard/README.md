@@ -2,7 +2,7 @@
 
 | Task | Status | Owner | Done when |
 | --- | --- | --- | --- |
-| Maelstrom crater, tunnel exit and timed naval boss encounter | Prior pass merged; new owner design queued | Codex; Claude authorised to take the pass when current work runs out—claim files in STATUS | [New owner direction](MAELSTROM-TIMED-BOSS-DESIGN.md): larger fog-covered half-pipe, rollercoaster reveal, slow orbit, phased hazards, timed death and damage-based score. [Prior implementation](MAELSTROM-CINEMATIC-PASS.md) is a baseline, not completion of this design. |
+| Maelstrom crater, tunnel exit and timed naval boss encounter | Orbit/contact pass ready for review; visual polish continues | Codex, `codex/maelstrom-saturday` | [14 Nov handoff](MAELSTROM-14NOV-CODEX.md): descending orbit, bounded steering, outboard attacks and contact spray. [Design target](MAELSTROM-TIMED-BOSS-DESIGN.md) remains the quality bar; organic arms, water art and spout performance remain open. |
 | Initialize Git and Git LFS | Done | Codex | Baseline is on `origin/main` at `dcf3e85`. |
 | Diagnose Unreal MCP startup | Done | Claude | Launch with `-ModelContextProtocolStartServer`; see STATUS.md. |
 | Define the first playable slice | Done | Claude | See [PLAN.md](PLAN.md). |
