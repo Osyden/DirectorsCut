@@ -211,6 +211,7 @@ vc = expression(water, unreal.MaterialExpressionVertexColor, -1400, 150)
 position = expression(water, unreal.MaterialExpressionWorldPosition, -1400, 300)
 position.set_editor_property("world_position_shader_offset", unreal.WorldPositionIncludedOffsets.WPT_EXCLUDE_ALL_SHADER_OFFSETS)
 vertex_normal = expression(water, unreal.MaterialExpressionVertexNormalWS, -1400, 450)
+vertex_tangent = expression(water, unreal.MaterialExpressionVertexTangentWS, -1400, 500)
 camera = expression(water, unreal.MaterialExpressionCameraPositionWS, -1400, 600)
 time = scalar(water, "Clock", 0.0)
 center = vector(water, "BowlCenter", (0, 0, 0, 1))
@@ -511,7 +512,7 @@ float3 waveNormal=normalize(lerp(VN,float3(0,0,1),flatten));
 float resolved=1-smoothstep(120000.0,350000.0,length(P-Cam));
 float3 wave=waveNormal*h*min(max(Amp,0),650.0)*nearHull*resolved;
 """
-wpo_inputs=dict(base_inputs,VN=vertex_normal,Amp=wave_height,Flatten=hull_flatten,Level=sea_level,Cam=camera)
+wpo_inputs=dict(base_inputs,VN=vertex_normal,VT=vertex_tangent,Amp=wave_height,Flatten=hull_flatten,Level=sea_level,Cam=camera)
 if fft_displacement:
     wpo_inputs.update(Live=fft_displacement,Enabled=use_live_fft,Count=live_count)
     wpo_code+=r"""
@@ -525,7 +526,19 @@ float3 curved=d+cross(axis,d)+cross(axis,cross(axis,d))/max(1+waveNormal.z,.01);
 float liveWeight=saturate(Enabled)*step(.5,Count);
 wave=lerp(wave,wave*.25+curved*nearHull*resolved,liveWeight);
 """
-wpo_code+="float breaker=lerp(wn.breaking_field(q,T).x,wn.breaking_field(q2,T).x,blend); wave+=waveNormal*breaker*100.0*nearHull*resolved*(1-saturate(Tunnel)); wave*=1-saturate(VC.r*1.5); return wave+float3(0,0,(Level-P.z)*flatten);"
+wpo_code+=r"""
+float4 breaker=lerp(wn.breaking_field(q,T),wn.breaking_field(q2,T),blend);
+float3 tangent=normalize(VT-waveNormal*dot(VT,waveNormal));
+float3 bitangent=cross(waveNormal,tangent);
+// Bounded lateral compression sharpens moving crests instead of only raising
+// a soft heightfield. Work in the curved surface frame, with hull protection.
+float2 lateral=breaker.yz*130.0;
+lateral=lateral/(1+abs(lateral)/120.0);
+wave+=(waveNormal*breaker.x*100.0+tangent*lateral.x+bitangent*lateral.y)
+    *nearHull*resolved*(1-saturate(Tunnel));
+wave*=1-saturate(VC.r*1.5);
+return wave+float3(0,0,(Level-P.z)*flatten);
+"""
 output(custom(water,wpo_code,FLOAT3,wpo_inputs,800),unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
 
 volume = expression(water,unreal.MaterialExpressionSingleLayerWaterMaterialOutput,0,1000)
@@ -721,14 +734,14 @@ float2 warp=float2(wn.noise(p*.13+VC.g*83),wn.noise(p*.09+13.7))-.5;
 float body=wn.fbm((p+warp*5)*float2(.32,.11)+VC.g*83.0);
 float fine=wn.fbm(p*float2(1.3,.65)+19.0);
 float edge=smoothstep(0,.28,UV.x)*smoothstep(0,.28,1-UV.x);
-float torn=smoothstep(.37,.66,body+fine*.12);
-float foot=1-smoothstep(.90,1.0,VC.b);
+float torn=smoothstep(.24,.60,body+fine*.12);
+float foot=1-smoothstep(.985,1.0,VC.b);
 float patches=smoothstep(.40,.62,wn.fbm(p*float2(.12,.045)+VC.g*31.0));
 // Aerated reaches are interrupted by darker water between short drops. The
 // fixed mask stops temporal averaging from rebuilding one continuous ribbon.
 float reach=smoothstep(.32,.62,wn.noise(float2(UV.y*.047,VC.g*73.0)));
 float hull=smoothstep(1200.0,3500.0,length(P.xy*float2(.5,2)));
-return saturate(edge*torn*(.22+fine*.78)*patches*reach*foot*hull*.9);
+return saturate(edge*torn*(.60+fine*.40)*(.30+.70*patches)*(.20+.80*reach)*foot*hull*1.6*smoothstep(0,.025,VC.b));
 """
 output(custom(feed,fcode,FLOAT,fi),unreal.MaterialProperty.MP_OPACITY)
 output(vector(feed,"FoamColor",(.66,.76,.79,1)),unreal.MaterialProperty.MP_BASE_COLOR)

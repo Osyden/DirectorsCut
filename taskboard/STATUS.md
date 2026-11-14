@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov Codex: exposed rock crater and lower turbulent basin
+
+- Rebuilt the land/water boundary: water ends at an irregular lower shoreline, connected procedural cliffs fill the space to the rim, and discrete falls use shared carved channels. Preserved the 3.2km crater, 900m depth and descending route; added shorter breakers and bounded moving-crest compression. [Plan, implementation, actual captures and remaining visual failures](MAELSTROM-ROCK-BASIN-PLAN.md).
+- Editor/material builds pass, continuous trial C restores open sea, final short capture run passes, minimum calculated full-steer shoreline clearance is 35m. Rock surfacing, ribbon-like falls, broad smooth water, near-water grid artifacts and atmosphere contact still need work; not AAA visual acceptance.
+- Isolated `codex/maelstrom-saturday`, not merged or packaged. Clouds/lighting untouched. Sky integration now has `GetShorelinePoint(angle)` for contact mist rather than the former upper-water join.
+
 ## 14 Nov Codex: branched falls and turbulent-water follow-up
 
 - Replaced continuous feed sheets with uneven branches and interrupted aerated reaches; added irregular moving wave packets, filtered bank foam, stronger short chop and finer impact spray. [Changes, rejected trials, actual captures and remaining visual gaps](MAELSTROM-WHITEWATER-14NOV.md#follow-up-turbulent-slopes-and-branched-feeds).

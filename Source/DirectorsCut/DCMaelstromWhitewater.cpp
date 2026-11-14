@@ -20,21 +20,21 @@ void ADCMaelstrom::BuildWhitewater()
     TArray<int32> I; TArray<FProcMeshTangent> Tangents;
     // Narrow, unequal tributaries enter at distinct points along the course.
     // Their width remains metres even where the fall is hundreds of metres tall.
-    constexpr float FeedTimes[]={8.f,21.f,27.f,41.f,50.f,68.f,75.f,92.f,109.f,118.f,134.f,141.f};
-    for(int32 Feed=0;Feed<UE_ARRAY_COUNT(FeedTimes);++Feed)
+    for(int32 Feed=0;Feed<WaterfallCount;++Feed)
     {
-        const float T=FeedTimes[Feed]+Random.FRandRange(-1.5f,1.5f);
-        const float Angle=DCMaelstromRoute::Angle(T);
-        const float W=Random.FRandRange(1000.f,3200.f);
-        const FVector2D End=DCMaelstromRoute::Point(T,Radius,(Feed%3 ? 6500.f : -4500.f)*DCMaelstromRoute::WidthScale(T));
-        const float StartAngle=Angle+Random.FRandRange(.025f,.10f);
-        const FVector2D Start=FVector2D(FMath::Cos(StartAngle),FMath::Sin(StartAngle))*GetRimRadius(StartAngle)*.997f;
+        const float Angle=WaterfallAngle(Feed);
+        const float W=WaterfallWidth(Feed);
+        const float Edge=WaterEdgeRadius(Angle);
+        if(Edge>GetRimRadius(Angle)*.97f) { continue; }
+        const FVector2D End=FVector2D(FMath::Cos(Angle),FMath::Sin(Angle))*(Edge-900.f);
+        const float StartAngle=Angle;
+        const FVector2D Start=FVector2D(FMath::Cos(StartAngle),FMath::Sin(StartAngle))*GetRimRadius(StartAngle)*.985f;
         const FVector2D Direction=(End-Start).GetSafeNormal();
         const FVector2D Across(-Direction.Y,Direction.X);
         const float Seed=Random.FRand();
         FWaterFeed& Source=WaterFeeds.AddDefaulted_GetRef();
         Source.Foot=FVector(End,HeightAt(End)); Source.Width=W; Source.Seed=Seed;
-        const float LipZ=HeightAt(Start);
+        const float LipZ=CliffHeightAt(Start)+80.f;
         FVector2D Drift=End;
         for(int32 Step=0;Step<24;++Step)
         {
@@ -51,14 +51,15 @@ void ADCMaelstrom::BuildWhitewater()
             const int32 First=V.Num();
             constexpr int32 Rows=144,Cols=8;
             float Distance=0.f;
-            FVector Previous(Start,HeightAt(Start));
+            FVector Previous(Start,LipZ);
             for(int32 Row=0;Row<=Rows;++Row)
             {
                 const float U=static_cast<float>(Row)/Rows;
                 const float Bend=BranchOffset*(.4f+.6f*U)+FMath::Sin(U*UE_PI)*W*
                     FMath::PerlinNoise1D(U*9.f+BranchSeed*57.f)*.65f;
                 const FVector2D Centre=FMath::Lerp(Start,End,U)+Across*Bend;
-                const FVector Center3(Centre,HeightAt(Centre)+45.f);
+                const float CentreEdge=WaterEdgeRadius(FMath::Atan2(Centre.Y,Centre.X));
+                const FVector Center3(Centre,(Centre.Size()>CentreEdge ? CliffHeightAt(Centre) : HeightAt(Centre))+45.f);
                 Distance+=(Center3-Previous).Size(); Previous=Center3;
                 const float Width=BranchWidth*(.6f+.9f*U)*(1.f+.65f*FMath::PerlinNoise1D(U*27.f+BranchSeed*41.f));
                 for(int32 Col=0;Col<=Cols;++Col)
@@ -68,12 +69,9 @@ void ADCMaelstrom::BuildWhitewater()
                     // A falling sheet separates from the wall, then reconnects
                     // at the real contact. Surface-only overlays read as paint.
                     const float FallZ=FMath::Lerp(LipZ,Source.Foot.Z,U*U);
-                    const float SurfaceZ=HeightAt(P);
-                    // Repeated short free-falling sections, not one diagonal jet
-                    // suspended above the entire bank. Rejoin the receiving water.
-                    const float Burst=FMath::Square(FMath::Max(0.f,FMath::PerlinNoise1D(U*21.f+BranchSeed*83.f)));
-                    const float Lift=(180.f+1700.f*Burst)*(1.f-FMath::SmoothStep(.82f,1.f,U))+25.f;
-                    V.Add(FVector(P,FMath::Min(FMath::Max(SurfaceZ,FallZ),SurfaceZ+Lift)+25.f));
+                    const float SurfaceZ=P.Size()>WaterEdgeRadius(FMath::Atan2(P.Y,P.X)) ? CliffHeightAt(P) : HeightAt(P);
+                    // Clear the carved bed, then rejoin the receiving water.
+                    V.Add(FVector(P,FMath::Max(SurfaceZ,FallZ)+45.f));
                     UV.Add(FVector2D(X,Distance*.01f));
                     C.Add(FLinearColor(Width/10000.f,BranchSeed,U,1.f).ToFColor(false));
                     if(Row<Rows && Col<Cols)

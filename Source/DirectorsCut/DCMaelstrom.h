@@ -33,6 +33,8 @@ public:
 	float GetRimDrop(float Angle) const;
 	float GetRimJoin(float Angle) const;
 	float GetOverflowAmount(float Angle) const;
+	/** Actual lower shoreline in basin coordinates, for water-contact atmosphere. */
+	FVector GetShorelinePoint(float Angle) const;
 
 	UPROPERTY(EditAnywhere) float Radius = 160000.f;
 	UPROPERTY(EditAnywhere) float Depth = 90000.f;
@@ -43,6 +45,14 @@ private:
 	float RimElevation(float Angle) const;
 	void UpdateContacts(float DeltaSeconds);
 	float RimGroundHeight(float R, float Angle) const;
+	float WaterEdgeRadius(float Angle) const;
+	static constexpr int32 WaterfallCount=20;
+	float WaterfallAngle(int32 Index) const;
+	float WaterfallWidth(int32 Index) const;
+	float CliffHeightAt(const FVector2D& Point) const;
+	void BuildTerrain();
+	void UpdateTerrainShadows();
+	float NextTerrainShadowUpdate=-1.f;
 	void BuildBasin();
 	void BuildBreakers();
 	void BuildFoamSource();
@@ -83,6 +93,9 @@ private:
 	float NextContactSoundAt = -100.f;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Falls;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> RimLand;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Cliffs;
+	UPROPERTY() TArray<TObjectPtr<class UInstancedStaticMeshComponent>> CliffRocks;
+	UPROPERTY() TArray<TObjectPtr<class UInstancedStaticMeshComponent>> CliffShadowRocks;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Tunnel;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UPostProcessComponent> Exposure;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> WaterMID;

@@ -25,6 +25,7 @@
 #include "Components/PostProcessComponent.h"
 #include "Components/ExponentialHeightFogComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "EngineUtils.h"
@@ -62,6 +63,11 @@ ADCMaelstrom::ADCMaelstrom()
 	Falls->SetupAttachment(Arena);
 	RimLand = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("ContinuousRim"));
 	RimLand->SetupAttachment(Arena);
+	Cliffs=CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("CraterRockWalls"));
+	Cliffs->SetupAttachment(Arena);
+	Cliffs->SetMobility(EComponentMobility::Movable);
+	Cliffs->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Cliffs->SetCastShadow(false);
 	Tunnel = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("ExitTunnel"));
 	Tunnel->SetupAttachment(RootComponent);
 	for (UProceduralMeshComponent* Mesh : {Basin.Get(), Falls.Get(), Tunnel.Get(), RimLand.Get()})
@@ -137,7 +143,7 @@ void ADCMaelstrom::BeginPlay()
 	{
 		WaterMID = UMaterialInstanceDynamic::Create(Water, this);
 		TunnelMID = UMaterialInstanceDynamic::Create(Water, this);
-		WaterMID->SetScalarParameterValue(TEXT("WaveHeight"),250.f);
+		WaterMID->SetScalarParameterValue(TEXT("WaveHeight"),400.f);
 		WaterMID->SetScalarParameterValue(TEXT("BasinRadius"),Radius*.01f);
 		WaterMID->SetScalarParameterValue(TEXT("FlowHandedness"),-1.f);
 		Basin->SetMaterial(0, WaterMID);
@@ -150,6 +156,7 @@ void ADCMaelstrom::BeginPlay()
 	}
 	BuildBreakers();
 	BuildBasin();
+	BuildTerrain();
 	BuildWhitewater();
 	BuildFoamSource();
 	BuildTunnel();
@@ -316,7 +323,7 @@ void ADCMaelstrom::BuildBasin()
 		for (int32 Side = 0; Side <= Sectors; ++Side)
 		{
             const float A=UE_TWO_PI*static_cast<float>(Side)/Sectors;
-			const float R = FMath::Lerp(120.f, GetRimRadius(A) * 1.24f, static_cast<float>(Ring) / Rings);
+			const float R = FMath::Lerp(120.f, WaterEdgeRadius(A), static_cast<float>(Ring) / Rings);
 			const FVector2D P(FMath::Cos(A) * R, FMath::Sin(A) * R);
 			const float Z = HeightAt(P);
 			const float DX = (HeightAt(P + FVector2D(60.f, 0.f)) - HeightAt(P - FVector2D(60.f, 0.f))) / 120.f;
@@ -342,60 +349,8 @@ void ADCMaelstrom::BuildBasin()
 	}
 	Basin->CreateMeshSection(0, Vertices, Triangles, Normals, UVs, Colors, Tangents, false);
 
-	Vertices.Reset(); Normals.Reset(); UVs.Reset(); Colors.Reset(); Triangles.Reset(); Tangents.Reset();
-	// The falling face is actual opaque water attached to the overflow, not floating
-	// translucent cards. The approach remains an open sloping ride surface.
-	constexpr int32 FallSides = 768, FallRows = 32;
-	for (int32 Side = 0; Side <= FallSides; ++Side)
-	{
-		const float A = Side * UE_TWO_PI / FallSides;
-		const float LocalRadius = GetRimRadius(A);
-		const float Join = GetRimJoin(A);
-		const float LipZ = HeightAt(FVector2D(FMath::Cos(A), FMath::Sin(A)) * LocalRadius);
-		const float Overflow = GetOverflowAmount(A);
-		for (int32 Row = 0; Row <= FallRows; ++Row)
-		{
-			const float T = Row / static_cast<float>(FallRows);
-			const float R = LocalRadius * FMath::Lerp(1.001f, Join - 0.015f - 0.012f * FMath::Sin(A * 21.f), T);
-			const FVector2D P(FMath::Cos(A) * R, FMath::Sin(A) * R);
-			const float Z = HeightAt(P) + 120.f;
-			const float DX = (HeightAt(P + FVector2D(60,0)) - HeightAt(P - FVector2D(60,0))) / 120.f;
-			const float DY = (HeightAt(P + FVector2D(0,60)) - HeightAt(P - FVector2D(0,60))) / 120.f;
-			Vertices.Add(FVector(P.X, P.Y, Z));
-			Normals.Add(FVector(-DX,-DY,1.f).GetSafeNormal());
-			Tangents.Add(FProcMeshTangent(FVector(-FMath::Sin(A),FMath::Cos(A),-DX*FMath::Sin(A)+DY*FMath::Cos(A)).GetSafeNormal(), false));
-			UVs.Add(FVector2D(A * Radius / 10000.f, FMath::Max(0.f, LipZ - Z) / 10000.f));
-			Colors.Add(FLinearColor(Overflow, 1.f, T, Overflow).ToFColor(false));
-			if (Side < FallSides && Row < FallRows && Overflow > 0.16f && FMath::Abs(FMath::UnwindRadians(A - UE_PI)) > 0.8f)
-			{
-				const int32 I = Side * (FallRows + 1) + Row, J = I + FallRows + 1;
-				Triangles.Append({I, J, I+1, I+1, J, J+1});
-			}
-		}
-	}
-	Falls->CreateMeshSection(0, Vertices, Triangles, Normals, UVs, Colors, Tangents, false);
+	// Rock walls and discrete cliff falls are built separately from the water.
 
-	Vertices.Reset(); Normals.Reset(); UVs.Reset(); Colors.Reset(); Triangles.Reset(); Tangents.Reset();
-	constexpr int32 LandRows=16, LandSides=384;
-	for (int32 Row=0; Row<=LandRows; ++Row)
-	{
-		for (int32 Side=0; Side<=LandSides; ++Side)
-		{
-			const float A=Side*UE_TWO_PI/LandSides;
-			const float R=GetRimRadius(A)*FMath::Lerp(1.008f,1.24f,Row/static_cast<float>(LandRows));
-			const FVector2D P(FMath::Cos(A)*R,FMath::Sin(A)*R);
-			auto Ground=[this](const FVector2D& Q) { return RimGroundHeight(Q.Size(),FMath::Atan2(Q.Y,Q.X)); };
-			const float DX=(Ground(P+FVector2D(60,0))-Ground(P-FVector2D(60,0)))/120.f;
-			const float DY=(Ground(P+FVector2D(0,60))-Ground(P-FVector2D(0,60)))/120.f;
-			Vertices.Add(FVector(P.X,P.Y,Ground(P))); Normals.Add(FVector(-DX,-DY,1).GetSafeNormal());
-			UVs.Add(P/3000.f); Colors.Add(FColor::White); Tangents.Add(FProcMeshTangent(FVector(1,0,DX).GetSafeNormal(),false));
-			if (Row<LandRows && Side<LandSides && FMath::Abs(FMath::UnwindRadians(A-UE_PI))>0.4f)
-			{
-				const int32 I=Row*(LandSides+1)+Side,J=I+LandSides+1; Triangles.Append({I,I+1,J,I+1,J+1,J});
-			}
-		}
-	}
-	RimLand->CreateMeshSection(0,Vertices,Triangles,Normals,UVs,Colors,Tangents,false);
 }
 
 void ADCMaelstrom::BuildTunnel()
@@ -562,6 +517,9 @@ void ADCMaelstrom::SetStageVisible(bool bVisible)
 	Whitewater->SetVisibility(bVisible);
 	Falls->SetVisibility(bVisible);
 	RimLand->SetVisibility(bVisible);
+	Cliffs->SetVisibility(bVisible);
+	for(UInstancedStaticMeshComponent* Rock:CliffRocks) { if(Rock) { Rock->SetVisibility(bVisible); } }
+	for(UInstancedStaticMeshComponent* Rock:CliffShadowRocks) { if(Rock) { Rock->SetVisibility(bVisible); } }
 	Tunnel->SetVisibility(bVisible);
 	if (!bVisible) { if (AActor* A = Throat.Get()) { A->SetActorHiddenInGame(true); } }
 	for (AActor* Landmark : Landmarks) { if (Landmark) { Landmark->SetActorHiddenInGame(!bVisible); } }
@@ -658,7 +616,7 @@ void ADCMaelstrom::Tick(float DeltaSeconds)
 			if (USceneComponent* OldSea = Director->GetSea()) { OldSea->SetVisibility(false, true); }
 		}
 	}
-	if (bActive) { UpdateBreakers(); UpdateWhitewater(); }
+	if (bActive) { UpdateBreakers(); UpdateWhitewater(); UpdateTerrainShadows(); }
 	UpdateContacts(DeltaSeconds);
 	static const bool SceneReview=FParse::Param(FCommandLine::Get(),TEXT("DCSceneReview"));
 	if (Boss) { Boss->UpdateEncounter(Elapsed, GetArenaTransform(), Radius, Depth, bActive && !SceneReview); }

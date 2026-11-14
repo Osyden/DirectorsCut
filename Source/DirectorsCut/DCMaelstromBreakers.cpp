@@ -11,7 +11,7 @@ void ADCMaelstrom::BuildBreakers()
     FRandomStream Random(14011);
     // These are height-field crests in the SAME water mesh. No overlapping
     // opaque ribbons, detached edges or second water volume interfaces.
-    for(int32 Wave=0;Wave<112;++Wave)
+    for(int32 Wave=0;Wave<180;++Wave)
     {
         const bool InChannel=Wave>=12 && Wave<32;
         const float A=Wave<12 ? DCMaelstromRoute::Angle(5.f+Wave*13.f) : (InChannel
@@ -23,9 +23,10 @@ void ADCMaelstrom::BuildBreakers()
         if(!InChannel && FMath::Abs(R-RouteR)<8500.f) { continue; }
         const FVector2D Across(FMath::Cos(A),FMath::Sin(A));
         const FVector2D Along(Across.Y,-Across.X);
-        BreakingWaves.Add({Across*R,Along,Across,static_cast<float>(Random.FRandRange(5000.f,14000.f)),
-            static_cast<float>(InChannel ? Random.FRandRange(1800.f,2800.f) : Random.FRandRange(900.f,1800.f)),
-            static_cast<float>(InChannel ? Random.FRandRange(60.f,140.f) : Random.FRandRange(120.f,420.f)),
+        if(R>WaterEdgeRadius(A)-1200.f) { continue; }
+        BreakingWaves.Add({Across*R,Along,Across,static_cast<float>(Random.FRandRange(2200.f,6500.f)),
+            static_cast<float>(InChannel ? Random.FRandRange(650.f,1300.f) : Random.FRandRange(500.f,1100.f)),
+            static_cast<float>(InChannel ? Random.FRandRange(160.f,330.f) : Random.FRandRange(220.f,550.f)),
             static_cast<float>(Random.FRandRange(0.f,20.f))});
     }
     for(const FBreakingWave& W:BreakingWaves) for(int32 J=-2;J<=2;++J)
