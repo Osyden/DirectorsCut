@@ -498,6 +498,7 @@ void ADCMaelstrom::SetStageVisible(bool bVisible)
 	Falls->SetVisibility(bVisible);
 	RimLand->SetVisibility(bVisible);
 	Tunnel->SetVisibility(bVisible);
+	if (!bVisible) { if (AActor* A = Throat.Get()) { A->SetActorHiddenInGame(true); } }
 	for (AActor* Landmark : Landmarks) { if (Landmark) { Landmark->SetActorHiddenInGame(!bVisible); } }
 }
 
@@ -617,6 +618,7 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
 	Tunnel->SetRelativeScale3D(FVector(LengthScale, WidthScale, WidthScale));
 	Tunnel->SetRelativeLocation(FVector(ExitX, 0.f, Director->SeaLevelZ));
 	Tunnel->SetVisibility(Elapsed < 10.f);
+	UpdateThroat(ExitX);
 	Basin->SetVisibility(Elapsed >= -7.f);
 	Falls->SetVisibility(Elapsed >= -7.f);
 	RimLand->SetVisibility(Elapsed >= -7.f);
@@ -703,6 +705,51 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
 	Exposure->BlendWeight = 1.f;
 	const FDCEnvState& Env = Director->GetEnv();
 	Exposure->Settings.AutoExposureBias = Env.Exposure + (Director->bUDS ? 2.2f * (1.f - FMath::Clamp(Env.SunIntensity / 7.f, 0.f, 1.f)) : 0.f) + Glare;
+}
+
+void ADCMaelstrom::UpdateThroat(float ExitX)
+{
+	// Off unless -DCThroat. Tried 14 Nov: inside the dark water tunnel the cloud hardly shows, at the mouth it
+	// whites the picture out, and past the mouth it hangs behind the ship as two lumps with a cut foot. It also
+	// costs 20 fps. The exit wants shaping in the water tunnel itself, not a cloud laid over it.
+	static const bool bOff = !FParse::Param(FCommandLine::Get(), TEXT("DCThroat"));
+	const float Shown = bOff ? 0.f : FMath::SmoothStep(-16.f, -11.f, Elapsed) * (1.f - FMath::SmoothStep(8.f, 13.f, Elapsed));
+	if (Shown <= 0.f)
+	{
+		if (AActor* A = Throat.Get()) { A->SetActorHiddenInGame(true); }
+		return;
+	}
+	if (!Throat.IsValid() && !bThroatTried)
+	{
+		bThroatTried = true;
+		UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_VdbCloud.M_VdbCloud"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+		USparseVolumeTexture* Volume = LoadObject<USparseVolumeTexture>(nullptr, TEXT("/Game/Clouds_Tunnel_Loop/Effects/CT_Clouds_Tunnel_Vdb_01.CT_Clouds_Tunnel_Vdb_01"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		AHeterogeneousVolume* A = Base && Volume ? GetWorld()->SpawnActor<AHeterogeneousVolume>(AHeterogeneousVolume::StaticClass(), FTransform::Identity, Params) : nullptr;
+		if (UHeterogeneousVolumeComponent* C = A ? A->FindComponentByClass<UHeterogeneousVolumeComponent>() : nullptr)
+		{
+			C->SetMobility(EComponentMobility::Movable);
+			ThroatMID = UMaterialInstanceDynamic::Create(Base, this);
+			ThroatMID->SetSparseVolumeTextureParameterValue(TEXT("SparseVolumeTexture"), Volume);
+			ThroatMID->SetVectorParameterValue(TEXT("Tint"), FLinearColor(0.4f, 0.48f, 0.62f));
+			C->SetMaterial(0, ThroatMID);
+			C->StartFrame = 0.f; C->EndFrame = 200.f; C->FrameRate = 24.f; C->Frame = 90.f; C->bPlaying = true; C->bLooping = true;
+			C->bIssueBlockingRequests = true;
+			Throat = A;
+			UE_LOG(LogDC, Log, TEXT("Maelstrom: cloud throat at the tunnel's mouth"));
+		}
+	}
+	AHeterogeneousVolume* A = Throat.Get();
+	if (!A || !ThroatMID) { return; }
+	// 620 m of it, 180 m through: inside the water tunnel's 90 m radius, its last 40 m standing out of the mouth as a collar.
+	static float Scale = 220.f, Sink = 3000.f; static bool bRead = false;   // test hooks: -DCThroatScale= -DCThroatSink=
+	if (!bRead) { bRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCThroatScale="), Scale); FParse::Value(FCommandLine::Get(), TEXT("DCThroatSink="), Sink); }
+	const float Half = 0.5f * 672.f * 0.42f * Scale;
+	A->SetActorHiddenInGame(false);
+	A->SetActorTransform(FTransform(FRotator(0.f, -90.f, 0.f), FVector(ExitX + 4000.f - Half, 0.f, Director->SeaLevelZ - Sink), FVector(Scale)));
+	ThroatMID->SetScalarParameterValue(TEXT("Density"), Shown);
+	ThroatMID->SetVectorParameterValue(TEXT("Floor"), FLinearColor(Sink / (Scale * 0.42f) + 2.f, 6.f, 0.f, 0.f));
 }
 
 void ADCMaelstrom::ClearTwisters()

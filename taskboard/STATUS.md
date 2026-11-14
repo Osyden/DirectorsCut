@@ -2,6 +2,16 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 00:35 Claude: cloud lining at the maelstrom tunnel's mouth tried and left off
+
+- `DCMaelstrom::UpdateThroat` puts the tunnel volume (scale 220) inside the last of the water tunnel with 40 m standing out of its mouth. Result at 256 to 286 s: hardly seen inside the dark tunnel, a white-out at the mouth (271 s), then two lumps of cloud with a cut foot hanging behind the ship (273 to 275 s), and 53 to 64 fps. Off unless `-DCThroat`. The exit needs shaping in the water tunnel and the lip, as in Codex's plan, not a cloud over it.
+
+## 14 Nov 00:25 Claude: tenth build packaged and run: `2026-11-14_0006_68b9d2c_storm-wall-spouts`
+
+- `Builds/2026-11-14_0006_68b9d2c_storm-wall-spouts/Windows/DirectorsCut.exe`, 7.7 GB (1.3 GB more than the last: tunnel volume 01 and the fog cards).
+- Run from the packaged exe at 1600x900: the cloud wall with its portal at 56 s, inside the tunnel at 60 and 64 s, the city with fog cards at 90 s (90 to 109 fps); from 262 s the slide, the breach and a waterspout at 304 and 309 s (84 to 109 fps). Tunnel, 68 fog cards and spout all present in the packaged content.
+- Not in this build: the cloud lining at the maelstrom tunnel's mouth (written after it was started).
+
 ## 14 Nov 00:10 Claude: quicker first descent; spout cost found; whole voyage run; packaging
 
 - **Descent**: 42 percent of the maelstrom's descent is now made between 9 and 29 s after the breach (`-DCPlunge=`), so the rim and its falls climb away overhead as the ship clears the tunnel. It was one even glide over the whole fight.

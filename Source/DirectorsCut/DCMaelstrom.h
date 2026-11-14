@@ -102,6 +102,11 @@ private:
 		bool bStruck = false;
 		bool bCalled = false;
 	};
+	/** Rolling cloud lining the last of the water tunnel and collaring its mouth (the bought volume, if installed). */
+	TWeakObjectPtr<class AHeterogeneousVolume> Throat;
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> ThroatMID;
+	bool bThroatTried = false;
+	void UpdateThroat(float ExitX);
 	TArray<FTwister> Twisters;
 	UPROPERTY() TArray<TObjectPtr<UMaterialInstanceDynamic>> TwisterMIDs;
 	int32 TwistersRaised = 0;
