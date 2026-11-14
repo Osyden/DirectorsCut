@@ -283,7 +283,10 @@ void ADCCrewMember::TickHelm(float DeltaSeconds, ADCTreadmill* Treadmill)
 	const ADCRideDirector* Director = ADCRideDirector::Get(this);
 	const float Sight = Director ? FMath::Clamp(1600.f / FMath::Max(Director->GetEnv().FogDensity, 0.01f), 9000.f, 20000.f) : 15000.f;
 	const float Target = Treadmill->FindClearLane(Sight);
-	Treadmill->SetSteer(FMath::Clamp((Target - Treadmill->GetLaneOffset()) / 250.f, -1.f, 1.f));
+	// He steers for where she will be in a second, not where she is: she carries her swing, and with the wheel thrown
+	// hard over for every 2.5 m of error she swung past each gap and on to the stone beyond it (seen in the log, 14 Nov).
+	const float Carried = Treadmill->GetTurn() * 900.f * 0.9f;
+	Treadmill->SetSteer(FMath::Clamp((Target - Treadmill->GetLaneOffset() - Carried) / 700.f, -1.f, 1.f));
 }
 
 void ADCCrewMember::TickCannons(float DeltaSeconds, ADCTreadmill* Treadmill, EDCSide Side)

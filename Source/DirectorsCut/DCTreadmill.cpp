@@ -957,9 +957,17 @@ void ADCTreadmill::TickStrikes(float DeltaSeconds)
 			// Keep to the side already chosen while the same stone is ahead.
 			if (FMath::Abs(CurrentDrift) > 40.f) { Dir = FMath::Sign(CurrentDrift); }
 			const float Urge = 1.f - Hit[0] / Far;
-			Want = Dir * FMath::Lerp(180.f, 620.f, Urge * Urge);
+			Want = Dir * FMath::Lerp(320.f, 1100.f, Urge);
 		}
-		CurrentDrift = FMath::FInterpTo(CurrentDrift, Want, DeltaSeconds, Want != 0.f ? 3.f : 1.5f);
+		CurrentDrift = FMath::FInterpTo(CurrentDrift, Want, DeltaSeconds, Want != 0.f ? 5.f : 1.5f);
+		static const bool bCurrentLog = FParse::Param(FCommandLine::Get(), TEXT("DCCurrentLog"));
+		static float CurrentLogTimer = 0.f;
+		CurrentLogTimer -= DeltaSeconds;
+		if (bCurrentLog && CurrentLogTimer <= 0.f && (Hit[0] >= 0.f || Hit[1] >= 0.f || Hit[2] >= 0.f))
+		{
+			CurrentLogTimer = 0.5f;
+			UE_LOG(LogDC, Log, TEXT("Current: keel %.0f port %.0f starboard %.0f cm ahead, want %.0f, drift %.0f, lane %.0f moving %.0f, helm %.2f, at %.1f s"), Hit[0], Hit[1], Hit[2], Want, CurrentDrift, LaneOffset, LaneVelocity, Steer, Director->RideTime);
+		}
 	}
 
 	// Feelers at the waterline, in the ship's resting place (she lies at the origin, bow to +X): out

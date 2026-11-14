@@ -4,7 +4,7 @@
 
 ## Play this
 
-`E:\projects\directorscut\Builds\2026-11-14_0431_9a61a5e_torn-sea\Windows\DirectorsCut.exe`. It has been run from its exe at 1600x900 through the front, the tunnel and the city (94 to 114 fps) and through the whole maelstrom to the ending card at triple speed, and it holds everything in the table below.
+`E:\projects\directorscut\Builds\2026-11-14_0543_17df8b3_giants-bolts-current\Windows\DirectorsCut.exe`. It has been run from its exe at 1600x900 through the front, the tunnel and the city (90 to 127 fps) and through the whole maelstrom to the ending card at triple speed, and it holds everything in the table below.
 
 Every earlier build is still in `Builds\` for the dev log.
 
@@ -14,7 +14,7 @@ Every earlier build is still in `Builds\` for the dev log.
 | --- | --- | --- |
 | Open sea, 26 to 58 s | One storm front: a thin pale bank on the horizon that grows into a wall of the bought cloud volume, about 4 km long and 900 m high, with the tunnel as a lit opening through it at sea level. Sheet lightning flares in it four times as it closes. The sky pack's flat-topped storm slab no longer stands behind it; that storm comes in over the ship with the wall. | `review/47`, `review/54`, `review/57` |
 | 59 to 75 s | The ship sails through the cloud tunnel. The air inside is clear, so its walls and the light at the far end show; four bolts on cue light the walls blue-white from within. | `review/47`, `review/54` |
-| City, 76 to 240 s | The white self-lit banks are gone. Easy Fog cards lie on the water and hang over the channel's shoulders; six rags of mist run aft across the deck. Lightning lights the fog behind the ruins instead of whiting the stone out. The sea is grey and wind-torn, with streaks of foam on the swells. | `review/48`, `review/51`, `review/53`, `review/59` |
+| City, 76 to 240 s | The white self-lit banks are gone. Easy Fog cards lie on the water and hang over the channel's shoulders; six rags of mist run aft across the deck. Lightning lights the fog behind the ruins instead of whiting the stone out. The sea is grey and wind-torn under a thin layer of mist. Lightning falls as visible forked bolts. Six stone giants wade up to the banks by turns and throw burning rock at the deck; the batteries can kill them. Rocks in the lane are solid: she grinds along them instead of passing through. | `review/48`, `review/51`, `review/53`, `review/59` to `review/62` |
 | Guns | Shots are iron balls with a thin grey streak; the lower-deck guns fire from outside the hull. In the maelstrom, shots fired below the ship's level no longer burst on the hidden open sea beside her. | `review/49` |
 | Maelstrom, from 270 s | The ship hangs on the lip for three seconds, then the bow drops and she goes down into the bowl over the next 18. Six waterspouts and five burning stones come on a schedule; each has a tell and a crew call, and the helm carries the ship clear. Two of the creature's young swim in on the beam, to be sunk by that side's guns before they reach the hull. The creature is beaten on the clock at 160 s after the breach, with a kilometre-high plume from the crater's heart. The results card shows damage taken and arms broken. The wind rises with a spout and the stones and the plume have a boom. | `review/50`, `review/52`, `review/55`, `review/58` |
 

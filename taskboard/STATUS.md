@@ -2,6 +2,13 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 06:15 Claude: twenty-second build run; the helmsman was steering her on to the rocks; current strengthened
+
+- **Build** `Builds/2026-11-14_0543_17df8b3_giants-bolts-current/Windows/DirectorsCut.exe`, run from the exe without a window at 1600x900: front, tunnel, city to 236 s at normal speed (90 to 127 fps), six giants sent, four killed, five rocks on deck; the maelstrom at 3x to the ending card, both spawnlings sunk. The giant's mesh and animations are in the packaged content.
+- **Why she still struck stone, and on the stem**: a log of the current (`-DCCurrentLog`) showed the crew helmsman throwing the wheel hard over for every 2.5 m he was off his chosen lane; she carried her swing past each gap and on to the stone beyond, at 12 m a second across the channel, which no current could hold. He now steers for where she will be in a second and eases the wheel as he nears his lane (`DCCrew.cpp` `TickHelm`). The current itself is stronger (3.2 to 11 m a second, rising as the stone nears).
+- One whole city at normal speed with the bot, after both changes: four contacts (ten blows), one of them on the stem, hull 71 at the slide with three giant rocks landed and five giants killed. Before tonight a lane rock was a 3-point hit that vanished; they are now grinding contacts. Not head-on-proof yet.
+- These two changes are **not** in the twenty-second build.
+
 ## 14 Nov 05:42 Claude: stone giants on the banks of the city, throwing fire (owner's 05:20 request)
 
 - `DCTreadmill::TickGiants`: six through the city (96, 118, 141, 164, 187, 208 s), port and starboard by turns. Each is Paragon's Rampage in the stone (Elemental) skin with its glowing cracks, 16 times life size (about 45 m), wading. He starts 460 m ahead and out beyond the bank, wades in to stand 82 m from the middle of the channel facing the ship, and the crew call him and name the battery. Once the ship is within 150 m he tears up a rock (the tell, 1.6 s), throws it burning in a three-second arc at the deck (2 damage and a deck fire, which someone must put out), and does it again every six seconds until she is past. He has 4 health and is an urgent target for that side's battery; killed, he plays his death and sinks, 200 points. Without the pack none are sent. `-DCNoGiants`, `-DCGiantAt=<ride time>`, `-DCGiantScale= -DCGiantSunk= -DCGiantYaw=`.
