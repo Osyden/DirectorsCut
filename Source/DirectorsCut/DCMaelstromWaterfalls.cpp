@@ -10,6 +10,7 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/Pawn.h"
+#include "Engine/GameViewportClient.h"
 #include "ProceduralMeshComponent.h"
 #include "DCMaelstromRoute.h"
 #include "DCCliffGenerator.h"
@@ -289,13 +290,24 @@ void ADCMaelstrom::UpdateProceduralFalls()
             // illumination/extinction. Never enable this for normal gameplay.
             float DiagnosticEmission = bDensityDiagnostic ? 1.f : 0.f;
             if (bDensityDiagnostic) { FParse::Value(FCommandLine::Get(), TEXT("DCFallDiagnosticEmission="), DiagnosticEmission); }
-            MID->SetScalarParameterValue(TEXT("Density"), bDensityDiagnostic ? 0.f : FMath::Max(0.f, Density));
+            float AppliedDensity = FMath::Max(0.f, Density);
+            float DiagnosticConstant = 0.f;
+            if (bDensityDiagnostic)
+            {
+                AppliedDensity = 0.f;
+                FParse::Value(FCommandLine::Get(), TEXT("DCFallDiagnosticExtinction="), AppliedDensity);
+                FParse::Value(FCommandLine::Get(), TEXT("DCFallConstantDensity="), DiagnosticConstant);
+            }
+            MID->SetScalarParameterValue(TEXT("Density"), FMath::Max(0.f, AppliedDensity));
             MID->SetScalarParameterValue(TEXT("DiagnosticEmission"), FMath::Max(0.f, DiagnosticEmission));
+            MID->SetScalarParameterValue(TEXT("DiagnosticConstantDensity"), FMath::Max(0.f, DiagnosticConstant));
             if (bDensityDiagnostic)
             {
                 float Available = 0.f;
                 if (!Base->GetScalarParameterValue(FMaterialParameterInfo(TEXT("DiagnosticEmission")), Available))
                 { UE_LOG(LogTemp, Error, TEXT("DC_FALL_DIAGNOSTIC material %s lacks DiagnosticEmission; rebuild waterfall materials before interpreting the capture"), *MaterialPath); }
+                if (DiagnosticConstant > 0.f && !Base->GetScalarParameterValue(FMaterialParameterInfo(TEXT("DiagnosticConstantDensity")), Available))
+                { UE_LOG(LogTemp, Error, TEXT("DC_FALL_DIAGNOSTIC material %s lacks DiagnosticConstantDensity; constant-box result is invalid"), *MaterialPath); }
             }
             C->SetMaterial(0, MID);
             C->bPivotAtCentroid = false;
@@ -313,7 +325,7 @@ void ADCMaelstrom::UpdateProceduralFalls()
             UE_LOG(LogTemp, Display, TEXT("DC_FALL_NATIVE actor=%s layer=%s asset=%s frameTranslation=%s frameScale=%s frameRotation=%s actorRelative=%s density=%.6f emission=%.6f"),
                 *Actor->GetName(), Name, *Volume->GetPathName(), *NativeFrame.GetTranslation().ToString(),
                 *NativeFrame.GetScale3D().ToString(), *NativeFrame.Rotator().ToString(),
-                *C->GetRelativeTransform().ToString(), bDensityDiagnostic ? 0.f : Density, DiagnosticEmission);
+                *C->GetRelativeTransform().ToString(), AppliedDensity, DiagnosticEmission);
         }
         if (ProceduralFalls.Num() && FParse::Param(FCommandLine::Get(), TEXT("DCFallCamera")))
         {
@@ -353,6 +365,27 @@ void ADCMaelstrom::UpdateProceduralFalls()
                         *C->FrameTransform.Rotator().ToString(), *C->GetComponentScale().ToString(),
                         *C->Bounds.Origin.ToString(), *C->Bounds.BoxExtent.ToString(), *C->VolumeResolution.ToString(),
                         C->bPivotAtCentroid, C->IsVisible());
+                    UMaterialInterface* Material = C->GetMaterial(0);
+                    USparseVolumeTexture* BoundVolume = nullptr;
+                    float MaterialDensity = -1.f, MaterialEmission = -1.f, MaterialVoxel = -1.f, Constant = -1.f;
+                    if (Material)
+                    {
+                        Material->GetSparseVolumeTextureParameterValue(FMaterialParameterInfo(TEXT("SparseVolumeTexture")), BoundVolume);
+                        Material->GetScalarParameterValue(FMaterialParameterInfo(TEXT("Density")), MaterialDensity);
+                        Material->GetScalarParameterValue(FMaterialParameterInfo(TEXT("DiagnosticEmission")), MaterialEmission);
+                        Material->GetScalarParameterValue(FMaterialParameterInfo(TEXT("VoxelSizeCm")), MaterialVoxel);
+                        Material->GetScalarParameterValue(FMaterialParameterInfo(TEXT("DiagnosticConstantDensity")), Constant);
+                    }
+                    auto CVarValue = [](const TCHAR* Name)
+                    { IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(Name); return V ? V->GetFloat() : -1.f; };
+                    const UGameViewportClient* Viewport = GetWorld()->GetGameViewport();
+                    UE_LOG(LogTemp, Display, TEXT("DC_FALL_BINDING actor=%s hidden=%d material=%s svt=%s density=%.6f emission=%.6f constant=%.6f voxelCm=%.3f showHV=%d enabled=%.0f allowed=%.0f sparse=%.0f sparseVoxel=%.0f preshading=%.0f cameraAVSM=%.0f"),
+                        *Actor->GetName(), Actor->IsHidden(), *GetNameSafe(Material), *GetPathNameSafe(BoundVolume),
+                        MaterialDensity, MaterialEmission, Constant, MaterialVoxel,
+                        Viewport ? Viewport->EngineShowFlags.HeterogeneousVolumes : -1,
+                        CVarValue(TEXT("r.HeterogeneousVolumes")), CVarValue(TEXT("r.HeterogeneousVolumes.Allowed")),
+                        CVarValue(TEXT("r.SparseVolumeTexture")), CVarValue(TEXT("r.HeterogeneousVolumes.SparseVoxel")),
+                        CVarValue(TEXT("r.HeterogeneousVolumes.Preshading")), CVarValue(TEXT("r.HeterogeneousVolumes.LightingCache.UseAVSM")));
                 }
             }
         }

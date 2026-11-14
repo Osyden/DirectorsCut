@@ -65,7 +65,14 @@ for name in ("Falling", "Impact"):
     channel.set_editor_property("r", True)
     for key in ("g", "b", "a"):
         channel.set_editor_property(key, False)
-    mel.connect_material_expressions(svt, "Attributes A", channel, "")
+    if not mel.connect_material_expressions(svt, "Attributes A", channel, ""):
+        raise RuntimeError("Failed to connect native SVT Attributes A to density mask")
+    constant_density = mel.create_material_expression(mat, unreal.MaterialExpressionScalarParameter, -600, 100)
+    constant_density.set_editor_property("parameter_name", "DiagnosticConstantDensity")
+    constant_density.set_editor_property("default_value", 0.)
+    effective_density = mel.create_material_expression(mat, unreal.MaterialExpressionAdd, -400, 100)
+    if not mel.connect_material_expressions(channel, "", effective_density, "A") or not mel.connect_material_expressions(constant_density, "", effective_density, "B"):
+        raise RuntimeError("Failed to connect constant-density diagnostic")
     density = mel.create_material_expression(mat, unreal.MaterialExpressionScalarParameter, -400, 200)
     density.set_editor_property("parameter_name", "Density")
     density.set_editor_property("default_value", .004 if name == "Falling" else .0015)
@@ -79,9 +86,10 @@ for name in ("Falling", "Impact"):
     if not mel.connect_material_expressions(density, "", density_per_voxel, "A") or not mel.connect_material_expressions(voxel, "", density_per_voxel, "B"):
         raise RuntimeError("Failed to connect physical extinction unit conversion")
     extinction = mel.create_material_expression(mat, unreal.MaterialExpressionMultiply, -200, 0)
-    mel.connect_material_expressions(channel, "", extinction, "A")
-    mel.connect_material_expressions(density_per_voxel, "", extinction, "B")
-    mel.connect_material_property(extinction, "", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)
+    if not mel.connect_material_expressions(effective_density, "", extinction, "A") or not mel.connect_material_expressions(density_per_voxel, "", extinction, "B"):
+        raise RuntimeError("Failed to connect native volume extinction")
+    if not mel.connect_material_property(extinction, "", unreal.MaterialProperty.MP_SUBSURFACE_COLOR):
+        raise RuntimeError("Failed to connect volume extinction output")
     albedo = mel.create_material_expression(mat, unreal.MaterialExpressionConstant3Vector, -200, -200)
     albedo.set_editor_property("constant", unreal.LinearColor(.92, .95, .97, 1))
     mel.connect_material_property(albedo, "", unreal.MaterialProperty.MP_BASE_COLOR)
@@ -94,7 +102,7 @@ for name in ("Falling", "Impact"):
     if not mel.connect_material_expressions(diagnostic, "", emission_per_voxel, "A") or not mel.connect_material_expressions(voxel, "", emission_per_voxel, "B"):
         raise RuntimeError("Failed to connect diagnostic emission unit conversion")
     emission = mel.create_material_expression(mat, unreal.MaterialExpressionMultiply, -200, 400)
-    if not mel.connect_material_expressions(channel, "", emission, "A"):
+    if not mel.connect_material_expressions(effective_density, "", emission, "A"):
         raise RuntimeError("Failed to connect density to diagnostic emission")
     if not mel.connect_material_expressions(emission_per_voxel, "", emission, "B"):
         raise RuntimeError("Failed to connect diagnostic emission multiplier")
