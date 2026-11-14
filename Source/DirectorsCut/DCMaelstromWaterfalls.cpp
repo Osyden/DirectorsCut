@@ -88,7 +88,7 @@ void ADCMaelstrom::UpdateProceduralFalls()
                 const FVector Center = DCCliffGenerator::SampleRenderedSurface(Angle, V, VertexAt);
                 const float SampleAngle = Angle + Across / FMath::Max(Center.Size2D(), 1.0);
                 FVector P = DCCliffGenerator::SampleRenderedSurface(SampleAngle, V, VertexAt)
-                    + DCCliffGenerator::WaterContactOffset(SampleAngle);
+                    + DCCliffGenerator::WaterContactOffset(SampleAngle, V);
                 return FMath::Lerp(P, Feed.Foot + LocalFrame.TransformVectorNoScale(FVector(Across, 0, 40)),
                     FMath::SmoothStep(.94f, 1.f, U));
             };
@@ -160,7 +160,7 @@ void ADCMaelstrom::UpdateProceduralFalls()
                 }
                 Profile->SetArrayField(TEXT("cross_offsets_cm"), Offsets);
                 Profile->SetArrayField(TEXT("cross_sections_local_cm"), CrossSections);
-                Profile->SetStringField(TEXT("surface_contract"), TEXT("rendered cliff triangles; inward180cm; no vertical lift; last6percent contact blend"));
+                Profile->SetStringField(TEXT("surface_contract"), TEXT("rendered cliff triangles; inward180cm; talus-only vertical clearance via WaterContactOffset; last6percent contact blend"));
                 // Surface samples, not a horizontal impact plane: the local
                 // receiving water slopes into the spiral and changes across it.
                 constexpr int32 GridCount = 25;
@@ -215,14 +215,19 @@ void ADCMaelstrom::UpdateProceduralFalls()
         {
             if (Layer == 0 && Feed.Lip.Z - Feed.Foot.Z < 8500.f) { continue; }
             const TCHAR* Name = Layer == 0 ? TEXT("Falling") : TEXT("Impact");
-            const FString Root = TEXT("/Game/DC/Maelstrom/ProceduralWaterfalls/");
+            // A fitted cache belongs to one measured feed. Direct late seeks
+            // choose a different nearest feed and must never reuse feed 8's
+            // geometry there. Generic ballistic data requires its own flag.
+            const bool bGenericPrototype = FParse::Param(FCommandLine::Get(), TEXT("DCGenericWaterfallPrototype"));
+            const FString Root = bGenericPrototype ? TEXT("/Game/DC/Maelstrom/ProceduralWaterfalls/")
+                : FString::Printf(TEXT("/Game/DC/Maelstrom/ProceduralWaterfalls/Feed%02d/"), FeedIndex);
             const FString VolumePath = Root + Name + TEXT(".") + Name;
             const FString MaterialPath = Root + TEXT("M_") + Name + TEXT(".M_") + Name;
             USparseVolumeTexture* Volume = LoadObject<USparseVolumeTexture>(nullptr, *VolumePath, nullptr, LOAD_NoWarn | LOAD_Quiet);
             UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, *MaterialPath, nullptr, LOAD_NoWarn | LOAD_Quiet);
             if (!Volume || !Base)
             {
-                UE_LOG(LogTemp, Warning, TEXT("DC_PROCEDURAL_FALL %s missing; run generator and import_procedural_waterfalls.py"), Name);
+                UE_LOG(LogTemp, Warning, TEXT("DC_PROCEDURAL_FALL %s feed=%d missing at %s; no cross-feed fitted fallback"), Name, FeedIndex, *Root);
                 continue;
             }
             FActorSpawnParameters Params;

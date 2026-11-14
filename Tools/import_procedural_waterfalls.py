@@ -12,6 +12,15 @@ import unreal
 
 ROOT = "/Game/DC/Maelstrom/ProceduralWaterfalls"
 source = Path(os.environ.get("DC_WATERFALL_DIR", str(Path(unreal.Paths.project_saved_dir()) / "GeneratedWaterfalls"))).resolve()
+manifest_path = source / "manifest.json"
+manifest = json.loads(manifest_path.read_text(encoding="utf-8-sig")) if manifest_path.is_file() else {}
+fitted = manifest.get("fitted_profile")
+if fitted:
+    feed_index = fitted.get("feed_index")
+    if not isinstance(feed_index, int) or not 0 <= feed_index <= 999:
+        raise RuntimeError("Invalid fitted waterfall feed index in manifest")
+    ROOT += "/Feed%02d" % feed_index
+    unreal.log_warning("DC_WATERFALL_IMPORT fitted feed=%d profile=%s" % (feed_index, fitted.get("profile_sha1")))
 tools = unreal.AssetToolsHelpers.get_asset_tools()
 mel = unreal.MaterialEditingLibrary
 records = []
@@ -69,5 +78,5 @@ for name in ("Falling", "Impact"):
     unreal.log_warning("DC_WATERFALL_IMPORT " + json.dumps(record))
 
 report = Path(unreal.Paths.project_saved_dir()) / "ProceduralWaterfallImport.json"
-report.write_text(json.dumps({"source": str(source), "volumes": records}, indent=2), encoding="utf-8")
+report.write_text(json.dumps({"source": str(source), "root": ROOT, "fitted_profile": fitted, "volumes": records}, indent=2), encoding="utf-8")
 unreal.log_warning("DC_WATERFALL_IMPORT complete " + str(report))
