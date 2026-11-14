@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 01:12 Claude: lights inside the cloud tunnel tried and left off; playback rates
+
+- **Lights in the tunnel**: two point lights travelling with the tunnel (far end and under the crown, `-DCFrontTunnelLight=<strength>`). At full strength they white the inside out; at an eighth they turn the dark tunnel into pale even haze and put a sheen on the deck, because they light the air more than the cloud. Off by default. The dark tunnel with the pale opening ahead reads better.
+- **Playback**: wall pieces now 18 pictures a second (were 12), spouts 24, tunnel 24. At 4K doubling the front's rates cost about 15 fps (54 to 74), so I stopped at these. Whether 18 shows as a flicker in the far wall needs an eye on it in motion.
+- A walk through 8 to 256 s at normal speed, 25 frames: nothing broken; the helmsman still strikes rocks in the city (hull 81 by the slide).
+
 ## 14 Nov 00:52 Claude: eleventh build; spouts keep their detail at 4K; a plume marks the creature's end
 
 - **Build** `Builds/2026-11-14_0041_fbabe67_spouts-stones-wisps/Windows/DirectorsCut.exe` (7.7 GB), run from the exe at 1600x900: wall and portal at 56 s, tunnel at 62, city at 120 (98 to 112 fps); spout, a burning stone striking and the second spout from 296 s (69 to 73 fps). It has the stones, the lightning fix, the deck wisps and the quicker descent. **Its spouts are soft at 4K** (see next line); the fix is after it.

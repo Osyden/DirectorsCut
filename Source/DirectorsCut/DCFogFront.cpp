@@ -4,6 +4,8 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/LocalFogVolumeComponent.h"
 #include "Components/HeterogeneousVolumeComponent.h"
+#include "Engine/PointLight.h"
+#include "Components/PointLightComponent.h"
 #include "HAL/IConsoleManager.h"
 #include "SparseVolumeTexture/SparseVolumeTexture.h"
 #include "Engine/StaticMesh.h"
@@ -253,6 +255,22 @@ void ADCFogFront::BuildTunnel()
 	// The engine stops marching these volumes a few hundred metres from the eye; the tunnel has to be seen coming.
 	if (IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(TEXT("r.HeterogeneousVolumes.MaxTraceDistance"))) { V->Set(600000.f, ECVF_SetByCode); }
 	UE_LOG(LogDC, Log, TEXT("FogFront: cloud tunnel %d, scale %.0f"), Index, TunnelScale);
+	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnelLight="), TunnelLight);
+	for (int32 i = 0; i < 2 && TunnelLight > 0.f; ++i)
+	{
+		if (APointLight* L = GetWorld()->SpawnActor<APointLight>(FVector::ZeroVector, FRotator::ZeroRotator, Params))
+		{
+			UPointLightComponent* P = Cast<UPointLightComponent>(L->GetLightComponent());
+			P->SetMobility(EComponentMobility::Movable);
+			P->bUseInverseSquaredFalloff = false;
+			P->SetLightFalloffExponent(2.f);
+			P->SetAttenuationRadius(i == 0 ? 52000.f : 30000.f);
+			P->SetLightColor(i == 0 ? FLinearColor(0.8f, 0.88f, 1.f) : FLinearColor(0.55f, 0.65f, 0.85f));
+			P->SetCastShadows(false);
+			P->SetIntensity(0.f);
+			TunnelLights.Add(L);
+		}
+	}
 
 	// The wall. Each piece is the tunnel lying across the course, nearly five times the size: a roll of cloud
 	// 4 km long, 1.1 km through and 900 m high whose lower quarter is under the sea. One either side of
@@ -307,6 +325,20 @@ void ADCFogFront::TickTunnel(float T)
 	const float Mouth = FMath::Max(Director->StormFrontX, 6000.f - (T - Reach) * Through);
 	Tunnel->SetActorTransform(FTransform(FRotator(0.f, -90.f, 0.f), FVector(Mouth + Half, 0.f, Director->SeaLevelZ - TunnelSink), FVector(TunnelScale)));
 	TunnelMID->SetVectorParameterValue(TEXT("Flare"), Director->FogFlare * 0.02f);
+	// Daylight down the tunnel from its far end, and a dimmer light under its crown a third of the way in. Both come up
+	// as the mouth nears and flare with the lightning.
+	{
+		const float Near = (1.f - FMath::SmoothStep(8000.f, 60000.f, Mouth)) * FMath::Clamp((ArrivalTime + 18.f - T) / 4.f, 0.f, 1.f);
+		const float Struck = 1.f + 2.5f * Director->LightningNow;
+		for (int32 i = 0; i < TunnelLights.Num(); ++i)
+		{
+			if (APointLight* L = TunnelLights[i])
+			{
+				L->SetActorLocation(FVector(Mouth + (i == 0 ? 1.9f : 0.7f) * Half, 0.f, Director->SeaLevelZ + (i == 0 ? 5000.f : 9000.f)));
+				L->GetLightComponent()->SetIntensity((i == 0 ? 26.f : 9.f) * TunnelLight * Near * Struck);
+			}
+		}
+	}
 	// It thickens with the storm and thins away once it has passed.
 	const float Shown = FMath::SmoothStep(0.25f, 0.9f, Director->StormGrowth) * FMath::Clamp((ArrivalTime + 20.f - T) / 4.f, 0.f, 1.f);
 	if (!FMath::IsNearlyEqual(Shown, TunnelShown, 0.004f))

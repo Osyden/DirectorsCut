@@ -55,6 +55,9 @@ protected:
 	/** The mouth of the front: a rolling tunnel of cloud (the bought looping volume, if it is installed) that the ship sails through into the fog. */
 	UPROPERTY() TObjectPtr<class AHeterogeneousVolume> Tunnel;
 	UPROPERTY() TObjectPtr<class UMaterialInstanceDynamic> TunnelMID;
+	/** Light inside the tunnel: daylight coming down it from its far end, and a little overhead, so its rolling walls are seen from within. */
+	UPROPERTY() TArray<TObjectPtr<class APointLight>> TunnelLights;
+	float TunnelLight = 0.f;   // off: tried 14 Nov, the lights fill the air in the tunnel with pale haze rather than modelling its walls
 	float TunnelScale = 300.f;
 	float TunnelSink = 5000.f;
 	float TunnelShown = -1.f;
