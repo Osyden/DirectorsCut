@@ -874,6 +874,9 @@ void ADCRideDirector::SetupUDS()
 	SkyFlag(UDSWeather, TEXT("Enable Screen Droplets"), false);
 	// In fog a flash already fills the air with light; the pack's extra bloom on top of it whites the picture out.
 	SkyNum(UDSWeather, TEXT("Lightning Flash Light Bloom Intensity"), 0.5);
+	// At the pack's own strength a flash turned the near stone and the deck pure white for half a second.
+	// At 4 it lights the fog behind the ruins and leaves them as shapes against it.
+	SkyNum(UDSWeather, TEXT("Lightning Flash Light Intensity"), 4.0);
 	SkyOverrides(UDSWeather, TEXT("DCWeather="));
 	UGameplayStatics::FinishSpawningActor(UDSWeather, FTransform::Identity);
 
