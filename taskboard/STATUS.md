@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 01:53 Claude: the burning stone has a rock at its head
+
+- The stone's head is now a rock from the ruins pack, eight metres through, with the glowing tail behind it (a glowing ball as before if the pack is absent). Tried the deck fires' flame cones for the tail: in the maelstrom's daylight they are a flat pale yellow and hide the rock, so the tail is glowing balls again.
+- Not in the fourteenth build.
+
 ## 14 Nov 01:49 Claude: fourteenth build packaged and run: `2026-11-14_0143_b4a71b8_spout-sound-cut`
 
 - `Builds/2026-11-14_0143_b4a71b8_spout-sound-cut/Windows/DirectorsCut.exe`. Run from the exe at 1600x900 without sound: wall and portal at 56 s, a flash in the tunnel at 63.5, the city at 120 (82 to 103 fps); the whole maelstrom at 3x with the bot captain from 262 s: 11 strikes, 10 arms broken, beaten on the clock at 160.0 s, plume, exit at 450.01, ending card.

@@ -1017,28 +1017,39 @@ void ADCMaelstrom::UpdateBoulders(float DeltaSeconds)
 		{
 			UStaticMeshComponent* C = A->GetStaticMeshComponent();
 			C->SetMobility(EComponentMobility::Movable);
-			C->SetStaticMesh(LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere")));
-			C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			C->SetCastShadow(false);
+			// A real rock from the ruins, eight metres through, wrapped in flame; a plain glowing ball where the ruins pack is absent.
+			UStaticMesh* Rock = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/AncientRuins/Meshes/Rocks/SM_Rock_01.SM_Rock_01"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+			UStaticMesh* Ball = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+			UStaticMesh* FlameCone = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cone.Cone"));
+			UMaterialInterface* FlameBase = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Flame.M_Flame"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+			UMaterialInstanceDynamic* GlowMID = nullptr;
 			if (UMaterialInterface* Glow = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Glow.M_Glow")))
 			{
-				UMaterialInstanceDynamic* M = UMaterialInstanceDynamic::Create(Glow, A);
-				M->SetVectorParameterValue(TEXT("Color"), FLinearColor(9.f, 2.2f, 0.25f));
-				C->SetMaterial(0, M);
+				GlowMID = UMaterialInstanceDynamic::Create(Glow, A);
+				GlowMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(9.f, 2.2f, 0.25f));
 			}
-			A->SetActorScale3D(FVector(8.f));   // a burning stone eight metres through: it has to be seen half a kilometre off
+			C->SetStaticMesh(Rock ? Rock : Ball);
+			C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			C->SetCastShadow(false);
+			if (!Rock && GlowMID) { C->SetMaterial(0, GlowMID); }
+			const float Through = Rock ? FMath::Max(Rock->GetBoundingBox().GetSize().GetMax(), 1.f) : 100.f;
+			A->SetActorScale3D(FVector(800.f / Through));
 			// A tail of fire behind it, so the eye finds it and reads which way it is going.
 			for (int32 k = 0; k < 9; ++k)
 			{
 				UStaticMeshComponent* T = NewObject<UStaticMeshComponent>(A);
 				T->SetMobility(EComponentMobility::Movable);
-				T->SetStaticMesh(C->GetStaticMesh());
+				// Tongues of flame streaming back from it (the deck fires' own material), or glowing balls without it.
+				// (Tried 14 Nov with the deck fires' flame cones: in daylight they are a flat pale yellow and hide the stone. Balls of glow again.)
+				const bool bFlame = false && FlameCone && FlameBase;
+				T->SetStaticMesh(bFlame ? FlameCone : Ball);
 				T->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 				T->SetCastShadow(false);
-				T->SetMaterial(0, C->GetMaterial(0));
+				if (bFlame) { T->SetMaterial(0, FlameBase); } else if (GlowMID) { T->SetMaterial(0, GlowMID); }
 				T->SetUsingAbsoluteLocation(true); T->SetUsingAbsoluteRotation(true); T->SetUsingAbsoluteScale(true);
 				T->SetupAttachment(C);
-				T->SetWorldScale3D(FVector(6.5f * (1.f - k / 10.f)));
+				const float Fat = 9.f * (1.f - k / 11.f);
+				T->SetWorldScale3D(bFlame ? FVector(Fat, Fat, Fat * 2.2f) : FVector(6.5f * (1.f - k / 10.f)));
 				T->RegisterComponent();
 				B.Tail.Add(T);
 			}
@@ -1068,8 +1079,12 @@ void ADCMaelstrom::UpdateBoulders(float DeltaSeconds)
 		{
 			if (UStaticMeshComponent* T = B.Tail[k].Get())
 			{
-				const float V = FMath::Clamp(U - (k + 1) * 0.012f, 0.f, 1.f);
-				T->SetWorldLocation(FMath::Lerp(B.From, B.Fall, V) + FVector(0.f, 0.f, 4.f * Apex * V * (1.f - V)));
+				const float V = FMath::Clamp(U - (k + 1.2f) * 0.012f, 0.f, 1.f);
+				const FVector At = FMath::Lerp(B.From, B.Fall, V) + FVector(0.f, 0.f, 4.f * Apex * V * (1.f - V));
+				T->SetWorldLocation(At);
+				// The cone's point trails: its axis lies back along the way the stone has come.
+				const FVector Back = (At - Where).GetSafeNormal();
+				if (!Back.IsNearlyZero()) { T->SetWorldRotation(FRotationMatrix::MakeFromZ(Back).Rotator()); }
 			}
 		}
 		if (U < 1.f) { continue; }
