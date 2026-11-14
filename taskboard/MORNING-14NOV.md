@@ -32,7 +32,7 @@ Every earlier build is still in `Builds\` for the dev log.
 - The maelstrom's water is still striped and its foam is in contour lines; the reveal has no lip or crest. These are in Codex's plan (`MAELSTROM-NEXT-PASS-PLAN.md`) and untouched.
 - The spout is the tunnel volume stood on end: its top is darker than its foot.
 - The burning stone is a rock with a tail of plain glowing balls.
-- The creature's young have no wake and do not come on deck. A manned port battery sinks its one well off; the starboard battery mostly misses down the slope and sinks its one at the last moment or not at all.
+- The creature's young have no wake and do not come on deck.
 - From far off (40 to 50 s) the wall is a pale bank with a fairly level top.
 - The helmsman still strikes rocks in the city (hull about 81 by the slide with nobody steering).
 - With nobody steering or giving an order in the maelstrom every spout and stone strikes and the hull ends between 28 and 46 from 100. There is no sinking.

@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 02:35 Claude: found why shots to starboard never reached anything below the ship in the maelstrom
+
+- `-DCGunLog` showed every ball fired at the starboard spawnling ending at exactly sea level, 8 to 15 m from the ship's side, as a "hit". The open sea (`BP_DynamicRealWater`) is hidden in the maelstrom but its flat sheet still stops the shot's line trace, so anything fired down the bowl's slope burst on an unseen plane beside the hull. This is older than tonight: it will have stopped the captain's own shots at anything below the ship's level too.
+- `DCGunnery.cpp`: in the maelstrom a trace hit on a level surface at sea level is passed through. With that the starboard spawnling was sunk 167 m off in the first run.
+- Not in the sixteenth build.
+
 ## 14 Nov 02:31 Claude: sixteenth build packaged and run: `2026-11-14_0226_201abae_spawnlings-sinkable`
 
 - `Builds/2026-11-14_0226_201abae_spawnlings-sinkable/Windows/DirectorsCut.exe`. Run from the exe at 1600x900 without sound: wall and portal at 56 s, a flash in the tunnel at 63.5, the city at 120 (82 to 105 fps); the whole maelstrom at 3x with the bot captain from 262 s: port spawnling sunk 160 m off, starboard one reached the hull, 5 arms broken, beaten on the clock at 160.0 s, plume, exit at 450.02, ending card, hull 37.

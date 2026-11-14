@@ -23,6 +23,10 @@ Read with the STATUS entries of 13 Nov 23:38 onward. I worked on main in small c
 
 `FSpawnling`, `UpdateSpawnlings` in `DCMaelstrom`: two scheduled adds on the beam, registered with `ADCTreadmill::AddExternalHostile` so the existing batteries and scoring handle them; at the hull they do damage, tear the rigging and start a fire. No boarding on deck. The mesh is the Claw Kaiju with `M_Kraken` on every slot, because `M_ClawKaiju` and its instances draw pale jade in the game (worth knowing before you show any of the boss's body).
 
+## Shots stopped by the hidden sea (found 02:35)
+
+In the maelstrom the hidden `BP_DynamicRealWater` sheet at sea level still blocked the gunnery line trace, so balls fired below the ship's level burst a few metres off her side. `DCGunnery.cpp` now passes a level hit at sea level while the maelstrom is active. If you place targets down the slope, they can now be reached.
+
 ## The end (added 00:52)
 
 `UpdatePlume` in `DCMaelstrom`: from `FinaleAt` for 19 s a kilometre-high column of the same volume stands on the crater's centre (`Arena` location on `SampleSurfaceWorld`), and `Director->Trauma` is kicked once. It is the only visible mark of the defeat besides the arms withdrawing; your plan's collapse of the current and opening of the path is not done.

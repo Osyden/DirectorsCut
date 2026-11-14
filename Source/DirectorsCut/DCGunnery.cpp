@@ -292,7 +292,15 @@ void ADCGunnery::Tick(float DeltaSeconds)
 				}
 			}
 			FHitResult Hit;
-			const bool bGeometry = GetWorld()->LineTraceSingleByChannel(Hit, Previous, S.Pos, ECC_Visibility, Query);
+			bool bGeometry = GetWorld()->LineTraceSingleByChannel(Hit, Previous, S.Pos, ECC_Visibility, Query);
+			// In the maelstrom the open sea is hidden but its flat sheet at sea level still stops a trace. A ball fired
+			// down the bowl's slope burst on it a few metres from the ship's side and never reached anything below her.
+			if (bGeometry && Maelstrom && FMath::Abs(Hit.ImpactPoint.Z - SeaLevelZ) < 25.f && Hit.ImpactNormal.Z > 0.95f)
+			{
+				static const bool bGunLogSheet = FParse::Param(FCommandLine::Get(), TEXT("DCGunLog"));
+				if (bGunLogSheet) { UE_LOG(LogDC, Log, TEXT("Shot passed the hidden sea sheet (%s.%s)"), *GetNameSafe(Hit.GetActor()), *GetNameSafe(Hit.GetComponent())); }
+				bGeometry = false;
+			}
 			if (bGeometry) { S.Pos = Hit.ImpactPoint; }
 			bHitTarget = (Treadmill && Treadmill->DamageNear(S.Pos, 250.f, 1.f, true) > 0) || bGeometry;
 			const float SurfaceZ = Maelstrom ? Maelstrom->SampleSurfaceWorld(S.Pos) : SeaLevelZ;
