@@ -69,6 +69,35 @@ FVector ADCMaelstrom::CliffSurfacePoint(float Angle,float V) const
     const DCCliffGenerator::FSection Section={Toe,Lip,FMath::Max(GetRimRadius(Angle)*1.32f,Lip+30000.f),
         HeightAt(D*Toe,false)-900.f,RimGroundHeight(Lip,Angle)};
     FVector Point=DCCliffGenerator::Point(Section,Angle,V,Drainage);
+    if(V>0.f && V<.20f)
+    {
+        // The old quadratic rubble shelf stayed 6-16m below the receiving sea
+        // at its visible boundary. Fit only this low shore join; keep the buried
+        // toe, upper rock and all radial positions unchanged.
+        const float Edge=WaterEdgeRadius(Angle);
+        const float EdgeZ=HeightAt(D*Edge,false);
+        const float RockR=Point.Size2D();
+        const float Across=RockR-Edge;
+        float ShoreZ;
+        if(Across<=0.f) { ShoreZ=HeightAt(D*RockR,false); }
+        else
+        {
+            // Outside coverage this is a dry geological ramp, not extrapolated
+            // water. Match the bank tangent briefly, then approach a gentle slope
+            // so the original higher talus can take over without a raised ridge.
+            const float BankSlope=FMath::Clamp((EdgeZ-HeightAt(D*(Edge-300.f),false))/300.f,0.f,2.f);
+            ShoreZ=EdgeZ+.04f*Across+(BankSlope-.04f)*200.f*(1.f-FMath::Exp(-Across/200.f));
+        }
+        // One metre of exposed shoreline headroom also survives interpolation
+        // across the first coarse talus triangle beside the buried toe.
+        const float Clearance=FMath::Clamp(100.f+.08f*Across,-100.f,160.f);
+        // Fit the actual rock, independent of waterfall mesh clearance. The
+        // supported bank submerges naturally toward its existing buried toe.
+        const float TargetZ=ShoreZ+Clearance;
+        const float Lift=FMath::Max(0.f,TargetZ-static_cast<float>(Point.Z));
+        const float Blend=FMath::SmoothStep(0.f,.004f,V)*(1.f-FMath::SmoothStep(.14f,.20f,V));
+        Point.Z+=Lift*FMath::SmoothStep(0.f,80.f,Lift)*Blend;
+    }
     if(V>=.84f)
     {
         for(float Degrees:DCCliffGenerator::TempleAngles)
