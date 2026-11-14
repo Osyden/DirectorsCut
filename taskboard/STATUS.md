@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 03:07 Claude: eighteenth build packaged and run: `2026-11-14_0301_5018846_one-front`
+
+- `Builds/2026-11-14_0301_5018846_one-front/Windows/DirectorsCut.exe`. Run from the exe at 1600x900 without sound: the bank on the horizon at 32 and 44 s with no slab behind it, wall and portal at 56, a flash in the tunnel at 63.5, the city at 120 (93 to 104 fps); the whole maelstrom at 3x with the bot captain from 262 s: both spawnlings sunk (172 and 135 m off), 7 arms broken, beaten on the clock at 160.0 s, exit at 450.02, ending card.
+- This is the build to play. It has everything logged so far, including `-DCNoHUD`.
+
 ## 14 Nov 03:01 Claude: one storm front on the open sea, not two
 
 - Frames at 20 to 50 s still showed what the owner first complained of: the sky pack's radial storm as a flat-topped slab with streaked sides, standing behind and above the new wall of cloud volumes, each cutting across the other.
