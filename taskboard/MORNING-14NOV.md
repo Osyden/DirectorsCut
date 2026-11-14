@@ -4,9 +4,9 @@
 
 ## Play this
 
-`E:\projects\directorscut\Builds\2026-11-14_0646_28b4e25_crew-scene\Windows\DirectorsCut.exe`
+`E:\projects\directorscut\Builds\2026-11-14_0701_ef7691f_morning\Windows\DirectorsCut.exe`
 
-It was run from its exe without a window at 1600x900, the whole voyage from start to ending card at double speed with the bot captain: no errors, twelve frames taken on the way. It holds everything in the table below. Every earlier build (26 in all) is still in `Builds\` for the dev log; `taskboard/DEVLOG-NOTES-NIGHT-13-14NOV.md` says what each added.
+It was run from its exe without a window at 1600x900, the whole voyage from start to ending card at double speed with the bot captain: no errors, twelve frames taken on the way. It holds everything in the table below. Every earlier build (27 in all) is still in `Builds\` for the dev log; `taskboard/DEVLOG-NOTES-NIGHT-13-14NOV.md` says what each added.
 
 ## What changed overnight, in the order you meet it
 
@@ -28,7 +28,7 @@ It was run from its exe without a window at 1600x900, the whole voyage from star
 | The ship clips through things | Lane rocks were not solid at all; they are now. Scenery was already solid. |
 | Lightning is flashes, not streaks | Each bolt is now drawn as a forked streak. Thin, a third of a second. |
 | Rock on the right showing through the fog tunnel | Stone hidden until the tunnel passes it; none seen in frames since. |
-| Big objects: a current so she scrapes and cannot hit head on | In, and the helmsman fixed. In the last three whole-city runs with the bot: no blow on the stem, five grinding blows each. Not proof it can never happen. |
+| Big objects: a current so she scrapes and cannot hit head on | In, and the helmsman fixed, but not reliable. Four whole-city runs with the bot: three had five grinding blows and none on the stem; the fourth (the last, at double speed) had sixteen blows, one of them on the stem. It needs more work. |
 | Creatures on the banks throwing fire | Stone giants (Rampage, stone skin, lit cracks), six of them. Marchosias and the giant demons unused. |
 | Bow splashes | Reworked as sheets of white water. Judged from above the bow only. |
 | Do not neglect the later game and the boss | Spawnlings, the guns' reach, the lip, the creature's one appearance and the ending were all worked on after that note. |
@@ -40,7 +40,7 @@ It was run from its exe without a window at 1600x900, the whole voyage from star
 - Steering round a spout, a stone or a rock by hand. One order to the helmsman ("Finch, hard to port") did clear a spout by 32 m in a test.
 - Putting out a fire by hand or by order while giants are throwing.
 - The port guns' muzzles; all new sound (wind rising with a spout, booms).
-- The balance. With nobody steering or giving an order the hull is about 83 at the slide and 23 at the ending card.
+- The balance. With nobody steering or giving an order the hull was 23 at the ending card in one whole run and 10 in the next: too hard on a passive player, and it varies a lot with how the rocks fall.
 
 ## Known faults
 

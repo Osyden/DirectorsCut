@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 07:07 Claude: twenty-fifth build packaged and run: `2026-11-14_0701_ef7691f_morning`
+
+- `Builds/2026-11-14_0701_ef7691f_morning/Windows/DirectorsCut.exe`. The whole voyage from the exe, no window, 1600x900, 2x with the bot captain: no errors, all six giants killed (one rock landed), both spawnlings sunk, beaten on the clock at 160.0 s, ending card.
+- **But** this run had sixteen blows on stone in the city, one on the stem, and the hull was 10 at the card. The run before had five and none. So the current and the helmsman's steering are not reliable yet, and my earlier "none on the stem" was three good runs, not a fix. Corrected in the hand-over.
+- This is the build to play: it is the twenty-fourth plus the narrower waterspout.
+
 ## 14 Nov 07:01 Claude: waterspout narrower
 
 - At 4K the spout near the ship was a slab a third of the view wide. It is now 0.62 as wide for the same height (about 70 m through at 400 m tall): a column, with the bowl seen either side of it. `review/50-waterspout/20-narrower-304-to-312s.png`. Its strike width is unchanged (26 m either side).
