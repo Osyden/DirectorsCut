@@ -2,14 +2,14 @@
 
 User authorized recurring visual improvement and parallel workers. The Codex app heartbeat `directorscut-crater-visual-iterations` is active every 30 minutes in the existing maelstrom chat. This is implementation work with actual render review, not status polling. Latest user feedback takes precedence.
 
-Latest continuation: [vertical cliff geology, removal of false masonry shading, corrected native spray units and fresh fitted cache](CRATER-GEOLOGY-AND-SPRAY-14NOV.md). The giant shelves and material's rectangular blanket are removed; actual captures still reject the smooth wall, attached whitewater strip and dusty impact. The [supported shoreline and first water contact](CRATER-WATER-CONTACT-14NOV.md) and [inlet/inner-flow corrections](CRATER-SEAMS-FITTED-FALLS-14NOV.md) remain intact. The scene is still far from the reference.
+Latest continuation: [clean landform/erosion direction, rejected actual-sector experiment and expanded rim city](CRATER-EROSION-DIRECTION-14NOV.md). The user asked for established mountain-generation algorithms. An original erosion kernel and measured sector exporter are implemented; the first real-wall conversion is rejected because erosion follows lost-overhang artifacts. Stop tuning the radial wall: build a clean constrained macro landform, erode it, then add genuine 3D cliff faces. Irregular columns/statues and bounded bank packets are retained; detached falls remain opt-in. The [supported shoreline and first water contact](CRATER-WATER-CONTACT-14NOV.md) and [inlet/inner-flow corrections](CRATER-SEAMS-FITTED-FALLS-14NOV.md) remain intact. The scene is still far from the reference.
 
 ## Ownership and priorities
 
 - Integration checkout: `E:/Projects/DirectorsCut/Maelstrom-Saturday`, branch `codex/maelstrom-saturday`. Start checkpoint `e7d7f8b`.
-- Latest cliff/temple worker: `Crater-Workers/Cliff-Contact`, `codex/crater-geology-pass4`. Owns cliff generator and geometric probes/tests. Sends any terrain/landmark integration to the integrator.
-- Latest water/rock-material worker: `Crater-Workers/Flow-Seams`, `codex/crater-bank-review4`. Owns material generator candidates; root regenerates assets and renders.
-- Latest waterfall worker: `Crater-Workers/Fitted-Waterfall`, `codex/crater-volume-visibility4`. Owns offline VDB generation, runtime/importer candidates and cache contract.
+- Latest cliff worker: `Crater-Workers/Cliff-Contact`, `codex/crater-rock-faces-pass5`. Owns offline erosion kernel/tests; rejected runtime fracture candidate was reverted by integrator.
+- Latest water/sector worker: `Crater-Workers/Flow-Seams`, `codex/crater-bank-packets-pass5`. Owns bank packets, measured erosion seed export and CPU diagnostic previews.
+- Latest waterfall worker: `Crater-Workers/Fitted-Waterfall`, `codex/crater-detached-falls-pass5`. Owns detached trajectory helper/probe and independent review camera. Root builds/reviews.
 - Integrator owns shared `DCMaelstrom.cpp/.h`, runtime waterfall integration, import/material tooling, route review, builds and captures. Workers do not run Unreal or modify this checkout.
 
 Preserve the 3.2 km crater, 900 m depth, descending spiral and ship-centric transform. Boss mechanics remain deferred. Cloud/sky/light composition and early-game files remain with their respective chats. Keep public Git free of vendor assets and large generated volume caches.

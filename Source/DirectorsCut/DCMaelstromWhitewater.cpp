@@ -385,14 +385,14 @@ void ADCMaelstrom::BuildWhitewater()
             const FVector2D Horizontal=Current*SplashRandom.FRandRange(350.f,850.f)+Lateral*SplashRandom.FRandRange(-380.f,380.f);
             const FVector Velocity(Horizontal,SplashRandom.FRandRange(650.f,1250.f));
             const auto At=[&](float T){return Start+Velocity*T-FVector(0,0,.5f*DCWaterfallTrajectory::Gravity*T*T);};
-            float EndTime=0.f,PreviousTime=0.f;
+            float EndTime=0.f,PreviousFlightTime=0.f;
             for(int32 Step=1;Step<=100;++Step)
             {
                 const float T=Step*.04f; const FVector P=At(T); float H=0.f;
                 if(!SampleReceivingWater(FVector2D(P),H)) { break; }
                 if(P.Z<=H)
                 {
-                    float Low=PreviousTime,High=T;
+                    float Low=PreviousFlightTime,High=T;
                     for(int32 Iter=0;Iter<18;++Iter)
                     {
                         const float Mid=(Low+High)*.5f; const FVector Q=At(Mid); float Mean=0.f;
@@ -400,7 +400,7 @@ void ADCMaelstrom::BuildWhitewater()
                     }
                     EndTime=High; break;
                 }
-                PreviousTime=T;
+                PreviousFlightTime=T;
             }
             if(EndTime<.1f) { continue; }
             constexpr int32 Rows=32,Columns=4;

@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov Codex: erosion direction, actual diagnostics and irregular rim city
+
+- Added irregular columns, arches, broken courts and statues around the rim: 50 groups with actual rendered-triangle footing checks. Retained finite bank wave packets outside the ship and shoreline protections; detached waterfall trajectories remain opt-in. [Changes, actual reviews and next plan](CRATER-EROSION-DIRECTION-14NOV.md).
+- Tested local fractures/crease normals and rejected their dark triangular cuts; restored previous cliff geometry. Implemented offline hydraulic/thermal erosion and exported a measured 500 m sector, but rejected its first result: erosion mostly follows heightfield projection defects at existing overhangs. Next work is a clean constrained geological landform, then erosion and genuine 3D cliff faces. No claim of AAA cliffs or successful erosion integration.
+- Final Editor/Game builds and five maelstrom engine tests pass. Actual wide/close reviews and independent CPU clay diagnostics distinguish visual failure from numerical success. Crater, route and ownership boundaries retained; no main merge/package.
+
 ## 14 Nov Codex scheduled continuation: cliff structure, material isolation and native spray
 
 - Replaced giant cliff shelves with shallower vertical geology; matched shader isolation then identified and removed the 22 m masonry-pattern normal/AO layer. Replacement detail uses shallow physical erosion and sparse cracks. Crater size, route, corrected shoreline, temples and sky retained. [Actual renders, reproducible cache and remaining failures](CRATER-GEOLOGY-AND-SPRAY-14NOV.md).

@@ -406,31 +406,114 @@ void ADCMaelstrom::BuildTunnel()
 void ADCMaelstrom::BuildLandmarks()
 {
     if (!DCRuins::Available()) { return; }
-    auto Place=[this](AActor* Actor,const FVector& Position,float Yaw)
+    int32 SupportedPieces=0;
+    const FProcMeshSection* CliffSection=Cliffs->GetProcMeshSection(0);
+    if(!CliffSection) { return; }
+    // Query the rendered triangles, including flattened sanctuary pads. The
+    // broad RimGroundHeight function does not describe those actual footings.
+    const auto GroundAt=[CliffSection](const FVector2D& P)
+    {
+        float Turns=FMath::Atan2(P.Y,P.X)/UE_TWO_PI;
+        if(Turns<0.f) { Turns+=1.f; }
+        const int32 Side=FMath::Min(FMath::FloorToInt(Turns*DCCliffGenerator::MeshSectors),DCCliffGenerator::MeshSectors-1);
+        const auto Vertex=[&](int32 S,int32 Row)
+        { return CliffSection->ProcVertexBuffer[Row*(DCCliffGenerator::MeshSectors+1)+S].Position; };
+        float Ground=-MAX_flt;
+        const auto Triangle=[&](const FVector& A,const FVector& B,const FVector& C)
+        {
+            const FVector2D AB(B-A),AC(C-A),AP=P-FVector2D(A);
+            const double Det=AB.X*AC.Y-AB.Y*AC.X;
+            if(FMath::Abs(Det)<.001) { return; }
+            const double U=(AP.X*AC.Y-AP.Y*AC.X)/Det,VV=(AB.X*AP.Y-AB.Y*AP.X)/Det;
+            if(U>=-.000001 && VV>=-.000001 && U+VV<=1.000001)
+            { Ground=FMath::Max(Ground,static_cast<float>(A.Z+U*(B.Z-A.Z)+VV*(C.Z-A.Z))); }
+        };
+        for(int32 Row=static_cast<int32>(DCCliffGenerator::MeshRows*.80f);Row<DCCliffGenerator::MeshRows;++Row)
+        {
+            const FVector A=Vertex(Side,Row),B=Vertex(Side+1,Row),C=Vertex(Side,Row+1),D=Vertex(Side+1,Row+1);
+            Triangle(A,B,C); Triangle(B,D,C);
+        }
+        return Ground;
+    };
+    auto Place=[this,&SupportedPieces,&GroundAt](AActor* Actor,float AngleDegrees,float Setback,float Yaw)
     {
         if(!Actor) { return; }
+        const float A=FMath::DegreesToRadians(AngleDegrees);
+        const FVector2D Out(FMath::Cos(A),FMath::Sin(A));
+        float R=CliffSurfacePoint(A,.84f).Size2D()+Setback;
+        FVector BoundOrigin,BoundExtent;
+        Actor->GetActorBounds(false,BoundOrigin,BoundExtent);
+        const FRotator Rotation(0,Yaw,0);
+        // Set a whole assemblage on the plateau, including the end columns of
+        // tangent arcades. A centre-only test could leave their ends over air.
+        float Ground=MAX_flt;
+        bool bSupported=false;
+        for(int32 Iteration=0;Iteration<8;++Iteration)
+        {
+            float Deficit=0.f;
+            Ground=MAX_flt;
+            for(int32 X=-1;X<=1;++X) for(int32 Y=-1;Y<=1;++Y)
+            {
+                const FVector Corner=Rotation.RotateVector(BoundOrigin+FVector(X*BoundExtent.X,Y*BoundExtent.Y,0));
+                const FVector2D P=Out*R+FVector2D(Corner);
+                const float CA=FMath::Atan2(P.Y,P.X),CR=P.Size();
+                Deficit=FMath::Max(Deficit,static_cast<float>(CliffSurfacePoint(CA,.84f).Size2D()+500.f-CR));
+                Ground=FMath::Min(Ground,GroundAt(P));
+            }
+            if(Deficit<1.f) { bSupported=Ground>-MAX_flt; break; }
+            R+=Deficit+100.f;
+        }
+        if(!bSupported)
+        {
+            UE_LOG(LogTemp,Warning,TEXT("DC_RIM_CITY skipped unsupported group at %.2f degrees"),AngleDegrees);
+            Actor->Destroy(); return;
+        }
+        const float Bottom=BoundOrigin.Z-BoundExtent.Z;
+        // Bury the footing slightly; varying ground may cover broken drums,
+        // but never leaves a continuous colonnade levitating above the rim.
+        const FVector Position(Out*R,Ground-Bottom-100.f);
         Actor->AttachToComponent(Arena,FAttachmentTransformRules::KeepRelativeTransform);
         Actor->SetActorRelativeLocation(Position);
-        Actor->SetActorRelativeRotation(FRotator(0,Yaw,0));
+        Actor->SetActorRelativeRotation(Rotation);
         Landmarks.Add(Actor);
+        ++SupportedPieces;
     };
-    // Temples occupy supported plateau pads just behind the exposed lip.
-    // No giant vendor crags under the temples or stretched wall buttresses.
-    static const float Angles[]={-143.f,-109.f,-76.f,-38.f,2.f,38.f,77.f,112.f,144.f};
+    // Unequal sanctuary districts, with paired and solitary buildings. The low
+    // rim stays visible between them; no evenly repeated temple clock-face.
+    static const float Angles[]={-148.f,-130.f,-81.f,-49.f,5.f,28.f,86.f,121.f,152.f};
     for(int32 Index=0;Index<UE_ARRAY_COUNT(Angles);++Index)
     {
-        const float A=FMath::DegreesToRadians(Angles[Index]);
-        const float R=CliffSurfacePoint(A,.84f).Size2D()+12000.f;
-        const FVector Position(R*FMath::Cos(A),R*FMath::Sin(A),RimGroundHeight(R,A)-100.f);
-        const float Scale=(Index==2 || Index==5) ? 1.30f : 1.05f;
-        Place(DCRuins::SpawnComplex(GetWorld(),Scale,419+Index),Position,Angles[Index]+180.f);
-        if(Index==0 || Index==7)
+        const float Scale=(Index==2 || Index==6) ? 1.30f : .90f+(Index%3)*.12f;
+        Place(DCRuins::SpawnComplex(GetWorld(),Scale,419+Index),Angles[Index],12000.f,Angles[Index]+180.f);
+    }
+    // Foreground skyline accents join those districts into a ruined city:
+    // broken colonnades follow the rim, with unequal spans and quieter gaps.
+    static const float ColumnAngles[]={-157.f,-136.f,-123.f,-97.f,-73.f,-54.f,-20.f,-8.f,17.f,35.f,62.f,81.f,103.f,130.f,146.f,161.f};
+    FRandomStream Layout(61147);
+    for(int32 Index=0;Index<UE_ARRAY_COUNT(ColumnAngles);++Index)
+    {
+        const float A=ColumnAngles[Index];
+        Place(DCRuins::SpawnColonnade(GetWorld(),3+Index%4,Layout.FRandRange(2000.f,3300.f)),
+            A,Layout.FRandRange(1800.f,4200.f),A+90.f+Layout.FRandRange(-10.f,10.f));
+        if(Index%3==1)
         {
-            const float SA=A+.035f,SR=GetRimRadius(SA)*1.015f+2500.f;
-            Place(DCRuins::SpawnColossus(GetWorld(),4200.f),
-                FVector(SR*FMath::Cos(SA),SR*FMath::Sin(SA),RimGroundHeight(SR,SA)-100.f),Angles[Index]+180.f);
+            const float AA=A+Layout.FRandRange(2.1f,3.4f);
+            Place(DCRuins::SpawnArch(GetWorld(),1+Index%4,Layout.FRandRange(1.05f,1.45f)),AA,5200.f,AA+180.f);
+        }
+        if(Index%2==0)
+        {
+            const float BA=A-Layout.FRandRange(2.f,3.6f);
+            Place(DCRuins::SpawnBrokenColumns(GetWorld(),Layout.FRandRange(1600.f,2600.f)),BA,2600.f,BA+90.f);
         }
     }
+    static const float StatueAngles[]={-152.f,-117.f,-83.f,-64.f,-31.f,-2.f,23.f,55.f,92.f,113.f,139.f,157.f};
+    for(int32 Index=0;Index<UE_ARRAY_COUNT(StatueAngles);++Index)
+    {
+        const float A=StatueAngles[Index];
+        const float Height=(Index==2 || Index==9) ? 6800.f : Layout.FRandRange(3000.f,4900.f);
+        Place(DCRuins::SpawnColossus(GetWorld(),Height),A,Layout.FRandRange(1400.f,3200.f),A+180.f);
+    }
+    UE_LOG(LogTemp,Display,TEXT("DC_RIM_CITY %d supported groups: 9 sanctuaries, 16 broken colonnades, 5 arches, 8 debris courts, 12 statues; irregular skyline"),SupportedPieces);
 }
 FTransform ADCMaelstrom::GetArenaTransform() const { return Arena->GetComponentTransform(); }
 
