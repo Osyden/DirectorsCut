@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 04:39 Claude: twenty-first build packaged and run: `2026-11-14_0431_9a61a5e_torn-sea`
+
+- `Builds/2026-11-14_0431_9a61a5e_torn-sea/Windows/DirectorsCut.exe`. Run from the exe at 1600x900 without sound: a clean open sea at 30 s, wall and portal at 56, a flash in the tunnel at 63.5, the torn sea in the city at 120 and 150 (94 to 114 fps), no material failed to compile; the whole maelstrom at 3x with the bot captain from 262 s: both spawnlings sunk, 7 arms broken, beaten on the clock at 160.0 s, exit at 450.01, ending card.
+- This is the build to play. It has everything logged so far, including the plain stand-in column for spouts.
+
 ## 14 Nov 04:31 Claude: wind-torn white on the sea in the city
 
 - The reference's sea is torn white; ours was dark and glossy. `Tools/patch_drw_shorefoam.py` (the water plugin patch; re-run both steps after pulling) now adds drifting patches of the shore's foam lace over the open water, as much as the fourth number of `MPC_Sea`'s `Trough` says. The game sets that from the wave height: nothing on the open sea (checked at 30 s: clean), full over the city. `-DCWhitecaps=0..1` fixes it.
