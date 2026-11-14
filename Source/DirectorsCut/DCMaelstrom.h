@@ -128,6 +128,8 @@ private:
 	TWeakObjectPtr<class AHeterogeneousVolume> Plume;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> PlumeMID;
 	bool bPlumeShaken = false;
+	/** The creature itself, seen once: it heaves up in the plume at the heart of the crater as it is beaten, and goes down. */
+	TWeakObjectPtr<class ASkeletalMeshActor> Carcass;
 	void UpdatePlume();
 	/** The creature's young: one swims in on the beam, to be sunk by that side's guns before it reaches the hull and tears into her. */
 	struct FSpawnling

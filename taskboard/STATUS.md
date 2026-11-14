@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 06:31 Claude: the creature is seen once, as it is beaten
+
+- `DCMaelstrom::UpdatePlume`: when the clock beats it, the creature's body (the Claw Kaiju at 18 times, in the arms' dark hide, playing its defeated animation at half speed) heaves two thirds out of the water at the heart of the crater inside the plume, more than a kilometre off, holds, and is under again by 19 s. `-DCNoCarcass`, `-DCCarcassScale=`.
+- `review/64-the-creature-at-the-end`: at 409 s a jagged shape stands at the plume's foot; by 416 it is going under. It reads as a pale broken mass in the spray rather than a clear animal: the plume and the distance hide most of it, which keeps the crater the biggest thing in the picture, as the design asks, but it is not a strong image yet. With `-DCNoPlume` it does not show at all (the same switch skips it).
+- Not in the twenty-second build.
+
 ## 14 Nov 06:26 Claude: bow spray is sheets of white water, not a soft ball
 
 - Owner: "the bow water splashes are not really looking good yet". Each plunge of the stem used to raise one soft ball of mist. It now also flings two ragged sheets (Easy Fog cards standing on edge, leaning away from the hull) up and out from the stem, one to each side; they rise fast, open out, are carried aft and fall back inside two seconds, and the ball of mist behind them is thinner. Without the fog pack the old ball is all there is.

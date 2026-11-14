@@ -801,6 +801,7 @@ void ADCMaelstrom::ClearTwisters()
 	TwisterMIDs.Reset();
 	TwistersRaised = 0;
 	if (AActor* P = Plume.Get()) { P->Destroy(); }
+	if (ASkeletalMeshActor* Body = Carcass.Get()) { Body->Destroy(); }
 	Plume.Reset(); PlumeMID = nullptr; bPlumeShaken = false;
 	for (FSpawnling& S : Spawnlings) { if (AActor* A = S.Actor.Get()) { A->Destroy(); } if (AActor* M = S.Mark.Get()) { M->Destroy(); } }
 	Spawnlings.Reset(); SpawnlingsSent = 0;
@@ -1126,6 +1127,7 @@ void ADCMaelstrom::UpdatePlume()
 	if (bOff || Since < 0.f || Since > 19.f)
 	{
 		if (AActor* P = Plume.Get()) { P->SetActorHiddenInGame(true); }
+		if (ASkeletalMeshActor* Body = Carcass.Get()) { Body->Destroy(); }
 		if (Since < 0.f) { bPlumeShaken = false; }
 		return;
 	}
@@ -1134,6 +1136,52 @@ void ADCMaelstrom::UpdatePlume()
 		bPlumeShaken = true;
 		Director->Trauma = FMath::Min(1.f, Director->Trauma + 0.7f);   // the deck jumps as it goes
 		if (ADCAudio* Sound = Cast<ADCAudio>(UGameplayStatics::GetActorOfClass(GetWorld(), ADCAudio::StaticClass()))) { Sound->Boom(1.2f); }
+	}
+	// The one sight of the creature: in its last seconds it heaves half out of the water at the heart of the crater,
+	// more than a kilometre off and inside the plume, a shape some four hundred metres high, and goes down.
+	static const bool bNoCarcass = FParse::Param(FCommandLine::Get(), TEXT("DCNoCarcass"));
+	static float CarcassScale = 18.f; static bool bCarcassRead = false;   // test hook: -DCCarcassScale= (the mesh is 37 m high at 1)
+	if (!bCarcassRead) { bCarcassRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCCarcassScale="), CarcassScale); }
+	if (!bNoCarcass && !Carcass.IsValid() && Since < 1.f)
+	{
+		USkeletalMesh* Mesh = LoadObject<USkeletalMesh>(nullptr, TEXT("/Game/Fab/Claw_Kaiju_Monster/ClawKaiju_allAnimation.ClawKaiju_allAnimation"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+		FActorSpawnParameters BodyParams;
+		BodyParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		ASkeletalMeshActor* Body = Mesh ? GetWorld()->SpawnActor<ASkeletalMeshActor>(FVector::ZeroVector, FRotator::ZeroRotator, BodyParams) : nullptr;
+		if (Body)
+		{
+			USkeletalMeshComponent* C = Body->GetSkeletalMeshComponent();
+			C->SetMobility(EComponentMobility::Movable);
+			C->SetSkeletalMesh(Mesh);
+			C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			C->SetCastShadow(false);
+			if (UMaterialInterface* Hide = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Kraken.M_Kraken"), nullptr, LOAD_NoWarn | LOAD_Quiet))
+			{
+				UMaterialInstanceDynamic* HideMID = UMaterialInstanceDynamic::Create(Hide, Body);
+				HideMID->SetVectorParameterValue(TEXT("Skin"), FLinearColor(0.035f, 0.048f, 0.045f));
+				HideMID->SetVectorParameterValue(TEXT("Belly"), FLinearColor(0.22f, 0.11f, 0.055f));
+				for (int32 Slot = 0; Slot < C->GetNumMaterials(); ++Slot) { C->SetMaterial(Slot, HideMID); }
+			}
+			if (UAnimSequence* Dying = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Fab/Claw_Kaiju_Monster/ClawKaiju_allAnimationClawKaiju_Defeated.ClawKaiju_allAnimationClawKaiju_Defeated"), nullptr, LOAD_NoWarn | LOAD_Quiet))
+			{
+				C->PlayAnimation(Dying, false);
+				C->SetPlayRate(0.5f);   // sixteen seconds: a thing that size moves slowly
+			}
+			Body->SetActorScale3D(FVector(CarcassScale));
+			Carcass = Body;
+		}
+	}
+	if (ASkeletalMeshActor* Body = Carcass.Get())
+	{
+		FVector At = Arena->GetComponentLocation();
+		At.Z = SampleSurfaceWorld(At);
+		const float High = 3700.f * CarcassScale;
+		// Up to two thirds out of the water in four seconds, held, then under by nineteen.
+		const float Out = FMath::SmoothStep(0.f, 4.f, Since) * (1.f - FMath::SmoothStep(9.f, 19.f, Since));
+		At.Z += High * (0.66f * Out - 1.f);
+		// Facing the ship.
+		const FVector ToShip = FVector(0.f, 0.f, Director->SeaLevelZ) - At;
+		Body->SetActorLocationAndRotation(At, FRotator(0.f, FMath::RadiansToDegrees(FMath::Atan2(ToShip.Y, ToShip.X)), 0.f));
 	}
 	if (!Plume.IsValid())
 	{

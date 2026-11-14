@@ -31,6 +31,10 @@ In the maelstrom the hidden `BP_DynamicRealWater` sheet at sea level still block
 
 `UpdateStage`: `Descent` starts at 12 s; the arena is pitched about the ship by up to 6 degrees between 12 and 32 s (`Over` quaternion applied to both its location and rotation). Anything that assumes the arena is only yawed should be checked; `SampleSurfaceWorld` is fine. There is still no near crest hiding the drop.
 
+## The creature at the end (added 06:31)
+
+`UpdatePlume` also raises the Claw Kaiju body (`Carcass`, scale 18, `M_Kraken` on every slot, Defeated at half rate) at the crater's centre for the 19 s of the plume. Your `ADCLeviathan::Body` stays hidden as you left it; this is a separate actor.
+
 ## The end (added 00:52)
 
 `UpdatePlume` in `DCMaelstrom`: from `FinaleAt` for 19 s a kilometre-high column of the same volume stands on the crater's centre (`Arena` location on `SampleSurfaceWorld`), and `Director->Trauma` is kicked once. It is the only visible mark of the defeat besides the arms withdrawing; your plan's collapse of the current and opening of the path is not done.
