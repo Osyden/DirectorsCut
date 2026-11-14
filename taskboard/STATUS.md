@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 06:26 Claude: bow spray is sheets of white water, not a soft ball
+
+- Owner: "the bow water splashes are not really looking good yet". Each plunge of the stem used to raise one soft ball of mist. It now also flings two ragged sheets (Easy Fog cards standing on edge, leaning away from the hull) up and out from the stem, one to each side; they rise fast, open out, are carried aft and fall back inside two seconds, and the ball of mist behind them is thinner. Without the fog pack the old ball is all there is.
+- `review/63-bow-spray`: from above the forecastle, a burst at the stem that spreads into torn white and blows back. Not judged in motion or from the helm, where the forecastle hides most of it.
+- Also looked for and not found: the rock outline in the cloud tunnel (frames at 62 to 80 s show none).
+
 ## 14 Nov 06:15 Claude: twenty-second build run; the helmsman was steering her on to the rocks; current strengthened
 
 - **Build** `Builds/2026-11-14_0543_17df8b3_giants-bolts-current/Windows/DirectorsCut.exe`, run from the exe without a window at 1600x900: front, tunnel, city to 236 s at normal speed (90 to 127 fps), six giants sent, four killed, five rocks on deck; the maelstrom at 3x to the ending card, both spawnlings sunk. The giant's mesh and animations are in the packaged content.

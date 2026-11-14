@@ -158,6 +158,32 @@ void ADCWeatherFX::TickBowSpray(float DeltaSeconds)
 				S.MID->SetVectorParameterValue(TEXT("Drift"), FLinearColor(-500.f, 0.f, 250.f, 0.f));
 				S.MID->SetVectorParameterValue(TEXT("Floor"), FLinearColor(SeaZ - 100.f, 0.f, 0.f, 150.f));
 			}
+			if (!S.Sheet[0])
+			{
+				UStaticMesh* Card = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/EasyFog/Meshes/SM_easyFogCard_01.SM_easyFogCard_01"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+				UMaterialInterface* CardBase = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/EasyFog/Materials/M_BP_EasyFog.M_BP_EasyFog"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+				for (int32 k = 0; k < 2 && Card && CardBase; ++k)
+				{
+					UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
+					C->SetMobility(EComponentMobility::Movable);
+					C->SetStaticMesh(Card);
+					C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+					C->SetCastShadow(false);
+					C->SetUsingAbsoluteLocation(true); C->SetUsingAbsoluteRotation(true); C->SetUsingAbsoluteScale(true);
+					C->SetupAttachment(RootComponent);
+					C->RegisterComponent();
+					UMaterialInstanceDynamic* M = UMaterialInstanceDynamic::Create(CardBase, this);
+					const int32 Shape = FMath::RandRange(1, 8);
+					if (UTexture* Mask = LoadObject<UTexture>(nullptr, *FString::Printf(TEXT("/Game/EasyFog/Textures/Fog/T_mountainFog_0%d_mask.T_mountainFog_0%d_mask"), Shape, Shape), nullptr, LOAD_NoWarn | LOAD_Quiet)) { M->SetTextureParameterValue(TEXT("Opacity Map"), Mask); }
+					M->SetScalarParameterValue(TEXT("Fading Distance"), 120.f);
+					M->SetScalarParameterValue(TEXT("Camera Fading Distance"), 300.f);
+					M->SetScalarParameterValue(TEXT("Emissive Intensity"), 0.f);
+					M->SetVectorParameterValue(TEXT("Base Color Tint"), FLinearColor(0.95f, 0.97f, 1.f));
+					C->SetMaterial(0, M);
+					S.Sheet[k] = C; S.SheetMID[k] = M;
+					BowSprayRefs.Add(C); BowSprayRefs.Add(M);
+				}
+			}
 			S.Age = 0.f;
 			S.Strength = FMath::Clamp(Falling / 180.f, 0.45f, 1.3f) * FMath::Clamp(Env.WaveHeight / 150.f, 0.5f, 1.3f);
 			S.Side = FMath::RandBool() ? 1.f : -1.f;
@@ -173,7 +199,27 @@ void ADCWeatherFX::TickBowSpray(float DeltaSeconds)
 		S.Age += DeltaSeconds;
 		const float Life = 2.6f;
 		const float A = S.Age / Life;
-		if (A >= 1.f) { S.Age = -1.f; S.Mesh->SetVisibility(false); continue; }
+		if (A >= 1.f)
+		{
+			S.Age = -1.f; S.Mesh->SetVisibility(false);
+			for (int32 k = 0; k < 2; ++k) { if (S.Sheet[k]) { S.Sheet[k]->SetVisibility(false); } }
+			continue;
+		}
+		// The sheets: thrown up and out from the stem at the plunge, each a ragged fan standing on edge and leaning
+		// away from the hull, carried aft and falling back within two seconds.
+		for (int32 k = 0; k < 2; ++k)
+		{
+			if (!S.Sheet[k]) { continue; }
+			const float Out = k == 0 ? -1.f : 1.f;
+			const float Sec = S.Age;
+			const float Rise = 950.f * S.Strength * Sec - 520.f * Sec * Sec;
+			const FVector Where = Director->DeckToWorld(FVector(2450.f - 520.f * Sec, Out * (160.f + 330.f * Sec), SeaZ + 60.f + FMath::Max(Rise, -150.f)));
+			const float Across = (500.f + 900.f * FMath::Min(Sec, 1.2f)) * (0.8f + 0.3f * S.Strength);
+			S.Sheet[k]->SetWorldLocationAndRotation(Where, FRotator(8.f, 0.f, Out * 68.f));
+			S.Sheet[k]->SetWorldScale3D(FVector(Across / 1160.f * 1.3f, Across / 1160.f, 1.f));
+			S.Sheet[k]->SetVisibility(true);
+			S.SheetMID[k]->SetScalarParameterValue(TEXT("Fog Density"), 2.2f * S.Strength * FMath::Min(Sec * 8.f, 1.f) * FMath::Square(1.f - FMath::Min(Sec / 2.f, 1.f)));
+		}
 		// Thrown up fast at the stem, opening out as it is carried aft over the forecastle, thinning as it goes.
 		const float Up = 1.f - FMath::Square(1.f - FMath::Min(A * 2.2f, 1.f));
 		const FVector At = Director->DeckToWorld(FVector(2550.f - A * 1500.f, S.Side * (120.f + A * 380.f), SeaZ + 200.f + Up * 650.f - A * A * 250.f));
@@ -183,7 +229,7 @@ void ADCWeatherFX::TickBowSpray(float DeltaSeconds)
 		S.Mesh->SetVisibility(true);
 		S.MID->SetVectorParameterValue(TEXT("Radii"), FLinearColor(Radii.X, Radii.Y, Radii.Z, 0.f));
 		const float Thick = FMath::Min(A * 9.f, 1.f) * FMath::Square(1.f - A);
-		S.MID->SetScalarParameterValue(TEXT("Density"), 0.3f * S.Strength * Thick);
+		S.MID->SetScalarParameterValue(TEXT("Density"), (S.Sheet[0] ? 0.16f : 0.3f) * S.Strength * Thick);
 		S.MID->SetVectorParameterValue(TEXT("Glow"), (Director->FogGlow + FLinearColor(0.5f, 0.55f, 0.62f) * (0.12f + 0.25f * FMath::Clamp(Env.SunIntensity / 6.f, 0.f, 1.f))) * 1.6f);
 	}
 }
