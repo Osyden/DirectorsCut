@@ -81,10 +81,15 @@ bool FDCCliffGeneratorTest::RunTest(const FString& Parameters)
     const float RadialRange=MaxFaceRadius-MinFaceRadius;
     TestTrue(TEXT("Rock masses vary without becoming crater-wide shelves"),RadialRange>2000.f && RadialRange<(Sections[0].LipRadius-Sections[0].ToeRadius)*.60f);
     float MaxRelief=0.f,AcrossChange=0.f,UpChange=0.f;
+    int32 QuietExposures=0,StrongExposures=0,ExposureSamples=0;
     for(int32 Side=0;Side<256;++Side) for(int32 Row=8;Row<56;++Row)
     {
         const float A=Side/256.f,T=Row/64.f;
         const float Offset=FaceRelief(A,T).Offset;
+        const float Exposure=FractureExposure(A,T);
+        QuietExposures+=Exposure<.25f ? 1 : 0;
+        StrongExposures+=Exposure>.8f ? 1 : 0;
+        ++ExposureSamples;
         MaxRelief=FMath::Max(MaxRelief,FMath::Abs(Offset));
         // Approximately equal 10m steps on a 10km circumference / 500m face.
         AcrossChange+=FMath::Abs(FaceRelief(A+.001f,T).Offset-Offset);
@@ -92,6 +97,12 @@ bool FDCCliffGeneratorTest::RunTest(const FString& Parameters)
     }
     TestTrue(TEXT("Local fracture projection stays below 25m, not giant cap shelves"),MaxRelief<2500.f);
     TestTrue(TEXT("Fracture relief persists vertically rather than making horizontal shelves"),AcrossChange>UpChange*2.f);
+    TestTrue(TEXT("Both quiet and strongly fractured exposures occupy meaningful areas"),
+        QuietExposures>ExposureSamples/10 && StrongExposures>ExposureSamples/10);
+    bool LocalizedClefts=true;
+    for(int32 Side=0;Side<256;++Side)
+    { LocalizedClefts &= FaceRelief(Side/256.f,0.f).Recess==0.f && FaceRelief(Side/256.f,1.f).Recess==0.f; }
+    TestTrue(TEXT("Eroded clefts terminate before toe and skyline instead of full-height slots"),LocalizedClefts);
     return true;
 }
 
