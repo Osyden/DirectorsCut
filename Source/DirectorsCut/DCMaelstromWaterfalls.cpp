@@ -78,7 +78,9 @@ void ADCMaelstrom::UpdateProceduralFalls()
             // Match the centre of the existing procedural water core. Export in
             // the same yaw-only, physical-centimetre frame as the runtime SVT.
             const FTransform LocalFrame(FRotator(0.f, Yaw, 0.f), Origin);
-            const float Angle = FMath::Atan2(Feed.Lip.Y, Feed.Lip.X);
+            // Use the stable source angle, not atan2 of a barycentrically
+            // interpolated lip: that introduces centimetres of contact drift.
+            const float Angle = WaterfallAngle(Feed.SourceIndex);
             auto CorePoint = [&](float U, float Across)
             {
                 const float V = FMath::Lerp(.84f, Feed.ContactV, U);
