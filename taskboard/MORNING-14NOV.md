@@ -4,7 +4,7 @@
 
 ## Play this
 
-`E:\projects\directorscut\Builds\2026-11-14_0301_5018846_one-front\Windows\DirectorsCut.exe`. It has been run from its exe at 1600x900 through the front, the tunnel and the city (93 to 104 fps) and through the whole maelstrom to the ending card at triple speed, and it holds everything in the table below.
+`E:\projects\directorscut\Builds\2026-11-14_0315_e71ea99_rolling-top\Windows\DirectorsCut.exe`. It has been run from its exe at 1600x900 through the front, the tunnel and the city (94 to 114 fps) and through the whole maelstrom to the ending card at triple speed, and it holds everything in the table below.
 
 Every earlier build is still in `Builds\` for the dev log.
 
@@ -33,7 +33,7 @@ Every earlier build is still in `Builds\` for the dev log.
 - The spout is the tunnel volume stood on end: its top is darker than its foot.
 - The burning stone is a rock with a tail of plain glowing balls.
 - The creature's young have no wake and do not come on deck.
-- From far off (40 to 50 s) the wall is a pale bank with a fairly level top.
+- From far off (30 to 50 s) the wall is a pale bank; its top now rolls, but it is still one bank of one kind of cloud.
 - The helmsman still strikes rocks in the city (hull about 81 by the slide with nobody steering).
 - With nobody steering or giving an order in the maelstrom every spout and stone strikes and the hull ends between 28 and 46 from 100. There is no sinking.
 - Without the bought packs installed the front has no tunnel or wall, the city has no cards and the spouts are unseen.
