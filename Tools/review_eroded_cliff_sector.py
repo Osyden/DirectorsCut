@@ -175,7 +175,7 @@ def label_camera(scene, camera, title, subtitle, footer):
         text_object(scene, value, (-width*.47, height*y, -5), height*size, ink, camera)
 
 
-def render_clay(seed, result, faces, out, samples, has_result=True, requested_views=("wall", "oblique")):
+def render_clay(seed, result, faces, out, samples, has_result=True, requested_views=("wall", "oblique"), camera_override=None):
     import bpy
     from mathutils import Vector
     scene = reset_scene(1440, 960, samples)
@@ -222,6 +222,10 @@ def render_clay(seed, result, faces, out, samples, has_result=True, requested_vi
                  (0, target_y, target_z), width*1.25),
         "plan": ((0, 0, float(seed["height_m"].max())+1000), (0, 0, target_z), max(width, depth)*1.60),
     }
+    if camera_override:
+        for view in requested_views:
+            saved=camera_override[view]
+            views[view]=(saved["location_chart_m"],saved["target_chart_m"],saved["orthographic_width_m"])
     manifest = {}
     for view, (location, target, scale) in views.items():
         if view not in requested_views:
@@ -340,6 +344,7 @@ def main():
     parser.add_argument("--samples", type=int, default=16)
     parser.add_argument("--obj", action="store_true")
     parser.add_argument("--views", default="wall,oblique", help="Comma-separated wall,oblique,deck,plan")
+    parser.add_argument("--camera-manifest",type=Path,help="Previous review.json: lock cameras when comparing different seeds")
     args = parser.parse_args(sys.argv[sys.argv.index("--")+1:] if "--" in sys.argv else None)
     out = args.output.resolve()
     if "saved" not in [part.lower() for part in out.parts]:
@@ -356,12 +361,14 @@ def main():
         export_obj(out / "before_heightfield.obj", seed, seed["height_m"], faces)
         if args.eroded:
             export_obj(out / "after_heightfield.obj", seed, result["height_m"], faces)
-    cameras = render_clay(seed, result, faces, out, args.samples, bool(args.eroded), requested_views)
+    camera_override=json.loads(args.camera_manifest.read_text())["cameras"] if args.camera_manifest else None
+    cameras = render_clay(seed, result, faces, out, args.samples, bool(args.eroded), requested_views, camera_override)
     render_maps(seed, result, out, bool(args.eroded))
     delta = result["height_m"].astype(np.float64)-seed["height_m"]
     review = dict(approximation=source_info(seed)["limitation"], source_kind=source_info(seed)["kind"], erosion_result_supplied=bool(args.eroded),
                   seed_path=str(args.seed.resolve()), result_path=str(args.eroded.resolve()) if args.eroded else None,
                   seed_sha256=hashlib.sha256(args.seed.read_bytes()).hexdigest(), result_sha256=hashlib.sha256(args.eroded.read_bytes()).hexdigest() if args.eroded else None,
+                  camera_reference_manifest=str(args.camera_manifest.resolve()) if args.camera_manifest else None,
                   coordinate_frame=json.loads(str(seed["metadata_json"])), cameras=cameras,
                   render_chart="x=clockwise tangent minus half width, y=outward radial minus half depth, z=absolute design-world metres",
                   obj_frame="Absolute design-world XY and Z in metres; same origin/basis as seed; invalid faces omitted",
