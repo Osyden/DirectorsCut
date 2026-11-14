@@ -1,4 +1,5 @@
 #include "DCMaelstrom.h"
+#include "DCCliffGenerator.h"
 #include "DCMaelstromRoute.h"
 #include "DCRideDirector.h"
 #include "DCRuins.h"
@@ -305,10 +306,12 @@ float ADCMaelstrom::HeightAt(const FVector2D& Point, bool bWaves) const
 
 float ADCMaelstrom::RimGroundHeight(float R, float Angle) const
 {
-	const float Ridge = 3000.f + 1800.f * FMath::Sin(Angle * 9.f) + 900.f * FMath::Sin(Angle * 23.f + R * 0.0001f);
-	return RimElevation(Angle) + FMath::Lerp(-1800.f, Ridge, FMath::SmoothStep(1.008f, 1.055f, R / GetRimRadius(Angle)));
+    // Low exposed cap. Architecture, rather than sinusoidal hills, owns the skyline.
+    const FVector2D D(FMath::Cos(Angle),FMath::Sin(Angle));
+    return 1800.f+RimElevation(Angle)*.25f+650.f*FMath::PerlinNoise2D(D*4.f+FVector2D(7,13))
+        +1200.f*DCCliffGenerator::Facet(Angle/UE_TWO_PI,1.3f,48)
+        +400.f*DCCliffGenerator::Facet(Angle/UE_TWO_PI,2.1f,192);
 }
-
 TArray<ADCMaelstrom::FWaterfallContact> ADCMaelstrom::GetWaterfallContacts() const
 {
 	TArray<FWaterfallContact> Contacts;
@@ -402,75 +405,33 @@ void ADCMaelstrom::BuildTunnel()
 
 void ADCMaelstrom::BuildLandmarks()
 {
-	if (!DCRuins::Available()) { return; }
-	FRandomStream Random(419);
-	auto Place = [this](AActor* Actor, const FVector& Position, float Yaw)
-	{
-		if (!Actor) { return; }
-		Actor->AttachToComponent(Arena, FAttachmentTransformRules::KeepRelativeTransform);
-		Actor->SetActorRelativeLocation(Position);
-		Actor->SetActorRelativeRotation(FRotator(0.f, Yaw, 0.f));
-		Landmarks.Add(Actor);
-	};
-	// One connected coast, with modest-size architecture as distance markers.
-	for (int32 I = 0; I < 9; ++I)
-	{
-		const float Angle = FMath::Lerp(-145.f, 145.f, I / 8.f) + Random.FRandRange(-6.f,6.f);
-		const float A = FMath::DegreesToRadians(Angle);
-		const float R = GetRimRadius(A) * Random.FRandRange(1.045f, 1.075f);
-		const FVector Position(R*FMath::Cos(A),R*FMath::Sin(A),RimGroundHeight(R,A));
-		const float Scale=Random.FRandRange(0.65f,1.4f);
-		AActor* Crag=DCRuins::SpawnCrag(GetWorld(),12000.f,7000.f);
-		Place(Crag,Position-FVector(0,0,6500.f),Angle);
-		if (Crag && I == 0)
-		{
-			if (UStaticMeshComponent* Rock=Crag->FindComponentByClass<UStaticMeshComponent>()) { RimLand->SetMaterial(0,Rock->GetMaterial(0)); }
-		}
-		Place(DCRuins::SpawnComplex(GetWorld(),Scale,419+I),Position+FVector(0,0,300.f),Angle+180.f);
-		if (I%3==0) { Place(DCRuins::SpawnColossus(GetWorld(),11000.f),Position+FVector(3000,6000,500),Angle+180.f); }
-	}
-	// Rock buttresses interrupt the overflow instead of making one white circular
-	// wall. Their feet descend into the bowl; their crests join the uneven coast.
-	auto BroadenCrag = [](AActor* Crag)
-	{
-		if (!Crag) { return; }
-		TInlineComponentArray<UStaticMeshComponent*> Pieces(Crag);
-		for (UStaticMeshComponent* Piece : Pieces)
-		{
-			if (!Piece->GetStaticMesh()) { continue; }
-			const FBox Box = Piece->GetStaticMesh()->GetBoundingBox();
-			const FVector Size = Box.GetSize();
-			const FVector OldScale = Piece->GetRelativeScale3D();
-			FVector Scale = OldScale;
-			const float Width = FMath::Max(Size.X * Scale.X, Size.Y * Scale.Y);
-			Scale.X = FMath::Max(Scale.X, Width * 0.65f / FMath::Max(Size.X, 1.f));
-			Scale.Y = FMath::Max(Scale.Y, Width * 0.65f / FMath::Max(Size.Y, 1.f));
-			const FVector Foot(Box.GetCenter().X, Box.GetCenter().Y, Box.Min.Z);
-			Piece->SetRelativeLocation(Piece->GetRelativeLocation() + Piece->GetRelativeRotation().RotateVector(Foot * (OldScale - Scale)));
-			Piece->SetRelativeScale3D(Scale);
-		}
-	};
-	float LastButtress = -10.f;
-	for (int32 I = 0; I < 100; ++I)
-	{
-		const float A = -2.30f + I * 4.60f / 99.f;
-		if (GetOverflowAmount(A) > 0.24f || A - LastButtress < 0.22f) { continue; }
-		LastButtress = A;
-		const float Drop = GetRimDrop(A);
-		const float R = GetRimRadius(A) * 0.975f;
-		const float Height = Drop + Random.FRandRange(5000.f, 10500.f);
-		const FVector At(FMath::Cos(A)*R,FMath::Sin(A)*R,RimElevation(A)-Drop-1500.f);
-		AActor* Buttress = DCRuins::SpawnCrag(GetWorld(),Random.FRandRange(12000.f,19000.f),Height);
-		BroadenCrag(Buttress);
-		Place(Buttress,At,FMath::RadiansToDegrees(A)+Random.FRandRange(-30.f,30.f));
-		const float SpurR = R - Random.FRandRange(7000.f,13000.f);
-		const FVector2D SpurPoint(FMath::Cos(A+0.035f)*SpurR,FMath::Sin(A+0.035f)*SpurR);
-		const FVector Spur(SpurPoint,HeightAt(SpurPoint)-2200.f);
-		Place(DCRuins::SpawnCrag(GetWorld(),Random.FRandRange(4500.f,7500.f),Random.FRandRange(6000.f,13000.f)),Spur,FMath::RadiansToDegrees(A)+40.f);
-	}
-
+    if (!DCRuins::Available()) { return; }
+    auto Place=[this](AActor* Actor,const FVector& Position,float Yaw)
+    {
+        if(!Actor) { return; }
+        Actor->AttachToComponent(Arena,FAttachmentTransformRules::KeepRelativeTransform);
+        Actor->SetActorRelativeLocation(Position);
+        Actor->SetActorRelativeRotation(FRotator(0,Yaw,0));
+        Landmarks.Add(Actor);
+    };
+    // Temples occupy supported plateau pads just behind the exposed lip.
+    // No giant vendor crags under the temples or stretched wall buttresses.
+    static const float Angles[]={-143.f,-109.f,-76.f,-38.f,2.f,38.f,77.f,112.f,144.f};
+    for(int32 Index=0;Index<UE_ARRAY_COUNT(Angles);++Index)
+    {
+        const float A=FMath::DegreesToRadians(Angles[Index]);
+        const float R=CliffSurfacePoint(A,.84f).Size2D()+12000.f;
+        const FVector Position(R*FMath::Cos(A),R*FMath::Sin(A),RimGroundHeight(R,A)-100.f);
+        const float Scale=(Index==2 || Index==5) ? 1.30f : 1.05f;
+        Place(DCRuins::SpawnComplex(GetWorld(),Scale,419+Index),Position,Angles[Index]+180.f);
+        if(Index==0 || Index==7)
+        {
+            const float SA=A+.035f,SR=GetRimRadius(SA)*1.015f+2500.f;
+            Place(DCRuins::SpawnColossus(GetWorld(),4200.f),
+                FVector(SR*FMath::Cos(SA),SR*FMath::Sin(SA),RimGroundHeight(SR,SA)-100.f),Angles[Index]+180.f);
+        }
+    }
 }
-
 FTransform ADCMaelstrom::GetArenaTransform() const { return Arena->GetComponentTransform(); }
 
 float ADCMaelstrom::SampleSurfaceWorld(const FVector& Position) const

@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov Codex: dedicated cliffs and temple skyline
+
+- Replaced heightfield cliffs and both old scaled-crag paths with a parametric geological wall/cap generator. Temples now sit on supported low plateau pads against sky; references drive the skyline hierarchy. [Implementation, rejected trials, actual captures and verification](MAELSTROM-CLIFFS-14NOV.md).
+- Editor/Game builds, rock material generation and cliff-continuity automation pass. Actual multi-phase renders restore open sea. Water/foam/sky lighting/boss unchanged; existing falls only reattached to the new cliff surface. No main merge/package. Still needs material/art refinement, not AAA sign-off.
+- User requested a waterfall worker. Exact OneStudio2 video pack identified but not installed; [pack assessment and integration plan](WATERFALL-VDB-14NOV.md), read-only audit tool ready.
+
 ## 14 Nov Codex: sky integrated, foam transport and scale overhaul
 
 - Merged sky branch through `e32cd85` into `codex/maelstrom-saturday` (`ee156ec`), keeping current terrain/water. [Combined implementation, captures, asset decision and remaining failures](MAELSTROM-INTEGRATED-14NOV.md).

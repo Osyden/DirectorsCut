@@ -29,13 +29,14 @@ void ADCMaelstrom::BuildWhitewater()
         if(Edge>GetRimRadius(Angle)*.97f) { continue; }
         const FVector2D End=FVector2D(FMath::Cos(Angle),FMath::Sin(Angle))*(Edge-900.f);
         const float StartAngle=Angle;
-        const FVector2D Start=FVector2D(FMath::Cos(StartAngle),FMath::Sin(StartAngle))*GetRimRadius(StartAngle)*.985f;
+        const FVector StartSurface=CliffSurfacePoint(StartAngle,.84f);
+        const FVector2D Start(StartSurface.X,StartSurface.Y);
         const FVector2D Direction=(End-Start).GetSafeNormal();
         const FVector2D Across(-Direction.Y,Direction.X);
         const float Seed=Random.FRand();
         FWaterFeed& Source=WaterFeeds.AddDefaulted_GetRef();
         Source.Foot=FVector(End,HeightAt(End)); Source.Width=W; Source.Seed=Seed;
-        const float LipZ=CliffHeightAt(Start)+80.f;
+        const float LipZ=StartSurface.Z+80.f;
         FVector2D Drift=End;
         for(int32 Step=0;Step<24;++Step)
         {
@@ -60,10 +61,10 @@ void ADCMaelstrom::BuildWhitewater()
                 // coherent; large sine bends made narrow falls look like ropes.
                 const float Bend=BranchOffset*(.7f+.3f*U)+FMath::Sin(U*UE_PI)*W*
                     FMath::PerlinNoise1D(U*4.f+BranchSeed*57.f)*.12f;
-                const FVector2D Centre=FMath::Lerp(Start,End,U)+Across*Bend;
-                const float CentreEdge=WaterEdgeRadius(FMath::Atan2(Centre.Y,Centre.X));
-                const float CentreSurface=Centre.Size()>CentreEdge ? CliffHeightAt(Centre) : HeightAt(Centre);
-                const FVector Center3(Centre,FMath::Max(CentreSurface,FMath::Lerp(LipZ,Source.Foot.Z,U*U))+45.f);
+                FVector Center3=CliffSurfacePoint(Angle,.84f*(1.f-U));
+                const FVector Inward(-FMath::Cos(Angle),-FMath::Sin(Angle),0);
+                Center3+=Inward*180.f+FVector(Across*Bend,60.f);
+                Center3=FMath::Lerp(Center3,Source.Foot+FVector(0,0,40),FMath::SmoothStep(.94f,1.f,U));
                 Distance+=(Center3-Previous).Size(); Previous=Center3;
                 // A thin core loses cohesion gradually into aerated water at its
                 // foot. Width breakup is small-scale, not a repeating zigzag.
@@ -71,13 +72,12 @@ void ADCMaelstrom::BuildWhitewater()
                 for(int32 Col=0;Col<=Cols;++Col)
                 {
                     const float X=static_cast<float>(Col)/Cols;
-                    const FVector2D P=Centre+Across*((X-.5f)*Width*2.f);
-                    // A falling sheet separates from the wall, then reconnects
-                    // at the real contact. Surface-only overlays read as paint.
-                    const float FallZ=FMath::Lerp(LipZ,Source.Foot.Z,U*U);
-                    const float SurfaceZ=P.Size()>WaterEdgeRadius(FMath::Atan2(P.Y,P.X)) ? CliffHeightAt(P) : HeightAt(P);
-                    // Clear the carved bed, then rejoin the receiving water.
-                    V.Add(FVector(P,FMath::Max(SurfaceZ,FallZ)+45.f));
+                    const float SideOffset=(X-.5f)*Width*2.f;
+                    const float SampleAngle=Angle+(Bend+SideOffset)/FMath::Max(Center3.Size2D(),1.f);
+                    FVector Sample=CliffSurfacePoint(SampleAngle,.84f*(1.f-U));
+                    Sample+=FVector(-FMath::Cos(SampleAngle)*180.f,-FMath::Sin(SampleAngle)*180.f,60.f);
+                    Sample=FMath::Lerp(Sample,Source.Foot+FVector(Across*(Bend+SideOffset),40.f),FMath::SmoothStep(.94f,1.f,U));
+                    V.Add(Sample);
                     UV.Add(FVector2D(X,Distance*.01f));
                     C.Add(FLinearColor(Width/10000.f,BranchSeed,U,1.f).ToFColor(false));
                     if(Row<Rows && Col<Cols)

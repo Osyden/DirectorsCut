@@ -53,6 +53,7 @@ private:
 	float WaterfallAngle(int32 Index) const;
 	float WaterfallWidth(int32 Index) const;
 	float CliffHeightAt(const FVector2D& Point) const;
+	FVector CliffSurfacePoint(float Angle,float V) const;
 	void BuildTerrain();
 	void UpdateTerrainShadows();
 	float NextTerrainShadowUpdate=-1.f;

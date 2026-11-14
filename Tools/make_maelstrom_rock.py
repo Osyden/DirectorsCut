@@ -1,4 +1,6 @@
-"""Original local-space triplanar crater rock; installed textures referenced in place."""
+"""Physical-scale cliff stone. Unit-scale basin mesh: R=wet, G=recess.
+Installed tile textures are referenced in place, never copied.
+"""
 import unreal
 M=unreal.MaterialEditingLibrary
 path='/Game/DC/Maelstrom/M_CraterRock'
@@ -19,7 +21,8 @@ def custom(code,kind,inputs):
         source,pin=v if isinstance(v,tuple) else (v,'')
         if not M.connect_material_expressions(source,pin,n,key): raise RuntimeError(key)
     return n
-def output(n,p): M.connect_material_property(n,'',p)
+def output(n,p):
+    if not M.connect_material_property(n,'',p): raise RuntimeError(str(p))
 def constant(x):
     n=node(unreal.MaterialExpressionConstant); n.set_editor_property('r',x); return n
 world=node(unreal.MaterialExpressionWorldPosition)
@@ -33,15 +36,18 @@ normal.set_editor_property('transform_source_type',unreal.MaterialVectorCoordTra
 normal.set_editor_property('transform_type',unreal.MaterialVectorCoordTransform.TRANSFORM_LOCAL)
 M.connect_material_expressions(vn,'',normal,'')
 vc=node(unreal.MaterialExpressionVertexColor)
-inputs={'P':pos,'N':normal,'Wet':(vc,'R')}
+textures={}
 for name,suffix in [('RockColor','D'),('RockNormal','N')]:
     tex=unreal.load_asset('/Game/AncientRuins/Textures/Tile/T_Ground_02_'+suffix)
-    if not tex: raise RuntimeError('Installed rock detail texture missing')
+    if not tex: raise RuntimeError('Installed mineral detail missing: '+suffix)
     obj=node(unreal.MaterialExpressionTextureObjectParameter)
     obj.set_editor_property('parameter_name',name); obj.set_editor_property('texture',tex)
     obj.set_editor_property('sampler_type',unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL if suffix=='N' else unreal.MaterialSamplerType.SAMPLERTYPE_COLOR)
-    inputs[name]=obj
-noise=r'''
+    textures[name]=obj
+
+# Geometry supplies fractured volume. Weathering stays restrained and never
+# paints giant round mottles or regular masonry joints across the whole cliff.
+weather=custom(r'''
 struct StoneNoise {
  float hash(float3 p) { return frac(sin(dot(p,float3(127.1,311.7,74.7)))*43758.5453); }
  float value(float3 p) {
@@ -50,38 +56,54 @@ struct StoneNoise {
    lerp(lerp(hash(i+float3(0,0,1)),hash(i+float3(1,0,1)),f.x),lerp(hash(i+float3(0,1,1)),hash(i+1),f.x),f.y),f.z);
  }
 }; StoneNoise sn;
-float3 p=P*.01, w=pow(abs(normalize(N)),4); w/=max(dot(w,1),.001);
+float3 p=P*.01;
+// Tilted, interrupted bedding. Broad transitions avoid painted contour lines.
+float bedding=p.z*.075+dot(p.xy,float2(.0014,-.0011));
+float strata=sn.value(float3(p.xy*.011,bedding+sn.value(p*.006)*1.7));
+float streaks=sn.value(float3(p.xy*.12,p.z*.004));
+float wet=saturate(Wet)*lerp(.65,1,smoothstep(.28,.72,streaks));
+return float4(strata,streaks,wet,saturate(Recess));
+''',unreal.CustomMaterialOutputType.CMOT_FLOAT4,{'P':pos,'Wet':(vc,'R'),'Recess':(vc,'G')})
+projection=r'''
+float3 p=P*.01,n=normalize(N),w=pow(abs(n),4); w/=max(dot(w,1),.001);
+// Mirror projection coordinates and gradients together around the crater.
+float3 s=float3(n.x<0?-1:1,n.y<0?-1:1,n.z<0?-1:1);
+float2 ux=float2(p.y*s.x,p.z),uy=float2(p.x*s.y,p.z),uz=float2(p.x*s.z,p.y);
 '''
-color=custom(noise+r'''
-float3 tx=Texture2DSample(RockColor,RockColorSampler,p.yz/5).rgb;
-float3 ty=Texture2DSample(RockColor,RockColorSampler,p.xz/5).rgb;
-float3 tz=Texture2DSample(RockColor,RockColorSampler,p.xy/5).rgb;
-float macro=sn.value(p*.018)*.65+sn.value(p*.071)*.35;
-float layers=sn.value(float3(p.xy*.012,p.z*.09+sn.value(p*.025)*4));
-float strata=.70+.30*smoothstep(.15,.65,layers);
-float3 stone=lerp(float3(.12,.14,.16),float3(.25,.265,.27),macro);
-return lerp(stone,(tx*w.x+ty*w.y+tz*w.z)*.65,.40)*strata*lerp(1,.48,Wet);
-''',unreal.CustomMaterialOutputType.CMOT_FLOAT3,inputs)
+color=custom(projection+r'''
+float3 tx=Texture2DSample(RockColor,RockColorSampler,ux/4).rgb;
+float3 ty=Texture2DSample(RockColor,RockColorSampler,uy/4).rgb;
+float3 tz=Texture2DSample(RockColor,RockColorSampler,uz/4).rgb;
+float3 mineral=tx*w.x+ty*w.y+tz*w.z;
+float luminance=dot(mineral,float3(.2126,.7152,.0722));
+// Mineral variation without the source ground texture's saturated dirt tint.
+float3 stone=lerp(float3(.255,.265,.265),float3(.305,.295,.272),Weather.x);
+float grain=clamp(.70+luminance*.90,.72,1.16);
+float runoff=lerp(.90,1.03,Weather.y);
+return stone*grain*runoff*lerp(1,.78,Weather.w)*lerp(1,.62,Weather.z);
+''',unreal.CustomMaterialOutputType.CMOT_FLOAT3,{'P':pos,'N':normal,'Weather':weather,'RockColor':textures['RockColor']})
 output(color,unreal.MaterialProperty.MP_BASE_COLOR)
-detail=custom(noise+r'''
-float2 x=Texture2DSample(RockNormal,RockNormalSampler,p.yz/5).xy*2-1;
-float2 y=Texture2DSample(RockNormal,RockNormalSampler,p.xz/5).xy*2-1;
-float2 z=Texture2DSample(RockNormal,RockNormalSampler,p.xy/5).xy*2-1;
-float3 g=float3(0,x.x,x.y)*w.x+float3(y.x,0,y.y)*w.y+float3(z.x,z.y,0)*w.z;
-float2 mx=Texture2DSample(RockNormal,RockNormalSampler,p.yz/18).xy*2-1;
-float2 my=Texture2DSample(RockNormal,RockNormalSampler,p.xz/18).xy*2-1;
-float2 mz=Texture2DSample(RockNormal,RockNormalSampler,p.xy/18).xy*2-1;
-float3 medium=float3(0,mx.x,mx.y)*w.x+float3(my.x,0,my.y)*w.y+float3(mz.x,mz.y,0)*w.z;
-g=g*.65+medium*.35;
-float3 n=normalize(N); return normalize(n+g-n*dot(g,n));
-''',unreal.CustomMaterialOutputType.CMOT_FLOAT3,inputs)
+detail=custom(projection+r'''
+// Physical scales: fine mineral fracture 1.6m, intermediate normal detail12m.
+// Texture mip filtering handles distance; no enlarged distant texture features.
+float2 x=Texture2DSample(RockNormal,RockNormalSampler,ux/1.6).xy*2-1;
+float2 y=Texture2DSample(RockNormal,RockNormalSampler,uy/1.6).xy*2-1;
+float2 z=Texture2DSample(RockNormal,RockNormalSampler,uz/1.6).xy*2-1;
+float2 mx=Texture2DSample(RockNormal,RockNormalSampler,(ux+float2(3.1,5.7))/12).xy*2-1;
+float2 my=Texture2DSample(RockNormal,RockNormalSampler,(uy+float2(3.1,5.7))/12).xy*2-1;
+float2 mz=Texture2DSample(RockNormal,RockNormalSampler,(uz+float2(3.1,5.7))/12).xy*2-1;
+x=x*.52+mx*.30; y=y*.52+my*.30; z=z*.52+mz*.30;
+float3 g=float3(0,x.x*s.x,x.y)*w.x+float3(y.x*s.y,0,y.y)*w.y+float3(z.x*s.z,z.y,0)*w.z;
+return normalize(n+g-n*dot(g,n));
+''',unreal.CustomMaterialOutputType.CMOT_FLOAT3,{'P':pos,'N':normal,'RockNormal':textures['RockNormal']})
 to_world=node(unreal.MaterialExpressionTransform)
 to_world.set_editor_property('transform_source_type',unreal.MaterialVectorCoordTransformSource.TRANSFORMSOURCE_LOCAL)
 to_world.set_editor_property('transform_type',unreal.MaterialVectorCoordTransform.TRANSFORM_WORLD)
 M.connect_material_expressions(detail,'',to_world,'')
 output(to_world,unreal.MaterialProperty.MP_NORMAL)
-output(custom('return lerp(.82,.37,Wet);',unreal.CustomMaterialOutputType.CMOT_FLOAT1,{'Wet':(vc,'R')}),unreal.MaterialProperty.MP_ROUGHNESS)
-output(constant(.25),unreal.MaterialProperty.MP_SPECULAR)
+output(custom('return lerp(.78+Weather.x*.09,.43,Weather.z);',unreal.CustomMaterialOutputType.CMOT_FLOAT1,{'Weather':weather}),unreal.MaterialProperty.MP_ROUGHNESS)
+output(custom('return lerp(1,.72,Weather.w);',unreal.CustomMaterialOutputType.CMOT_FLOAT1,{'Weather':weather}),unreal.MaterialProperty.MP_AMBIENT_OCCLUSION)
+output(constant(.32),unreal.MaterialProperty.MP_SPECULAR)
 M.recompile_material(mat)
 unreal.EditorAssetLibrary.save_loaded_asset(mat,only_if_is_dirty=False)
-unreal.log_warning('DC_ROCK_MATERIAL_COMPLETE')
+unreal.log_warning('DC_ROCK_MATERIAL_COMPLETE physical stone 1.6m/4m/12m; R wet G recess')

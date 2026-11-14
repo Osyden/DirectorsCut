@@ -1,5 +1,6 @@
 #include "DCMaelstrom.h"
 #include "DCMaelstromRoute.h"
+#include "DCCliffGenerator.h"
 #include "ProceduralMeshComponent.h"
 #include "Materials/MaterialInterface.h"
 #include "Components/InstancedStaticMeshComponent.h"
@@ -39,134 +40,84 @@ float ADCMaelstrom::WaterEdgeRadius(float Angle) const
     return FMath::Min(GetRimRadius(Angle)*(1.f+Inlet*.08f),FMath::Max(Lower,Channel));
 }
 
+FVector ADCMaelstrom::CliffSurfacePoint(float Angle,float V) const
+{
+    const float Toe=WaterEdgeRadius(Angle)*.995f;
+    const float Lip=FMath::Max(GetRimRadius(Angle)*1.015f
+        +1600.f*DCCliffGenerator::Facet(Angle/UE_TWO_PI,2.1f,48),Toe+5000.f);
+    const FVector2D D(FMath::Cos(Angle),FMath::Sin(Angle));
+    float Drainage=0.f;
+    for(int32 I=0;I<WaterfallCount;++I)
+    {
+        const float W=WaterfallWidth(I);
+        if(W<=0.f) { continue; }
+        const float Across=FMath::Abs(FMath::UnwindRadians(Angle-WaterfallAngle(I)))*Lip;
+        Drainage=FMath::Max(Drainage,1.f-FMath::SmoothStep(W*1.2f,W*2.8f,Across));
+    }
+    const DCCliffGenerator::FSection Section={Toe,Lip,FMath::Max(GetRimRadius(Angle)*1.32f,Lip+30000.f),
+        HeightAt(D*Toe,false)-900.f,RimGroundHeight(Lip,Angle)};
+    FVector Point=DCCliffGenerator::Point(Section,Angle,V,Drainage);
+    if(V>=.84f)
+    {
+        for(float Degrees:DCCliffGenerator::TempleAngles)
+        {
+            const float A=FMath::DegreesToRadians(Degrees);
+            const float PadR=FMath::Max(GetRimRadius(A)*1.015f
+                +1600.f*DCCliffGenerator::Facet(A/UE_TWO_PI,2.1f,48),WaterEdgeRadius(A)*.995f+5000.f)+12000.f;
+            const float Across=FMath::Abs(FMath::UnwindRadians(Angle-A))*PadR;
+            const float Along=FMath::Abs(static_cast<float>(Point.Size2D())-PadR);
+            const float Pad=1.f-FMath::SmoothStep(11500.f,15500.f,FMath::Max(Across,Along));
+            Point.Z=FMath::Lerp(Point.Z,static_cast<double>(RimGroundHeight(PadR,A)),Pad);
+        }
+    }
+    return Point;
+}
+
 float ADCMaelstrom::CliffHeightAt(const FVector2D& P) const
 {
-    const float R=P.Size(),A=FMath::Atan2(P.Y,P.X);
-    const float Toe=WaterEdgeRadius(A)*.995f;
-    const float Rim=FMath::Max(GetRimRadius(A)*1.055f,Toe+13000.f);
-    const float U=FMath::Clamp((R-Toe)/(Rim-Toe),0.f,1.f);
-    const FVector2D D=P/FMath::Max(R,1.f);
-    const float WaterZ=HeightAt(D*Toe,false)-650.f;
-    const float Ridge=RimGroundHeight(Rim,A);
-    // Broken geological benches rather than full-height inflated flutes.
-    // Each formation has a different shoulder and width, with an unbroken
-    // low talus connecting the face to its submerged toe.
-    const float Fault=FMath::PerlinNoise2D(D*5.f+FVector2D(2,13));
-    const float LocalFault=FMath::PerlinNoise2D(D*13.f+FVector2D(U*3.f,7));
-    const float Shift=Fault*.065f+LocalFault*.025f;
-    const float Profile=.28f*U
-        +.21f*FMath::SmoothStep(.12f+Shift,.29f+Shift,U)
-        +.26f*FMath::SmoothStep(.34f-Shift,.54f-Shift,U)
-        +.25f*FMath::SmoothStep(.63f+Shift,.87f+Shift,U);
-    const float Band=FMath::SmoothStep(0.f,.09f,U)*(1.f-FMath::SmoothStep(.84f,1.f,U));
-    const FVector2D Warp=P+D*(FMath::PerlinNoise2D(P/26000.f)*2400.f);
-    const float Fracture=2400.f*FMath::PerlinNoise2D(Warp/14500.f+FVector2D(3,17))
-        +1500.f*FMath::PerlinNoise2D(Warp/5200.f+FVector2D(13,27))
-        +450.f*FMath::PerlinNoise2D(Warp/1700.f+FVector2D(5,9));
-    const float BenchPosition=.35f+.22f*FMath::PerlinNoise2D(D*8.f+FVector2D(11,3));
-    const float Bench=1500.f*FMath::SmoothStep(BenchPosition-.06f,BenchPosition,U)
-        *(1.f-FMath::SmoothStep(BenchPosition+.05f,BenchPosition+.14f,U));
-    float Cliff=FMath::Lerp(WaterZ,Ridge,Profile)+(Fracture+Bench)*Band;
-    // Carve only actual drainage channels; inactive entries do not cut gullies.
-    // Locations are irregular now, so a nearest periodic-cell lookup is invalid.
-    for(int32 Index=0;Index<WaterfallCount;++Index)
+    // Conservative topmost radial intersection, only for legacy contact queries.
+    // Geometry and waterfalls use the shared parametric surface directly.
+    const float A=FMath::Atan2(P.Y,P.X),R=P.Size();
+    float Z=HeightAt(P,false)-900.f;
+    FVector Previous=CliffSurfacePoint(A,0.f);
+    for(int32 I=1;I<=80;++I)
     {
-        const float Width=WaterfallWidth(Index);
-        if(Width<=0.f) { continue; }
-        const float Along=FMath::Abs(FMath::UnwindRadians(A-WaterfallAngle(Index)))*R;
-        const float Gully=1.f-FMath::SmoothStep(Width*1.5f,Width*3.5f,Along);
-        const float FallBed=FMath::Lerp(WaterZ+650.f,Ridge,2.f*U-U*U)-3500.f;
-        Cliff=FMath::Lerp(Cliff,FMath::Min(Cliff,FallBed),Gully*FMath::SmoothStep(0.f,.06f,U));
+        const FVector Next=CliffSurfacePoint(A,I/80.f);
+        const float R0=Previous.Size2D(),R1=Next.Size2D();
+        if(R>=FMath::Min(R0,R1) && R<=FMath::Max(R0,R1) && FMath::Abs(R1-R0)>.01f)
+        { Z=FMath::Max(Z,FMath::Lerp(Previous.Z,Next.Z,(R-R0)/(R1-R0))); }
+        Previous=Next;
     }
-    if(R<=Rim) { return Cliff; }
-    const float Outer=FMath::Clamp((R-Rim)/(Radius*.24f),0.f,1.f);
-    const float Spines=FMath::Abs(FMath::PerlinNoise2D(D*9.f+FVector2D(Outer*.6f,21.f)));
-    return RimGroundHeight(R,A)+FMath::SmoothStep(.20f,.60f,Outer)
-        *(4500.f+18500.f*Spines+1200.f*FMath::PerlinNoise2D(P/9000.f));
+    return Z;
 }
 
 void ADCMaelstrom::BuildTerrain()
 {
     TArray<FVector> V,N; TArray<FVector2D> UV; TArray<FColor> C;
     TArray<int32> I; TArray<FProcMeshTangent> Tangents;
-    constexpr int32 Sectors=1024,Rows=112;
+    constexpr int32 Sectors=1536,Rows=160;
     for(int32 Row=0;Row<=Rows;++Row) for(int32 Side=0;Side<=Sectors;++Side)
     {
-        const float A=Side*UE_TWO_PI/Sectors;
-        const float R=FMath::Lerp(WaterEdgeRadius(A)*.995f,GetRimRadius(A)*1.32f,static_cast<float>(Row)/Rows);
-        const FVector2D P(FMath::Cos(A)*R,FMath::Sin(A)*R);
-        const float Z=CliffHeightAt(P);
-        const float DX=(CliffHeightAt(P+FVector2D(100,0))-CliffHeightAt(P-FVector2D(100,0)))/200.f;
-        const float DY=(CliffHeightAt(P+FVector2D(0,100))-CliffHeightAt(P-FVector2D(0,100)))/200.f;
-        V.Add(FVector(P,Z)); N.Add(FVector(-DX,-DY,1).GetSafeNormal());
-        Tangents.Add(FProcMeshTangent(FVector(1,0,DX).GetSafeNormal(),false));
-        UV.Add(P/10000.f);
-        const float ToeZ=HeightAt(FVector2D(FMath::Cos(A),FMath::Sin(A))*WaterEdgeRadius(A),false);
-        C.Add(FLinearColor(1.f-FMath::SmoothStep(300.f,6000.f,Z-ToeZ),0,0,1).ToFColor(false));
+        const float A=Side*UE_TWO_PI/Sectors,T=static_cast<float>(Row)/Rows;
+        const FVector P=CliffSurfacePoint(A,T);
+        const FVector Around=CliffSurfacePoint(A+.00015f,T)-CliffSurfacePoint(A-.00015f,T);
+        const FVector Up=CliffSurfacePoint(A,FMath::Min(1.f,T+.0005f))-CliffSurfacePoint(A,FMath::Max(0.f,T-.0005f));
+        const FVector Normal=FVector::CrossProduct(Up,Around).GetSafeNormal();
+        V.Add(P); N.Add(Normal); Tangents.Add(FProcMeshTangent(Around.GetSafeNormal(),false));
+        UV.Add(FVector2D(A*Radius*.01f,P.Z*.01f));
+        const float ToeZ=CliffSurfacePoint(A,0.f).Z+900.f;
+        const float Wet=1.f-FMath::SmoothStep(500.f,4500.f,static_cast<float>(P.Z-ToeZ));
+        const float Cavity=(T>.2f && T<.84f) ? FMath::SmoothStep(.25f,.85f,
+            DCCliffGenerator::Facet(A/UE_TWO_PI,(T-.2f)*32.f,288))*.55f : 0.f;
+        C.Add(FLinearColor(Wet,Cavity,0,1).ToFColor(false));
         if(Row<Rows && Side<Sectors)
         { const int32 B=Row*(Sectors+1)+Side,D=B+Sectors+1; I.Append({B,B+1,D,B+1,D+1,D}); }
     }
+    // UE clockwise winding matches Cross(Up,Around): inward wall, upward cap.
     Cliffs->CreateMeshSection(0,V,I,N,UV,C,Tangents,false);
     if(UMaterialInterface* M=LoadObject<UMaterialInterface>(nullptr,TEXT("/Game/DC/Maelstrom/M_CraterRock.M_CraterRock")))
     { Cliffs->SetMaterial(0,M); }
-    // Authored rock normals and silhouettes add metre-scale fracture detail
-    // to the connected original terrain. Reference installed assets in place.
-    const TCHAR* Meshes[]={TEXT("/Game/AncientRuins/Meshes/Cliffs/SM_Cliff_01.SM_Cliff_01"),
-        TEXT("/Game/AncientRuins/Meshes/Cliffs/SM_Cliff_02.SM_Cliff_02"),
-        TEXT("/Game/AncientRuins/Meshes/Rocks/SM_Rock_01.SM_Rock_01")};
-    FRandomStream Random(89714);
-    for(const TCHAR* Path:Meshes)
-    {
-        UStaticMesh* Mesh=LoadObject<UStaticMesh>(nullptr,Path);
-        if(!Mesh) { continue; }
-        UInstancedStaticMeshComponent* Rocks=NewObject<UInstancedStaticMeshComponent>(this);
-        Rocks->SetMobility(EComponentMobility::Movable);
-        Rocks->SetupAttachment(Arena); Rocks->SetStaticMesh(Mesh);
-        // Preserve authored rock materials; substrate vertex wetness and local
-        // texture coordinates are not valid for scaled static-mesh instances.
-        Rocks->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-        Rocks->SetCastShadow(false); Rocks->RegisterComponent(); CliffRocks.Add(Rocks);
-        UInstancedStaticMeshComponent* Shadows=NewObject<UInstancedStaticMeshComponent>(this);
-        Shadows->SetMobility(EComponentMobility::Movable); Shadows->SetupAttachment(Arena);
-        Shadows->SetStaticMesh(Mesh); Shadows->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-        Shadows->SetRenderInMainPass(false); Shadows->SetRenderInDepthPass(false);
-        Shadows->SetCastShadow(true); Shadows->RegisterComponent(); CliffShadowRocks.Add(Shadows);
-        const FBox Box=Mesh->GetBoundingBox();
-        const float Extent=FMath::Max3(Box.GetSize().X,Box.GetSize().Y,Box.GetSize().Z);
-        for(int32 Rock=0;Rock<96;++Rock)
-        {
-            // Small, deeply embedded clusters follow a common fracture plane.
-            // No isolated 160m boulders perched on otherwise featureless slopes.
-            const int32 Cluster=Rock/6;
-            const float ClusterA=-UE_PI+UE_TWO_PI*FMath::Frac(Cluster*.61803399f+.17f);
-            const float A=ClusterA+Random.FRandRange(-.012f,.012f);
-            const float Edge=WaterEdgeRadius(A),Rim=GetRimRadius(A);
-            if(Edge>Rim*.94f) { continue; } // keep the incoming river clear
-            const float ClusterU=.18f+.66f*FMath::Frac(Cluster*.381966f+.23f);
-            const float R=FMath::Lerp(Edge+3500.f,Rim*1.03f,FMath::Clamp(ClusterU+Random.FRandRange(-.08f,.08f),.08f,.95f));
-            const FVector2D P(FMath::Cos(A)*R,FMath::Sin(A)*R);
-            const float Size=Random.FRandRange(800.f,4500.f),Scale=Size/FMath::Max(Extent,1.f);
-            bool InWaterfall=false;
-            for(int32 Fall=0;Fall<WaterfallCount;++Fall)
-            {
-                if(WaterfallWidth(Fall)>0.f && FMath::Abs(FMath::UnwindRadians(A-WaterfallAngle(Fall)))*R<WaterfallWidth(Fall)*2.f+Size*.65f)
-                { InWaterfall=true; break; }
-            }
-            if(InWaterfall) { continue; }
-            const float RouteT=DCMaelstromRoute::SecondsAtAngle(A);
-            const float ProtectedRadius=Radius*DCMaelstromRoute::RadialFraction(RouteT)
-                +13000.f*DCMaelstromRoute::WidthScale(RouteT);
-            if(RouteT<180.f && R-Size*.9f<ProtectedRadius) { continue; }
-            const FRotator Rotation(Random.FRandRange(-12.f,12.f),FMath::RadiansToDegrees(ClusterA)+Random.FRandRange(-12.f,12.f),Random.FRandRange(-10.f,10.f));
-            const FVector Foot(Box.GetCenter().X,Box.GetCenter().Y,Box.Min.Z+Box.GetSize().Z*.68f);
-            const FVector Location=FVector(P,CliffHeightAt(P))-Rotation.RotateVector(Foot*Scale);
-            Rocks->AddInstance(FTransform(Rotation,Location,FVector(Scale)));
-        }
-    }
-    // The connected terrain replaces the old rim strip and the water-coated
-    // wall. Discrete cliff falls are built by BuildWhitewater instead.
-    RimLand->ClearAllMeshSections();
-    Falls->ClearAllMeshSections();
+    RimLand->ClearAllMeshSections(); Falls->ClearAllMeshSections();
     float MinimumClearance=MAX_flt;
     for(int32 T=0;T<=178;++T)
     {
@@ -175,33 +126,11 @@ void ADCMaelstrom::BuildTerrain()
         MinimumClearance=FMath::Min(MinimumClearance,WaterEdgeRadius(DCMaelstromRoute::Angle(T))-Required);
     }
     ensureMsgf(MinimumClearance>0.f,TEXT("Rock shoreline enters the ship steering envelope"));
-    UE_LOG(LogTemp,Display,TEXT("DC_TERRAIN minimum full-steer shoreline clearance %.1fm"),MinimumClearance*.01f);
-    UE_LOG(LogTemp,Display,TEXT("DC_TERRAIN irregular inner shoreline, connected rock walls: %d vertices"),V.Num());
+    ensureMsgf(FVector::Dist(CliffSurfacePoint(0,.6f),CliffSurfacePoint(UE_TWO_PI,.6f))<5.f,TEXT("Cliff seam is open"));
+    UE_LOG(LogTemp,Display,TEXT("DC_CLIFFS parametric wall %d vertices, %d triangles, clearance %.1fm; no scaled rock props"),V.Num(),I.Num()/3,MinimumClearance*.01f);
 }
 
 void ADCMaelstrom::UpdateTerrainShadows()
 {
-    if(Elapsed<NextTerrainShadowUpdate && NextTerrainShadowUpdate-Elapsed<2.f) { return; }
-    NextTerrainShadowUpdate=Elapsed+1.f;
-    // Budget shadow-only instances close to the ship. Baseline reviews already
-    // hit the VSM marking limit on startup; avoid adding distant shadow work.
-    struct FCandidate { int32 Group,Index; float Distance; };
-    TArray<FCandidate> Candidates;
-    for(int32 Group=0;Group<CliffRocks.Num();++Group)
-    {
-        CliffShadowRocks[Group]->ClearInstances();
-        for(int32 Index=0;Index<CliffRocks[Group]->GetInstanceCount();++Index)
-        {
-            FTransform World; CliffRocks[Group]->GetInstanceTransform(Index,World,true);
-            const float Distance=World.GetLocation().Size();
-            if(Distance<60000.f) { Candidates.Add({Group,Index,Distance}); }
-        }
-    }
-    Candidates.Sort([](const FCandidate& A,const FCandidate& B){ return A.Distance<B.Distance; });
-    for(int32 C=0;C<FMath::Min(12,Candidates.Num());++C)
-    {
-        const FCandidate& Choice=Candidates[C]; FTransform Local;
-        CliffRocks[Choice.Group]->GetInstanceTransform(Choice.Index,Local,false);
-        CliffShadowRocks[Choice.Group]->AddInstance(Local);
-    }
+    // The connected procedural face casts its own shadows. No proxy rocks.
 }
