@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 01:22 Claude: twelfth build packaged and run: `2026-11-14_0116_26370c7_tunnel-lightning`
+
+- `Builds/2026-11-14_0116_26370c7_tunnel-lightning/Windows/DirectorsCut.exe`. Run from the exe at 1600x900: sheet lightning in the wall at 50.7 s, the portal at 56, flashes inside the tunnel at 60.9, 63.5 and 66.4 (the statues showing in the cloud), the city at 120 (68 to 112 fps; the 68 is the frame of a flash); from 296 s a detailed spout, the strike, the creature beaten on the clock (`-DCBossDiesAt=50` for the test) and its plume (67 to 87 fps).
+- This is the build to play. It has everything logged up to 01:22.
+
 ## 14 Nov 01:22 Claude: sheet lightning in the wall as it comes on
 
 - Four more bolts on cue at 45, 50.5, 54.5 and 57.6 s, while the wall closes. The wall's pieces flare from within at about a third of the tunnel's strength (at the tunnel's strength the whole wall went pale blue from end to end). Frames at 50.7 and 57.7 s show the wall lit blue-white with the portal dark in it. It is one even flare over each piece, not a local one: Codex's review asks for a flash with a source and fall-off, and this is not that.

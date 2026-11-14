@@ -4,7 +4,7 @@
 
 ## Play this
 
-`E:\projects\directorscut\Builds\2026-11-14_0041_fbabe67_spouts-stones-wisps\Windows\DirectorsCut.exe` is the newest build that has been run from its exe. A newer one, `tunnel-lightning`, is packaging as this is written; if `Builds\INDEX.txt` lists it and STATUS says it was run, play that instead.
+`E:\projects\directorscut\Builds\2026-11-14_0116_26370c7_tunnel-lightning\Windows\DirectorsCut.exe`. It has been run from its exe at 1600x900 through the front, the tunnel, the city, a spout and the creature's end (67 to 112 fps), and it holds everything in the table below.
 
 Every earlier build is still in `Builds\` for the dev log.
 
