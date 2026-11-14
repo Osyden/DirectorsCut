@@ -15,7 +15,7 @@ import numpy as np
 
 sys.dont_write_bytecode=True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from review_eroded_cliff_sector import load_pair, triangles, source_info
+from review_eroded_cliff_sector import load_pair, triangles, source_info, configure_mesh_normals
 
 
 def main():
@@ -25,7 +25,10 @@ def main():
     parser.add_argument("--eroded",type=Path)
     parser.add_argument("--output",type=Path,required=True)
     parser.add_argument("--roundtrip",action="store_true")
+    parser.add_argument("--normal-mode",choices=("flat","angle"),default="flat",help="Shading only, unchanged geometry; flat preserves prior exports")
+    parser.add_argument("--normal-angle-deg",type=float,default=35.)
     args=parser.parse_args(sys.argv[sys.argv.index("--")+1:])
+    if not 0.<args.normal_angle_deg<180.:parser.error("Normal angle must be strictly between0 and180 degrees")
     output=args.output.resolve()
     if output.suffix.lower()!=".fbx" or "saved" not in [p.lower() for p in output.parts]:
         parser.error("Output must be an FBX under ignored Saved")
@@ -61,7 +64,7 @@ def main():
     mesh=bpy.data.meshes.new("CleanCliffPreview")
     mesh.from_pydata(vertices.tolist(),[],faces.tolist());mesh.update()
     obj=bpy.data.objects.new("CleanCliffPreview",mesh);scene.collection.objects.link(obj)
-    for polygon in mesh.polygons:polygon.use_smooth=False
+    normal_report=configure_mesh_normals(mesh,args.normal_mode,args.normal_angle_deg)
     uv=mesh.uv_layers.new(name="Physical100mUV")
     corners=np.array([loop.vertex_index for loop in mesh.loops],dtype=np.int64)
     uv.data.foreach_set("uv",(vertices[corners,:2]/100.).astype(np.float32).ravel())
@@ -91,7 +94,7 @@ def main():
                 local_bounds_m=expected_bounds.tolist(),local_dimensions_m=np.ptp(vertices,axis=0).tolist(),
                 local_origin_arena_m=center.tolist(),basis_u_arena=np.asarray(seed["basis_u_world"]).tolist(),
                 basis_v_arena=np.asarray(seed["basis_v_world"]).tolist(),basis_z_arena=[0,0,1],
-                vertices=len(vertices),triangles=len(faces),open_boundary=True,flat_normals=True,
+                vertices=len(vertices),triangles=len(faces),open_boundary=True,flat_normals=args.normal_mode=="flat",normals=normal_report,
                 color_encoding="LINEAR FLOAT_COLOR ErosionMasks; R=log flow,G=deposition,B=erosion,A=1",
                 color_normalization=normalization,uv0="local physical XY metres /100",unreal_imported=False,
                 nanite_enabled=False,mask_runtime_quantization_unverified=True)

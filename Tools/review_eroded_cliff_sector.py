@@ -13,6 +13,7 @@ exaggeration, displacement material, normal texture or GPU is used.
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path
 import sys
 
@@ -49,12 +50,12 @@ def source_info(seed):
     metadata = json.loads(str(seed.get("metadata_json", "{}")))
     provenance = metadata.get("provenance", {})
     kind = metadata.get("source_kind", provenance.get("source_kind", "measured_uppermost_xy"))
-    clean = kind in ("clean_macro_landform", "blender_ridged_macro_landform")
+    clean = kind in ("clean_macro_landform", "blender_ridged_macro_landform", "massif_macro_landform")
     reference = provenance.get("geometry_reference") or provenance.get("source_head", "unspecified")[:8]
     if clean:
         reference=f"boundary {reference}; seed {metadata.get('settings', {}).get('seed', metadata.get('seed', 'unspecified'))}"
     return dict(kind=kind, clean=clean, reference=reference,
-                title=("RIDGED XY LANDFORM" if kind=="blender_ridged_macro_landform" else "CLEAN MACRO LANDFORM") if clean else "MEASURED CLIFF HEIGHTFIELD",
+                title=({"blender_ridged_macro_landform":"RIDGED XY LANDFORM", "massif_macro_landform":"MASSIF XY LANDFORM"}.get(kind,"CLEAN MACRO LANDFORM")) if clean else "MEASURED CLIFF HEIGHTFIELD",
                 limitation=("Authored heightfield; no overhangs. Physical 1:1 scale; no surface-detail shader." if clean else
                             "Uppermost XY projection; lower overhang surfaces omitted. Physical 1:1 scale."))
 
@@ -68,6 +69,45 @@ def triangles(valid):
     one = np.stack((a, b, d), axis=-1)[valid[:-1, :-1] & valid[:-1, 1:] & valid[1:, 1:]]
     two = np.stack((a, d, c), axis=-1)[valid[:-1, :-1] & valid[1:, 1:] & valid[1:, :-1]]
     return np.concatenate((one, two))
+
+
+def configure_mesh_normals(mesh, mode="flat", angle_degrees=35.):
+    """Shading only: smooth samples below a dihedral threshold, retain sharp breaks.
+
+    This does not identify geology or create fracture geometry. Keep flat mode as
+    the diagnostic/replay default; compare angle mode on the identical vertices.
+    """
+    if mode not in ("flat", "angle") or not 0. < angle_degrees < 180.:
+        raise ValueError("Normals must be flat/angle with angle strictly between0 and180")
+    coordinates = np.empty(len(mesh.vertices)*3, dtype=np.float32)
+    indices = np.empty(len(mesh.loops), dtype=np.int32)
+    mesh.vertices.foreach_get("co", coordinates)
+    mesh.loops.foreach_get("vertex_index", indices)
+    geometry_hash = hashlib.sha256(coordinates.tobytes()+indices.tobytes()).hexdigest()
+    for polygon in mesh.polygons:
+        polygon.use_smooth = mode == "angle"
+    mesh.update()
+    # Blender5.3 recalculates split corner normals from the sharp-edge attribute.
+    # No modifier, remeshing, vertex splitting, weighted-normal or displacement.
+    if mode == "angle":
+        mesh.set_sharp_from_angle(angle=math.radians(angle_degrees))
+    else:
+        sharp = mesh.attributes.get("sharp_edge")
+        if sharp is not None:
+            sharp.data.foreach_set("value", np.zeros(len(mesh.edges), dtype=bool))
+    mesh.update()
+    check = np.empty_like(coordinates)
+    mesh.vertices.foreach_get("co", check)
+    check_indices = np.empty_like(indices)
+    mesh.loops.foreach_get("vertex_index", check_indices)
+    if not np.array_equal(check, coordinates) or not np.array_equal(check_indices, indices):
+        raise RuntimeError("Normal configuration changed source geometry")
+    sharp = mesh.attributes.get("sharp_edge")
+    count = sum(bool(edge.value) for edge in sharp.data) if sharp is not None else 0
+    return {"mode": mode, "angle_degrees": angle_degrees if mode == "angle" else None,
+            "sharp_edges": count, "edges": len(mesh.edges), "geometry_sha256": geometry_hash,
+            "geometry_unchanged": True,
+            "limitation": "Dihedral shading only; does not create geological joints or overhangs."}
 
 
 def raw_profile_geometry(seed):
@@ -175,7 +215,8 @@ def label_camera(scene, camera, title, subtitle, footer):
         text_object(scene, value, (-width*.47, height*y, -5), height*size, ink, camera)
 
 
-def render_clay(seed, result, faces, out, samples, has_result=True, requested_views=("wall", "oblique"), camera_override=None):
+def render_clay(seed, result, faces, out, samples, has_result=True, requested_views=("wall", "oblique"), camera_override=None,
+                normal_mode="flat", normal_angle_degrees=35.):
     import bpy
     from mathutils import Vector
     scene = reset_scene(1440, 960, samples)
@@ -196,9 +237,7 @@ def render_clay(seed, result, faces, out, samples, has_result=True, requested_vi
     shader.inputs["Roughness"].default_value = .85
     shader.inputs["Specular IOR Level"].default_value = .2
     obj.data.materials.append(clay)
-    # Keep triangulated geometric facets visible; no smoothing can hide grid artifacts.
-    for polygon in mesh.polygons:
-        polygon.use_smooth = False
+    configure_mesh_normals(mesh, normal_mode, normal_angle_degrees)
     raw_mesh = None
     if "raw_profile_xyz_world_m" in seed:
         raw_vertices, raw_faces = raw_profile_geometry(seed)
@@ -227,6 +266,7 @@ def render_clay(seed, result, faces, out, samples, has_result=True, requested_vi
             saved=camera_override[view]
             views[view]=(saved["location_chart_m"],saved["target_chart_m"],saved["orthographic_width_m"])
     manifest = {}
+    normal_manifest = {}
     for view, (location, target, scale) in views.items():
         if view not in requested_views:
             continue
@@ -243,17 +283,18 @@ def render_clay(seed, result, faces, out, samples, has_result=True, requested_vi
                 xyz = np.stack((x, y, height), axis=-1).reshape(-1, 3).astype(np.float32)
                 mesh.vertices.foreach_set("co", xyz.ravel())
                 mesh.update()
+            normal_manifest[stage] = configure_mesh_normals(obj.data, normal_mode, normal_angle_degrees)
             footer = ("Original measured profile triangles: retains overhangs. Same physical scale, camera and clay."
                       if height is None else info["limitation"])
             label_camera(scene, camera, f"DIAGNOSTIC {stage.upper()} | {view} | {info['title']}",
                          f"{width:.0f} x {depth:.0f} m / source {info['reference']} / identical camera and raking light",
-                         footer)
+                         footer+f" Normals: {normal_mode}"+(f" {normal_angle_degrees:g}deg" if normal_mode=="angle" else ""))
             scene.render.filepath = str(out / f"{view}_{stage}.png")
             bpy.ops.render.render(write_still=True)
             for child in list(camera.children):
                 bpy.data.objects.remove(child, do_unlink=True)
         bpy.data.objects.remove(camera, do_unlink=True)
-    return manifest
+    return manifest, normal_manifest
 
 
 def colorize(field, maximum, palette):
@@ -345,12 +386,16 @@ def main():
     parser.add_argument("--obj", action="store_true")
     parser.add_argument("--views", default="wall,oblique", help="Comma-separated wall,oblique,deck,plan")
     parser.add_argument("--camera-manifest",type=Path,help="Previous review.json: lock cameras when comparing different seeds")
+    parser.add_argument("--normal-mode", choices=("flat", "angle"), default="flat", help="Shading only; flat remains the geometry diagnostic default")
+    parser.add_argument("--normal-angle-deg", type=float, default=35., help="Preserve edges whose dihedral exceeds this angle")
     args = parser.parse_args(sys.argv[sys.argv.index("--")+1:] if "--" in sys.argv else None)
     out = args.output.resolve()
     if "saved" not in [part.lower() for part in out.parts]:
         parser.error("Generated diagnostics must be under ignored Saved")
     if not 1 <= args.samples <= 128:
         parser.error("Samples must be 1..128")
+    if not 0. < args.normal_angle_deg < 180.:
+        parser.error("Normal angle must be strictly between0 and180 degrees")
     requested_views=args.views.split(",")
     if any(view not in ("wall", "oblique", "deck", "plan") for view in requested_views):
         parser.error("Unknown view")
@@ -362,7 +407,8 @@ def main():
         if args.eroded:
             export_obj(out / "after_heightfield.obj", seed, result["height_m"], faces)
     camera_override=json.loads(args.camera_manifest.read_text())["cameras"] if args.camera_manifest else None
-    cameras = render_clay(seed, result, faces, out, args.samples, bool(args.eroded), requested_views, camera_override)
+    cameras, normal_manifest = render_clay(seed, result, faces, out, args.samples, bool(args.eroded), requested_views, camera_override,
+                                         args.normal_mode, args.normal_angle_deg)
     render_maps(seed, result, out, bool(args.eroded))
     delta = result["height_m"].astype(np.float64)-seed["height_m"]
     review = dict(approximation=source_info(seed)["limitation"], source_kind=source_info(seed)["kind"], erosion_result_supplied=bool(args.eroded),
@@ -370,13 +416,14 @@ def main():
                   seed_sha256=hashlib.sha256(args.seed.read_bytes()).hexdigest(), result_sha256=hashlib.sha256(args.eroded.read_bytes()).hexdigest() if args.eroded else None,
                   camera_reference_manifest=str(args.camera_manifest.resolve()) if args.camera_manifest else None,
                   coordinate_frame=json.loads(str(seed["metadata_json"])), cameras=cameras,
+                  normals=normal_manifest,
                   render_chart="x=clockwise tangent minus half width, y=outward radial minus half depth, z=absolute design-world metres",
                   obj_frame="Absolute design-world XY and Z in metres; same origin/basis as seed; invalid faces omitted",
                   triangle_count=len(faces), max_net_cut_m=float(-delta.min()), max_net_deposit_m=float(delta.max()),
                   eroded_metrics=json.loads(str(result["metrics_json"])) if "metrics_json" in result else {})
     import bpy
     review["render_backend"] = dict(blender=bpy.app.version_string, engine="Cycles", device="CPU", threads=8,
-                                    clay_samples=args.samples, flat_shading=True, world_strength=.5, sun_energy=2.0,
+                                    clay_samples=args.samples, flat_shading=args.normal_mode=="flat", world_strength=.5, sun_energy=2.0,
                                     sun_angle_rad=.12, clay_roughness=.85, clay_base_color_linear=[.33, .33, .33],
                                     view_transform="Standard", vertical_exaggeration=1, imported_into_game=False)
     (out / "review.json").write_text(json.dumps(review, indent=2)+"\n", encoding="utf-8")
