@@ -5,9 +5,10 @@ Run with installed Blender, no packages or runtime assets are modified:
     --seed Saved/.../cliff_erosion_seed.npz --eroded Saved/.../eroded.npz \
     --output Saved/CliffErosion/Review --obj
 
-All heights/coordinates are metres. This reviews the uppermost-XY heightfield
-approximation, NOT the original overhanging 3D cliff. No vertical exaggeration,
-displacement material, normal texture, GPU, or generated imagery is used.
+All heights/coordinates are metres. Clean macro landforms are labelled separately
+from measured uppermost-XY projections. Original 3D profiles are optional, never
+invented for a clean seed. Omit --eroded for a seed-only review. No vertical
+exaggeration, displacement material, normal texture or GPU is used.
 """
 import argparse
 import hashlib
@@ -22,7 +23,11 @@ def load_pair(seed_path, result_path):
     def load(path):
         with np.load(path, allow_pickle=False) as data:
             return {key: data[key].copy() for key in data.files}
-    seed, result = load(seed_path), load(result_path)
+    seed = load(seed_path)
+    result = load(result_path) if result_path else dict(seed)
+    if not result_path:
+        for name in ("eroded_m", "deposited_m", "flow_accumulation"):
+            result[name] = np.zeros_like(seed["height_m"])
     shape = seed["height_m"].shape
     if len(shape) != 2 or min(shape) < 3:
         raise ValueError("Expected a 2D heightfield at least 3x3")
@@ -38,6 +43,18 @@ def load_pair(seed_path, result_path):
     if np.any(result["height_m"] < seed["bedrock_m"] - 1.e-5):
         raise ValueError("Result penetrates bedrock")
     return seed, result
+
+
+def source_info(seed):
+    metadata = json.loads(str(seed.get("metadata_json", "{}")))
+    provenance = metadata.get("provenance", {})
+    kind = metadata.get("source_kind", provenance.get("source_kind", "measured_uppermost_xy"))
+    clean = kind == "clean_macro_landform"
+    reference = provenance.get("geometry_reference") or provenance.get("source_head", "unspecified")[:8]
+    return dict(kind=kind, clean=clean, reference=reference,
+                title="CLEAN MACRO LANDFORM" if clean else "MEASURED CLIFF HEIGHTFIELD",
+                limitation=("Authored heightfield; no overhangs. Physical 1:1 scale; no surface-detail shader." if clean else
+                            "Uppermost XY projection; lower overhang surfaces omitted. Physical 1:1 scale."))
 
 
 def triangles(valid):
@@ -73,8 +90,8 @@ def raw_profile_geometry(seed):
 def export_obj(path, seed, height, faces):
     xyz = np.dstack((seed["world_xy_m"], height)).reshape(-1, 3)
     with path.open("w", encoding="utf-8", newline="\n") as out:
-        out.write("# Measured uppermost-XY heightfield approximation; absolute design-world metres.\n")
-        out.write("# Invalid padding faces omitted; lower overhang surfaces absent. See review.json for frame.\n")
+        out.write("# "+source_info(seed)["title"]+"; absolute design-world metres.\n")
+        out.write("# Invalid padding faces omitted. See review.json for provenance and frame.\n")
         for x, y, z in xyz:
             out.write(f"v {x:.8f} {y:.8f} {z:.8f}\n")
         for a, b, c in faces+1:
@@ -156,7 +173,7 @@ def label_camera(scene, camera, title, subtitle, footer):
         text_object(scene, value, (-width*.47, height*y, -5), height*size, ink, camera)
 
 
-def render_clay(seed, result, faces, out, samples):
+def render_clay(seed, result, faces, out, samples, has_result=True, requested_views=("wall", "oblique")):
     import bpy
     from mathutils import Vector
     scene = reset_scene(1440, 960, samples)
@@ -164,10 +181,11 @@ def render_clay(seed, result, faces, out, samples):
     rows, cols = seed["height_m"].shape
     width, depth = (cols-1)*cell, (rows-1)*cell
     x, y = np.meshgrid(np.arange(cols)*cell-width*.5, np.arange(rows)*cell-depth*.5)
-    mesh = bpy.data.meshes.new("Measured 2m heightfield")
+    info = source_info(seed)
+    mesh = bpy.data.meshes.new(f"Physical {cell:g}m heightfield")
     mesh.from_pydata(np.stack((x, y, seed["height_m"]), axis=-1).reshape(-1, 3).tolist(), [], faces.tolist())
     mesh.update()
-    obj = bpy.data.objects.new("Measured cliff sector", mesh)
+    obj = bpy.data.objects.new(info["title"], mesh)
     scene.collection.objects.link(obj)
     clay = bpy.data.materials.new("Neutral rough clay, no detail shader")
     clay.use_nodes = True
@@ -179,38 +197,50 @@ def render_clay(seed, result, faces, out, samples):
     # Keep triangulated geometric facets visible; no smoothing can hide grid artifacts.
     for polygon in mesh.polygons:
         polygon.use_smooth = False
-    raw_vertices, raw_faces = raw_profile_geometry(seed)
-    raw_mesh = bpy.data.meshes.new("Original measured profile triangles with overhangs")
-    raw_mesh.from_pydata(raw_vertices.tolist(), [], raw_faces.tolist())
-    raw_mesh.materials.append(clay)
-    raw_mesh.update()
+    raw_mesh = None
+    if "raw_profile_xyz_world_m" in seed:
+        raw_vertices, raw_faces = raw_profile_geometry(seed)
+        raw_mesh = bpy.data.meshes.new("Original measured profile triangles with overhangs")
+        raw_mesh.from_pydata(raw_vertices.tolist(), [], raw_faces.tolist())
+        raw_mesh.materials.append(clay)
+        raw_mesh.update()
     sun = bpy.data.objects.new("Fixed raking light", bpy.data.lights.new("Fixed raking light", "SUN"))
     scene.collection.objects.link(sun)
     sun.data.energy, sun.data.angle = 2.0, .12
     sun.rotation_euler = Vector((.7, .45, -.6)).to_track_quat("-Z", "Y").to_euler()
     active_y, active_x = np.where(seed["erodibility"] > 0)
+    if not len(active_y):
+        active_y, active_x = np.where(seed["heightfield_valid_mask"] > 0)
     target_y = float((active_y.min()+active_y.max())*.5*cell-depth*.5)
     target_z = float(np.median(seed["height_m"][seed["erodibility"] > 0]))
     views = {
         "wall": ((width*.16, target_y-width*1.8, target_z+width*.25), (0, target_y, target_z), width*1.18),
         "oblique": ((width*.80, -depth*1.35, target_z+width*.85), (0, -depth*.10, target_z), width*2.00),
+        "deck": ((width*.14, -depth*1.3, float(np.percentile(seed["height_m"][seed["heightfield_valid_mask"] > 0], 8))+12),
+                 (0, target_y, target_z), width*1.25),
+        "plan": ((0, 0, float(seed["height_m"].max())+1000), (0, 0, target_z), max(width, depth)*1.60),
     }
     manifest = {}
     for view, (location, target, scale) in views.items():
+        if view not in requested_views:
+            continue
         camera = camera_at(scene, location, target, scale)
         manifest[view] = dict(location_chart_m=list(location), target_chart_m=list(target), orthographic_width_m=scale)
-        for stage, height in (("before", seed["height_m"]), ("after", result["height_m"]), ("raw_profiles", None)):
+        stages = [("before", seed["height_m"])]
+        if has_result:
+            stages.append(("after", result["height_m"]))
+        if raw_mesh is not None:
+            stages.append(("raw_profiles", None))
+        for stage, height in stages:
             obj.data = raw_mesh if height is None else mesh
             if height is not None:
                 xyz = np.stack((x, y, height), axis=-1).reshape(-1, 3).astype(np.float32)
                 mesh.vertices.foreach_set("co", xyz.ravel())
                 mesh.update()
             footer = ("Original measured profile triangles: retains overhangs. Same physical scale, camera and clay."
-                      if height is None else "Uppermost XY heightfield: overhangs omitted. Physical 1:1 scale. CPU clay; no material detail.")
-            provenance = json.loads(str(seed["metadata_json"]))["provenance"]
-            reference = provenance.get("geometry_reference") or provenance["source_head"][:8]
-            label_camera(scene, camera, f"DIAGNOSTIC {stage.upper()} | {view} | measured cliff erosion",
-                         f"{width:.0f} x {depth:.0f} m / source {reference} candidate / identical camera and raking light",
+                      if height is None else info["limitation"])
+            label_camera(scene, camera, f"DIAGNOSTIC {stage.upper()} | {view} | {info['title']}",
+                         f"{width:.0f} x {depth:.0f} m / source {info['reference']} / identical camera and raking light",
                          footer)
             scene.render.filepath = str(out / f"{view}_{stage}.png")
             bpy.ops.render.render(write_still=True)
@@ -247,7 +277,7 @@ def map_plane(scene, name, rgb, center, size):
     plane.data.materials.append(material)
 
 
-def render_maps(seed, result, out):
+def render_maps(seed, result, out, has_result=True):
     import bpy
     scene = reset_scene(1800, 1800, 1)
     camera_at(scene, (0, 0, 10), (0, 0, 0), 3.35)
@@ -268,8 +298,22 @@ def render_maps(seed, result, out):
         ("GROSS DEPOSITION / transported thickness", colorize(deposits, float(deposits[valid].max()), cool), f"black 0  ->  white {float(deposits[valid].max()):.3f} m"),
         ("PROTECTION / physical domain only", protection, "green erodible / orange fixed / grey invalid"),
         ("NET HEIGHT CHANGE / after - before", delta_colors, f"blue {-delta_max:.3f} m  /  grey 0  /  orange +{delta_max:.3f} m"),
-        ("OVERHANG LOSS / highest - lowest hit", colorize(seed["discarded_vertical_span_m"], float(seed["discarded_vertical_span_m"].max()), warm), f"black 0  ->  yellow {float(seed['discarded_vertical_span_m'].max()):.2f} m"),
     ]
+    if "discarded_vertical_span_m" in seed:
+        span=seed["discarded_vertical_span_m"]
+        maps.append(("OVERHANG LOSS / highest - lowest hit", colorize(span, float(span.max()), warm), f"black 0 -> yellow {float(span.max()):.2f} m"))
+    else:
+        outlets=result.get("outflow_sediment_m3", seed.get("outflow_mask", np.zeros_like(cuts)))
+        maps.append(("OUTFLOW / sediment m3" if "outflow_sediment_m3" in result else "OUTFLOW / declared receiving cells",
+                     colorize(outlets, max(float(outlets.max()), 1.e-12), warm), f"black 0 -> yellow {float(outlets.max()):.3g}"))
+    if not has_result:
+        h=seed["height_m"]
+        floor=float(h[valid].min()); relief=float(h[valid].max()-floor)
+        capacity=seed["height_m"]-seed["bedrock_m"]
+        maps[0]=("SEED HEIGHT / absolute metres", colorize(h-floor, relief, cool), f"{floor:.1f} -> {floor+relief:.1f} m")
+        maps[1]=("ERODIBILITY / input only", colorize(seed["erodibility"], 1, warm), "0 fixed rock -> 1 erodible")
+        maps[2]=("AVAILABLE CUT / above immutable bedrock", colorize(capacity, float(capacity.max()), cool), f"0 -> {float(capacity.max()):.2f} m")
+        maps[4]=("EROSION NOT RUN", np.zeros_like(protection)+(.10, .10, .10), "No erosion result supplied")
     for i, (title, colors, legend) in enumerate(maps):
         center = ((i % 2-.5)*1.65, 1.05-(i//2)*1.04)
         colors[~valid] = (.085, .085, .085)
@@ -277,12 +321,11 @@ def render_maps(seed, result, out):
         map_plane(scene, title, colors, center, (.82*aspect, .82))
         text_object(scene, title, (center[0]-.67, center[1]+.45, .01), .034, ink)
         text_object(scene, legend, (center[0]-.67, center[1]-.46, .01), .027, ink)
-    provenance = json.loads(str(seed["metadata_json"]))["provenance"]
-    reference = provenance.get("geometry_reference") or provenance["source_head"][:8]
-    text_object(scene, f"MEASURED CLIFF HEIGHTFIELD / {reference} CANDIDATE | radial outward up / tangent right", (-1.56, 1.57, .01), .034, ink)
+    info=source_info(seed)
+    text_object(scene, f"{info['title']} / {info['reference']} | radial outward up / tangent right", (-1.56, 1.57, .01), .034, ink)
     cell = float(seed["cell_size_m"])
     width, depth = (valid.shape[1]-1)*cell, (valid.shape[0]-1)*cell
-    text_object(scene, f"Each panel: {width:g} x {depth:g} m. Grey is omitted padding. Uppermost surface only; original overhangs are lost.", (-1.56, -1.59, .01), .032, ink)
+    text_object(scene, f"Each panel: {width:g} x {depth:g} m. Grey is omitted padding. "+("Clean authored heightfield; no projected folds." if info["clean"] else "Uppermost surface only; original overhangs are lost."), (-1.56, -1.59, .01), .030, ink)
     scene.render.filepath = str(out / "diagnostic_maps.png")
     bpy.ops.render.render(write_still=True)
 
@@ -290,28 +333,33 @@ def render_maps(seed, result, out):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seed", type=Path, required=True)
-    parser.add_argument("--eroded", type=Path, required=True)
+    parser.add_argument("--eroded", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--samples", type=int, default=16)
     parser.add_argument("--obj", action="store_true")
+    parser.add_argument("--views", default="wall,oblique", help="Comma-separated wall,oblique,deck,plan")
     args = parser.parse_args(sys.argv[sys.argv.index("--")+1:] if "--" in sys.argv else None)
     out = args.output.resolve()
     if "saved" not in [part.lower() for part in out.parts]:
         parser.error("Generated diagnostics must be under ignored Saved")
     if not 1 <= args.samples <= 128:
         parser.error("Samples must be 1..128")
+    requested_views=args.views.split(",")
+    if any(view not in ("wall", "oblique", "deck", "plan") for view in requested_views):
+        parser.error("Unknown view")
     seed, result = load_pair(args.seed, args.eroded)
     faces = triangles(seed["heightfield_valid_mask"] > 0)
     out.mkdir(parents=True, exist_ok=True)
     if args.obj:
         export_obj(out / "before_heightfield.obj", seed, seed["height_m"], faces)
-        export_obj(out / "after_heightfield.obj", seed, result["height_m"], faces)
-    cameras = render_clay(seed, result, faces, out, args.samples)
-    render_maps(seed, result, out)
+        if args.eroded:
+            export_obj(out / "after_heightfield.obj", seed, result["height_m"], faces)
+    cameras = render_clay(seed, result, faces, out, args.samples, bool(args.eroded), requested_views)
+    render_maps(seed, result, out, bool(args.eroded))
     delta = result["height_m"].astype(np.float64)-seed["height_m"]
-    review = dict(approximation="Measured uppermost XY heightfield; omits lower/overhanging surfaces. No vertical exaggeration or material detail.",
-                  seed_path=str(args.seed.resolve()), result_path=str(args.eroded.resolve()),
-                  seed_sha256=hashlib.sha256(args.seed.read_bytes()).hexdigest(), result_sha256=hashlib.sha256(args.eroded.read_bytes()).hexdigest(),
+    review = dict(approximation=source_info(seed)["limitation"], source_kind=source_info(seed)["kind"], erosion_result_supplied=bool(args.eroded),
+                  seed_path=str(args.seed.resolve()), result_path=str(args.eroded.resolve()) if args.eroded else None,
+                  seed_sha256=hashlib.sha256(args.seed.read_bytes()).hexdigest(), result_sha256=hashlib.sha256(args.eroded.read_bytes()).hexdigest() if args.eroded else None,
                   coordinate_frame=json.loads(str(seed["metadata_json"])), cameras=cameras,
                   render_chart="x=clockwise tangent minus half width, y=outward radial minus half depth, z=absolute design-world metres",
                   obj_frame="Absolute design-world XY and Z in metres; same origin/basis as seed; invalid faces omitted",
