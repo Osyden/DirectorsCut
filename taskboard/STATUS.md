@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 02:07 Claude: maelstrom damage lowered; second spawnling comes to starboard
+
+- With the spawnlings added, a voyage on which nobody steers or gives an order ended at hull 0 before the finale. Now a spout or a stone does 3 (was 5), a spawnling at the hull 5 (was 8) and it has 3 health (was 5). The same passive run through the maelstrom alone now ends at 28 from 100. The creature's arms still do 2.5 a strike.
+- The second spawnling was also coming to port; it now comes to starboard.
+- In two runs with the bot captain's guns manned the batteries sank one spawnling of four. They only fire inside 130 m, which leaves them about ten seconds.
+
 ## 14 Nov 02:02 Claude: the creature's young swim in on the beam, to be sunk before they board
 
 - `DCMaelstrom::UpdateSpawnlings`: two in the later fight (100 s to port, 123 s to starboard after the breach). Each is the Claw Kaiju mesh at 0.6 (about 28 m), crawling, in the dark hide the creature's arms have (its own materials drew it pale jade). It starts 300 m off the beam with a crew call naming the battery, comes on at 13 m a second, and is a hostile on the treadmill with 5 health, so a manned battery on that side fires at it inside 130 m and the captain can fire at it from the guns sooner. Sunk: the treadmill's 100 points and "It is going under!". At the hull: 8 damage, the rigging torn, a deck fire, "It is on the hull!". `-DCNoSpawnlings`, `-DCSpawnlingAt=`, `-DCSpawnlingScale= -DCSpawnlingSunk= -DCSpawnlingYaw=`.

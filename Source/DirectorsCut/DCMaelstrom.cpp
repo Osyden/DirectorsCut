@@ -932,7 +932,7 @@ void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
 		if (!T.bStruck && Age > Tell && FMath::Abs(T.Ahead) < 3000.f && FMath::Abs(T.Abeam) < 2600.f)
 		{
 			T.bStruck = true;
-			Director->DamageShip(5.f);
+			Director->DamageShip(3.f);
 			if (ADCTroubles* Troubles = ADCTroubles::Get(this)) { Troubles->TearRigging(); }
 			if (Crew) { Crew->Report(TEXT("The spout has us! Rigging's torn away!"), true); }
 			UE_LOG(LogDC, Log, TEXT("Twister struck the ship at %.1f s (%.0f m abeam)"), Elapsed, T.Abeam / 100.f);
@@ -980,7 +980,7 @@ void ADCMaelstrom::UpdateSpawnlings(float DeltaSeconds)
 		if (A)
 		{
 			FSpawnling S;
-			S.Side = (Spawnlings.Num() + SpawnlingsSent) % 2 == 1 ? -1.f : 1.f;
+			S.Side = SpawnlingsSent == 2 ? 1.f : -1.f;   // the first to port, the second to starboard
 			S.Abeam = 30000.f;
 			USkeletalMeshComponent* C = A->GetSkeletalMeshComponent();
 			C->SetMobility(EComponentMobility::Movable);
@@ -999,7 +999,7 @@ void ADCMaelstrom::UpdateSpawnlings(float DeltaSeconds)
 			S.Actor = A;
 			// Somewhere to start, so the treadmill's first reading of it is on the right side.
 			A->SetActorLocation(FVector(1500.f, S.Side * (S.Abeam + 600.f), Director->SeaLevelZ));
-			Treadmill->AddExternalHostile(A, 900.f, 5.f);
+			Treadmill->AddExternalHostile(A, 900.f, 3.f);
 			Spawnlings.Add(S);
 			UE_LOG(LogDC, Log, TEXT("Spawnling sent at %.1f s on the %s beam"), Elapsed, S.Side < 0.f ? TEXT("port") : TEXT("starboard"));
 		}
@@ -1031,7 +1031,7 @@ void ADCMaelstrom::UpdateSpawnlings(float DeltaSeconds)
 		{
 			if (S.Abeam <= 0.f)
 			{
-				Director->DamageShip(8.f);
+				Director->DamageShip(5.f);
 				ADCTroubles* Troubles = ADCTroubles::Get(this);
 				if (Troubles) { Troubles->TearRigging(); }
 				if (Troubles && Troubles->DeckPoints.Num() && Troubles->NumFires() < Troubles->MaxFires) { Troubles->StartFire(Troubles->DeckPoints[FMath::RandRange(0, Troubles->DeckPoints.Num() - 1)]); }
@@ -1203,7 +1203,7 @@ void ADCMaelstrom::UpdateBoulders(float DeltaSeconds)
 		const bool bHit = FMath::Abs(B.Fall.Y) < 1100.f && FMath::Abs(B.Fall.X) < 2600.f;
 		if (bHit)
 		{
-			Director->DamageShip(5.f);
+			Director->DamageShip(3.f);
 			ADCTroubles* Troubles = ADCTroubles::Get(this);
 			if (Troubles && Troubles->DeckPoints.Num() && Troubles->NumFires() < Troubles->MaxFires)
 			{
