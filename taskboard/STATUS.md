@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 02:31 Claude: sixteenth build packaged and run: `2026-11-14_0226_201abae_spawnlings-sinkable`
+
+- `Builds/2026-11-14_0226_201abae_spawnlings-sinkable/Windows/DirectorsCut.exe`. Run from the exe at 1600x900 without sound: wall and portal at 56 s, a flash in the tunnel at 63.5, the city at 120 (82 to 105 fps); the whole maelstrom at 3x with the bot captain from 262 s: port spawnling sunk 160 m off, starboard one reached the hull, 5 arms broken, beaten on the clock at 160.0 s, plume, exit at 450.02, ending card, hull 37.
+- This is the build to play. It has everything logged so far.
+
 ## 14 Nov 02:25 Claude: why the starboard battery never sank a spawnling, and what was done
 
 - The battery was firing at it (five broadsides in one run), but the guns do not lead a target: to starboard the creature is far down the slope (100 m below the ship at 176 m off), the balls take two or three seconds, and at 13 m a second it had moved 25 to 40 m on by the time they fell. To port it comes down from the rim, nearer and level, and was hit.

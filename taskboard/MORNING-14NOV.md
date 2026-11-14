@@ -4,7 +4,7 @@
 
 ## Play this
 
-`E:\projects\directorscut\Builds\2026-11-14_0207_974b398_spawnlings\Windows\DirectorsCut.exe`. It has been run from its exe at 1600x900 through the front, the tunnel and the city (83 to 105 fps) and through the whole maelstrom to the ending card at triple speed, and it holds everything in the table below.
+`E:\projects\directorscut\Builds\2026-11-14_0226_201abae_spawnlings-sinkable\Windows\DirectorsCut.exe`. It has been run from its exe at 1600x900 through the front, the tunnel and the city (82 to 105 fps) and through the whole maelstrom to the ending card at triple speed, and it holds everything in the table below.
 
 Every earlier build is still in `Builds\` for the dev log.
 
@@ -32,7 +32,7 @@ Every earlier build is still in `Builds\` for the dev log.
 - The maelstrom's water is still striped and its foam is in contour lines; the reveal has no lip or crest. These are in Codex's plan (`MAELSTROM-NEXT-PASS-PLAN.md`) and untouched.
 - The spout is the tunnel volume stood on end: its top is darker than its foot.
 - The burning stone is a rock with a tail of plain glowing balls.
-- The creature's young die by vanishing, have no wake, and do not come on deck. The batteries only open fire inside 130 m, so they sink about one in three by themselves.
+- The creature's young have no wake and do not come on deck. A manned port battery sinks its one well off; the starboard battery mostly misses down the slope and sinks its one at the last moment or not at all.
 - From far off (40 to 50 s) the wall is a pale bank with a fairly level top.
 - The helmsman still strikes rocks in the city (hull about 81 by the slide with nobody steering).
 - With nobody steering or giving an order in the maelstrom every spout and stone strikes and the hull ends between 28 and 46 from 100. There is no sinking.
