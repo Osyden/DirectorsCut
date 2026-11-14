@@ -247,6 +247,9 @@ void ADCFogFront::BuildTunnel()
 		}
 	}
 	TunnelMID->SetVectorParameterValue(TEXT("Tint"), StormTint);
+	float FrontCut = 0.f;   // test hook: -DCFrontCut= takes the thin haze off the front's volumes
+	FParse::Value(FCommandLine::Get(), TEXT("DCFrontCut="), FrontCut);
+	TunnelMID->SetScalarParameterValue(TEXT("Cut"), FrontCut);
 	TunnelMID->SetVectorParameterValue(TEXT("Floor"), FLinearColor(Floor, Soft, 0.f, 0.f));
 	TunnelMID->SetVectorParameterValue(TEXT("Glow"), FLinearColor(0.45f, 0.6f, 1.f) * Temp);
 	H->SetMaterial(0, TunnelMID);
@@ -299,6 +302,7 @@ void ADCFogFront::BuildTunnel()
 		M->SetSparseVolumeTextureParameterValue(TEXT("SparseVolumeTexture"), Volume);
 		M->SetVectorParameterValue(TEXT("Floor"), FLinearColor(P.Floor, P.Soft, 0.f, 0.f));
 		M->SetVectorParameterValue(TEXT("Tint"), StormTint);
+		M->SetScalarParameterValue(TEXT("Cut"), FrontCut);
 		M->SetVectorParameterValue(TEXT("Glow"), FLinearColor(0.45f, 0.6f, 1.f) * Temp);
 		C->SetMaterial(0, M);
 		C->StartFrame = 0.f; C->EndFrame = 200.f; C->FrameRate = Rate * 0.75f; C->Frame = P.Frame; C->bPlaying = true; C->bLooping = true;
