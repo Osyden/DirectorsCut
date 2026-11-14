@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 07:45 Claude: why she is still put on a rock head on; one fix tried and taken out
+
+- The current's log at a stem strike (207 s) shows the crew helmsman with the wheel hard to port, steering for a gap he had chosen on that side, while the current was setting her to starboard at 10 m a second: the two held her on the rock between them.
+- Tried: while the current is setting, the helmsman puts the wheel the same way. Two runs: 3 blows, none on the stem, hull 81; and 12 blows, one on the stem, hull 45. Too uneven to call, so it is **taken out**; the source is as it was at the last measured state (6 to 8 blows a city, about one on the stem, hull 70 to 83 at the slide).
+- For whoever takes this next: make the helmsman and the current agree on one side (the helmsman's chosen lane should win when it is clear on the feelers, the current when it is not), and test over five or more runs at normal speed, because one run tells nothing.
+
 ## 14 Nov 07:30 Claude: the current looks 150 m ahead; no clear gain
 
 - The keel's line now runs 150 m ahead (was 90) and the set is a little stronger close in. Three whole cities at normal speed with the bot: 6, 7 and 8 blows on stone, with one on the stem every time, hull 83, 70 and 71 at the slide. Against 8 and 11 blows before, that is fewer blows but she is still put on a rock head on about once a voyage. Kept, as no worse; the head-on case is not fixed.
