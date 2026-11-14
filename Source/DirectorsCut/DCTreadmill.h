@@ -139,6 +139,16 @@ protected:
 	float LaneVelocity = 0.f;
 	float ObstacleTimer = 4.f;
 	float HostileTimer = 8.f;
+	/** Rags of mist that run aft across the deck in the fog (Easy Fog cards, if installed). */
+	struct FDeckWisp
+	{
+		TWeakObjectPtr<AActor> Actor;
+		TWeakObjectPtr<class UMaterialInstanceDynamic> MID;
+		float Phase = 0.f, Speed = 900.f, Side = 0.f, Height = 800.f, Density = 0.4f;
+	};
+	TArray<FDeckWisp> DeckWisps;
+	UPROPERTY() TArray<TObjectPtr<class UMaterialInstanceDynamic>> DeckWispMIDs;
+	void TickDeckWisps(float DeltaSeconds);
 	/** Trial: the bought cloud tunnel (-DCVdbTunnel=). */
 	UPROPERTY() TObjectPtr<class UHeterogeneousVolumeComponent> VdbTrial;
 };

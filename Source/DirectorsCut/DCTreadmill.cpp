@@ -240,6 +240,7 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 		}
 	}
 	TickStrikes(DeltaSeconds);
+	TickDeckWisps(DeltaSeconds);
 
 	// Ruins on the open sea before the fog are off (owner, 13 Nov): the city is first seen in the murk. -DCOutliers brings them back.
 	if (!bOutliersBuilt)
@@ -634,6 +635,31 @@ void ADCTreadmill::TickIncoming(float DeltaSeconds)
 	}
 }
 
+void ADCTreadmill::TickDeckWisps(float DeltaSeconds)
+{
+	if (DeckWisps.Num() == 0 || !Director) { return; }
+	// Only in the fog proper: they come with the mist and go with it.
+	const float Mist = FMath::SmoothStep(0.45f, 0.7f, Director->GetEnv().Mist);
+	const float T = Director->RideTime;
+	for (FDeckWisp& W : DeckWisps)
+	{
+		AActor* A = W.Actor.Get();
+		if (!A) { continue; }
+		A->SetActorHiddenInGame(Mist <= 0.f);
+		if (Mist <= 0.f) { continue; }
+		// From 45 m ahead of the bow to 45 m astern, then round again.
+		const float Span = 9000.f;
+		const float U = FMath::Frac(W.Phase + T * W.Speed / Span);
+		const float X = FMath::Lerp(4500.f, -4500.f, U);
+		const float Y = W.Side + 160.f * FMath::Sin(T * 0.5f + W.Phase * 20.f);
+		const float Z = Director->SeaLevelZ + W.Height + 90.f * FMath::Sin(T * 0.7f + W.Phase * 11.f);
+		// Upright, broadside to the wind, leaning with it.
+		A->SetActorLocationAndRotation(FVector(X, Y, Z), FRotator(72.f, 0.f, 12.f * FMath::Sin(T * 0.3f + W.Phase * 5.f)));
+		const float Ends = FMath::SmoothStep(0.f, 0.15f, U) * (1.f - FMath::SmoothStep(0.85f, 1.f, U));
+		if (UMaterialInstanceDynamic* M = W.MID.Get()) { M->SetScalarParameterValue(TEXT("Fog Density"), W.Density * Mist * Ends); }
+	}
+}
+
 void ADCTreadmill::TickStrikes(float DeltaSeconds)
 {
 	StrikeCooldown -= DeltaSeconds;
@@ -975,6 +1001,41 @@ void ADCTreadmill::SpawnAtlantis()
 				}
 			}
 			UE_LOG(LogDC, Log, TEXT("Fog cards: %d laid"), Cards);
+			// And across the deck: six upright rags that come in over the bow and run aft past the masts, over and over.
+			if (!FParse::Param(FCommandLine::Get(), TEXT("DCNoDeckWisps")))
+			{
+				for (int32 i = 0; i < 6; ++i)
+				{
+					AActor* Holder = World->SpawnActor<AActor>(AActor::StaticClass(), FTransform::Identity, CardParams);
+					if (!Holder) { continue; }
+					UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(Holder);
+					C->SetMobility(EComponentMobility::Movable);
+					Holder->SetRootComponent(C);
+					C->SetStaticMesh(CardMesh);
+					C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+					C->SetCastShadow(false);
+					UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(CardBase, Holder);
+					const int32 Shape = Rng.RandRange(0, 7);
+					if (Masks[Shape]) { MID->SetTextureParameterValue(TEXT("Opacity Map"), Masks[Shape]); }
+					if (Normals[Shape]) { MID->SetTextureParameterValue(TEXT("FogNormals"), Normals[Shape]); }
+					MID->SetScalarParameterValue(TEXT("Fog Density"), 0.f);
+					MID->SetScalarParameterValue(TEXT("Fading Distance"), 250.f);
+					MID->SetScalarParameterValue(TEXT("Camera Fading Distance"), 500.f);
+					MID->SetScalarParameterValue(TEXT("Normal Intensity"), 1.f);
+					MID->SetScalarParameterValue(TEXT("Emissive Intensity"), 0.f);
+					MID->SetVectorParameterValue(TEXT("Base Color Tint"), FLinearColor(0.7f, 0.76f, 0.86f));
+					C->SetMaterial(0, MID);
+					C->RegisterComponent();
+					const float Across = Rng.FRandRange(900.f, 2200.f);
+					Holder->SetActorScale3D(FVector(Across / 1160.f * 2.2f, Across / 1160.f, Across / 1160.f));
+					FDeckWisp Wisp;
+					Wisp.Actor = Holder; Wisp.MID = MID;
+					Wisp.Phase = Rng.FRand(); Wisp.Speed = Rng.FRandRange(700.f, 1300.f); Wisp.Side = Rng.FRandRange(-420.f, 420.f);
+					Wisp.Height = Rng.FRandRange(620.f, 1500.f); Wisp.Density = Rng.FRandRange(0.18f, 0.35f) * CardDensity;
+					DeckWisps.Add(Wisp);
+					DeckWispMIDs.Add(MID);
+				}
+			}
 		}
 	}
 

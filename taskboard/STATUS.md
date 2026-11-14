@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 00:34 Claude: rags of mist across the deck; white water at the spout's foot
+
+- **Deck wisps** (`DCTreadmill::TickDeckWisps`): six upright Easy Fog cards, 9 to 22 m, come in over the bow and run aft past the masts at 7 to 13 m a second, over and over, while the mist is up (Mist above 0.45, so the city, not the tunnel). They fade near the eye and at each end of the run. Where they pass the lanterns they catch the warm light. `-DCNoDeckWisps`. Frames half a second apart in `review/53-deck-wisps` (the pictures were taken at a density a third higher than is now set). Not judged in motion.
+- **Spout foot**: an Easy Fog card lies on the slope under each spout as a dome of white water. From the deck it is mostly hidden by the rail; from above it is faint.
+
 ## 14 Nov 00:28 Claude: burning stones from the deep, with deck fires
 
 - `DCMaelstrom::UpdateBoulders`: five on a schedule (86, 104, 110, 126, 141 s after the breach, between the spouts). Each leaves the water 520 m off the starboard bow with a crew call ("Fire from the deep! ... Turn her, Captain!"), comes over in a 160 m arc for 5 s as a glowing stone with a tail of fire and a light, and falls where the ship was. The helm carries her out from under it at the same rate as for the spouts. Struck: 5 damage and a fire at the nearest deck point (the existing fire trouble, so the crew or the captain must put it out). Clear: 100 points and a burst on the water. `-DCNoBoulders`, `-DCBoulderAt=<s>` throws an extra one.
