@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 02:51 Claude: the seventeenth build run from start to ending card at normal speed
+
+- From the packaged exe at 1600x900, bot captain, no sound, 0 to 470 s without time scaling: no errors, 23 frames taken on the way. 110 fps on the open sea, 75 to 86 through the wall and tunnel, 111 to 154 in the city, 102 to 105 in the slide, 65 to 73 in the maelstrom, 131 at the ending.
+- In the maelstrom, with nobody steering: all six spouts and all five stones struck, both spawnlings were sunk by the manned batteries (165 and 150 m off), 11 arms broken, beaten on the clock at 160.0 s, hull 36 at the card.
+
 ## 14 Nov 02:41 Claude: seventeenth build packaged and run: `2026-11-14_0235_0a152ce_guns-reach-down-slope`
 
 - `Builds/2026-11-14_0235_0a152ce_guns-reach-down-slope/Windows/DirectorsCut.exe`. Run from the exe at 1600x900 without sound: wall and portal at 56 s, a flash in the tunnel at 63.5, the city at 120 (81 to 111 fps); the whole maelstrom at 3x with the bot captain from 262 s: port spawnling sunk 160 m off, starboard one sunk 151 m off, 8 arms broken, beaten on the clock at 160.0 s, plume, exit at 450.01, ending card, hull 50.
