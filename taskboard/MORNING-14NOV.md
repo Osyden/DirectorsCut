@@ -28,7 +28,7 @@ It was run from its exe without a window at 1600x900, the whole voyage from star
 | The ship clips through things | Lane rocks were not solid at all; they are now. Scenery was already solid. |
 | Lightning is flashes, not streaks | Each bolt is now drawn as a forked streak. Thin, a third of a second. |
 | Rock on the right showing through the fog tunnel | Stone hidden until the tunnel passes it; none seen in frames since. |
-| Big objects: a current so she scrapes and cannot hit head on | In, and the helmsman fixed, but not reliable. At normal speed with the bot, two whole-city runs gave two and three contacts with stone (8 and 11 blows), one of them on the stem, and hull 71 and 73 at the slide. Double-speed test runs are worse because the blows are reckoned harder. She can still be put on a rock head on; it needs more work. |
+| Big objects: a current so she scrapes and cannot hit head on | In, but **not solved**. At normal speed with the bot, a city gives 6 to 11 blows on stone in two or three contacts, about one of them on the stem, and hull 70 to 83 at the slide. The cause is found: the crew helmsman steers for a gap on one side while the current sets her to the other, and the two hold her on the rock. A fix was tried at 07:40 and taken out as unproven (see STATUS). |
 | Creatures on the banks throwing fire | Stone giants (Rampage, stone skin, lit cracks), six of them. Marchosias and the giant demons unused. |
 | Bow splashes | Reworked as sheets of white water. Judged from above the bow only. |
 | Do not neglect the later game and the boss | Spawnlings, the guns' reach, the lip, the creature's one appearance and the ending were all worked on after that note. |
@@ -56,6 +56,15 @@ It was run from its exe without a window at 1600x900, the whole voyage from star
 ## Speed
 
 Packaged build at 1600x900, normal speed: open sea about 96 fps, wall and tunnel 88 to 100, city 98 to 116, slide about 100, maelstrom 65 to 73, ending 123. True 4K (DLSS at 67 percent, no frame generation, editor build, measured at about 06:57 with everything in): open sea with the wall close 71 to 77, entering the tunnel 56, inside it 67, city 91 to 98 (74 with a giant throwing), maelstrom 55 to 61 with a spout up, dipping to 43 to 45 in single frames as the spout passes the ship. Those dips are the render thread waiting on the spout's volume frames, not the graphics card (10 to 13 ms).
+
+## What is next, in the order I would take it
+
+1. Play it. Nothing has been seen in motion or heard by a person since Friday evening.
+2. The helmsman against the current (above): the one known cause of head-on rock strikes.
+3. The maelstrom's water and foam, and a near crest at the lip (Codex's plan).
+4. Balance: giants' rate of fire against the batteries, hull through the whole voyage.
+5. The 4K dips as a spout passes (play the spout's volume slower, or accept).
+6. Sound for the giants and their rocks; smoke on the burning stones.
 
 ## For Codex
 
