@@ -2,6 +2,15 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 04:56 Claude: owner's 04:45 notes (in INBOX); the front's foot on the water; sea smoke over the city
+
+Owner, half asleep, at about 04:45: a gap between the sea and the bottom of the storm front; objects popping in ahead of the ship; collisions not always working, the ship clips through some things; lightning is flashes, not streaks; keep going but do not neglect the later game and the boss.
+
+- **Gap under the front**: my floor for the cloud was 12 m over the water for the wall pieces and 2.5 m for the tunnel, with a fade above that. Both are now at the water with a short fade.
+- **Sea smoke** (`DCTreadmill.cpp`, `-DCSeaSmoke=<density>`, 0 off): one thin layer of mist 1.2 km by 1 km and about 7 m deep that goes with the ship, so the water out to the ruins lies under pale mist everywhere, as in the reference, and the ruins stand out of it. 113 to 124 fps in the city at 1280x720. `review/60-sea-smoke-and-foot`.
+- Three of tonight's test runs have odd camera positions in them (and one a gun firing): the test window takes the keyboard and mouse while the owner is typing. Not a fault in the game.
+- Next, in this order: lightning bolts that can be seen, objects popping in, the hull passing through things, then back to the boss.
+
 ## 14 Nov 04:39 Claude: twenty-first build packaged and run: `2026-11-14_0431_9a61a5e_torn-sea`
 
 - `Builds/2026-11-14_0431_9a61a5e_torn-sea/Windows/DirectorsCut.exe`. Run from the exe at 1600x900 without sound: a clean open sea at 30 s, wall and portal at 56, a flash in the tunnel at 63.5, the torn sea in the city at 120 and 150 (94 to 114 fps), no material failed to compile; the whole maelstrom at 3x with the bot captain from 262 s: both spawnlings sunk, 7 arms broken, beaten on the clock at 160.0 s, exit at 450.01, ending card.

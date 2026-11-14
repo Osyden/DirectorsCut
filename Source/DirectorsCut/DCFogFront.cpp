@@ -233,7 +233,9 @@ void ADCFogFront::BuildTunnel()
 	TunnelMID = UMaterialInstanceDynamic::Create(Base, this);
 	TunnelMID->SetSparseVolumeTextureParameterValue(TEXT("SparseVolumeTexture"), Volume);
 	// The cloud stands on the sea: nothing below a floor just above the water, thickening over the first metres.
-	float Floor = TunnelSink / (TunnelScale * 0.42f) + 2.f, Soft = 8.f;
+	// (Owner, 14 Nov: a gap showed between the sea and the foot of the front. The floor was 2.5 m over the water with a
+	// 10 m fade; it is now at the water with a 3 m fade.)
+	float Floor = TunnelSink / (TunnelScale * 0.42f) + 0.2f, Soft = 2.5f;
 	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnelFloor="), Floor);
 	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnelSoft="), Soft);
 	// Storm cloud is dark and cold: a low blue-grey albedo, so the low sun cannot turn it to sand.
@@ -291,8 +293,9 @@ void ADCFogFront::BuildTunnel()
 	// Unequal sizes, a few degrees of turn and one set back, so the top of the wall is not one level line.
 	struct FPlace { float Side, Lift, Floor, Frame, Size, Yaw, Back, Soft; };
 	const FPlace Places[] = {
-		{ -1.f, 0.f, 42.f, 0.f, 1.f, 7.f, 0.f, 1.5f },
-		{ 1.f, 0.f, 42.f, 70.f, 1.25f, -5.f, 9000.f, 1.5f },
+		// Floors at the water (40 voxels are under the sea): at 42 the wall's foot stood 12 m clear of it.
+		{ -1.f, 0.f, 39.7f, 0.f, 1.f, 7.f, 0.f, 0.8f },
+		{ 1.f, 0.f, 39.7f, 70.f, 1.25f, -5.f, 9000.f, 0.8f },
 		{ 0.f, 0.f, 40.f + 15000.f / Unit, 135.f, 1.1f, 0.f, 4000.f, 70.f },
 	};
 	static const bool bNoOver = FParse::Param(FCommandLine::Get(), TEXT("DCNoFrontOver"));   // test hook: leave out the piece over the mouth

@@ -947,6 +947,21 @@ void ADCTreadmill::SpawnAtlantis()
 		W.Drift = FVector(-900.f, 260.f, 0.f);
 		W.Stretch = FVector(3.f, 1.f, 0.6f);
 		if (ADCFogBank* Wisps = ADCFogBank::Spawn(World, W, 77)) { Wisps->SetActorLocation(FVector(500.f, 0.f, SeaZ + 800.f)); }
+		// Sea smoke: one wide, thin, low layer that goes with the ship, so the water out to the ruins lies under
+		// pale mist everywhere and not only where a bank happens to stand. (The reference's fog is everywhere.)
+		float Smoke = 0.016f;   // -DCSeaSmoke=<density>, 0 = off
+		FParse::Value(FCommandLine::Get(), TEXT("DCSeaSmoke="), Smoke);
+		if (Smoke > 0.f)
+		{
+			FDCFogBankDesc S;
+			S.bOnDeck = true;
+			S.Radii = FVector(60000.f, 50000.f, 520.f);
+			S.Density = Smoke;
+			S.Size = 9000.f;
+			S.Erode = 0.55f;
+			S.Drift = FVector(-500.f, 120.f, 0.f);
+			if (ADCFogBank* Layer = ADCFogBank::Spawn(World, S, 78)) { Layer->SetActorLocation(FVector(8000.f, 0.f, SeaZ + 180.f)); }
+		}
 
 		// Easy Fog cards (bought, not in the repository; absent, nothing is laid). Lit, flowing sheets of mist:
 		// wide ones lying on the sea so the water and the feet of the ruins stand in layered fog, and slanted

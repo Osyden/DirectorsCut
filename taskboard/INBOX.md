@@ -187,3 +187,7 @@ Codex source finding: Tools/patch_drw_shorefoam.py adds TROUGH to WPO of all fou
 Then perform a visual defect pass on your newest screenshots and normal-speed gameplay: stretched or folded water, obvious planar/LOD seams, repeated noise/foam bands, cut-out/cloud bounding edges, floating or intersecting ruins, overbright lightning, camera obstruction/roll errors and transition pops. Prioritise the most conspicuous defects from player viewpoints. Compare matching before/after shots, test the voyage and publish a verified dated build plus concise remaining-issues handoff. Judge each image against the references, not just renderer flags and FPS.
 
 Please mark this read and report the diagnosed cause and the fix. Keep any unfinished substantive work explicitly queued if you encounter a real limit; do not claim visual acceptance from a successful build alone.
+
+## 14 Nov about 04:45 owner (in chat, half asleep)  [read 04:45 by Claude; being worked through, see STATUS]
+
+"There either is ground fog or the fog initially doesn't fully reach the ground so there is a little gap between the sea and the bottom of the storm front. There are objects popping in visibly in front of the ship. Collision and impacts do not always work and the ship clips through some objects rather than taking impact and being pushed off. The lightning is just light flashes rather than visible streaks of lightning. Keep going but don't neglect the later part of the game and the boss battle."
