@@ -7,7 +7,8 @@ Run using installed Blender; CPU field evaluation only, no render or GPU:
 
 Only measured shore/plateau/frame constraints and explicitly protected heights
 are reused. The input's interior profile is discarded. Noise is evaluated in
-physical world XY, with 34-96 m nominal ridge/terrain scales. No column-wise
+physical world XY, with 34-96 m default ridge/terrain scales; --octaves 4 adds
+24/12m ridge and17/8.5m terrain bands without increasing the relief envelope. No column-wise
 gullies, forced monotonic profiles or micro-noise are added. This is a shape
 preview requiring clay review, erosion, rock fracture and temple footing checks;
 it is not a runtime asset or a calibrated geological simulation.
@@ -26,9 +27,28 @@ def smoothstep(x):
     return q*q*(3-2*q)
 
 
-def generate(data, seed=71421):
+def masked_lowpass(field, mask, sigma_cells):
+    """Separable Gaussian mean; padding/protected samples do not bias detail."""
+    radius = int(np.ceil(3*sigma_cells))
+    offsets = np.arange(-radius, radius+1, dtype=np.float64)
+    weights = np.exp(-.5*(offsets/sigma_cells)**2)
+    weights /= weights.sum()
+    def blur(values):
+        for axis in (0, 1):
+            pad = [(0,0), (0,0)]
+            pad[axis] = (radius, radius)
+            values = np.apply_along_axis(lambda line: np.convolve(line, weights, mode="valid"), axis,
+                                         np.pad(values, pad, mode="edge"))
+        return values
+    divisor = blur(mask.astype(np.float64))
+    return np.divide(blur(field*mask), divisor, out=np.zeros_like(field), where=divisor>1.e-10)
+
+
+def generate(data, seed=71421, octaves=2):
     from mathutils import Vector, noise
     metadata = json.loads(str(data["metadata_json"]))
+    if octaves not in (2, 3, 4):
+        raise ValueError("Use 2..4 octaves; finer noise is unresolved on the2m grid")
     frame = metadata["frame"]
     xy = data["world_xy_m"].astype(np.float64)
     original = data["height_m"]
@@ -60,6 +80,8 @@ def generate(data, seed=71421):
     offsets = rng.uniform(-200, 200, (4, 3))
     ridge = np.zeros(shape, np.float64)
     heterogeneous = np.zeros_like(ridge)
+    base_ridge = np.zeros_like(ridge)
+    base_heterogeneous = np.zeros_like(ridge)
     coarse_noise = np.zeros_like(ridge)
     # Anchor coordinates to the supplied metric frame, preserving physical
     # scale and allowing exact regeneration on a finer XY grid later.
@@ -73,17 +95,32 @@ def generate(data, seed=71421):
         warp_u = 18*noise.noise(Vector((u/180+offsets[0, 0], v/180+offsets[0, 1], offsets[0, 2])), noise_basis="PERLIN_ORIGINAL")
         warp_v = 18*noise.noise(Vector((u/180+offsets[1, 0], v/180+offsets[1, 1], offsets[1, 2])), noise_basis="PERLIN_ORIGINAL")
         u, v = u+warp_u, v+warp_v
-        # Two octaves:96/48m and68/34m. Omit fine octaves until the macro form
-        # is approved; 2m grid pixels must not become apparent rock features.
+        # Default2 octaves:96/48m and68/34m. Optional4 adds24/12m and17/8.5m;
+        # even the shortest wavelength spans4.25 cells on the2m grid. The
+        # physical relief cap below remains identical to the baseline.
         ridge[y, x] = noise.ridged_multi_fractal(Vector((u/96+offsets[2, 0], v/96+offsets[2, 1], offsets[2, 2])),
-                                                  1.1, 2.0, 2.0, 1.0, 2.0, noise_basis="PERLIN_ORIGINAL")
+                                                  1.1, 2.0, float(octaves), 1.0, 2.0, noise_basis="PERLIN_ORIGINAL")
         heterogeneous[y, x] = noise.hetero_terrain(Vector((u/68+offsets[3, 0], v/68+offsets[3, 1], offsets[3, 2])),
-                                                  1.0, 2.0, 2.0, .65, noise_basis="PERLIN_ORIGINAL")
+                                                  1.0, 2.0, float(octaves), .65, noise_basis="PERLIN_ORIGINAL")
+        if octaves > 2:
+            base_ridge[y, x] = noise.ridged_multi_fractal(Vector((u/96+offsets[2, 0], v/96+offsets[2, 1], offsets[2, 2])),
+                                                        1.1, 2.0, 2., 1., 2., noise_basis="PERLIN_ORIGINAL")
+            base_heterogeneous[y, x] = noise.hetero_terrain(Vector((u/68+offsets[3, 0], v/68+offsets[3, 1], offsets[3, 2])),
+                                                          1., 2., 2., .65, noise_basis="PERLIN_ORIGINAL")
         coarse_noise[y, x] = noise.noise(Vector((u/160+offsets[2, 0], v/160+offsets[2, 1], offsets[3, 2])), noise_basis="PERLIN_ORIGINAL")
     # Ridged multifractal supplies connected sharp crests; heterogeneous terrain
     # breaks their symmetry. Fixed analytic centering avoids per-tile histogram
     # normalization (which would change the shape on a larger export).
-    mass = np.tanh(1.7*(ridge-.85)+.75*(heterogeneous-.85)+.45*coarse_noise)
+    signal = 1.7*(ridge-.85)+.75*(heterogeneous-.85)+.45*coarse_noise
+    if octaves > 2:
+        # Both fractal functions have positive added-octave means. Feeding raw4
+        # directly into the height field raises the whole wall by5m median.
+        # Retain the baseline macro signal and add only the extra-octave detail,
+        # with its broad12m-sigma mean removed (no new procedural noise).
+        extra = 1.7*(ridge-base_ridge)+.75*(heterogeneous-base_heterogeneous)
+        extra -= masked_lowpass(extra, valid & ~fixed, 12./cell)
+        signal = 1.7*(base_ridge-.85)+.75*(base_heterogeneous-.85)+.45*coarse_noise+extra
+    mass = np.tanh(signal)
     amplitude = np.minimum(48., .24*rise)
     radial_window = 4*q*(1-q)
     # Tangential tile edges must meet the exact retained constraints. Smoothly
@@ -119,7 +156,9 @@ def generate(data, seed=71421):
     radial_slope = slope_x*radial_x+slope_y*radial_y
     metrics = dict(grid_shape=list(shape), active_cells=int(active.sum()), fixed_cells=int(fixed.sum()),
                    valid_cells=int(valid.sum()), height_min_m=float(h32[valid].min()), height_max_m=float(h32[valid].max()),
-                   nominal_ridge_scales_m=[96, 48], nominal_heterogeneous_scales_m=[68, 34], domain_warp_scale_m=180,
+                   octaves=octaves, nominal_ridge_scales_m=[96/2**i for i in range(octaves)],
+                   nominal_heterogeneous_scales_m=[68/2**i for i in range(octaves)], domain_warp_scale_m=180,
+                   extra_octave_mean_removal_sigma_m=12 if octaves>2 else 0,
                    domain_warp_max_m=18, maximum_relief_envelope_m=float(amplitude[active].max()),
                    actual_relief_range_m=[float((h32-base)[active].min()), float((h32-base)[active].max())],
                    ridge_raw_range=[float(ridge[active].min()), float(ridge[active].max())],
@@ -142,7 +181,7 @@ def generate(data, seed=71421):
                     provenance={"geometry_reference": metadata["provenance"].get("geometry_reference"),
                                 "use": "Measured shore/plateau bounds and fixed supports only; old interior discarded outside explicit boundary blend"},
                     generator="Blender mathutils.noise ridged_multi_fractal + hetero_terrain; PERLIN_ORIGINAL",
-                    seed=seed, physical_units="metres; no vertical exaggeration", metrics=metrics,
+                    seed=seed, settings={"seed":seed,"octaves":octaves}, physical_units="metres; no vertical exaggeration", metrics=metrics,
                     limitations="Offline 2D heightfield alternative, not runtime. Protected input samples unchanged; authoritative individual temple footprints unavailable, so footing approval remains required. No 3D fracture/overhangs; no calibrated erosion yet.")
     result["metadata_json"] = np.asarray(json.dumps(new_meta))
     result["seed_metrics_json"] = np.asarray(json.dumps(metrics))
@@ -154,16 +193,18 @@ def main():
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--seed", type=int, default=71421)
+    parser.add_argument("--octaves", type=int, choices=(2,3,4), default=2)
     args = parser.parse_args(sys.argv[sys.argv.index("--")+1:] if "--" in sys.argv else None)
     if args.input.resolve() == args.output.resolve() or "saved" not in [s.lower() for s in args.output.resolve().parts]:
         parser.error("Choose a new output file under ignored Saved")
     with np.load(args.input, allow_pickle=False) as archive:
         data = {key: archive[key].copy() for key in archive.files}
-    result = generate(data, args.seed)
+    result = generate(data, args.seed, args.octaves)
     metadata = json.loads(str(result["metadata_json"]))
     import bpy
     metadata["provenance"].update(input_npz=str(args.input.resolve()), input_sha256=hashlib.sha256(args.input.read_bytes()).hexdigest(),
-                                   blender_version=bpy.app.version_string)
+                                   blender_version=bpy.app.version_string,
+                                   generator_source_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest())
     result["metadata_json"] = np.asarray(json.dumps(metadata))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(args.output, **result)
