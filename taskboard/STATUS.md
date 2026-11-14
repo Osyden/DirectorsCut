@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 01:33 Claude: thirteenth build packaged and run: `2026-11-14_0128_f26af10_helm-order-dodge`
+
+- `Builds/2026-11-14_0128_f26af10_helm-order-dodge/Windows/DirectorsCut.exe`. Run from the exe at 1600x900: wall and portal at 56 s, a flash in the tunnel at 63.5, the city at 120 (81 to 104 fps); then the whole maelstrom at 3x with the bot captain from 262 s: 11 spouts and stones struck (the bot does not turn), 8 arms broken, "beaten on the clock at 160.0 s", plume, stage exited at 450.00, ending card. No script errors.
+- This is the build to play: it is the twelfth plus the faster sideways carry for helm orders and the wider view over the lip.
+
 ## 14 Nov 01:28 Claude: the view opens out over the lip; 4K frames of the front looked at
 
 - `DCMaelstrom::UpdateView`: the field of view widens by 9 degrees between 8 and 13 s after the breach and closes again by 30 s, over the same seconds as the quicker descent. A small thing; not judged in motion.
