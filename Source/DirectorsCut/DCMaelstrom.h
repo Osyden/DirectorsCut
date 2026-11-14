@@ -101,6 +101,8 @@ private:
 		float Abeam = 0.f;        // cm to starboard of her course
 		bool bStruck = false;
 		bool bCalled = false;
+		TWeakObjectPtr<AActor> Plain;     // a plain column of pale cloud, where the bought volume is not installed
+		TWeakObjectPtr<UMaterialInstanceDynamic> PlainMID;
 		TWeakObjectPtr<AActor> Skirt;     // churned water and spray round its foot (an Easy Fog card, if installed)
 		TWeakObjectPtr<UMaterialInstanceDynamic> SkirtMID;
 	};

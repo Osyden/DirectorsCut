@@ -796,7 +796,7 @@ namespace
 
 void ADCMaelstrom::ClearTwisters()
 {
-	for (FTwister& T : Twisters) { if (AActor* A = T.Actor.Get()) { A->Destroy(); } if (AActor* S = T.Skirt.Get()) { S->Destroy(); } }
+	for (FTwister& T : Twisters) { if (AActor* A = T.Actor.Get()) { A->Destroy(); } if (AActor* S = T.Skirt.Get()) { S->Destroy(); } if (AActor* P = T.Plain.Get()) { P->Destroy(); } }
 	Twisters.Reset();
 	TwisterMIDs.Reset();
 	TwistersRaised = 0;
@@ -830,6 +830,8 @@ void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
 		if (Elapsed > RaiseAt[Index] + 3.f || RaiseAt[Index] > Finale - 20.f) { continue; }   // skipped over by a seek, or too near the end
 		UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_VdbCloud.M_VdbCloud"), nullptr, LOAD_NoWarn | LOAD_Quiet);
 		USparseVolumeTexture* Volume = LoadObject<USparseVolumeTexture>(nullptr, TEXT("/Game/Clouds_Tunnel_Loop/Effects/CT_Clouds_Tunnel_Vdb_01.CT_Clouds_Tunnel_Vdb_01"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+		static const bool bNoPack = FParse::Param(FCommandLine::Get(), TEXT("DCNoCloudPack"));   // test hook: as if the pack were not installed
+		if (bNoPack) { Volume = nullptr; }
 		FTwister T;
 		T.RaisedAt = RaiseAt[Index];
 		T.Ahead = Start;
@@ -858,9 +860,33 @@ void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
 				TwisterMIDs.Add(M);
 			}
 		}
+		if (!T.Actor.IsValid())
+		{
+			// No volume: a plain pale column, so the hazard is at least seen.
+			UMaterialInterface* Cloud = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Cloud.M_Cloud"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+			UStaticMesh* Column = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
+			FActorSpawnParameters PlainParams;
+			PlainParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			AStaticMeshActor* P = Cloud && Column ? GetWorld()->SpawnActor<AStaticMeshActor>(FVector::ZeroVector, FRotator::ZeroRotator, PlainParams) : nullptr;
+			if (P)
+			{
+				UStaticMeshComponent* C = P->GetStaticMeshComponent();
+				C->SetMobility(EComponentMobility::Movable);
+				C->SetStaticMesh(Column);
+				C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+				C->SetCastShadow(false);
+				UMaterialInstanceDynamic* M = UMaterialInstanceDynamic::Create(Cloud, this);
+				M->SetVectorParameterValue(TEXT("Top"), FLinearColor(0.75f, 0.8f, 0.86f));
+				M->SetVectorParameterValue(TEXT("Bottom"), FLinearColor(0.9f, 0.93f, 0.97f));
+				M->SetVectorParameterValue(TEXT("Flash"), FLinearColor(0.f, 0.f, 0.f, 0.f));
+				C->SetMaterial(0, M);
+				T.Plain = P; T.PlainMID = M;
+				TwisterMIDs.Add(M);
+			}
+		}
 		UStaticMesh* CardMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/EasyFog/Meshes/SM_easyFogCard_02.SM_easyFogCard_02"), nullptr, LOAD_NoWarn | LOAD_Quiet);
 		UMaterialInterface* CardBase = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/EasyFog/Materials/M_BP_EasyFog.M_BP_EasyFog"), nullptr, LOAD_NoWarn | LOAD_Quiet);
-		if (CardMesh && CardBase && T.Actor.IsValid())
+		if (CardMesh && CardBase)
 		{
 			FActorSpawnParameters SkirtParams;
 			SkirtParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -925,6 +951,13 @@ void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
 				UE_LOG(LogDC, Log, TEXT("Twister: age %.1f foot %s actor %s bounds %s hidden %d res %s"), Age, *Foot.ToCompactString(), *A->GetActorLocation().ToCompactString(), C ? *C->Bounds.ToString() : TEXT("-"), A->IsHidden(), C ? *C->VolumeResolution.ToString() : TEXT("-"));
 			}
 		}
+		if (AActor* P = T.Plain.Get())
+		{
+			// The engine's cylinder is 1 m through and 1 m high.
+			const float Through = Height * 0.22f * FMath::Lerp(0.5f, 1.f, Rise);
+			P->SetActorTransform(FTransform(FRotator(0.f, Director->RideTime * 70.f, 0.f), Foot + FVector(0.f, 0.f, Height * 0.5f * Rise - 300.f), FVector(Through / 100.f, Through / 100.f, Height * Rise / 100.f)));
+			if (UMaterialInstanceDynamic* M = T.PlainMID.Get()) { M->SetVectorParameterValue(TEXT("Flash"), FLinearColor(0.f, 0.f, 0.f, 0.8f * Rise * (1.f - Gone))); }
+		}
 		if (AActor* S = T.Skirt.Get())
 		{
 			// A wide dome of white water lying on the slope where the spout stands, turning with it.
@@ -955,6 +988,7 @@ void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
 		if (Gone >= 1.f)
 		{
 			if (AActor* S = T.Skirt.Get()) { S->Destroy(); }
+			if (AActor* P = T.Plain.Get()) { P->Destroy(); }
 			if (AActor* A = T.Actor.Get()) { A->Destroy(); }
 			Twisters.RemoveAt(i);
 		}

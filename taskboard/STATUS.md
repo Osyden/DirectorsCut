@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 03:42 Claude: a plain column stands in for the waterspout where the cloud pack is not installed
+
+- Without `Content/Clouds_Tunnel_Loop` a spout was unseen but still struck. It is now a pale translucent column (the engine cylinder with `M_Cloud`) with the same white water at its foot if Easy Fog is there. Seen with `-DCNoCloudPack` (which makes the spouts behave as if the pack were absent): a faint grey-white pillar, readable against the bowl, poor against the sky. The plume and the front have no stand-in.
+- Not in the twentieth build; it changes nothing where the pack is installed.
+
 ## 14 Nov 03:41 Claude: twentieth build packaged and run: `2026-11-14_0334_0739c01_over-the-lip`
 
 - `Builds/2026-11-14_0334_0739c01_over-the-lip/Windows/DirectorsCut.exe`. Run from the exe at 1600x900 without sound: the bank at 44 s, wall and portal at 56, a flash in the tunnel at 63.5, the city at 120 (95 to 113 fps); over the lip at normal speed from 262 s, frames at 281 to 310 (74 to 108 fps); the rest of the maelstrom at 3x with the bot captain: both spawnlings sunk, 8 arms broken, beaten on the clock at 160.0 s, exit at 450.00, ending card.
