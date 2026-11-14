@@ -58,3 +58,17 @@ That second command is a suggested quality experiment, not an already generated 
 - Diagnostic projections show downward strands and a low outward impact fan. Strong vertical source channels remain, the one-metre voxel size is coarse, and 12 fps may reveal stepping. This is a compact import/motion prototype, not reference-quality whitewater.
 - The model does not solve coupled water/air dynamics, collisions with complex ledges, surface tension or secondary spray generation from a liquid simulation. If the falling strands look like hanging ropes in-game, vary emitter width/flow coherently and introduce sheet breakup; do not hide the issue by increasing mist density.
 - **Lighting, translucency composition, cliff fit, motion appearance, GPU cost and packaged playback remain unverified by this worker.** Root received the preview paths immediately and reports native import success, as noted above.
+
+## Finer candidate generated after initial import
+
+Actual output: `E:/Projects/DirectorsCut/Crater-Workers/Waterfalls/Saved/GeneratedWaterfallsFine`, with the same `Falling/Falling_0000.vdb` and `Impact/Impact_0000.vdb` prefixes. Command:
+
+```powershell
+& 'E:/Utilities/Blender/5.3/python/bin/python.exe' Tools/generate_waterfall_vdb.py --output Saved/GeneratedWaterfallsFine --voxel-m 0.5 --emission-rate 14000 --fps 24 --duration 4
+```
+
+This generated **96 frames per sequence**, **73,048,468 bytes / 69.66 MiB** combined, in **12.70 seconds CPU time**. Falling resolution is 77 x 44 x 167, with centre bounds `(-1900,-500,-100)..(1900,1650,8200)` cm and peak density 0.510603. Impact is 105 x 53 x 27, bounds `(-2600,500,-100)..(2600,3100,1200)` cm, peak 0.180713. Physical lip/foot and all axes remain unchanged.
+
+The generator already normalizes particle weight by actual emission rate and voxel volume and defines smoothing support in metres. No normalization fix was needed. Mean integrated density (`sum(density) * voxel_m^3`) differs from the coarse preview by **-0.707% Falling / -0.278% Impact**, within sampling/threshold differences. This supports keeping the same material extinction multiplier across candidates; it does not assert identical local optical thickness at every pixel. Increasing emissions 4x reduces sampling noise.
+
+Both sequences retain exact period equality and first-frame VDB roundtrip, stable bounds and finite nonnegative densities. Maximum clipped particle mass is 0.00000145% for Falling / 0.00339% for Impact. Last-to-first frame changes remain comparable to interior frame changes. Density projections show smoother coherent strands without sparse dots, but the strong vertical source channels remain. No physics change or Unreal import/render was performed for this finer candidate; root will evaluate after its current capture.
