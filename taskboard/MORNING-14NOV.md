@@ -55,7 +55,7 @@ It was run from its exe without a window at 1600x900, the whole voyage from star
 
 ## Speed
 
-Packaged build at 1600x900, normal speed: open sea about 96 fps, wall and tunnel 88 to 100, city 98 to 116, slide about 100, maelstrom 65 to 73, ending 123. True 4K was last measured at 03:00, before the giants and the sea smoke: open sea with the wall close 68 to 75, entering the tunnel 57, inside it 74 to 75, city 96, maelstrom with a spout 60 to 68.
+Packaged build at 1600x900, normal speed: open sea about 96 fps, wall and tunnel 88 to 100, city 98 to 116, slide about 100, maelstrom 65 to 73, ending 123. True 4K (DLSS at 67 percent, no frame generation, editor build, measured at 07:05 with everything in): open sea with the wall close 71 to 77, entering the tunnel 56, inside it 67, city 91 to 98 (74 with a giant throwing), maelstrom 55 to 61 with a spout up, dipping to 43 to 45 in single frames as the spout passes the ship. Those dips are the render thread waiting on the spout's volume frames, not the graphics card (10 to 13 ms).
 
 ## For Codex
 

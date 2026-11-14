@@ -822,9 +822,9 @@ void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
 	// The volume is played slowly with blocking streaming: without blocking it streams in at a coarse level and at
 	// 4K the spout is a smooth grey slab with straight sides; blocking at 30 frames a second or more costs 8 to 15 ms
 	// of render thread. At 24 it keeps its detail at 60 to 68 fps in 4K (66 to 74 at 14, but 14 pictures a second may show as a flicker in the boil).
-	static float TwisterCut = 0.1f;   // test hook: -DCTwisterCut=
+	static float TwisterCut = 0.1f, TwisterStep = 1.f;   // test hooks: -DCTwisterCut= -DCTwisterStep=
 	static float TwisterDensity = 0.7f, TwisterRate = 24.f; static bool bDensityRead = false, bTwisterBlocking = true;   // test hooks: -DCTwisterDensity= -DCTwisterRate= -DCTwisterNoBlocking
-	if (!bDensityRead) { bDensityRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCTwisterDensity="), TwisterDensity); FParse::Value(FCommandLine::Get(), TEXT("DCTwisterRate="), TwisterRate); FParse::Value(FCommandLine::Get(), TEXT("DCTwisterCut="), TwisterCut); bTwisterBlocking = !FParse::Param(FCommandLine::Get(), TEXT("DCTwisterNoBlocking")); }
+	if (!bDensityRead) { bDensityRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCTwisterDensity="), TwisterDensity); FParse::Value(FCommandLine::Get(), TEXT("DCTwisterRate="), TwisterRate); FParse::Value(FCommandLine::Get(), TEXT("DCTwisterCut="), TwisterCut); FParse::Value(FCommandLine::Get(), TEXT("DCTwisterStep="), TwisterStep); bTwisterBlocking = !FParse::Param(FCommandLine::Get(), TEXT("DCTwisterNoBlocking")); }
 	while (!bOff && TwistersRaised < UE_ARRAY_COUNT(RaiseAt) && Elapsed >= RaiseAt[TwistersRaised])
 	{
 		const int32 Index = TwistersRaised++;
@@ -854,7 +854,7 @@ void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
 				// Spray scatters light all through itself; the volume's single shadowed bounce leaves it sooty. A little light of its own stands in for that.
 				M->SetVectorParameterValue(TEXT("Flare"), FLinearColor(0.13f, 0.15f, 0.17f));
 				C->SetMaterial(0, M);
-				C->StartFrame = 0.f; C->EndFrame = 200.f; C->FrameRate = TwisterRate; C->Frame = Index * 37.f; C->bPlaying = true; C->bLooping = true;
+				C->StartFrame = 0.f; C->EndFrame = 200.f; C->StepFactor = TwisterStep; C->ShadowStepFactor = TwisterStep * 2.f; C->FrameRate = TwisterRate; C->Frame = Index * 37.f; C->bPlaying = true; C->bLooping = true;
 				C->bIssueBlockingRequests = bTwisterBlocking;
 				if (IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(TEXT("r.HeterogeneousVolumes.MaxTraceDistance"))) { if (V->GetFloat() < 600000.f) { V->Set(600000.f, ECVF_SetByCode); } }
 				T.Actor = A; T.MID = M;

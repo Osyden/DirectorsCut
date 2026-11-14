@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 06:59 Claude: 4K speed with everything in
+
+- True 3840x2160, editor build, bot captain: open sea with the wall close 71 to 77 fps, entering the tunnel 56, inside 67, city 91 to 98 (74 with a giant throwing), maelstrom 55 to 61 with a spout up and 43 to 45 in single frames as it passes the ship.
+- The dips are the render thread (29 to 49 ms) waiting on the spout's volume frames; the graphics card is at 10 to 13 ms. Marching the spout in coarser steps (`-DCTwisterStep=3`) gave 52 where it was 45; a slower playback rate (`-DCTwisterRate=14`) gave 66 to 74 earlier. Left at 24 pictures a second and step 1: the choice between smooth boil and frame rate at 4K is the owner's.
+
 ## 14 Nov 06:53 Claude: twenty-fourth build packaged and run: `2026-11-14_0646_28b4e25_crew-scene`
 
 - `Builds/2026-11-14_0646_28b4e25_crew-scene/Windows/DirectorsCut.exe`. The whole voyage from the exe, no window, 1600x900, 2x with the bot captain: no errors; five giants killed, five of their rocks on deck, five grinding blows on stone and none on the stem; both spawnlings sunk; beaten on the clock at 160.0 s; ending card. Hull 23 at the card with nobody steering or giving an order.
