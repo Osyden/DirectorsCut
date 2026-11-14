@@ -279,7 +279,7 @@ LiveDisplacement=float3(0,0,0);
 DRWWorldCascades fft;
 #if VERTEXSHADER
 // Use the installed vertex-safe helper, not the pixel Surface function.
-// A minimum footprint respects our approximately 3–5m corridor mesh edges.
+// A minimum footprint respects our approximately 3â€“5m corridor mesh edges.
 LiveDisplacement=fft.Displacement(Displacement,DisplacementSampler,P,InvA,InvB,
     ShortA,ShortB,Count,max(350.0,fft.VertexFootprintCm(P)));
 return float4(0,0,1,0.30);
@@ -348,61 +348,71 @@ return lerp(cell/float2(9.0,17.0),float2(p.y/18.0,p.x/65.0),saturate(Tunnel));
 
 foam_code = NOISE + FLOW + r"""
 float shelf=saturate(Flatten)*(1-smoothstep(1200,3500,length(P.xy*float2(.5,2))));
-float transported=lerp(Source0.r,Source1.r,blend);
-// Fresh narrow lip plus a trailing source which loses bubbles as it travels.
 float ageFade=lerp(exp(-phase*1.5),exp(-phase2*1.5),blend);
+float transported=lerp(Source0.r,Source1.r,blend);
 float fresh=max(VC.r,ImpactSource.r*.85);
 float source=lerp(VC.r,max(fresh,transported*ageFade),saturate(SourceAvailable));
 float crest=smoothstep(.055,.48,source)*(1-shelf*.65);
-// Blue stores foam left behind breaking fronts. The source is produced by
-// following the same spiral current as the shader, independently of height.
-// Bubbles survive after a crest collapses rather than disappearing with it.
 float wake=max(ImpactSource.b*.60,lerp(Source0.b,Source1.b,blend)*ageFade)
     *saturate(SourceAvailable)*(1-saturate(Tunnel));
-// Long torn filaments follow the current. A thin crest sheds a sparse wake;
-// broad positive wave heights never become filled white islands.
-// Use a FIXED planar basis for texture coordinates. Dotting absolute q
-// with its own rotating radial basis collapses BOTH axes to radius and
-// turns every noise sample into a concentric contour. Flow advection above
-// supplies the local circular movement without that coordinate singularity.
-float2 direction=normalize(flow+float2(.001,0));
-float n=lerp(wn.streak(q,direction),wn.streak(q2,direction),blend);
-float thread=smoothstep(.40,.61,n);
-float fine=lerp(wn.noise(q*.9),wn.noise(q2*.9),blend);
-float wave=lerp(wn.waves(q,T),wn.waves(q2,T),blend);
-float cap=smoothstep(.34,.60,wave)*(1-smoothstep(45000.0,180000.0,length(P-Cam)))
-    *(1-saturate(Enabled)*step(.5,Count));
-float supply=saturate(Overflow)*Supply*smoothstep(.92,.99,VC.g);
-float torn=lerp(wn.fbm(q*float2(.17,.23)),wn.fbm(q2*float2(.17,.23)),blend);
-float breakup=smoothstep(.43,.64,torn);
-float impact=max(ImpactSource.g,lerp(Source0.g,Source1.g,blend)*ageFade)*saturate(SourceAvailable);
+float impact=max(ImpactSource.g,lerp(Source0.g,Source1.g,blend)*ageFade)
+    *saturate(SourceAvailable);
+// The atlas holds concentration around real sources, not an opacity decal.
+// A slope alone does not make foam: the old world-normal aeration term coated
+// every steep bank regardless of breaking/contact, turning water into terrain.
 float movingLip=lerp(wn.breaking_field(q,T).w,wn.breaking_field(q2,T).w,blend)
     *(1-smoothstep(160000.0,400000.0,length(P-Cam)))*(1-saturate(Tunnel));
-// Small aerated streaks on the fast banks, present at their real metre scale
-// across the crater. Independent noisy packets avoid contour-line foam.
-float steep=smoothstep(.08,.40,1-normalize(VN).z)*(1-saturate(Tunnel));
+float2 direction=normalize(flow+float2(.001,0));
+float n=lerp(wn.streak(q,direction),wn.streak(q2,direction),blend);
+float thread=smoothstep(.34,.64,n);
+float fine=lerp(wn.noise(q*.9),wn.noise(q2*.9),blend);
 float2 warp0=float2(wn.noise(q*.031),wn.noise(q*.027+41.7))-.5;
 float2 warp1=float2(wn.noise(q2*.031),wn.noise(q2*.027+41.7))-.5;
-float rush=lerp(wn.streak(q+warp0*16.0,direction),wn.streak(q2+warp1*16.0,direction),blend);
-float patch=lerp(wn.fbm((q+warp0*32)*.043+5.1),wn.fbm((q2+warp1*32)*.043+5.1),blend);
-// Subpixel bubbles must average into coverage, not sparkle as a checkerboard
-// on the far bank. This is screen-footprint filtering, not larger far waves.
+float raftNoise=lerp(wn.fbm((q+warp0*22)*.12+5.1),wn.fbm((q2+warp1*22)*.12+5.1),blend);
+// Convert concentration to torn surface coverage. The threshold travels with
+// the water in fixed planar coordinates; no polar-axis projection/contour rings.
+// Crucially there is no minimum opacity on the low-concentration wake fringe.
+float threshold=.08+.72*smoothstep(.24,.76,raftNoise);
+float aa=clamp(fwidth(threshold)*.75,.035,.25);
+float concentration=saturate(max(wake*.85,impact*.95));
+float transportedCoverage=smoothstep(threshold-aa,threshold+aa,concentration)
+    *smoothstep(0,.04,concentration);
+// Source-attached lips remain recognizable; their spilled wake has open dark
+// holes instead of a smoothly shaded, fully coated Gaussian ribbon.
+float front=saturate(max(crest,movingLip*.65))*(.55+.45*thread);
 float pixelMeters=max(length(ddx(delta)),length(ddy(delta)));
 float resolvedFoam=1-smoothstep(.8,3.5,pixelMeters);
-float aeration=lerp(.32,smoothstep(.40,.56,rush),resolvedFoam)*smoothstep(.29,.58,patch)*steep;
-// Keep dark holes inside coherent rafts. Multiplying five independent masks
-// previously erased almost all coverage and left isolated painted crescents.
-float raft=smoothstep(.32,.62,torn);
-float filaments=lerp(.42,thread,resolvedFoam);
-float loose=(wake*.85+impact*.95)*lerp(.22,1.0,raft)*(.35+.65*filaments);
-float front=crest*(.30+.70*breakup)+movingLip*.65*(.35+.65*breakup);
-float body=1-exp(-(front+loose+cap*.50*thread+aeration*.70+supply*.10*thread)*1.6);
-float veil=filaments*.08*smoothstep(.35,.65,torn)*max(wake,impact);
+float filaments=lerp(.50,thread,resolvedFoam);
+float loose=transportedCoverage*filaments;
 float lace=smoothstep(.35,.70,fine);
 """
 if foam_texture:
     foam_code += "float cells=lerp(Cells0.r,Cells1.r,blend); lace=smoothstep(.025,.24,cells);\n"
-foam_code += "float bubbles=lerp(wn.noise(q*.73),wn.noise(q2*.73),blend); lace*=smoothstep(.22,.58,bubbles); lace=lerp(.62,.35+.65*lace,resolvedFoam); return saturate((body*lace+veil)*Coverage*(1-shelf*.35));"
+foam_code += r"""
+float bubbles=lerp(wn.noise(q*.73),wn.noise(q2*.73),blend);
+lace*=smoothstep(.22,.58,bubbles);
+// This material is also used by the existing entrance tunnel. Keep its old
+// wind-cap/coverage behavior; the new source-driven population is basin-only.
+if(Tunnel>.5) {
+    float torn=lerp(wn.fbm(q*float2(.17,.23)),wn.fbm(q2*float2(.17,.23)),blend);
+    float breakup=smoothstep(.43,.64,torn);
+    float cap=smoothstep(.34,.60,lerp(wn.waves(q,T),wn.waves(q2,T),blend))
+        *(1-smoothstep(45000.0,180000.0,length(P-Cam)))
+        *(1-saturate(Enabled)*step(.5,Count));
+    float oldThread=smoothstep(.40,.61,n);
+    float oldBody=1-exp(-(crest*(.30+.70*breakup)+cap*.50*oldThread)*1.6);
+    float oldLace=lerp(.62,.35+.65*lace,resolvedFoam);
+    return saturate(oldBody*oldLace*Coverage*(1-shelf*.35));
+}
+// Unresolved bubbles average to coverage; resolved bubbles retain actual gaps.
+// The former .35 minimum painted a translucent white film between every bubble.
+lace=lerp(.36,lace,resolvedFoam);
+float freshCoverage=front*lerp(.65,1.0,lace);
+float agedCoverage=loose*lace;
+// Union of two coverage populations, rather than exponential whitening of the
+// source's smooth tails. Preserve the existing under-hull displacement guard.
+return saturate((1-(1-freshCoverage)*(1-agedCoverage))*Coverage*(1-shelf*.35));
+"""
 foam = custom(water, foam_code, FLOAT, foam_inputs)
 source_foam=foam
 if fft_foam:
@@ -422,7 +432,8 @@ float3 foamColor=lerp(float3(0.74,0.81,0.80),float3(0.64,0.73,0.79),saturate(VC.
 return lerp(body,foamColor,Foam);
 """, FLOAT3, {"VC":vc,"Foam":foam}, 100)
 output(color, unreal.MaterialProperty.MP_BASE_COLOR)
-roughness = custom(water, "return lerp(0.30,0.78,sqrt(saturate(Foam)));", FLOAT, {"Foam":foam}, 200)
+# Mix water/foam roughness by covered area; weak wake fringes stay liquid.
+roughness = custom(water, "float f=saturate(Foam); return lerp(sqrt(lerp(0.30*0.30,0.78*0.78,f)),lerp(.30,.78,sqrt(f)),saturate(Tunnel));", FLOAT, {"Foam":foam,"Tunnel":tunnel_flow}, 200)
 if fft_surface:
     roughness=custom(water,r"""
 float distanceM=length(P-Cam)*0.01;
@@ -432,7 +443,7 @@ return lerp(Fallback,max(Fallback,filtered),saturate(Enabled)*step(0.5,Count));
 output(roughness, unreal.MaterialProperty.MP_ROUGHNESS)
 specular=scalar(water,"Specular",0.18)
 output(specular,unreal.MaterialProperty.MP_SPECULAR)
-opacity = custom(water,"return lerp(lerp(0.20,1.0,saturate(Foam*2.0)),1.0,saturate(Tunnel));",FLOAT,{"Foam":foam,"Tunnel":tunnel_flow},300)
+opacity = custom(water,"return lerp(lerp(0.20,1.0,saturate(Foam)),1.0,saturate(Tunnel));",FLOAT,{"Foam":foam,"Tunnel":tunnel_flow},300)
 output(opacity,unreal.MaterialProperty.MP_OPACITY)
 
 normal_inputs = dict(base_inputs, Strength=normal_strength, Foam=foam, Amp=wave_height, Cam=camera)
