@@ -49,12 +49,12 @@ def source_info(seed):
     metadata = json.loads(str(seed.get("metadata_json", "{}")))
     provenance = metadata.get("provenance", {})
     kind = metadata.get("source_kind", provenance.get("source_kind", "measured_uppermost_xy"))
-    clean = kind == "clean_macro_landform"
+    clean = kind in ("clean_macro_landform", "blender_ridged_macro_landform")
     reference = provenance.get("geometry_reference") or provenance.get("source_head", "unspecified")[:8]
     if clean:
-        reference=f"boundary {reference}; clean seed {metadata.get('settings', {}).get('seed', 'unspecified')}"
+        reference=f"boundary {reference}; seed {metadata.get('settings', {}).get('seed', metadata.get('seed', 'unspecified'))}"
     return dict(kind=kind, clean=clean, reference=reference,
-                title="CLEAN MACRO LANDFORM" if clean else "MEASURED CLIFF HEIGHTFIELD",
+                title=("RIDGED XY LANDFORM" if kind=="blender_ridged_macro_landform" else "CLEAN MACRO LANDFORM") if clean else "MEASURED CLIFF HEIGHTFIELD",
                 limitation=("Authored heightfield; no overhangs. Physical 1:1 scale; no surface-detail shader." if clean else
                             "Uppermost XY projection; lower overhang surfaces omitted. Physical 1:1 scale."))
 
