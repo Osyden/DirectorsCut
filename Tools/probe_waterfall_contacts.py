@@ -174,7 +174,13 @@ def main():
         code += block(terrain, "float ADCMaelstrom::" + name)
     code += block(terrain, "FVector ADCMaelstrom::CliffSurfacePoint")
     code += block(whitewater, "bool ADCMaelstrom::SampleReceivingWater")
-    code += block(whitewater, "FVector ADCMaelstrom::SampleWaterfallCorePoint")
+    if "FVector ADCMaelstrom::SampleAttachedWaterfallPoint" in whitewater:
+        # Default/off-state contact contract. The optional detached reach has a
+        # separate production-helper probe and never changes the protected toe.
+        code += block(whitewater, "FVector ADCMaelstrom::SampleAttachedWaterfallPoint").replace(
+            "ADCMaelstrom::SampleAttachedWaterfallPoint", "ADCMaelstrom::SampleWaterfallCorePoint", 1)
+    else:
+        code += block(whitewater, "FVector ADCMaelstrom::SampleWaterfallCorePoint")
     code += block(read("Source/DirectorsCut/DCMaelstromBreakers.cpp"), "float ADCMaelstrom::BreakerHeight")
     code += MAIN
     out = root / "Saved/GeometryProbe/WaterfallContacts"

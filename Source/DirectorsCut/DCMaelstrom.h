@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "DCMaelstromWaterBridge.h"
+#include "DCWaterfallTrajectory.h"
 #include "DCMaelstrom.generated.h"
 
 class UProceduralMeshComponent;
@@ -80,7 +81,10 @@ private:
 	struct FWaterFeed { FVector Foot; float Width; float Seed; TArray<FVector2D> Trail; FVector Lip = FVector::ZeroVector; int32 SourceIndex = INDEX_NONE;
 		float ContactV=0.f; FVector ContactPoint=FVector::ZeroVector; };
 	bool SampleReceivingWater(const FVector2D& Point,float& OutMeanHeight) const;
+	FVector SampleAttachedWaterfallPoint(float Angle,float V,float Across=0.f) const;
 	FVector SampleWaterfallCorePoint(float Angle,float V,float Across=0.f) const;
+	TArray<DCWaterfallTrajectory::FSegment> DetachedFallSegments;
+	int32 DetachedFallSource=INDEX_NONE;
 	TArray<FWaterFeed> WaterFeeds;
 	UPROPERTY() TObjectPtr<UProceduralMeshComponent> Whitewater;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> WhitewaterMID;

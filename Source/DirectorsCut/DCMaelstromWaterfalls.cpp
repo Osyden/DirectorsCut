@@ -120,6 +120,23 @@ void ADCMaelstrom::UpdateProceduralFalls()
                 Profile->SetStringField(TEXT("units"), TEXT("centimeters"));
                 Profile->SetNumberField(TEXT("feed_index"), Feed.SourceIndex);
                 Profile->SetNumberField(TEXT("feed_array_index"), FeedIndex);
+                const bool bDetached=Feed.SourceIndex==DetachedFallSource && !DetachedFallSegments.IsEmpty();
+                Profile->SetStringField(TEXT("trajectory_model"),bDetached ? TEXT("cliff_contact_with_ballistic_gaps_v1") : TEXT("attached_cliff_contact_v1"));
+                TArray<TSharedPtr<FJsonValue>> Gaps;
+                if(bDetached) for(const DCWaterfallTrajectory::FSegment& Segment:DetachedFallSegments)
+                {
+                    TSharedRef<FJsonObject> Gap=MakeShared<FJsonObject>();
+                    Gap->SetNumberField(TEXT("start_v"),Segment.StartV);
+                    Gap->SetNumberField(TEXT("end_v"),Segment.EndV);
+                    Gap->SetNumberField(TEXT("initial_down_cm_s"),Segment.InitialDown);
+                    Gap->SetNumberField(TEXT("gravity_cm_s2"),DCWaterfallTrajectory::Gravity);
+                    Gap->SetNumberField(TEXT("centre_duration_s"),Segment.Duration);
+                    Gap->SetNumberField(TEXT("peak_clearance_cm"),Segment.PeakSeparation);
+                    Gap->SetArrayField(TEXT("launch_local_cm"),FallVectorJson(LocalFrame.InverseTransformPosition(SampleWaterfallCorePoint(Angle,Segment.StartV))));
+                    Gap->SetArrayField(TEXT("landing_local_cm"),FallVectorJson(LocalFrame.InverseTransformPosition(SampleWaterfallCorePoint(Angle,Segment.EndV))));
+                    Gaps.Add(MakeShared<FJsonValueObject>(Gap));
+                }
+                Profile->SetArrayField(TEXT("ballistic_gaps"),Gaps);
                 Profile->SetNumberField(TEXT("contact_v"), Feed.ContactV);
                 Profile->SetArrayField(TEXT("contact_core_local_cm"), FallVectorJson(LocalFrame.InverseTransformPosition(Feed.ContactPoint)));
                 Profile->SetNumberField(TEXT("source_half_width_cm"), Feed.Width);
@@ -181,7 +198,7 @@ void ADCMaelstrom::UpdateProceduralFalls()
                 Profile->SetArrayField(TEXT("cross_sections_local_cm"), CrossSections);
                 Profile->SetArrayField(TEXT("cross_contact_v"), TrackContactV);
                 Profile->SetArrayField(TEXT("cross_contact_core_local_cm"), TrackContacts);
-                Profile->SetStringField(TEXT("surface_contract"), TEXT("shared rendered-triangle core sampler; ends at first valid receiving-water ContactV; no upward contact blend"));
+                Profile->SetStringField(TEXT("surface_contract"), TEXT("shared rendered-triangle and optional ballistic-gap core sampler; ends at first valid receiving-water ContactV; no upward contact blend"));
                 // Surface samples, not a horizontal impact plane: the local
                 // receiving water slopes into the spiral and changes across it.
                 constexpr int32 GridCount = 49;
@@ -229,6 +246,13 @@ void ADCMaelstrom::UpdateProceduralFalls()
             }
         }
         if (!bRenderFalls) { return; }
+        if(Feed.SourceIndex==DetachedFallSource && !DetachedFallSegments.IsEmpty())
+        {
+            // Phase1 changes the path only. Previously fitted volume assets
+            // would coat bypassed rock and must not masquerade as a fresh fit.
+            UE_LOG(LogTemp,Warning,TEXT("DC_PROCEDURAL_FALL detached source=%d skips old attached-path cache; export and regenerate a trajectory-aware cache after geometry acceptance"),Feed.SourceIndex);
+            return;
+        }
         if (IConsoleVariable* Range = IConsoleManager::Get().FindConsoleVariable(TEXT("r.HeterogeneousVolumes.MaxTraceDistance")))
         {
             // The default 300m trace range omits physically sized falls across

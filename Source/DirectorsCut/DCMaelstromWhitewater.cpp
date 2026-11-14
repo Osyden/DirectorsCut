@@ -4,6 +4,8 @@
 #include "ProceduralMeshComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "KismetProceduralMeshLibrary.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 
 namespace
 {
@@ -47,7 +49,7 @@ bool ADCMaelstrom::SampleReceivingWater(const FVector2D& Point,float& OutMeanHei
     return true;
 }
 
-FVector ADCMaelstrom::SampleWaterfallCorePoint(float Angle,float V,float Across) const
+FVector ADCMaelstrom::SampleAttachedWaterfallPoint(float Angle,float V,float Across) const
 {
     const FProcMeshSection* Section=Cliffs ? Cliffs->GetProcMeshSection(0) : nullptr;
     if(!Section || Section->ProcVertexBuffer.Num()!=(DCCliffGenerator::MeshSectors+1)*(DCCliffGenerator::MeshRows+1))
@@ -58,6 +60,19 @@ FVector ADCMaelstrom::SampleWaterfallCorePoint(float Angle,float V,float Across)
     const float SampleAngle=Angle+Across/FMath::Max(Center.Size2D(),1.0);
     return DCCliffGenerator::SampleRenderedSurface(SampleAngle,V,VertexAt)
         +DCCliffGenerator::WaterContactOffset(SampleAngle,V);
+}
+
+FVector ADCMaelstrom::SampleWaterfallCorePoint(float Angle,float V,float Across) const
+{
+    if(DetachedFallSource!=INDEX_NONE && FMath::Abs(FMath::FindDeltaAngleRadians(Angle,WaterfallAngle(DetachedFallSource)))<.00001f)
+    {
+        if(const DCWaterfallTrajectory::FSegment* Segment=DCWaterfallTrajectory::Find(DetachedFallSegments,V))
+        {
+            return DCWaterfallTrajectory::Sample(*Segment,
+                [&](float Parameter,float Side){return SampleAttachedWaterfallPoint(Angle,Parameter,Side);},V,Across);
+        }
+    }
+    return SampleAttachedWaterfallPoint(Angle,V,Across);
 }
 
 void ADCMaelstrom::BuildWhitewater()
@@ -72,6 +87,29 @@ void ADCMaelstrom::BuildWhitewater()
     const auto CliffVertex=[&](int32 Side,int32 Row)
     { return CliffSection->ProcVertexBuffer[Row*(CliffSectors+1)+Side].Position; };
     const auto ReceivingWater=[this](const FVector2D& P,float& H) { return SampleReceivingWater(P,H); };
+    DetachedFallSegments.Reset(); DetachedFallSource=INDEX_NONE;
+    if(FParse::Param(FCommandLine::Get(),TEXT("DCDetachedFalls")))
+    {
+        int32 Requested=8;
+        FParse::Value(FCommandLine::Get(),TEXT("DCDetachedFallFeed="),Requested);
+        if(Requested>=0 && Requested<WaterfallCount && WaterfallWidth(Requested)>0.f)
+        {
+            const float A=WaterfallAngle(Requested);
+            const auto Surface=[&](float Parameter,float Side){return SampleAttachedWaterfallPoint(A,Parameter,Side);};
+            const auto Contact=DCCliffGenerator::FirstWaterContact([&](float T){return Surface(.84f*(1.f-T),0.f);},ReceivingWater);
+            if(Contact.bFound)
+            {
+                DetachedFallSource=Requested;
+                DetachedFallSegments=DCWaterfallTrajectory::Build(Surface,ReceivingWater,WaterfallWidth(Requested),Contact.WaterHeight);
+                for(const DCWaterfallTrajectory::FSegment& Segment:DetachedFallSegments)
+                {
+                    UE_LOG(LogTemp,Display,TEXT("DC_DETACHED_FALL source=%d V=%.6f..%.6f duration=%.3fs down=%.2fm/s peak_gap=%.2fm min_clearance=%.3fcm"),
+                        Requested,Segment.StartV,Segment.EndV,Segment.Duration,Segment.InitialDown*.01f,Segment.PeakSeparation*.01f,Segment.MinClearance);
+                }
+                UE_LOG(LogTemp,Display,TEXT("DC_DETACHED_FALL source=%d accepted=%d; protected toe and first receiving-water contact unchanged"),Requested,DetachedFallSegments.Num());
+            }
+        }
+    }
     float MinimumCoreClearance=MAX_flt;
     // Narrow, unequal tributaries enter at distinct points along the course.
     // Their width remains metres even where the fall is hundreds of metres tall.
@@ -169,8 +207,7 @@ void ADCMaelstrom::BuildWhitewater()
             {
                 const float SurfaceV=.84f*(1.f-static_cast<float>(Step)/PathSteps);
                 const FStreamSection Stream=StreamSection(SurfaceV);
-                FVector P=DCCliffGenerator::SampleRenderedSurface(Stream.Angle,SurfaceV,CliffVertex)
-                    +DCCliffGenerator::WaterContactOffset(Stream.Angle,SurfaceV);
+                const FVector P=SampleWaterfallCorePoint(Angle,SurfaceV,Stream.Bend);
                 Distances.Add(Step ? Distances.Last()+FVector::Dist(P,Previous) : 0.f);
                 Previous=P;
             }
@@ -228,14 +265,62 @@ void ADCMaelstrom::BuildWhitewater()
                     // Discard everything beyond first contact, including any
                     // later upward curl or re-emergence of the underlying rock.
                     ClipCorePolygon(Polygon,[&](const FVector2D& P){return static_cast<float>(P.Y)-ContactVAt(P);});
-                    for(int32 Corner=1;Corner+1<Polygon.Num();++Corner)
-                    { AddTriangle(Polygon[0],Polygon[Corner],Polygon[Corner+1]); }
+                    // Remove attached water exactly where the detached core
+                    // replaces it. Leaving the old strip creates a double fall.
+                    TArray<FCorePolygon> Remaining; Remaining.Add(MoveTemp(Polygon));
+                    if(Feed==DetachedFallSource) for(const DCWaterfallTrajectory::FSegment& Segment:DetachedFallSegments)
+                    {
+                        TArray<FCorePolygon> Split;
+                        for(const FCorePolygon& Piece:Remaining)
+                        {
+                            FCorePolygon Above=Piece,Below=Piece;
+                            ClipCorePolygon(Above,[&](const FVector2D& P){return static_cast<float>(P.Y)-Segment.StartV;});
+                            ClipCorePolygon(Below,[&](const FVector2D& P){return Segment.EndV-static_cast<float>(P.Y);});
+                            if(Above.Num()>=3) { Split.Add(MoveTemp(Above)); }
+                            if(Below.Num()>=3) { Split.Add(MoveTemp(Below)); }
+                        }
+                        Remaining=MoveTemp(Split);
+                    }
+                    for(const FCorePolygon& Piece:Remaining) for(int32 Corner=1;Corner+1<Piece.Num();++Corner)
+                    { AddTriangle(Piece[0],Piece[Corner],Piece[Corner+1]); }
+                }
+            }
+            if(Feed==DetachedFallSource) for(const DCWaterfallTrajectory::FSegment& Segment:DetachedFallSegments)
+            {
+                constexpr int32 Rows=64,Columns=12;
+                const auto Surface=[&](float Parameter,float Side){return SampleAttachedWaterfallPoint(Angle,Parameter,Side);};
+                const FVector Launch=Surface(Segment.StartV,0.f);
+                const int32 First=V.Num();
+                for(int32 Row=0;Row<=Rows;++Row)
+                {
+                    const float Time=Segment.Duration*Row/Rows;
+                    const float Z=Launch.Z-Segment.InitialDown*Time-.5f*DCWaterfallTrajectory::Gravity*Time*Time;
+                    const float Parameter=Row==0 ? Segment.StartV : Row==Rows ? Segment.EndV
+                        : DCWaterfallTrajectory::ParameterAtHeight(Surface,Z,Segment.EndV,Segment.StartV);
+                    const FStreamSection S=StreamSection(Parameter);
+                    const float Path=S.U*PathSteps;
+                    const int32 Step=FMath::Min(FMath::FloorToInt(Path),PathSteps-1);
+                    const float Distance=FMath::Lerp(Distances[Step],Distances[Step+1],Path-Step);
+                    for(int32 Column=0;Column<=Columns;++Column)
+                    {
+                        const float Side=2.f*Column/Columns-1.f;
+                        const FVector P=SampleWaterfallCorePoint(Angle,Parameter,S.Bend+Side*S.Width);
+                        V.Add(P); UV.Add(FVector2D(static_cast<float>(Column)/Columns,Distance*.01f));
+                        N.Add(FVector::UpVector); Tangents.Add(FProcMeshTangent(FVector(Across,0.f),false));
+                        C.Add(FLinearColor(S.Width/10000.f,BranchSeed,S.U,1.f).ToFColor(false));
+                    }
+                }
+                for(int32 Row=0;Row<Rows;++Row) for(int32 Column=0;Column<Columns;++Column)
+                {
+                    const int32 A=First+Row*(Columns+1)+Column,B=A+Columns+1;
+                    I.Append({A,B,A+1,A+1,B,B+1});
                 }
             }
         }
     }
     ensureMsgf(MinimumCoreClearance>0.f,TEXT("Waterfall core enters the rendered cliff"));
     UE_LOG(LogTemp,Display,TEXT("DC_WHITEWATER_CONTACT clipped %d triangles to rendered cliff; minimum face clearance %.2fcm"),I.Num()/3,MinimumCoreClearance);
+    UKismetProceduralMeshLibrary::CalculateTangentsForMesh(V,I,UV,N,Tangents);
     Whitewater->CreateMeshSection(0,V,I,N,UV,C,Tangents,false);
     if(UMaterialInterface* M=LoadObject<UMaterialInterface>(nullptr,TEXT("/Game/DC/Maelstrom/M_MaelstromWhitewater.M_MaelstromWhitewater")))
     {
@@ -245,6 +330,9 @@ void ADCMaelstrom::BuildWhitewater()
     V.Reset(); N.Reset(); UV.Reset(); C.Reset(); I.Reset(); Tangents.Reset();
     for(const FWaterFeed& Feed:WaterFeeds)
     {
+        // The hero trial gets compact gravity splash sheets below. Do not
+        // layer the previous broad mist fans over the same receiving contact.
+        if(Feed.SourceIndex==DetachedFallSource && !DetachedFallSegments.IsEmpty()) { continue; }
         const FVector2D Direction=CurrentAt(FVector2D(Feed.Foot),Radius).GetSafeNormal();
         const FVector2D Across(-Direction.Y,Direction.X);
         for(int32 Fan=0;Fan<17;++Fan)
@@ -280,6 +368,78 @@ void ADCMaelstrom::BuildWhitewater()
     Whitewater->CreateMeshSection(1,V,I,N,UV,C,Tangents,false);
     if(UMaterialInterface* M=LoadObject<UMaterialInterface>(nullptr,TEXT("/Game/DC/Maelstrom/M_MaelstromImpactMist.M_MaelstromImpactMist")))
     { Whitewater->SetMaterial(1,M); }
+    V.Reset(); N.Reset(); UV.Reset(); C.Reset(); I.Reset(); Tangents.Reset();
+    for(const FWaterFeed& Feed:WaterFeeds)
+    {
+        if(Feed.SourceIndex!=DetachedFallSource || DetachedFallSegments.IsEmpty()) { continue; }
+        FRandomStream SplashRandom(51971+Feed.SourceIndex);
+        const FVector2D Current=CurrentAt(FVector2D(Feed.Foot),Radius).GetSafeNormal();
+        const FVector2D Lateral(-Current.Y,Current.X);
+        for(int32 Jet=0;Jet<27;++Jet)
+        {
+            const FVector2D StartXY=FVector2D(Feed.Foot)+Lateral*SplashRandom.FRandRange(-Feed.Width*.65f,Feed.Width*.65f)
+                +Current*SplashRandom.FRandRange(30.f,240.f);
+            float StartZ=0.f;
+            if(!SampleReceivingWater(StartXY,StartZ)) { continue; }
+            const FVector Start(StartXY,StartZ+15.f);
+            const FVector2D Horizontal=Current*SplashRandom.FRandRange(350.f,850.f)+Lateral*SplashRandom.FRandRange(-380.f,380.f);
+            const FVector Velocity(Horizontal,SplashRandom.FRandRange(650.f,1250.f));
+            const auto At=[&](float T){return Start+Velocity*T-FVector(0,0,.5f*DCWaterfallTrajectory::Gravity*T*T);};
+            float EndTime=0.f,PreviousTime=0.f;
+            for(int32 Step=1;Step<=100;++Step)
+            {
+                const float T=Step*.04f; const FVector P=At(T); float H=0.f;
+                if(!SampleReceivingWater(FVector2D(P),H)) { break; }
+                if(P.Z<=H)
+                {
+                    float Low=PreviousTime,High=T;
+                    for(int32 Iter=0;Iter<18;++Iter)
+                    {
+                        const float Mid=(Low+High)*.5f; const FVector Q=At(Mid); float Mean=0.f;
+                        if(SampleReceivingWater(FVector2D(Q),Mean) && Q.Z<=Mean) { High=Mid; } else { Low=Mid; }
+                    }
+                    EndTime=High; break;
+                }
+                PreviousTime=T;
+            }
+            if(EndTime<.1f) { continue; }
+            constexpr int32 Rows=32,Columns=4;
+            const int32 First=V.Num();
+            const FVector2D AcrossJet(-Horizontal.Y,Horizontal.X);
+            const FVector WidthDirection(AcrossJet.GetSafeNormal(),0.f);
+            const float Width=SplashRandom.FRandRange(35.f,95.f),JetSeed=SplashRandom.FRand();
+            float Distance=0.f; FVector Previous=Start;
+            TArray<bool,TInlineAllocator<(Rows+1)*(Columns+1)>> Covered;
+            for(int32 Row=0;Row<=Rows;++Row)
+            {
+                const float U=static_cast<float>(Row)/Rows;
+                const FVector Center=At(EndTime*U);
+                Distance+=FVector::Dist(Center,Previous); Previous=Center;
+                const float LocalWidth=Width*(.4f+.6f*FMath::Sin(U*UE_PI));
+                for(int32 Column=0;Column<=Columns;++Column)
+                {
+                    const float X=static_cast<float>(Column)/Columns;
+                    const FVector P=Center+WidthDirection*((X*2.f-1.f)*LocalWidth);
+                    float H=0.f; Covered.Add(SampleReceivingWater(FVector2D(P),H) && P.Z>=H-.1f);
+                    V.Add(P); UV.Add(FVector2D(X,Distance*.01f));
+                    C.Add(FLinearColor(LocalWidth/10000.f,JetSeed,U,1.f).ToFColor(false));
+                }
+            }
+            for(int32 Row=0;Row<Rows;++Row) for(int32 Column=0;Column<Columns;++Column)
+            {
+                const int32 A=Row*(Columns+1)+Column,B=A+Columns+1;
+                if(Covered[A] && Covered[B] && Covered[A+1] && Covered[B+1])
+                { I.Append({First+A,First+B,First+A+1,First+A+1,First+B,First+B+1}); }
+            }
+        }
+    }
+    if(!I.IsEmpty())
+    {
+        UKismetProceduralMeshLibrary::CalculateTangentsForMesh(V,I,UV,N,Tangents);
+        Whitewater->CreateMeshSection(2,V,I,N,UV,C,Tangents,false);
+        Whitewater->SetMaterial(2,WhitewaterMID);
+        UE_LOG(LogTemp,Display,TEXT("DC_DETACHED_SPLASH source=%d gravity-driven receiving sheets triangles=%d"),DetachedFallSource,I.Num()/3);
+    }
     UE_LOG(LogTemp,Display,TEXT("DC_WHITEWATER %d surface-connected feeds and downstream trails"),WaterFeeds.Num());
 }
 
