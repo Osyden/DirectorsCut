@@ -87,6 +87,12 @@ def quantized_srgb_decode(rgba):
             for v in byte_values[:3]] + byte_values[3:]
 
 
+def build_byte_color(rgba):
+    """StaticMeshBuilder ToFColor(true): return normalized runtime byte colors."""
+    encoded = [v*12.92 if v <= .0031308 else 1.055*v**(1./2.4)-.055 for v in rgba[:3]] + list(rgba[3:])
+    return [math.floor(255*max(0., min(1., value))+.5)/255. for value in encoded]
+
+
 def key_cm(point):
     # 0.1cm buckets; source XY spacing is200cm. Full residual is checked later.
     return tuple(round(value*10) for value in point)
@@ -227,6 +233,7 @@ def unreal_main():
         legacy_max = [0.]*4
         raw_sum = [0.]*4
         legacy_sum = [0.]*4
+        build_max = [0.]*4
         count = 0
         for triangle_id, indices in enumerate(triangles):
             _, c0, c1, c2, valid = query.get_triangle_vertex_colors(dynamic, triangle_id)
@@ -234,6 +241,7 @@ def unreal_main():
                 raise RuntimeError("Triangle has no color attribute: " + str(triangle_id))
             for vertex_id, color in zip(indices, (c0, c1, c2)):
                 source_id = mapping[vertex_id]
+                build_color = build_byte_color((color.r, color.g, color.b, color.a))
                 for channel, value in enumerate((color.r, color.g, color.b, color.a)):
                     raw_error = abs(value-source["rgba"][source_id][channel])
                     legacy_error = abs(value-expected_legacy[source_id][channel])
@@ -241,6 +249,7 @@ def unreal_main():
                     legacy_max[channel] = max(legacy_max[channel], legacy_error)
                     raw_sum[channel] += raw_error
                     legacy_sum[channel] += legacy_error
+                    build_max[channel] = max(build_max[channel], abs(build_color[channel]-source["rgba"][source_id][channel]))
                 count += 1
         report["masks"] = {"corners_checked": count, "channels": "RGBA", "averaged": False,
                            "raw_numeric_max_error": raw_max, "raw_numeric_mean_error": [v/count for v in raw_sum],
@@ -248,11 +257,16 @@ def unreal_main():
                            "legacy_truncated_srgb_decode_mean_error": [v/count for v in legacy_sum],
                            "numeric_fidelity_within_8bit": max(raw_max) <= 1./255.+1.e-6,
                            "matches_legacy_fbx_transform": max(legacy_max) <= 1.e-6,
+                           "predicted_build_byte_max_error": build_max,
+                           "predicted_build_fidelity_within_8bit": max(build_max) <= 1./255.+1.e-6,
+                           "storage_note": "FBX importer truncates numeric channels to bytes then sRGB-decodes RGB for source storage. StaticMeshBuilder ToFColor(true) re-encodes; Nanite reads normalized bytes without another gamma conversion. Source RGB raw difference alone is not a runtime mask bug.",
+                           "local_engine_evidence": ["FbxStaticMeshImport.cpp:944-952", "StaticMeshBuilder.cpp:1708", "NaniteBuilder/Cluster.cpp:90", "NaniteAttributeDecode.ush:848", "NaniteVertexFactory.ush:841"],
                            "limitation": "Source attributes only; Nanite runtime color quantization and material sampling not tested."}
         report["audit_completed"] = True
-        report["mask_fidelity_passed"] = report["masks"]["numeric_fidelity_within_8bit"]
-        if not report["mask_fidelity_passed"]:
-            report["finding"] = "Numeric erosion masks changed beyond byte quantization; do not use original threshold calibration."
+        report["source_mask_contract_passed"] = report["masks"]["matches_legacy_fbx_transform"]
+        report["predicted_build_mask_fidelity_passed"] = report["masks"]["predicted_build_fidelity_within_8bit"]
+        if not report["source_mask_contract_passed"] or not report["predicted_build_mask_fidelity_passed"]:
+            report["finding"] = "Source mask contract differs from the traced legacy import/build path; inspect before material calibration."
     except Exception as exc:
         report["error"] = type(exc).__name__ + ": " + str(exc)
         raise
