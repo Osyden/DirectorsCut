@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 03:41 Claude: twentieth build packaged and run: `2026-11-14_0334_0739c01_over-the-lip`
+
+- `Builds/2026-11-14_0334_0739c01_over-the-lip/Windows/DirectorsCut.exe`. Run from the exe at 1600x900 without sound: the bank at 44 s, wall and portal at 56, a flash in the tunnel at 63.5, the city at 120 (95 to 113 fps); over the lip at normal speed from 262 s, frames at 281 to 310 (74 to 108 fps); the rest of the maelstrom at 3x with the bot captain: both spawnlings sunk, 8 arms broken, beaten on the clock at 160.0 s, exit at 450.00, ending card.
+- This is the build to play. It has everything logged so far.
+
 ## 14 Nov 03:34 Claude: over the lip: she hangs three seconds, then the bow drops
 
 - `DCMaelstrom::UpdateStage`: the descent now starts at 12 s after the breach (was 9), so for three seconds after the tunnel is gone she rides level on the lip. Then the whole bowl tips up ahead of her by 6 degrees between 12 and 17 s and settles back by 32 s (`-DCLipTip=<degrees>`); from the deck the far rim climbs and the bowl fills the lower half of the view, which is the bow dropping. The wider field of view follows the same seconds.
