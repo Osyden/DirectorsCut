@@ -1,0 +1,11 @@
+[2026.11.14-20.35.18:094][ 28]LogDC: Display: CANNON VERIFY PASS: two crew have distinct guns on one side
+[2026.11.14-20.35.18:094][ 28]LogDC: Display: CANNON VERIFY PASS: gun reservation survives repair duty
+[2026.11.14-20.35.18:094][ 28]LogDC: Display: CANNON VERIFY PASS: crew never take the player gun
+[2026.11.14-20.35.18:094][ 28]LogDC: Display: CANNON VERIFY PASS: player port gun fires
+[2026.11.14-20.35.18:094][ 28]LogDC: Display: CANNON VERIFY PASS: player starboard gun fires independently
+[2026.11.14-20.35.18:094][ 28]LogDC: Display: CANNON VERIFY PASS: one ball queued per trigger
+[2026.11.14-20.35.18:094][ 28]LogDC: Display: CANNON VERIFY PASS: same gun cannot bypass reload
+[2026.11.14-20.35.18:094][ 28]LogDC: Display: CANNON VERIFY PASS: player reload does not lock crew guns
+[2026.11.14-20.35.18:094][ 28]LogDC: Display: CANNON VERIFY PASS: player cannot fire an NPC gun
+[2026.11.14-20.35.28:924][544]LogDC: Display: CANNON VERIFY PASS: NPCs walk to their guns and damage a real collision target
+[2026.11.14-20.35.28:924][544]LogDC: Display: CANNON VERIFICATION PASSED

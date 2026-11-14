@@ -224,9 +224,23 @@ bool ADCGunnery::ResolveAim(EDCSide Side, const FVector& Origin, const FVector& 
 		OutTarget = Origin + Direction * Distance;
 	}
 	FVector HostilePoint;
-	if (TraceHostile(ADCTreadmill::Get(this), Origin, OutTarget, HostilePoint) != INDEX_NONE)
+	const ADCTreadmill* Treadmill = ADCTreadmill::Get(this);
+	const int32 HostileIndex = TraceHostile(Treadmill, Origin, OutTarget, HostilePoint);
+	if (HostileIndex != INDEX_NONE)
 	{
 		OutTarget = HostilePoint;
+		// Early encounters reward keeping the sight on the visible creature. Its
+		// approach is led here so a good aim does not miss solely during ball flight.
+		const AActor* Hostile = Treadmill->GetHostileActor(HostileIndex);
+		if (Hostile && Hostile->ActorHasTag(TEXT("DCEarlyThreat")))
+		{
+			const FVector Point = Hostile->GetActorLocation();
+			const FVector Velocity = Hostile->GetVelocity().GetClampedToMaxSize(3500.f);
+			float Flight = FMath::Clamp(FVector::Distance(GetMuzzle(GetPlayerGun(Side)), Point) / ShotSpeed, .5f, 3.f);
+			OutTarget = Point + Velocity * Flight;
+			Flight = FMath::Clamp(FVector::Distance(GetMuzzle(GetPlayerGun(Side)), OutTarget) / ShotSpeed, .5f, 3.f);
+			OutTarget = Point + Velocity * Flight;
+		}
 		Distance = FVector::Distance(Origin, OutTarget);
 		bSurface = true;
 	}
@@ -274,25 +288,35 @@ bool ADCGunnery::CanAimGun(int32 Gun, const FVector& Target) const
 	return Delta.SizeSquared() <= FMath::Square(21000.f) && Sign * Local.Y > 100.f
 		&& FMath::Abs(Local.X) <= Sign * Local.Y * 1.9f;
 }
-bool ADCGunnery::FindCrewTarget(int32 Gun, FVector& OutTarget) const
+bool ADCGunnery::HasClearShot(int32 Gun, const AActor* Target) const
+{
+	if (!IsValid(Target) || Target->IsHidden() || !CanAimGun(Gun, Target->GetActorLocation())) { return false; }
+	FCollisionQueryParams Query(SCENE_QUERY_STAT(DCCrewGunSight), false, this);
+	if (GunShip.IsValid()) { Query.AddIgnoredActor(GunShip.Get()); }
+	IgnoreInactiveWater(GetWorld(), Query);
+	FHitResult Hit;
+	return !GetWorld()->LineTraceSingleByChannel(Hit, GetMuzzle(Gun), Target->GetActorLocation(), ECC_Visibility, Query)
+		|| Hit.GetActor() == Target;
+}
+
+bool ADCGunnery::FindCrewTarget(int32 Gun, FVector& OutTarget, bool bLeadTarget) const
 {
 	const ADCTreadmill* Treadmill = ADCTreadmill::Get(this);
 	if (!Treadmill || !Guns.IsValidIndex(Gun)) { return false; }
 	float Best = TNumericLimits<float>::Max();
 	bool bFound = false;
-	FCollisionQueryParams Query(SCENE_QUERY_STAT(DCCrewGunSight), false, this);
-	if (GunShip.IsValid()) { Query.AddIgnoredActor(GunShip.Get()); }
-	IgnoreInactiveWater(GetWorld(), Query);
 	for (int32 I = 0; I < Treadmill->NumObjects(); ++I)
 	{
 		AActor* Target = Treadmill->GetHostileActor(I);
-		if (!Target || Target->IsHidden() || !CanAimGun(Gun, Target->GetActorLocation())) { continue; }
+		if (!HasClearShot(Gun, Target)) { continue; }
 		const FVector Point = Target->GetActorLocation();
-		FHitResult Hit;
-		if (GetWorld()->LineTraceSingleByChannel(Hit, GetMuzzle(Gun), Point, ECC_Visibility, Query)
-			&& Hit.GetActor() != Target) { continue; }
 		const float Priority = FVector::Distance(GetMuzzle(Gun), Point) - (Treadmill->IsUrgentHostile(I) ? 40000.f : 0.f);
-		if (Priority < Best) { Best = Priority; OutTarget = Point; bFound = true; }
+		// Moving bank creatures must be led; aiming at their previous position made
+		// otherwise valid broadside opportunities miss while they approached.
+		const FVector Velocity = Target->GetVelocity().GetClampedToMaxSize(3500.f);
+		const float Flight = FVector::Distance(GetMuzzle(Gun), Point) / FMath::Max(ShotSpeed, 1.f);
+		const FVector LedPoint = bLeadTarget ? Point + Velocity * FMath::Clamp(Flight, 0.f, 3.f) : Point;
+		if (Priority < Best && CanAimGun(Gun, LedPoint)) { Best = Priority; OutTarget = LedPoint; bFound = true; }
 	}
 	return bFound;
 }

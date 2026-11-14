@@ -13,6 +13,7 @@
 #include "DCFogFront.h"
 #include "DCWaveCurl.h"
 #include "DCTroubles.h"
+#include "DCEarlyEncounters.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -134,6 +135,12 @@ void ADCHUD::DrawHUD()
 		}
 	}
 
+	if (ADCEarlyEncounters* Encounters = ADCEarlyEncounters::Get(this))
+	{
+		const FString Threat = Encounters->GetThreatText();
+		if (!Threat.IsEmpty()) { Centered(Threat, 72.f * S, 1.15f, Gold, Font); }
+	}
+
 	// Developer line, only with -DCDebug.
 	static const bool bDebug = FParse::Param(FCommandLine::Get(), TEXT("DCDebug"));
 	if (bDebug && D && T)
@@ -251,7 +258,7 @@ void ADCHUD::DrawHUD()
 	// Title card at the start, score card at the end.
 	if (D)
 	{
-		if (D->RideTime < 16.f)
+		if (D->RideTime < 16.f && !FParse::Param(FCommandLine::Get(), TEXT("DCSkipIntro")))
 		{
 			const float A = FMath::Clamp((16.f - D->RideTime) / 3.f, 0.f, 1.f);
 			const FLinearColor G(Gold.R, Gold.G, Gold.B, A), Wh(1.f, 1.f, 1.f, A);
@@ -442,6 +449,7 @@ void ADCGameMode::StartPlay()
 	World->SpawnActor<ADCAudio>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
 	World->SpawnActor<ADCWeatherFX>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
 	World->SpawnActor<ADCWake>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
+	World->SpawnActor<ADCEarlyEncounters>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
 	World->SpawnActor<ADCFogFront>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
 	World->SpawnActor<ADCWaveCurl>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
 	if (!FParse::Param(FCommandLine::Get(), TEXT("DCNoVoice")))
@@ -600,6 +608,8 @@ void ADCGameMode::StartPlay()
 	// Test runs: speed the whole world up evenly so crew, guns and hazards stay in step.
 	float TestDilation = 1.f;
 	if (FParse::Value(FCommandLine::Get(), TEXT("DCTimeScale="), TestDilation)) { UGameplayStatics::SetGlobalTimeDilation(World, TestDilation); }
+	float StartAt = 0.f;
+	if (FParse::Value(FCommandLine::Get(), TEXT("DCStartAt="), StartAt)) { Director->Seek(StartAt); }
 	FString Shots;
 	if (FParse::Value(FCommandLine::Get(), TEXT("DCAutoShots="), Shots, false))
 	{

@@ -79,7 +79,9 @@ void ADCWeatherFX::Tick(float DeltaSeconds)
 	const FDCEnvState& Env = Director->GetEnv();
 	FlashBoost = FMath::Max(0.f, FlashBoost - DeltaSeconds * 4.f);
 
-	TickBowSpray(DeltaSeconds);
+	// ADCWake owns the surface-sampled bow spray. The old fog-card fans can turn
+	// edge-on into white stripes and double the new spray; retain only for comparison.
+	if (FParse::Param(FCommandLine::Get(), TEXT("DCLegacyBowSpray"))) { TickBowSpray(DeltaSeconds); }
 
 	// Splashes on the deck, once the ship is there to be rained on.
 	if (!bSplashesBuilt && Director->RideTime > 1.f) { BuildSplashes(); }

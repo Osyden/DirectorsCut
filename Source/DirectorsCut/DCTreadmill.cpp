@@ -1,6 +1,7 @@
 #include "DCTreadmill.h"
 #include "Components/LocalFogVolumeComponent.h"
 #include "DCFogBank.h"
+#include "DCFogCardFader.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/HeterogeneousVolumeComponent.h"
 #include "Materials/MaterialParameterCollection.h"
@@ -211,7 +212,7 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 	if (bForced) { Steer = ForcedSteer; bSteerForced = true; }
 	// The helm takes a moment to bite and the ship carries her swing after it is eased: she turns, she is not slid sideways.
 	// (In the trough she is given half as much helm again: it is a wide channel and there is a slope to climb.)
-	LaneVelocity = FMath::FInterpTo(LaneVelocity, Steer * LaneSpeed * SteerAuthority * (Director->TroughRise > 1.f ? 1.5f : 1.f), DeltaSeconds, 1.1f);
+	LaneVelocity = FMath::FInterpTo(LaneVelocity, Steer * LaneSpeed * SteerAuthority * (Director->TroughRise > 1.f ? 1.5f : 1.f), DeltaSeconds, 1.65f);
 	// In the trough of the drowned city the sea itself brings her back: she slides down the slope she
 	// has climbed, harder the higher she is, so full helm holds her near the edge and no further, and
 	// with the wheel let go she swings back to the middle. Elsewhere the lane simply ends.
@@ -419,7 +420,7 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 				Obj.Reach = FVector2D(Extent.X, Extent.Y).Size() + FVector2D(Origin - Actor->GetActorLocation()).Size();
 			}
 			// (The faces in the cloud are registered as scenery too; they are kilometres across and not stone.)
-			const bool bNear = Obj.Reach < 90000.f && !Actor->IsA<ADCFogBank>() && FVector2D(Local.X, Local.Y).Size() < Obj.Reach + 20000.f;
+			const bool bNear = !Actor->IsHidden() && Obj.Reach < 90000.f && !Actor->IsA<ADCFogBank>() && FVector2D(Local.X, Local.Y).Size() < Obj.Reach + 20000.f;
 			if (bNear != Obj.bFeelable)
 			{
 				Obj.bFeelable = bNear;
@@ -566,6 +567,11 @@ void ADCTreadmill::AddExternalHostile(AActor* Actor, float Radius, float Health,
 
 float ADCTreadmill::FindClearLane(float Lookahead) const
 {
+	return bHasAvoidance ? AvoidanceLane : ChooseClearLane(Lookahead);
+}
+
+float ADCTreadmill::ChooseClearLane(float Lookahead) const
+{
 	float Best = LaneOffset;
 	float BestCost = TNumericLimits<float>::Max();
 	// In the trough she cannot hold a lane much beyond three quarters of the way to its edge.
@@ -577,13 +583,13 @@ float ADCTreadmill::FindClearLane(float Lookahead) const
 		float Cost = FMath::Abs(Candidate - LaneOffset) * 0.0005f + FMath::Abs(Candidate) * 0.00005f;
 		for (const FDCWorldObject& Obj : Objects)
 		{
-			if (Obj.bHostile || !Obj.bSolid) { continue; }
+			if (Obj.bHostile || !Obj.bSolid || !Obj.Actor.IsValid() || Obj.Actor->IsHidden()) { continue; }
 			if (Obj.Base.X < -ShipHalfLength || Obj.Base.X > Lookahead) { continue; }
 			const float Gap = FMath::Abs(Obj.Base.Y - Candidate) - (ShipHalfWidth + Obj.Radius);
 			if (Gap < 500.f)
 			{
 				// Nearer obstacles count for more; overlapping the hull counts for much more than a tight squeeze.
-				Cost += (Gap < 0.f ? 10.f : 2.f) * (1.f + 8000.f / (Obj.Base.X + 2500.f));
+				Cost += (Gap < 0.f ? 10.f : 2.f) * (1.f + 8000.f / FMath::Max(Obj.Base.X + 2500.f, 500.f));
 			}
 		}
 		// Stone of the drowned city on this lane (TickStrikes looks for it).
@@ -670,6 +676,8 @@ namespace
 void ADCTreadmill::TickGiants(float DeltaSeconds)
 {
 	if (!Director) { return; }
+	// Superseded by readable grouped encounters; retained only for old capture comparisons.
+	if (!FParse::Param(FCommandLine::Get(), TEXT("DCLegacyGiants"))) { return; }
 	static const bool bOff = FParse::Param(FCommandLine::Get(), TEXT("DCNoGiants"));
 	// Test hooks: -DCGiantScale= (he is about 3 m tall at 1), -DCGiantYaw= (which way the mesh faces), -DCGiantSunk= (cm of him under water),
 	// -DCGiantAt=<ride time> sends an extra one to starboard.
@@ -906,7 +914,7 @@ void ADCTreadmill::TickStrikes(float DeltaSeconds)
 	if (!Director || FParse::Param(FCommandLine::Get(), TEXT("DCNoStrikes"))) { return; }
 	bool bAny = false;
 	for (const FDCWorldObject& Obj : Objects) { if (Obj.bFeelable) { bAny = true; break; } }
-	if (!bAny) { StoneAhead.Reset(); CurrentDrift = FMath::FInterpTo(CurrentDrift, 0.f, DeltaSeconds, 1.5f); return; }
+	if (!bAny) { StoneAhead.Reset(); bHasAvoidance = false; AvoidanceHold = 0.f; CurrentDrift = FMath::FInterpTo(CurrentDrift, 0.f, DeltaSeconds, 2.f); return; }
 
 	// The helmsman's look ahead: for each lane he might take, three lines run forward from the bow
 	// (keel and both sides) and the nearest stone on any of them is remembered.
@@ -934,49 +942,51 @@ void ADCTreadmill::TickStrikes(float DeltaSeconds)
 		}
 	}
 
-	// The current parts round big stone. Three lines run 90 m forward from the bow: along the keel and along each side.
-	// Stone on the keel's line means she would take it on the stem: the current sets her toward whichever side is
-	// clear (or clearer), harder the nearer it is, until the keel's line is free. Stone on a side's line alone is
-	// left: she grazes it. -DCNoCurrent switches this off.
+	// The helmsman and the mild current share a committed passing lane. A separate
+	// three-ray controller used to push one way while the crew steered the other.
+	const int32 LaneIndex = FMath::RoundToInt((LaneOffset + LaneLimit) / 250.f);
+	const float StoneDistance = StoneAhead.IsValidIndex(LaneIndex) ? StoneAhead[LaneIndex] : -1.f;
+	const bool bBlocked = StoneDistance >= 0.f && StoneDistance < 15500.f;
+	AvoidanceHold = FMath::Max(0.f, AvoidanceHold - DeltaSeconds);
+	if (bBlocked)
 	{
-		static const bool bNoCurrent = FParse::Param(FCommandLine::Get(), TEXT("DCNoCurrent"));
-		FCollisionQueryParams Ahead(TEXT("DCCurrent"), true);
-		const FCollisionObjectQueryParams StoneAheadOf(ECC_Destructible);
-		const float LineZ = Director->SeaLevelZ + 140.f, Far = 15000.f, BowX = 1200.f;   // 150 m: ten seconds of warning at her speed in the city
-		float Hit[3] = { -1.f, -1.f, -1.f };
-		float FaceY = 0.f;
-		const float Offs[3] = { 0.f, -(ShipHalfWidth + 120.f), ShipHalfWidth + 120.f };
-		for (int32 k = 0; k < 3; ++k)
+		const int32 TargetIndex = FMath::RoundToInt((AvoidanceLane + LaneLimit) / 250.f);
+		const bool bTargetBlocked = !StoneAhead.IsValidIndex(TargetIndex) || StoneAhead[TargetIndex] >= 0.f;
+		if (!bHasAvoidance || (AvoidanceHold <= 0.f && bTargetBlocked))
 		{
-			FHitResult H;
-			if (GetWorld()->LineTraceSingleByObjectType(H, FVector(BowX, Offs[k], LineZ), FVector(BowX + Far, Offs[k], LineZ), StoneAheadOf, Ahead))
-			{
-				Hit[k] = FMath::Max(0.f, H.ImpactPoint.X - BowX);
-				if (k == 0) { FaceY = H.ImpactNormal.Y; }
-			}
+			AvoidanceLane = ChooseClearLane(17000.f);
+			bHasAvoidance = true;
+			AvoidanceHold = 1.8f;
 		}
-		float Want = 0.f;
-		if (!bNoCurrent && Hit[0] >= 0.f)
+	}
+	else if (AvoidanceHold <= 0.f) { bHasAvoidance = false; }
+	float Assist = 0.f;
+	if (bBlocked && bHasAvoidance && !FParse::Param(FCommandLine::Get(), TEXT("DCNoCurrent")))
+	{
+		const float Error = AvoidanceLane - LaneOffset;
+		const float Urgency = 1.f - FMath::Clamp(StoneDistance / 15500.f, 0.f, 1.f);
+		Assist = FMath::Clamp(Error / 1400.f, -1.f, 1.f) * LaneSpeed * (.08f + .17f * Urgency);
+		// Deliberate player input always wins. Assistance is less than a quarter of
+		// ordinary helm speed, never the old 1200 cm/s counter-steering current.
+		if (bPlayerHelm || bSteerForced)
 		{
-			float Dir;
-			if (Hit[1] < 0.f && Hit[2] >= 0.f) { Dir = -1.f; }
-			else if (Hit[2] < 0.f && Hit[1] >= 0.f) { Dir = 1.f; }
-			else if (Hit[1] >= 0.f && Hit[2] >= 0.f) { Dir = Hit[1] > Hit[2] ? -1.f : 1.f; }
-			else { Dir = FMath::Abs(FaceY) > 0.05f ? FMath::Sign(FaceY) : (CurrentDrift != 0.f ? FMath::Sign(CurrentDrift) : (LaneOffset >= 0.f ? -1.f : 1.f)); }
-			// Keep to the side already chosen while the same stone is ahead.
-			if (FMath::Abs(CurrentDrift) > 40.f) { Dir = FMath::Sign(CurrentDrift); }
-			const float Urge = 1.f - Hit[0] / Far;
-			Want = Dir * FMath::Lerp(260.f, 1200.f, Urge);
+			if (Steer * Assist < 0.f) { Assist = 0.f; }
+			else { Assist *= .45f; }
 		}
-		CurrentDrift = FMath::FInterpTo(CurrentDrift, Want, DeltaSeconds, Want != 0.f ? 5.f : 1.5f);
-		static const bool bCurrentLog = FParse::Param(FCommandLine::Get(), TEXT("DCCurrentLog"));
-		static float CurrentLogTimer = 0.f;
-		CurrentLogTimer -= DeltaSeconds;
-		if (bCurrentLog && CurrentLogTimer <= 0.f && (Hit[0] >= 0.f || Hit[1] >= 0.f || Hit[2] >= 0.f))
-		{
-			CurrentLogTimer = 0.5f;
-			UE_LOG(LogDC, Log, TEXT("Current: keel %.0f port %.0f starboard %.0f cm ahead, want %.0f, drift %.0f, lane %.0f moving %.0f, helm %.2f, at %.1f s"), Hit[0], Hit[1], Hit[2], Want, CurrentDrift, LaneOffset, LaneVelocity, Steer, Director->RideTime);
-		}
+	}
+	CurrentDrift = FMath::FInterpTo(CurrentDrift, Assist, DeltaSeconds, 2.2f);
+	if ((bPlayerHelm || bSteerForced) && CurrentDrift * Steer < 0.f)
+	{
+		CurrentDrift = FMath::FInterpConstantTo(CurrentDrift, 0.f, DeltaSeconds, LaneSpeed * 2.f);
+	}
+	static const bool bCurrentLog = FParse::Param(FCommandLine::Get(), TEXT("DCCurrentLog"));
+	static float CurrentLogTimer = 0.f;
+	CurrentLogTimer -= DeltaSeconds;
+	if (bCurrentLog && CurrentLogTimer <= 0.f)
+	{
+		CurrentLogTimer = .5f;
+		UE_LOG(LogDC, Log, TEXT("Navigation: obstacle=%.0f target=%.0f lane=%.0f velocity=%.0f assist=%.0f helm=%.2f manual=%d t=%.1f"),
+			StoneDistance, bHasAvoidance ? AvoidanceLane : LaneOffset, LaneOffset, GetLateralVelocity(), CurrentDrift, Steer, bPlayerHelm || bSteerForced, Director->RideTime);
 	}
 
 	// Feelers at the waterline, in the ship's resting place (she lies at the origin, bow to +X): out
@@ -1002,13 +1012,14 @@ void ADCTreadmill::TickStrikes(float DeltaSeconds)
 	const FCollisionObjectQueryParams Stone(ECC_Destructible);
 	float Deepest = 0.f, PushY = 0.f;
 	FVector Where = FVector::ZeroVector, Normal = FVector::ZeroVector;
+	AActor* ContactActor = nullptr;
 	for (const FFeeler& F : Feelers)
 	{
 		FHitResult Hit;
 		if (!GetWorld()->LineTraceSingleByObjectType(Hit, F.From, F.To, Stone, Params)) { continue; }
 		// A feeler that begins inside the stone (she has driven her bow into it) counts for its whole length.
 		const float In = Hit.bStartPenetrating ? (F.To - F.From).Size() : (F.To - Hit.ImpactPoint).Size();
-		if (In > Deepest) { Deepest = In; Where = Hit.ImpactPoint; Normal = Hit.ImpactNormal; }
+		if (In > Deepest) { Deepest = In; Where = Hit.ImpactPoint; Normal = Hit.ImpactNormal; ContactActor = Hit.GetActor(); }
 		// Which way to shoulder her: away from the side the stone is on, or for stone dead ahead, the way its face turns her.
 		const float Side = FMath::Abs(Hit.ImpactPoint.Y) > 60.f ? FMath::Sign(Hit.ImpactPoint.Y) : (FMath::Abs(Hit.ImpactNormal.Y) > 0.1f ? -FMath::Sign(Hit.ImpactNormal.Y) : (LaneOffset >= 0.f ? -1.f : 1.f));
 		PushY -= Side * In;
@@ -1016,20 +1027,26 @@ void ADCTreadmill::TickStrikes(float DeltaSeconds)
 	if (Deepest <= 0.f) { return; }
 
 	// She cannot sail through it: shoulder her off the stone (the sea is moved, not the ship) and kill her swing toward it.
-	if (StrikeAway == 0.f) { StrikeAway = PushY >= 0.f ? 1.f : -1.f; }
+	if (StrikeAway == 0.f || LastStrikeActor.Get() != ContactActor)
+	{
+		StrikeAway = bHasAvoidance && FMath::Abs(AvoidanceLane - LaneOffset) > 200.f
+			? FMath::Sign(AvoidanceLane - LaneOffset) : (PushY >= 0.f ? 1.f : -1.f);
+	}
 	const float Away = StrikeAway;
-	const bool bFirst = SinceContact > 1.5f;
+	const bool bFirst = SinceContact > 1.5f || LastStrikeActor.Get() != ContactActor;
+	LastStrikeActor = ContactActor;
 	SinceContact = 0.f;
-	const float Closing = FMath::Max(0.f, -LaneVelocity * Away) + Director->GetEnv().ShipSpeed * Director->TimeScale * FMath::Max(0.f, -Normal.X);
-	LaneOffset = FMath::Clamp(LaneOffset + Away * FMath::Min(Deepest + 20.f, 4000.f * DeltaSeconds + 30.f), -LaneLimit - 3000.f, LaneLimit + 3000.f);
-	if (LaneVelocity * Away < 0.f) { LaneVelocity = -LaneVelocity * 0.3f + Away * 160.f; }
-	else { LaneVelocity = FMath::Max(FMath::Abs(LaneVelocity), 160.f) * Away; }
+	const float Closing = FMath::Max(0.f, -GetLateralVelocity() * Away) + Director->GetEnv().ShipSpeed * Director->TimeScale * FMath::Max(0.f, -Normal.X);
+	const float Edge = Director->TroughRise > 1.f ? Director->TroughHalfWidth : LaneLimit;
+	LaneOffset = FMath::Clamp(LaneOffset + Away * FMath::Min(Deepest + 10.f, 2300.f * DeltaSeconds), -Edge, Edge);
+	if (LaneVelocity * Away < 0.f) { LaneVelocity = Away * 90.f; }
+	if (CurrentDrift * Away < 0.f) { CurrentDrift = 0.f; }
 
 	if (StrikeCooldown <= 0.f)
 	{
 		// The first blow is the heavy one; while she grinds along the stone, lighter ones follow.
-		const float Strength = FMath::Clamp(Closing / 900.f, 0.25f, 1.5f) * (bFirst ? 1.f : 0.4f);
-		StrikeCooldown = bFirst ? 0.5f : 0.8f;
+		const float Strength = FMath::Clamp(Closing / 1200.f, 0.2f, 1.1f) * (bFirst ? 1.f : 0.12f);
+		StrikeCooldown = bFirst ? 1.4f : 2.5f;
 		Director->StrikeHull(Where, Strength, !bFirst);
 		UE_LOG(LogDC, Log, TEXT("Hull struck stone at %s (in %.0f cm, closing %.0f cm/s, strength %.2f) at ride time %.1f"), *Where.ToCompactString(), Deepest, Closing, Strength, Director->RideTime);
 		if (StrikeCallCooldown <= 0.f)
@@ -1314,6 +1331,9 @@ void ADCTreadmill::SpawnAtlantis()
 				MID->SetVectorParameterValue(TEXT("Base Color Tint"), FLinearColor(0.62f, 0.68f, 0.78f));
 				C->SetMaterial(0, MID);
 				C->RegisterComponent();
+				UDCFogCardFader* Fader = NewObject<UDCFogCardFader>(Holder);
+				Fader->RegisterComponent();
+				Fader->Initialize(C, MID, Density * CardDensity, FMath::Abs(Pitch) < 5.f);
 				Register(Holder, At, 1.5f, false, 1.f, Yaw, false);
 				++Cards;
 			};

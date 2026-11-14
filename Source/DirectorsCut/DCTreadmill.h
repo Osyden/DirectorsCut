@@ -59,12 +59,15 @@ public:
 
 	/** -1 (port) .. +1 (starboard). Set every frame by whoever has the helm. */
 	void SetSteer(float InSteer) { if (!bSteerForced) { Steer = FMath::Clamp(InSteer, -1.f, 1.f); } }
+	void SetPlayerSteer(float InSteer) { bPlayerHelm = true; SetSteer(InSteer); }
+	void ReleasePlayerHelm() { bPlayerHelm = false; SetSteer(0.f); }
 	/** Test hook -DCSteer=: the helm is held where the switch put it, whoever has the wheel. */
 	bool bSteerForced = false;
 	float GetSteer() const { return Steer; }
 	float GetLaneOffset() const { return LaneOffset; }
 	/** How fast the ship is crossing the sea sideways as a fraction of full helm (-1 port .. 1 starboard): she gathers way into a turn and carries it out of one. */
 	float GetTurn() const { return LaneSpeed > 0.f ? LaneVelocity / LaneSpeed : 0.f; }
+	float GetLateralVelocity() const { return LaneVelocity + CurrentDrift; }
 
 	/** Nearest obstacle ahead of the bow. Returns false if the lane is clear. OutY is relative to the ship centreline. */
 	bool FindObstacleAhead(float MaxDistance, float& OutX, float& OutY) const;
@@ -121,6 +124,13 @@ protected:
 	/** The set of the current round big stone dead ahead (cm a second across the channel, + to starboard): it carries her
 	 *  aside enough that she grazes it and cannot run her stem straight on to it. */
 	float CurrentDrift = 0.f;
+	/** One passing lane, shared by the crew and gentle current assistance. */
+	float AvoidanceLane = 0.f;
+	float AvoidanceHold = 0.f;
+	bool bHasAvoidance = false;
+	bool bPlayerHelm = false;
+	float ChooseClearLane(float Lookahead) const;
+	TWeakObjectPtr<AActor> LastStrikeActor;
 	/** For the hand at the helm: how far ahead (cm) the first stone lies on each lane he might choose
 	 *  (lane i is at -LaneLimit + i * 250), or a negative number where the way is clear. Looked for a few times a second. */
 	TArray<float> StoneAhead;

@@ -1,0 +1,22 @@
+[2026.11.14-20.33.51:294][159]LogDC: Display: EARLY VERIFY PASS: duplicate impacts do not stack fires at one deck point
+[2026.11.14-20.33.51:294][159]LogDC: Display: EARLY VERIFY PASS: fresh fire needs three swats
+[2026.11.14-20.33.51:294][159]LogDC: Display: EARLY VERIFY PASS: out of reach swat does no work
+[2026.11.14-20.33.52:120][231]LogDC: Display: EARLY VERIFY PASS: player begins a real rag swing within reach
+[2026.11.14-20.33.52:206][235]LogDC: Display: EARLY VERIFY PASS: rag contacts retain partial suppression
+[2026.11.14-20.33.52:206][235]LogDC: Display: EARLY VERIFY PASS: partial swat awards no completion score
+[2026.11.14-20.33.52:212][236]LogDC: Auto shot shot_00029.png at ride time 2.9, 141 fps (game 7.0 ms, render 8.0 ms, gpu 5.5 ms)
+[2026.11.14-20.33.52:648][238]LogDC: Auto shot shot_00031.png at ride time 3.3, 136 fps (game 115.2 ms, render 37.0 ms, gpu 5.6 ms)
+[2026.11.14-20.33.52:764][239]LogDC: Display: EARLY VERIFY PASS: player begins a real rag swing within reach
+[2026.11.14-20.33.53:120][293]LogDC: Auto shot shot_00038.png at ride time 3.8, 150 fps (game 6.3 ms, render 6.7 ms, gpu 5.4 ms)
+[2026.11.14-20.33.53:211][294]LogDC: Display: EARLY VERIFY PASS: rag contacts retain partial suppression
+[2026.11.14-20.33.53:211][294]LogDC: Display: EARLY VERIFY PASS: partial swat awards no completion score
+[2026.11.14-20.33.53:317][311]LogDC: Auto shot shot_00040.png at ride time 4.0, 152 fps (game 5.5 ms, render 6.4 ms, gpu 5.3 ms)
+[2026.11.14-20.33.53:711][359]LogDC: Display: EARLY VERIFY PASS: player begins a real rag swing within reach
+[2026.11.14-20.33.54:021][407]LogDC: Auto shot shot_00047.png at ride time 4.7, 157 fps (game 7.3 ms, render 6.4 ms, gpu 5.4 ms)
+[2026.11.14-20.33.54:116][409]LogDC: Display: EARLY VERIFY PASS: third animated rag contact extinguishes fire
+[2026.11.14-20.33.54:116][409]LogDC: Display: EARLY VERIFY PASS: extinguishing awards exactly one score increment
+[2026.11.14-20.33.54:116][409]LogDC: Display: EARLY VERIFY PASS: completed fire cannot be scored again
+[2026.11.14-20.33.54:225][426]LogDC: Auto shot shot_00049.png at ride time 4.9, 154 fps (game 7.9 ms, render 6.2 ms, gpu 5.3 ms)
+[2026.11.14-20.33.57:916][ 14]LogDC: Display: EARLY VERIFY PASS: extinguished fire effect cleans up after smoke fades
+[2026.11.14-20.33.57:916][ 14]LogDC: Display: EARLY VERIFY PASS: crew bucket extinguish still completes a fire
+[2026.11.14-20.33.57:916][ 14]LogDC: Display: EARLY GAMEPLAY VERIFICATION PASSED

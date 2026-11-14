@@ -4,6 +4,9 @@
 #include "ProceduralMeshComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "EngineUtils.h"
+#include "Kismet/GameplayStatics.h"
+#include "Particles/ParticleSystem.h"
+#include "Particles/ParticleSystemComponent.h"
 
 namespace
 {
@@ -26,6 +29,29 @@ void ADCWake::Build()
 	if (!Base) { UE_LOG(LogDC, Warning, TEXT("Wake: M_Wake missing; no hull wash")); return; }
 	WaterLibrary = FindObject<UClass>(nullptr, TEXT("/Script/DynamicRealWater.DRW_BlueprintLibrary"));
 	SurfaceFn = WaterLibrary ? WaterLibrary->FindFunctionByName(TEXT("GetWaterSurfaceAtLocation")) : nullptr;
+	// The long raked stem reaches far ahead above water. Probe the actual hull
+	// at the waterline instead of putting spray under the tip of the bowsprit.
+	if (Director->ShipActor)
+	{
+		TInlineComponentArray<UPrimitiveComponent*> Parts(Director->ShipActor);
+		for (UPrimitiveComponent* Hull : Parts)
+		{
+			if (Hull->GetName() != TEXT("HullShip")) { continue; }
+			FCollisionQueryParams Query(TEXT("DCBowWaterline"), true);
+			FHitResult Front, Side;
+			const float Z = Director->SeaLevelZ + 30.f;
+			if (Hull->LineTraceComponent(Front, Director->DeckToWorld(FVector(3500.f, 0.f, Z)), Director->DeckToWorld(FVector(-1800.f, 0.f, Z)), Query))
+			{
+				BowSprayX = Director->DeckTransform.InverseTransformPosition(Front.ImpactPoint).X - 100.f;
+				if (Hull->LineTraceComponent(Side, Director->DeckToWorld(FVector(BowSprayX, -1200.f, Z)), Director->DeckToWorld(FVector(BowSprayX, 0.f, Z)), Query))
+				{
+					BowSprayY = FMath::Abs(Director->DeckTransform.InverseTransformPosition(Side.ImpactPoint).Y) + 18.f;
+				}
+			}
+			UE_LOG(LogDC, Log, TEXT("Bow spray waterline: x=%.0f halfwidth=%.0f"), BowSprayX, BowSprayY);
+			break;
+		}
+	}
 
 	// Down each side from the bow, round the quarter and out astern. The inner edge hugs the hull's
 	// waterline (a blunt-ended oval about 47 m by 11 m) and closes to the centreline behind the
@@ -153,6 +179,7 @@ void ADCWake::Tick(float DeltaSeconds)
 		Build();
 	}
 	if (!Mesh || !MID) { return; }
+	TickBowSpray(DeltaSeconds);
 
 	// Only on the plugin sea: the tunnel and the maelstrom have water of their own.
 	const FDCEnvState& Env = Director->GetEnv();
@@ -196,6 +223,97 @@ void ADCWake::Tick(float DeltaSeconds)
 	const float Light = FMath::Lerp(0.16f, 1.f, Day);
 	MID->SetVectorParameterValue(TEXT("Tint"), FLinearColor(0.82f * Light, 0.9f * Light, 0.96f * Light, Shown * FMath::Clamp(0.55f + 0.3f * Speed, 0.f, 1.f)));
 	MID->SetScalarParameterValue(TEXT("Speed"), 1200.f * Speed);
+}
+
+void ADCWake::TickBowSpray(float DeltaSeconds)
+{
+	if (!Director) { return; }
+	TickHullFoam(DeltaSeconds);
+	const FDCEnvState& Env = Director->GetEnv();
+	const bool bActive = Director->GetPhase() <= EDCPhase::Fog && Env.Tube < .15f
+		&& !FParse::Param(FCommandLine::Get(), TEXT("DCNoBowSpray"));
+	for (int32 I = BowPulses.Num() - 1; I >= 0; --I)
+	{
+		FBowPulse& P = BowPulses[I]; P.Age += DeltaSeconds;
+		UParticleSystemComponent* Effect = P.Effect.Get();
+		if (!Effect || P.Age > 2.2f) { if (Effect) { Effect->DestroyComponent(); } BowPulses.RemoveAtSwap(I); continue; }
+		if (!bActive || P.Age > .45f) { Effect->DeactivateSystem(); }
+		// Breakaway spray is carried aft and out, never attached to a rocking deck.
+		Effect->SetWorldLocation(P.Origin + FVector(-Env.ShipSpeed * P.Age * .55f, P.Side * P.Age * 150.f, 0.f));
+	}
+	if (!bActive) { bBowHeightValid = false; return; }
+	if (!BowSplash)
+	{
+		BowSplash = LoadObject<UParticleSystem>(nullptr, TEXT("/Game/ParagonRampage/FX/Particles/Abilities/RipNToss/FX/P_Rampage_Rock_HitWorld_WaterImpact.P_Rampage_Rock_HitWorld_WaterImpact"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+		if (!BowSplash) { return; }
+	}
+	BowTimer -= DeltaSeconds;
+	if (BowTimer > 0.f) { return; }
+	const float Speed = FMath::Clamp(Env.ShipSpeed / 1500.f, .3f, 1.25f);
+	const float Roughness = FMath::Clamp(Env.WaveHeight / 250.f, .15f, 1.f);
+	const FVector Bow = Director->DeckToWorld(FVector(BowSprayX, 0.f, Director->SeaLevelZ));
+	const float Surface = SurfaceAt(FVector2D(Bow.X, Bow.Y), 220);
+	const float Rise = bBowHeightValid ? FMath::Clamp((Surface - PreviousBowHeight) / 65.f, 0.f, 1.f) : 0.f;
+	PreviousBowHeight = Surface; bBowHeightValid = true;
+	BowTimer = FMath::Lerp(.62f, .28f, FMath::Clamp(Roughness * .55f + Rise * .45f, 0.f, 1.f)) / Speed;
+	for (float Side : {-1.f, 1.f})
+	{
+		FVector Origin = Director->DeckToWorld(FVector(BowSprayX, Side * BowSprayY, Director->SeaLevelZ));
+		Origin.Z = SurfaceAt(FVector2D(Origin.X, Origin.Y), Side < 0 ? 221 : 222) + 8.f;
+		const FVector Outward(-.2f, Side * .48f, 1.f);
+		const float Scale = (.3f + .25f * Roughness + .22f * Rise) * Speed;
+		UParticleSystemComponent* Effect = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BowSplash, Origin,
+			FRotationMatrix::MakeFromZ(Outward).Rotator(), FVector(Scale), true);
+		if (Effect)
+		{
+			Effect->SetCastShadow(false);
+			BowPulses.Add({Effect, 0.f, Origin, Side});
+		}
+	}
+}
+
+void ADCWake::TickHullFoam(float DeltaSeconds)
+{
+	FoamTimer -= DeltaSeconds;
+	if (FoamTimer > 0.f) { return; }
+	FoamTimer = 1.f;
+	// Only live MIDs change; the installed water assets and their defaults remain
+	// untouched. Keep the patch optional when the water plugin is unavailable.
+	UClass* ManagerClass = FindObject<UClass>(nullptr, TEXT("/Script/DynamicRealWater.DRW_GridManager"));
+	if (!ManagerClass) { return; }
+	HullFoamMaterials.RemoveAll([](const FHullFoamMaterial& V) { return !V.Material.IsValid(); });
+	const int32 Before = HullFoamMaterials.Num();
+	for (TActorIterator<AActor> It(GetWorld(), ManagerClass); It; ++It)
+	{
+		for (int32 LOD = 0; LOD < 5; ++LOD)
+		{
+			FArrayProperty* Array = FindFProperty<FArrayProperty>(ManagerClass, *FString::Printf(TEXT("LOD%dMaterialInstances"), LOD));
+			FObjectPropertyBase* Object = Array ? CastField<FObjectPropertyBase>(Array->Inner) : nullptr;
+			if (!Object) { continue; }
+			FScriptArrayHelper Items(Array, Array->ContainerPtrToValuePtr<void>(*It));
+			for (int32 I = 0; I < Items.Num(); ++I)
+			{
+				UMaterialInstanceDynamic* M = Cast<UMaterialInstanceDynamic>(Object->GetObjectPropertyValue(Items.GetRawPtr(I)));
+				if (!M || HullFoamMaterials.ContainsByPredicate([M](const FHullFoamMaterial& V) { return V.Material.Get() == M; })) { continue; }
+				FHullFoamMaterial V; V.Material = M;
+				if (M->GetScalarParameterValue(FMaterialParameterInfo(TEXT("DCShoreFoamWidth")), V.Width)
+					&& M->GetScalarParameterValue(FMaterialParameterInfo(TEXT("DCShoreFoam")), V.Strength)) { HullFoamMaterials.Add(V); }
+			}
+		}
+	}
+	const bool bEarly = Director->GetPhase() <= EDCPhase::Fog && !FParse::Param(FCommandLine::Get(), TEXT("DCLegacyHullFoam"));
+	if (HullFoamMaterials.Num() > Before) { UE_LOG(LogDC, Log, TEXT("Bow wash: tuned %d live water materials; shared assets unchanged"), HullFoamMaterials.Num()); }
+	const float Storm = FMath::Clamp(Director->GetEnv().WaveHeight / 300.f, 0.f, 1.f);
+	for (const FHullFoamMaterial& V : HullFoamMaterials)
+	{
+		if (UMaterialInstanceDynamic* M = V.Material.Get())
+		{
+			// The old 6.5m solid-white skirt swallowed the bow spray. Keep a narrow
+			// broken wash at the hull and let the moving droplets supply the height.
+			M->SetScalarParameterValue(TEXT("DCShoreFoamWidth"), V.Width * (bEarly ? FMath::Lerp(.30f, .48f, Storm) : 1.f));
+			M->SetScalarParameterValue(TEXT("DCShoreFoam"), V.Strength * (bEarly ? FMath::Lerp(.65f, .9f, Storm) : 1.f));
+		}
+	}
 }
 
 ADCWake* ADCWake::Get(const UObject* WorldContext)

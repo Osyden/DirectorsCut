@@ -34,6 +34,8 @@ public:
 	bool IsShipView() const { return bShipView; }
 	/** For unattended tests and debug commands. */
 	void DebugTakeStation(EDCStationType Type, EDCSide Side);
+	/** Starts the same rag animation/contact path as a player input, for integration review. */
+	bool TrySwatFire();
 
 	UPROPERTY(EditAnywhere) float LookSensitivity = 0.12f;
 	UPROPERTY(EditAnywhere) float InteractRange = 300.f;
@@ -47,6 +49,14 @@ protected:
 	void TickMeta(APlayerController* PC);
 	void TickCameraFeel(float DeltaSeconds);
 	void TickGraphicsKeys(APlayerController* PC);
+	void TickRag(float DeltaSeconds);
+	void BuildRag();
+	UPROPERTY() TObjectPtr<class UProceduralMeshComponent> Rag;
+	UPROPERTY() TObjectPtr<class UStaticMeshComponent> RagHand;
+	UPROPERTY() TObjectPtr<class UStaticMeshComponent> RagSleeve;
+	float SwatAge = 10.f;
+	bool bSwatContact = false;
+	FVector SwatTarget = FVector::ZeroVector;
 	int32 DLSSModeIndex = 0;
 	bool bFrameGen = false;
 	void EnterStation(APlayerController* PC, int32 Index);

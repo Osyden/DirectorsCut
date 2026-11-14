@@ -37,6 +37,11 @@ bool ADCTroubles::NearestFire(const FVector& From, FVector& OutLocation) const
 
 void ADCTroubles::StartFire(const FVector& Location)
 {
+	if (Location.ContainsNaN() || Fires.Num() >= MaxFires) { return; }
+	for (const FDCFire& Fire : Fires)
+	{
+		if (FVector::DistSquared(Fire.Location, Location) < FMath::Square(240.f)) { return; }
+	}
 	FActorSpawnParameters Params;
 	Params.Owner = this;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -74,6 +79,46 @@ bool ADCTroubles::ExtinguishNear(const FVector& Location, float Reach)
 			if (Director) { Director->Score += 50; }
 			return true;
 		}
+	}
+	return false;
+}
+
+bool ADCTroubles::FindIgnitionPoint(int32 Preference, FVector& OutLocation) const
+{
+	if (DeckPoints.IsEmpty()) { return false; }
+	for (int32 Offset = 0; Offset < DeckPoints.Num(); ++Offset)
+	{
+		const FVector Candidate = DeckPoints[(FMath::Abs(Preference) + Offset) % DeckPoints.Num()];
+		bool bOccupied = false;
+		for (const FDCFire& F : Fires) { bOccupied |= FVector::DistSquared(F.Location, Candidate) < FMath::Square(300.f); }
+		if (!bOccupied) { OutLocation = Candidate; return true; }
+	}
+	OutLocation = DeckPoints[FMath::Abs(Preference) % DeckPoints.Num()];
+	return true;
+}
+
+int32 ADCTroubles::SwatsRemaining(const FVector& Location, float Reach) const
+{
+	for (const FDCFire& F : Fires)
+	{
+		if (FVector::DistSquared(F.Location, Location) < Reach * Reach)
+		{
+			return FMath::Max(1, FMath::CeilToInt((1.f - F.Suppression) * 3.f - .001f));
+		}
+	}
+	return 0;
+}
+
+bool ADCTroubles::SwatNear(const FVector& Location, float Reach)
+{
+	for (FDCFire& F : Fires)
+	{
+		if (FVector::DistSquared(F.Location, Location) >= Reach * Reach) { continue; }
+		F.Suppression = FMath::Min(1.f, F.Suppression + 1.f / 3.f);
+		const FVector At = F.Location;
+		if (F.Suppression >= .999f) { return ExtinguishNear(At, 1.f); }
+		if (ADCDeckFireEffect* V = Cast<ADCDeckFireEffect>(F.Visual.Get())) { V->SetStrength(1.f - F.Suppression); }
+		return true;
 	}
 	return false;
 }
@@ -190,10 +235,10 @@ void ADCTroubles::Tick(float DeltaSeconds)
 	for (FDCFire& F : Fires)
 	{
 		F.Age += DeltaSeconds;
-		Director->DamageShip(FireDamagePerSecond * Dt, true);
+		Director->DamageShip(FireDamagePerSecond * Dt * (1.f - F.Suppression), true);
 		if (ADCDeckFireEffect* V = Cast<ADCDeckFireEffect>(F.Visual.Get()))
 		{
-			V->SetStrength(FMath::Clamp(F.Age / 3.f, 0.25f, 1.f));
+			V->SetStrength(FMath::Clamp(F.Age / 3.f, 0.25f, 1.f) * (1.f - F.Suppression));
 		}
 	}
 
