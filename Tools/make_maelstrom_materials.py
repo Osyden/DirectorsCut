@@ -164,6 +164,24 @@ struct WaterNoise {
         return float4(h,gradient,lip);
     }
     float waves(float2 p, float time) { return wave_field(p,time).x; }
+    float2 short_wave_slope(float2 p, float time, float pixelMeters) {
+        // 1.4m, 3m and 4.8m wind-wave detail between the larger breakers.
+        // Finite packets break the former endless planar cosine highlight bars.
+        // Pixel-footprint filtering suppresses unresolved waves across the crater.
+        float3 packet=noise_gradient(p*.19+float2(time*.035,7.7));
+        float envelope=.2+.8*packet.x;
+        float2 envelopeGradient=packet.yz*(.8*.19);
+        const float2 k[3]={float2(1.16,.60),float2(-1.90,.89),float2(3.80,-2.40)};
+        const float amp[3]={.085,.060,.020};
+        float2 gradient=0;
+        [unroll] for(int i=0;i<3;i++) {
+            float frequency=length(k[i]);
+            float phase=dot(p,k[i])-time*sqrt(9.81*frequency)+i*2.37;
+            float resolved=1-smoothstep(.18,.65,pixelMeters*frequency/6.2831853);
+            gradient+=(cos(phase)*k[i]*envelope+sin(phase)*envelopeGradient)*amp[i]*resolved;
+        }
+        return gradient;
+    }
     float cascade(float2 p) {
         // No sinusoidal corrugation: regular ridges become metallic cables in
         // grazing sun. Wide nonperiodic folds carry only a gentle perturbation.
@@ -374,12 +392,14 @@ float raftNoise=lerp(wn.fbm((q+warp0*22)*.12+5.1),wn.fbm((q2+warp1*22)*.12+5.1),
 // Crucially there is no minimum opacity on the low-concentration wake fringe.
 float threshold=.08+.72*smoothstep(.24,.76,raftNoise);
 float aa=clamp(fwidth(threshold)*.75,.035,.25);
-float concentration=saturate(max(wake*.85,impact*.95));
+// Transported crest red is aged foam too. Promoting it back to a fresh front
+// kept a bright opaque crest-shaped copy up to 250m downstream of its source.
+float concentration=saturate(max(max(wake*.85,impact*.95),
+    transported*ageFade*.70*saturate(SourceAvailable)));
 float transportedCoverage=smoothstep(threshold-aa,threshold+aa,concentration)
     *smoothstep(0,.04,concentration);
 // Source-attached lips remain recognizable; their spilled wake has open dark
 // holes instead of a smoothly shaded, fully coated Gaussian ribbon.
-float front=saturate(max(crest,movingLip*.65))*(.55+.45*thread);
 float pixelMeters=max(length(ddx(delta)),length(ddy(delta)));
 float resolvedFoam=1-smoothstep(.8,3.5,pixelMeters);
 float filaments=lerp(.50,thread,resolvedFoam);
@@ -407,7 +427,15 @@ if(Tunnel>.5) {
 // Unresolved bubbles average to coverage; resolved bubbles retain actual gaps.
 // The former .35 minimum painted a translucent white film between every bubble.
 lace=lerp(.36,lace,resolvedFoam);
-float freshCoverage=front*lerp(.65,1.0,lace);
+// Only the current geometric lip can replenish fresh foam. Resolve the source
+// as broken coverage, not a .55 thread floor multiplied by a .65 bubble floor:
+// those floors left a continuous white film across every filtered crest stamp.
+float freshConcentration=saturate(max(max(VC.r,ImpactSource.r*.85*saturate(SourceAvailable)),movingLip*.80))
+    *(1-shelf*.65);
+float frontThreshold=.06+.78*smoothstep(.24,.76,raftNoise);
+float freshStamp=smoothstep(frontThreshold-aa,frontThreshold+aa,freshConcentration)
+    *smoothstep(0,.04,freshConcentration);
+float freshCoverage=freshStamp*filaments*lace;
 float agedCoverage=loose*lace;
 // Union of two coverage populations, rather than exponential whitening of the
 // source's smooth tails. Preserve the existing under-hull displacement guard.
@@ -470,6 +498,11 @@ float2 chop0=cos(dot(q,float2(0.55,0.28))-T*2.45)*float2(0.55,0.28)*0.18
 float2 chop1=cos(dot(q2,float2(0.55,0.28))-T*2.45)*float2(0.55,0.28)*0.18
             +cos(dot(q2,float2(-0.91,0.43))-T*3.14)*float2(-0.91,0.43)*0.14
             +cos(dot(q2,float2(1.7,-1.1))-T*4.45)*float2(1.7,-1.1)*0.045;
+if(Tunnel<.5) {
+    float pixelMeters=max(length(ddx(delta)),length(ddy(delta)));
+    chop0=wn.short_wave_slope(q,T,pixelMeters);
+    chop1=wn.short_wave_slope(q2,T,pixelMeters);
+}
 slope-=lerp(chop0,chop1,blend)*1.65*(1.0-smoothstep(450.0,1500.0,distanceM))*(1.0-Foam*0.65);
 """
 if normal_texture:
@@ -478,7 +511,7 @@ if normal_texture:
 if foam_texture and foam_normal_texture:
     normal_code += r"""
 float2 foamSlope=lerp(FoamNormal0.xy,FoamNormal1.xy,blend);
-// Inverse of the rotation used by the paired 12m colour/normal samples.
+// Inverse of the rotation used by the paired 1.5m colour/normal samples.
 foamSlope=float2(foamSlope.x*0.8-foamSlope.y*0.6,foamSlope.x*0.6+foamSlope.y*0.8);
 slope+=foamSlope*Foam*lerp(0.30,0.04,smoothstep(80.0,650.0,distanceM));
 """
