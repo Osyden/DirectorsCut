@@ -3,6 +3,7 @@
 | Task | Status | Owner | Done when |
 | --- | --- | --- | --- |
 | Maelstrom crater, tunnel exit and timed naval boss encounter | Rock crater / lower basin checkpoint; visual refinement ongoing; boss deferred | Codex, `codex/maelstrom-saturday` | [Rock crater plan, actual captures and remaining visual gaps](MAELSTROM-ROCK-BASIN-PLAN.md); [Whitewater, impact trails, moving crests and actual captures](MAELSTROM-WHITEWATER-14NOV.md); [spiral prototype](MAELSTROM-SPIRAL-PROTOTYPE-14NOV.md); [water direction](MAELSTROM-WATER-DIRECTION-14NOV.md). Geometry/flow/foam/crest spray remain here; separate chat owns cloud composition and lighting. Not yet reference quality. [Earlier checkpoint](MAELSTROM-SCENE-POLISH-14NOV.md); [orbit/contact handoff](MAELSTROM-14NOV-CODEX.md). |
+| Maelstrom sky, cloud composition and godrays | Integrated into maelstrom review branch; combined review pending | Codex | [Sky handoff](MAELSTROM-SKY-14NOV.md), source e32cd85. |
 | Initialize Git and Git LFS | Done | Codex | Baseline is on `origin/main` at `dcf3e85`. |
 | Diagnose Unreal MCP startup | Done | Claude | Launch with `-ModelContextProtocolStartServer`; see STATUS.md. |
 | Define the first playable slice | Done | Claude | See [PLAN.md](PLAN.md). |
