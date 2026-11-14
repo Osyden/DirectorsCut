@@ -73,11 +73,13 @@ bool FDCCliffGeneratorTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("Talus stays a minority of cliff footprint and height"),NarrowTalus);
     TestTrue(TEXT("Debris fans vary instead of forming a constant-width apron"),MaxFan>MinFan*1.25f);
     TestTrue(TEXT("Plateau behind temples stays low"),LowCap);
-    // Shape acceptance guards: the rejected curtain was a shared curved slope
-    // with weak relief. A substantial part of the wall must expose steep faces,
-    // and large rock masses must occupy different radial positions at midheight.
-    TestTrue(TEXT("Cliffs expose near-vertical faces rather than only a smooth slope"),SteepSamples>FaceSamples*.20f);
-    TestTrue(TEXT("Staggered rock masses break the continuous curtain"),MaxFaceRadius-MinFaceRadius>22000.f);
+    // The earlier 220m-minimum range assertion rewarded the rejected giant
+    // terraces. Bound this instead: visible rock masses, without moving almost
+    // the complete shoreline-to-rim gap into shelves at one elevation. Image
+    // review remains the acceptance test for geological appearance.
+    TestTrue(TEXT("Fractured escarpment includes near-vertical local faces"),SteepSamples>FaceSamples*.10f);
+    const float RadialRange=MaxFaceRadius-MinFaceRadius;
+    TestTrue(TEXT("Rock masses vary without becoming crater-wide shelves"),RadialRange>2000.f && RadialRange<(Sections[0].LipRadius-Sections[0].ToeRadius)*.60f);
     return true;
 }
 #endif
