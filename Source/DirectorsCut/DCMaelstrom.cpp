@@ -616,7 +616,8 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
 	// slow sinking spiral of the fight. (It was one even glide over the whole fight, which did not read as a drop.)
 	static float Plunge = 0.42f; static bool bPlungeRead = false;   // test hook: -DCPlunge=0..1
 	if (!bPlungeRead) { bPlungeRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCPlunge="), Plunge); }
-	const float Descent = Plunge * FMath::SmoothStep(9.f, 29.f, Elapsed) + (1.f - Plunge) * FMath::SmoothStep(29.f, EndingStart - BreachStart - 15.f, Elapsed);
+	// She hangs on the lip for three seconds after clearing the tunnel (the tunnel is gone at 10 s), then goes over.
+	const float Descent = Plunge * FMath::SmoothStep(12.f, 30.f, Elapsed) + (1.f - Plunge) * FMath::SmoothStep(30.f, EndingStart - BreachStart - 15.f, Elapsed);
 	ShipRadius = Radius * FMath::Lerp(0.985f, 0.78f, Descent);
 	const ADCTreadmill* Treadmill = ADCTreadmill::Get(this);
 	const float HelmTarget = Treadmill ? Treadmill->GetSteer() * Treadmill->SteerAuthority : 0.f;
@@ -628,7 +629,15 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
 	const FRotator Rotation(0.f, Bearing, 0.f);
 	const FVector Center = Rotation.RotateVector(FVector(ShipRadius, 0.f, 0.f));
 	const float Heave = FMath::Sin(Director->RideTime * 0.85f) * 35.f;
-	Arena->SetWorldLocationAndRotation(Center + FVector(0.f, 0.f, Director->SeaLevelZ - HeightAt(FVector2D(-ShipRadius, 0.f)) + Heave), Rotation);
+	// Going over, the whole bowl tips up ahead of her by a few degrees and settles back: from the deck that is the
+	// bow dropping away, which is what makes it a fall and not a glide.
+	static float TipDegrees = 6.f; static bool bTipRead = false;   // test hook: -DCLipTip=<degrees>
+	if (!bTipRead) { bTipRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCLipTip="), TipDegrees); }
+	const float Tip = TipDegrees * FMath::SmoothStep(12.f, 17.f, Elapsed) * (1.f - FMath::SmoothStep(22.f, 32.f, Elapsed));
+	const FQuat Over(FVector::RightVector, FMath::DegreesToRadians(-Tip));
+	const FVector Flat = Center + FVector(0.f, 0.f, Director->SeaLevelZ - HeightAt(FVector2D(-ShipRadius, 0.f)) + Heave);
+	const FVector Ship(0.f, 0.f, Director->SeaLevelZ);
+	Arena->SetWorldLocationAndRotation(Ship + Over.RotateVector(Flat - Ship), Over * Rotation.Quaternion());
 	const float ExitX = FMath::Clamp(26000.f - Elapsed * 4000.f, -15000.f, 145000.f);
 	const float Entry = FMath::SmoothStep(SlideStart, SlideStart + 7.f, Director->RideTime);
 	const float LengthScale = FMath::Lerp(0.5f, 1.f, Entry);
@@ -1289,7 +1298,7 @@ void ADCMaelstrom::UpdateView(float DeltaSeconds)
 		Camera->AddAdditiveOffset(FTransform(FRotator(-12.f * Look, 38.f * Look, 0.f)), 0.f);
 	}
 	// Over the lip: the view opens out as she starts down and closes again as she settles into the spiral.
-	const float Over = FMath::SmoothStep(8.f, 13.f, Elapsed) * (1.f - FMath::SmoothStep(18.f, 30.f, Elapsed));
+	const float Over = FMath::SmoothStep(11.f, 16.f, Elapsed) * (1.f - FMath::SmoothStep(20.f, 32.f, Elapsed));
 	Camera->SetFieldOfView(90.f + 9.f * Over);
 }
 

@@ -27,6 +27,10 @@ Read with the STATUS entries of 13 Nov 23:38 onward. I worked on main in small c
 
 In the maelstrom the hidden `BP_DynamicRealWater` sheet at sea level still blocked the gunnery line trace, so balls fired below the ship's level burst a few metres off her side. `DCGunnery.cpp` now passes a level hit at sea level while the maelstrom is active. If you place targets down the slope, they can now be reached.
 
+## Over the lip (added 03:34)
+
+`UpdateStage`: `Descent` starts at 12 s; the arena is pitched about the ship by up to 6 degrees between 12 and 32 s (`Over` quaternion applied to both its location and rotation). Anything that assumes the arena is only yawed should be checked; `SampleSurfaceWorld` is fine. There is still no near crest hiding the drop.
+
 ## The end (added 00:52)
 
 `UpdatePlume` in `DCMaelstrom`: from `FinaleAt` for 19 s a kilometre-high column of the same volume stands on the crater's centre (`Arena` location on `SampleSurfaceWorld`), and `Director->Trauma` is kicked once. It is the only visible mark of the defeat besides the arms withdrawing; your plan's collapse of the current and opening of the path is not done.

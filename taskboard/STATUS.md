@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 03:34 Claude: over the lip: she hangs three seconds, then the bow drops
+
+- `DCMaelstrom::UpdateStage`: the descent now starts at 12 s after the breach (was 9), so for three seconds after the tunnel is gone she rides level on the lip. Then the whole bowl tips up ahead of her by 6 degrees between 12 and 17 s and settles back by 32 s (`-DCLipTip=<degrees>`); from the deck the far rim climbs and the bowl fills the lower half of the view, which is the bow dropping. The wider field of view follows the same seconds.
+- Checked from outside at 282 and 288 s: the hull sits on the water, no water through the deck. `SampleSurfaceWorld` goes through the arena's transform, so spouts, stones and spawnlings stand on the tipped surface.
+- `review/58-over-the-lip`. Not judged in motion; my first try had the sign wrong (the bow rose). Not in the nineteenth build.
+
 ## 14 Nov 03:29 Claude: the dark bar by the portal is the underside of the piece over the mouth
 
 - `-DCNoFrontOver` leaves that piece out: the bar goes, but open sky shows over the tunnel between two towers of cloud. So the bar is its cut underside in shadow. Its cut now fades over 70 voxels (was 30) from a little lower; the band is softer but still there at 56 s, reading as a dark flat cloud base. Left at that.
