@@ -46,6 +46,13 @@ private:
 	void BuildBasin();
 	void BuildBreakers();
 	void BuildFoamSource();
+	void BuildWhitewater();
+	void UpdateWhitewater();
+	struct FWaterFeed { FVector Foot; float Width; float Seed; TArray<FVector2D> Trail; };
+	TArray<FWaterFeed> WaterFeeds;
+	UPROPERTY() TObjectPtr<UProceduralMeshComponent> Whitewater;
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> WhitewaterMID;
+	float NextFeedSpray=0.f;
 	UPROPERTY() TObjectPtr<class UTexture2D> FoamSourceTexture;
 	void UpdateBreakers();
 	void BuildTunnel();

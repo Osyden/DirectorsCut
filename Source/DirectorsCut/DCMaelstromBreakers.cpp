@@ -63,12 +63,11 @@ void ADCMaelstrom::BuildBreakers()
     }
     UKismetProceduralMeshLibrary::CalculateTangentsForMesh(V,I,UV,N,Tangents);
     CrestSpray->CreateMeshSection(0,V,I,N,UV,C,Tangents,false);
-    if(UMaterialInterface* M=LoadObject<UMaterialInterface>(nullptr,TEXT("/Game/DC/Maelstrom/M_MaelstromPlume.M_MaelstromPlume")))
+    if(UMaterialInterface* M=LoadObject<UMaterialInterface>(nullptr,TEXT("/Game/DC/Maelstrom/M_MaelstromImpactMist.M_MaelstromImpactMist")))
     {
         CrestSprayMID=UMaterialInstanceDynamic::Create(M,this);
         CrestSprayMID->SetScalarParameterValue(TEXT("Density"),.35f);
         CrestSprayMID->SetScalarParameterValue(TEXT("DepthFadeDistance"),80.f);
-        CrestSprayMID->SetScalarParameterValue(TEXT("CrestSpray"),1.f);
         CrestSpray->SetMaterial(0,CrestSprayMID);
     }
 }
@@ -102,7 +101,6 @@ void ADCMaelstrom::UpdateBreakers()
 {
     if(CrestSprayMID)
     {
-        CrestSprayMID->SetScalarParameterValue(TEXT("Clock"),Elapsed);
         CrestSprayMID->SetScalarParameterValue(TEXT("Reveal"),FMath::SmoothStep(0.f,8.f,Elapsed));
     }
     if(Elapsed<5.f || Elapsed<NextBreakerSpray || BreakerSprayPoints.IsEmpty()) { return; }
@@ -148,6 +146,31 @@ void ADCMaelstrom::BuildFoamSource()
             BreakerHeight(P,&Crest);
         }
         Colors[Y*Size+X]=FLinearColor(Crest,Crest,Crest,1.f).ToFColorSRGB();
+    }
+    // Green is a separate whitewater source, stamped along the actual current.
+    // Advected material samples carry bubbles downstream; the stationary sample
+    // keeps each impact attached to its tributary rather than moving the source.
+    TArray<float> Impact; Impact.Init(0.f,Size*Size);
+    const float Pixel=Span/Size;
+    for(const FWaterFeed& Feed:WaterFeeds) for(int32 Step=0;Step<Feed.Trail.Num();++Step)
+    {
+        const FVector2D P=Feed.Trail[Step];
+        const float Age=Step*1.2f,Width=Feed.Width*(.8f+Age*.035f);
+        const float Strength=FMath::Exp(-Age/12.f);
+        const int32 CX=FMath::RoundToInt((P.X/Span+.5f)*Size),CY=FMath::RoundToInt((P.Y/Span+.5f)*Size);
+        const int32 Reach=FMath::CeilToInt(Width*2.2f/Pixel);
+        for(int32 Y=FMath::Max(0,CY-Reach);Y<=FMath::Min(Size-1,CY+Reach);++Y)
+        for(int32 X=FMath::Max(0,CX-Reach);X<=FMath::Min(Size-1,CX+Reach);++X)
+        {
+            const FVector2D At(((X+.5f)/Size-.5f)*Span,((Y+.5f)/Size-.5f)*Span);
+            const float D=(At-P).SizeSquared()/(Width*Width);
+            Impact[Y*Size+X]=FMath::Max(Impact[Y*Size+X],Strength*FMath::Exp(-D*1.8f));
+        }
+    }
+    for(int32 Index=0;Index<Size*Size;++Index)
+    {
+        FLinearColor Value=FLinearColor::FromSRGBColor(Colors[Index]);
+        Value.G=Impact[Index]; Colors[Index]=Value.ToFColorSRGB();
     }
     FoamSourceTexture=UTexture2D::CreateTransient(Size,Size,PF_B8G8R8A8,NAME_None,
         TConstArrayView64<uint8>(Pixels.GetData(),Pixels.Num()));

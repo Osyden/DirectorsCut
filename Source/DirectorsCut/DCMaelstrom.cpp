@@ -47,6 +47,11 @@ ADCMaelstrom::ADCMaelstrom()
 	Arena->SetupAttachment(RootComponent);
 	Basin = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("Basin"));
 	Basin->SetupAttachment(Arena);
+	Whitewater=CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("SpiralWhitewaterFeeds"));
+	Whitewater->SetupAttachment(Arena);
+	Whitewater->SetMobility(EComponentMobility::Movable);
+	Whitewater->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Whitewater->SetCastShadow(false);
 	CrestSpray=CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("CrestSpray"));
 	CrestSpray->SetupAttachment(Arena); CrestSpray->SetCollisionEnabled(ECollisionEnabled::NoCollision); CrestSpray->SetCastShadow(false);
 	ContactMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("ContactSpray"));
@@ -132,7 +137,8 @@ void ADCMaelstrom::BeginPlay()
 	{
 		WaterMID = UMaterialInstanceDynamic::Create(Water, this);
 		TunnelMID = UMaterialInstanceDynamic::Create(Water, this);
-		WaterMID->SetScalarParameterValue(TEXT("WaveHeight"),150.f);
+		WaterMID->SetScalarParameterValue(TEXT("WaveHeight"),250.f);
+		WaterMID->SetScalarParameterValue(TEXT("BasinRadius"),Radius*.01f);
 		WaterMID->SetScalarParameterValue(TEXT("FlowHandedness"),-1.f);
 		Basin->SetMaterial(0, WaterMID);
 		Tunnel->SetMaterial(0, TunnelMID);
@@ -144,6 +150,7 @@ void ADCMaelstrom::BeginPlay()
 	}
 	BuildBreakers();
 	BuildBasin();
+	BuildWhitewater();
 	BuildFoamSource();
 	BuildTunnel();
 	BuildLandmarks();
@@ -283,8 +290,8 @@ float ADCMaelstrom::HeightAt(const FVector2D& Point, bool bWaves) const
     // Low relief carries the flowing banks. The former 16m crossing sine waves
     // read as mountains from across the crater; ordinary wave scale must stay
     // small in physical units, not be enlarged to remain legible kilometres away.
-    const float Wave = 160.f*FMath::PerlinNoise2D(Point/5500.f)
-        + 65.f*FMath::PerlinNoise2D(Point/2300.f+FVector2D(9,17));
+    const float Wave = 40.f*FMath::PerlinNoise2D(Point/5500.f)
+        + 20.f*FMath::PerlinNoise2D(Point/2300.f+FVector2D(9,17));
     const float CalmLane = 1.f - .45f*Lane*FMath::Exp(-FMath::Square(Across/(6500.f*Width)));
     return Height + BreakerHeight(Point) + Wave*CalmLane*(1.f-FMath::SmoothStep(.88f,1.03f,U)*.8f)*FMath::SmoothStep(.08f,.22f,U);
 }
@@ -552,6 +559,7 @@ void ADCMaelstrom::SetStageVisible(bool bVisible)
 {
 	Basin->SetVisibility(bVisible);
 	CrestSpray->SetVisibility(bVisible);
+	Whitewater->SetVisibility(bVisible);
 	Falls->SetVisibility(bVisible);
 	RimLand->SetVisibility(bVisible);
 	Tunnel->SetVisibility(bVisible);
@@ -650,7 +658,7 @@ void ADCMaelstrom::Tick(float DeltaSeconds)
 			if (USceneComponent* OldSea = Director->GetSea()) { OldSea->SetVisibility(false, true); }
 		}
 	}
-	if (bActive) { UpdateBreakers(); }
+	if (bActive) { UpdateBreakers(); UpdateWhitewater(); }
 	UpdateContacts(DeltaSeconds);
 	static const bool SceneReview=FParse::Param(FCommandLine::Get(),TEXT("DCSceneReview"));
 	if (Boss) { Boss->UpdateEncounter(Elapsed, GetArenaTransform(), Radius, Depth, bActive && !SceneReview); }

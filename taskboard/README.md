@@ -2,7 +2,7 @@
 
 | Task | Status | Owner | Done when |
 | --- | --- | --- | --- |
-| Maelstrom crater, tunnel exit and timed naval boss encounter | Descending spiral prototype; clouds separate; boss deferred | Codex, `codex/maelstrom-saturday` | [Descending spiral geometry and movement prototype](MAELSTROM-SPIRAL-PROTOTYPE-14NOV.md); [water direction](MAELSTROM-WATER-DIRECTION-14NOV.md). Geometry/flow/foam/crest spray remain here; separate chat can own cloud composition and lighting. Not yet reference quality. [Earlier checkpoint](MAELSTROM-SCENE-POLISH-14NOV.md); [orbit/contact handoff](MAELSTROM-14NOV-CODEX.md). |
+| Maelstrom crater, tunnel exit and timed naval boss encounter | Spiral whitewater checkpoint; clouds separate; boss deferred | Codex, `codex/maelstrom-saturday` | [Whitewater, impact trails, moving crests and actual captures](MAELSTROM-WHITEWATER-14NOV.md); [spiral prototype](MAELSTROM-SPIRAL-PROTOTYPE-14NOV.md); [water direction](MAELSTROM-WATER-DIRECTION-14NOV.md). Geometry/flow/foam/crest spray remain here; separate chat owns cloud composition and lighting. Not yet reference quality. [Earlier checkpoint](MAELSTROM-SCENE-POLISH-14NOV.md); [orbit/contact handoff](MAELSTROM-14NOV-CODEX.md). |
 | Initialize Git and Git LFS | Done | Codex | Baseline is on `origin/main` at `dcf3e85`. |
 | Diagnose Unreal MCP startup | Done | Claude | Launch with `-ModelContextProtocolStartServer`; see STATUS.md. |
 | Define the first playable slice | Done | Claude | See [PLAN.md](PLAN.md). |

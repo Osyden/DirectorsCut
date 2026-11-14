@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov Codex: whitewater and moving-crests pass
+
+- Added side feeds, contact-anchored downstream foam, local spray and animated breaking crests on the spiral. [Implementation, critique and integration](MAELSTROM-WHITEWATER-14NOV.md).
+- Kept crater scale/route; cloud and lighting ownership remains with the sky chat, which received the edit boundaries. Editor build/material generation and continuous scene reviews passed; actual captures and remaining quality gaps are in the note. Isolated water branch review checkpoint; not merged or packaged.
+
 ## 14 Nov Codex: descending spiral prototype ready for review
 
 - User authorized a bespoke banked spiral and ship-centred movement, retaining the crater scale. [Prototype and ownership](MAELSTROM-SPIRAL-PROTOTYPE-14NOV.md).

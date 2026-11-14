@@ -143,6 +143,18 @@ struct WaterNoise {
         h*=amp;
         return float3(h+.18*(h*h-.5),grad*(1+.36*h));
     }
+    float4 breaking_field(float2 p,float time) {
+        float2 k=float2(.13,.10);
+        float phase=dot(p,k)-time*1.35;
+        float3 packet=noise_gradient(p*.035+float2(-time*.04,8.7));
+        float envelope=.30+.70*packet.x;
+        float shape=sin(phase)+.25*sin(2*phase);
+        float h=shape*2.4*envelope;
+        float2 gradient=(cos(phase)+.5*cos(2*phase))*k*2.4*envelope
+            +shape*2.4*.70*.035*packet.yz;
+        float lip=smoothstep(.94,.995,sin(phase))*smoothstep(.40,.65,packet.x);
+        return float4(h,gradient,lip);
+    }
     float waves(float2 p, float time) { return wave_field(p,time).x; }
     float cascade(float2 p) {
         // No sinusoidal corrugation: regular ridges become metallic cables in
@@ -165,7 +177,12 @@ float2 radial=delta/max(length(delta),1.0);
 float2 tangential=float2(-radial.y,radial.x)*Handedness;
 float arc=frac((3.14159265-atan2(delta.y,delta.x))/6.2831853)*6.2831853;
 float inlet=smoothstep(0.0,.16,arc)*(1-smoothstep(.35,.60,arc));
-float2 basinFlow=-radial*(3.5+12.0*inlet)+tangential*12.0;
+// Match the CPU spiral tangent used to stamp impact trails (metres).
+float routeT=arc/.018-8.0;
+float u0=saturate((routeT+8.0)/16.0),u1=saturate((routeT-8.0)/157.0),u2=saturate((routeT-165.0)/15.0);
+float r=RadiusM*(.985-.035*smoothstep(-8.0,8.0,routeT)-.700*smoothstep(8.0,165.0,routeT)-.130*smoothstep(165.0,180.0,routeT));
+float dr=-RadiusM*(.035*6*u0*(1-u0)/16.0+.700*6*u1*(1-u1)/157.0+.130*6*u2*(1-u2)/15.0);
+float2 basinFlow=normalize(radial*dr+tangential*max(r*.018,1.0))*18.0;
 // Tunnel UV.x runs forward along its axis. Water rushes aft with slight side drift.
 float2 flow=lerp(basinFlow,float2(-18.0,2.0),saturate(Tunnel))*Flow;
 float phase=frac(T*0.07);
@@ -190,6 +207,7 @@ camera = expression(water, unreal.MaterialExpressionCameraPositionWS, -1400, 600
 time = scalar(water, "Clock", 0.0)
 center = vector(water, "BowlCenter", (0, 0, 0, 1))
 flow = scalar(water, "FlowStrength", 1.0)
+basin_radius = scalar(water, "BasinRadius", 1600.0)
 flow_handedness = scalar(water, "FlowHandedness", -1.0)
 tunnel_flow = scalar(water, "TunnelFlow", 0.0)
 wave_height = scalar(water, "WaveHeight", 115.0)
@@ -198,7 +216,7 @@ foam_coverage = scalar(water, "FoamCoverage", 1.1)
 overflow_foam = scalar(water, "OverflowFoam", 0.0)
 hull_flatten = scalar(water, "HullFlatten", 0.0)
 sea_level = scalar(water, "SeaLevel", 230.0)
-base_inputs = {"UV": uv, "VC": vc, "P": position, "T": time, "Center": center, "Flow": flow, "Tunnel": tunnel_flow, "Handedness":flow_handedness}
+base_inputs = {"UV": uv, "VC": vc, "P": position, "T": time, "Center": center, "Flow": flow, "Tunnel": tunnel_flow, "Handedness":flow_handedness,"RadiusM":basin_radius}
 
 # Runtime bridge replaces these array references with the live grid's private
 # render targets and copies its MPC values. No paid shader implementation is
@@ -303,6 +321,8 @@ foam_inputs["SourceAvailable"]=crest_available
 for index,coordinate in enumerate(("q","q2")):
     source_uv=custom(water,FLOW+"return "+coordinate+"*InvSpan+.5;",FLOAT2,dict(base_inputs,InvSpan=crest_inv_span))
     foam_inputs["Source"+str(index)]=texture_sample(water,"CrestSource",crest_default,source_uv)
+impact_uv=custom(water,"return UV*100.0*InvSpan+.5;",FLOAT2,{"UV":uv,"InvSpan":crest_inv_span})
+foam_inputs["ImpactSource"]=texture_sample(water,"CrestSource",crest_default,impact_uv)
 foam_fine_uvs = []
 if foam_texture:
     for index, coordinate in enumerate(("q", "q2")):
@@ -340,7 +360,11 @@ float cap=smoothstep(.34,.60,wave)*(1-smoothstep(45000.0,180000.0,length(P-Cam))
 float supply=saturate(Overflow)*Supply*smoothstep(.92,.99,VC.g);
 float torn=lerp(wn.fbm(q*float2(.17,.23)),wn.fbm(q2*float2(.17,.23)),blend);
 float breakup=smoothstep(.43,.64,torn);
-float body=crest*breakup+cap*.75*thread+supply*.10*thread;
+float impact=max(ImpactSource.g*.85,lerp(Source0.g,Source1.g,blend)*ageFade)*saturate(SourceAvailable);
+float movingLip=lerp(wn.breaking_field(q,T).w,wn.breaking_field(q2,T).w,blend)
+    *(1-smoothstep(35000.0,130000.0,length(P-Cam)))*(1-saturate(Tunnel));
+float body=crest*breakup+cap*.75*thread+supply*.10*thread
+    +impact*breakup*(.12+.88*thread)+movingLip*.65*(.25+.75*breakup);
 float veil=thread*.08*smoothstep(.4,.7,fine)*smoothstep(.35,.7,torn)*max(crest,cap);
 float lace=smoothstep(.35,.70,fine);
 """
@@ -392,6 +416,8 @@ normal_code = NOISE + FLOW + r"""
 float nearHull=smoothstep(1200.0,4000.0,length(P.xy*float2(.5,2)));
 float distanceM=length(P-Cam)*0.01;
 float2 slope=-lerp(wn.wave_field(q,T).yz,wn.wave_field(q2,T).yz,blend)*(min(max(Amp,0.0),650.0)*0.01);
+float2 breakingSlope=lerp(wn.breaking_field(q,T).yz,wn.breaking_field(q2,T).yz,blend);
+slope-=breakingSlope*(1-saturate(Tunnel));
 slope*=lerp(0.0,1.0,nearHull)*lerp(1.0,.18,smoothstep(180.0,1000.0,distanceM));
 // Intermediate wind waves connect the large swells to the close surface detail.
 // Fade unresolved frequencies with true camera distance, including crater depth.
@@ -477,7 +503,7 @@ float3 curved=d+cross(axis,d)+cross(axis,cross(axis,d))/max(1+waveNormal.z,.01);
 float liveWeight=saturate(Enabled)*step(.5,Count);
 wave=lerp(wave,wave*.25+curved*nearHull*resolved,liveWeight);
 """
-wpo_code+="wave*=1-saturate(VC.r*1.5); return wave+float3(0,0,(Level-P.z)*flatten);"
+wpo_code+="float breaker=lerp(wn.breaking_field(q,T).x,wn.breaking_field(q2,T).x,blend); wave+=waveNormal*breaker*100.0*nearHull*resolved*(1-saturate(Tunnel)); wave*=1-saturate(VC.r*1.5); return wave+float3(0,0,(Level-P.z)*flatten);"
 output(custom(water,wpo_code,FLOAT3,wpo_inputs,800),unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
 
 volume = expression(water,unreal.MaterialExpressionSingleLayerWaterMaterialOutput,0,1000)
@@ -653,3 +679,62 @@ output(scalar(spray,"SprayRoughness",0.8),unreal.MaterialProperty.MP_ROUGHNESS)
 MEL.recompile_material(spray)
 unreal.EditorAssetLibrary.save_loaded_asset(spray,only_if_is_dirty=False)
 unreal.log_warning("DC_RESULT M_MaelstromSpray saved")
+
+# Original lit, ragged whitewater streams. UV.y is actual downstream metres;
+# VC.r encodes half-width/100m, VC.g seed, VC.b normalized fall progress.
+feed=make_material("M_MaelstromWhitewater")
+feed.set_editor_property("blend_mode",unreal.BlendMode.BLEND_TRANSLUCENT)
+feed.set_editor_property("shading_model",unreal.MaterialShadingModel.MSM_DEFAULT_LIT)
+feed.set_editor_property("translucency_lighting_mode",unreal.TranslucencyLightingMode.TLM_SURFACE_PER_PIXEL_LIGHTING)
+feed.set_editor_property("has_pixel_animation",True)
+fuv=expression(feed,unreal.MaterialExpressionTextureCoordinate)
+fvc=expression(feed,unreal.MaterialExpressionVertexColor)
+ft=scalar(feed,"Clock",0)
+fp=expression(feed,unreal.MaterialExpressionWorldPosition)
+fi={"UV":fuv,"VC":fvc,"T":ft,"P":fp}
+fcode=NOISE+r"""
+float width=max(VC.r*200.0,4.0);
+float2 p=float2((UV.x-.5)*width,UV.y-T*(18.0+VC.b*12.0));
+float body=wn.fbm(p*float2(.26,.055)+VC.g*83.0);
+float fine=wn.fbm(p*float2(.95,.3)+19.0);
+float edge=smoothstep(0,.18,UV.x)*smoothstep(0,.18,1-UV.x);
+float torn=smoothstep(.30,.64,body+fine*.15);
+float foot=1-smoothstep(.76,1.0,VC.b);
+float patches=smoothstep(.20,.50,wn.fbm(p*float2(.055,.018)+VC.g*31.0));
+float hull=smoothstep(1200.0,3500.0,length(P.xy*float2(.5,2)));
+return saturate(edge*torn*(.30+fine*.70)*patches*foot*hull);
+"""
+output(custom(feed,fcode,FLOAT,fi),unreal.MaterialProperty.MP_OPACITY)
+output(vector(feed,"FoamColor",(.66,.76,.79,1)),unreal.MaterialProperty.MP_BASE_COLOR)
+output(scalar(feed,"Roughness",.75),unreal.MaterialProperty.MP_ROUGHNESS)
+output(scalar(feed,"Specular",.12),unreal.MaterialProperty.MP_SPECULAR)
+MEL.recompile_material(feed)
+unreal.EditorAssetLibrary.save_loaded_asset(feed,only_if_is_dirty=False)
+unreal.log_warning("DC_RESULT M_MaelstromWhitewater saved")
+
+# Soft local water spray; separate from the cloud chat's atmosphere/plume assets.
+mist=make_material("M_MaelstromImpactMist")
+mist.set_editor_property("blend_mode",unreal.BlendMode.BLEND_TRANSLUCENT)
+mist.set_editor_property("shading_model",unreal.MaterialShadingModel.MSM_DEFAULT_LIT)
+mist.set_editor_property("translucency_lighting_mode",unreal.TranslucencyLightingMode.TLM_VOLUMETRIC_DIRECTIONAL)
+mu=expression(mist,unreal.MaterialExpressionTextureCoordinate)
+mv=expression(mist,unreal.MaterialExpressionVertexColor)
+mt=expression(mist,unreal.MaterialExpressionTime)
+ma=custom(mist,NOISE+r"""
+float2 p=float2(UV.x*12.0+VC.g*13.0,UV.y*7.0-T*.9);
+float n=wn.fbm(p)+wn.noise(p*2.7)*.12;
+float2 d=(UV-.5)*2.0;
+float edge=pow(saturate(1-dot(d,d)),2.0);
+float torn=smoothstep(.37,.69,n);
+return edge*torn*Alpha*Density*Reveal;
+""",FLOAT,{"UV":mu,"VC":mv,"Alpha":(mv,"A"),"T":mt,"Density":scalar(mist,"Density",.55),"Reveal":scalar(mist,"Reveal",1.0)})
+md=expression(mist,unreal.MaterialExpressionDepthFade)
+MEL.connect_material_expressions(ma,"",md,"Opacity")
+MEL.connect_material_expressions(scalar(mist,"DepthFadeDistance",130),"",md,"FadeDistance")
+output(md,unreal.MaterialProperty.MP_OPACITY)
+output(vector(mist,"MistColor",(.59,.69,.74,1)),unreal.MaterialProperty.MP_BASE_COLOR)
+output(scalar(mist,"Roughness",.88),unreal.MaterialProperty.MP_ROUGHNESS)
+output(scalar(mist,"Specular",0.0),unreal.MaterialProperty.MP_SPECULAR)
+MEL.recompile_material(mist)
+unreal.EditorAssetLibrary.save_loaded_asset(mist,only_if_is_dirty=False)
+unreal.log_warning("DC_RESULT M_MaelstromImpactMist saved")
