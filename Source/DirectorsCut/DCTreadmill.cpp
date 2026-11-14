@@ -933,7 +933,7 @@ void ADCTreadmill::TickStrikes(float DeltaSeconds)
 		static const bool bNoCurrent = FParse::Param(FCommandLine::Get(), TEXT("DCNoCurrent"));
 		FCollisionQueryParams Ahead(TEXT("DCCurrent"), true);
 		const FCollisionObjectQueryParams StoneAheadOf(ECC_Destructible);
-		const float LineZ = Director->SeaLevelZ + 140.f, Far = 9000.f, BowX = 1200.f;
+		const float LineZ = Director->SeaLevelZ + 140.f, Far = 15000.f, BowX = 1200.f;   // 150 m: ten seconds of warning at her speed in the city
 		float Hit[3] = { -1.f, -1.f, -1.f };
 		float FaceY = 0.f;
 		const float Offs[3] = { 0.f, -(ShipHalfWidth + 120.f), ShipHalfWidth + 120.f };
@@ -957,7 +957,7 @@ void ADCTreadmill::TickStrikes(float DeltaSeconds)
 			// Keep to the side already chosen while the same stone is ahead.
 			if (FMath::Abs(CurrentDrift) > 40.f) { Dir = FMath::Sign(CurrentDrift); }
 			const float Urge = 1.f - Hit[0] / Far;
-			Want = Dir * FMath::Lerp(320.f, 1100.f, Urge);
+			Want = Dir * FMath::Lerp(260.f, 1200.f, Urge);
 		}
 		CurrentDrift = FMath::FInterpTo(CurrentDrift, Want, DeltaSeconds, Want != 0.f ? 5.f : 1.5f);
 		static const bool bCurrentLog = FParse::Param(FCommandLine::Get(), TEXT("DCCurrentLog"));
