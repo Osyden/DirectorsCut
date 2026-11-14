@@ -292,7 +292,8 @@ void ADCCrewMember::TickCannons(float DeltaSeconds, ADCTreadmill* Treadmill, EDC
 	ADCGunnery* Guns = ADCGunnery::Get(this);
 	if (!Guns || !Guns->IsReady(Side)) { return; }
 
-	const int32 Target = Treadmill->FindHostile(Side, 13000.f);
+	// 200 m (was 130): the creature's young come in at 13 m a second, and at 130 m a battery had time for one broadside.
+	const int32 Target = Treadmill->FindHostile(Side, 20000.f);
 	if (Target == INDEX_NONE) { return; }
 	Guns->FireBroadside(Side, Treadmill->GetObjectLocation(Target), 4);
 }

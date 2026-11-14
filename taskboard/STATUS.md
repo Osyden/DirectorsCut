@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 02:18 Claude: a sunk spawnling rolls and goes down; batteries open fire at 200 m
+
+- The guns' target is now an unseen actor riding with the spawnling. When they destroy it the creature plays its defeated animation, rolls and sinks over four seconds instead of vanishing (`review/55-spawnling/20-sunk-390-to-396s.png`: whole at 390 s, claws only at 391.5, gone by 392.5).
+- Crew batteries open fire on a hostile inside 200 m (was 130; `DCCrew.cpp` `TickCannons`, one number, Codex's file). In four runs with the bot's guns manned the port spawnling was sunk each time, between 27 and 123 m off. The starboard one reached the hull each time: I have not found out why that battery does not sink it.
+- Not in the fifteenth build.
+
 ## 14 Nov 02:13 Claude: fifteenth build packaged and run: `2026-11-14_0207_974b398_spawnlings`
 
 - `Builds/2026-11-14_0207_974b398_spawnlings/Windows/DirectorsCut.exe`. Run from the exe at 1600x900 without sound: wall and portal at 56 s, a flash in the tunnel at 63.5, the city at 120 (83 to 105 fps); the whole maelstrom at 3x with the bot captain from 262 s: the first spawnling sunk 21 m off, the second reached the hull, 8 arms broken, beaten on the clock at 160.0 s, plume, exit at 450.03, ending card, hull 46.

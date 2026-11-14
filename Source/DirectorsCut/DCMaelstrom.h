@@ -131,6 +131,8 @@ private:
 	struct FSpawnling
 	{
 		TWeakObjectPtr<AActor> Actor;
+		TWeakObjectPtr<AActor> Mark;      // what the guns aim at and destroy; unseen
+		float SunkAt = -1.f;              // seconds after the breach at which the guns sank it
 		float Side = 1.f;         // -1 port, +1 starboard
 		float Abeam = 0.f;        // cm off the ship's side
 		bool bWarned = false;

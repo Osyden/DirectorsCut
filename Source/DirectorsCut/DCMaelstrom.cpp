@@ -793,7 +793,7 @@ void ADCMaelstrom::ClearTwisters()
 	TwistersRaised = 0;
 	if (AActor* P = Plume.Get()) { P->Destroy(); }
 	Plume.Reset(); PlumeMID = nullptr; bPlumeShaken = false;
-	for (FSpawnling& S : Spawnlings) { if (AActor* A = S.Actor.Get()) { A->Destroy(); } }
+	for (FSpawnling& S : Spawnlings) { if (AActor* A = S.Actor.Get()) { A->Destroy(); } if (AActor* M = S.Mark.Get()) { M->Destroy(); } }
 	Spawnlings.Reset(); SpawnlingsSent = 0;
 	for (FBoulder& B : Boulders) { if (AActor* A = B.Actor.Get()) { A->Destroy(); } }
 	Boulders.Reset();
@@ -999,7 +999,18 @@ void ADCMaelstrom::UpdateSpawnlings(float DeltaSeconds)
 			S.Actor = A;
 			// Somewhere to start, so the treadmill's first reading of it is on the right side.
 			A->SetActorLocation(FVector(1500.f, S.Side * (S.Abeam + 600.f), Director->SeaLevelZ));
-			Treadmill->AddExternalHostile(A, 900.f, 3.f);
+			// The guns' target is an unseen actor that rides with it. When the treadmill destroys that, the
+			// creature itself is still here to roll over and go down instead of vanishing.
+			if (AActor* Mark = GetWorld()->SpawnActor<AActor>(AActor::StaticClass(), FTransform(A->GetActorLocation()), Params))
+			{
+				USceneComponent* Root = NewObject<USceneComponent>(Mark);
+				Root->SetMobility(EComponentMobility::Movable);
+				Mark->SetRootComponent(Root);
+				Root->RegisterComponent();
+				Mark->SetActorLocation(A->GetActorLocation());
+				Treadmill->AddExternalHostile(Mark, 900.f, 3.f);
+				S.Mark = Mark;
+			}
 			Spawnlings.Add(S);
 			UE_LOG(LogDC, Log, TEXT("Spawnling sent at %.1f s on the %s beam"), Elapsed, S.Side < 0.f ? TEXT("port") : TEXT("starboard"));
 		}
@@ -1008,12 +1019,29 @@ void ADCMaelstrom::UpdateSpawnlings(float DeltaSeconds)
 	{
 		FSpawnling& S = Spawnlings[i];
 		AActor* A = S.Actor.Get();
-		if (!A)
+		if (!A) { Spawnlings.RemoveAt(i); continue; }
+		if (S.SunkAt < 0.f && !S.Mark.IsValid())
 		{
 			// The guns have sunk it (the treadmill destroys a hostile whose health is gone).
+			S.SunkAt = Elapsed;
 			if (Crew) { Crew->Report(TEXT("It is going under! Good shooting!"), true); }
 			UE_LOG(LogDC, Log, TEXT("Spawnling sunk at %.1f s, %.0f m off"), Elapsed, S.Abeam / 100.f);
-			Spawnlings.RemoveAt(i);
+			if (ASkeletalMeshActor* Body = Cast<ASkeletalMeshActor>(A))
+			{
+				if (UAnimSequence* Dying = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Fab/Claw_Kaiju_Monster/ClawKaiju_allAnimationClawKaiju_Defeated.ClawKaiju_allAnimationClawKaiju_Defeated"), nullptr, LOAD_NoWarn | LOAD_Quiet))
+				{
+					Body->GetSkeletalMeshComponent()->PlayAnimation(Dying, false);
+				}
+			}
+		}
+		if (S.SunkAt >= 0.f)
+		{
+			// It stops, rolls and goes down over four seconds.
+			const float Down = (Elapsed - S.SunkAt) / 4.f;
+			FVector Where(1500.f, S.Side * (S.Abeam + 600.f), 0.f);
+			Where.Z = SampleSurfaceWorld(Where) - 37.f * 100.f * SpawnlingScale * (SpawnlingSunk + Down * 1.1f);
+			A->SetActorLocationAndRotation(Where, FRotator(0.f, (S.Side < 0.f ? 90.f : -90.f) + SpawnlingYaw, 50.f * FMath::SmoothStep(0.f, 1.f, Down)));
+			if (Down >= 1.f) { A->Destroy(); Spawnlings.RemoveAt(i); }
 			continue;
 		}
 		if (!S.bWarned)
@@ -1027,6 +1055,7 @@ void ADCMaelstrom::UpdateSpawnlings(float DeltaSeconds)
 		Where.Z = SampleSurfaceWorld(Where) - 37.f * 100.f * SpawnlingScale * SpawnlingSunk;
 		// It comes on facing the ship.
 		A->SetActorLocationAndRotation(Where, FRotator(0.f, (S.Side < 0.f ? 90.f : -90.f) + SpawnlingYaw, 0.f));
+		if (AActor* Mark = S.Mark.Get()) { Mark->SetActorLocation(Where + FVector(0.f, 0.f, 37.f * 50.f * SpawnlingScale)); }
 		if (S.Abeam <= 0.f || Elapsed > Finale)
 		{
 			if (S.Abeam <= 0.f)
@@ -1038,6 +1067,7 @@ void ADCMaelstrom::UpdateSpawnlings(float DeltaSeconds)
 				if (Crew) { Crew->Report(TEXT("It is on the hull! It is tearing at us!"), true); }
 				UE_LOG(LogDC, Log, TEXT("Spawnling reached the hull at %.1f s"), Elapsed);
 			}
+			if (AActor* Mark = S.Mark.Get()) { Mark->Destroy(); }
 			A->Destroy();
 			Spawnlings.RemoveAt(i);
 		}
