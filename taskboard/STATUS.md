@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 03:29 Claude: the dark bar by the portal is the underside of the piece over the mouth
+
+- `-DCNoFrontOver` leaves that piece out: the bar goes, but open sky shows over the tunnel between two towers of cloud. So the bar is its cut underside in shadow. Its cut now fades over 70 voxels (was 30) from a little lower; the band is softer but still there at 56 s, reading as a dark flat cloud base. Left at that.
+- Not in the nineteenth build.
+
 ## 14 Nov 03:24 Claude: dark level bar right of the portal: one guess tried, not it
 
 - At 54 to 57 s a dark, level band shows in the wall to the right of the portal. Guess: the right-hand wall piece being set 90 m back let the cut underside of the piece over the mouth show. Setting it back only 15 m did not remove the band; reverted. Still there. The next thing to try is the over-mouth piece's floor (raise it or soften it further), or leaving that piece out.

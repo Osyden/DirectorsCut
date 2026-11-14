@@ -293,10 +293,12 @@ void ADCFogFront::BuildTunnel()
 	const FPlace Places[] = {
 		{ -1.f, 0.f, 42.f, 0.f, 1.f, 7.f, 0.f, 1.5f },
 		{ 1.f, 0.f, 42.f, 70.f, 1.25f, -5.f, 9000.f, 1.5f },
-		{ 0.f, 0.f, 40.f + 17000.f / Unit, 135.f, 1.1f, 0.f, 4000.f, 30.f },
+		{ 0.f, 0.f, 40.f + 15000.f / Unit, 135.f, 1.1f, 0.f, 4000.f, 70.f },
 	};
+	static const bool bNoOver = FParse::Param(FCommandLine::Get(), TEXT("DCNoFrontOver"));   // test hook: leave out the piece over the mouth
 	for (const FPlace& P : Places)
 	{
+		if (bNoOver && P.Side == 0.f) { continue; }
 		AHeterogeneousVolume* A = GetWorld()->SpawnActor<AHeterogeneousVolume>(AHeterogeneousVolume::StaticClass(), FTransform::Identity, Params);
 		UHeterogeneousVolumeComponent* C = A ? A->FindComponentByClass<UHeterogeneousVolumeComponent>() : nullptr;
 		if (!C) { continue; }
