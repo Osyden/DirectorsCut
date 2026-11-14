@@ -992,7 +992,7 @@ void ADCRideDirector::TickUDS()
 			bool bForced = ForcedAt >= 0.f && RideTime >= ForcedAt;
 			// Inside the cloud tunnel the air is kept clear (Mist is low), so the chance bolts below do not fall
 			// there; but a flash is what shows the tunnel's rolling walls from within. Four on cue.
-			static const float TunnelBolts[] = { 60.8f, 63.4f, 66.3f, 69.5f };
+			static const float TunnelBolts[] = { 45.f, 50.5f, 54.5f, 57.6f, 60.8f, 63.4f, 66.3f, 69.5f };   // the first four are in the wall as it comes on
 			static float LastRideTime = -1.f;
 			for (float Cue : TunnelBolts) { if (LastRideTime >= 0.f && LastRideTime < Cue && RideTime >= Cue && RideTime - LastRideTime < 1.f) { bForced = true; } }
 			LastRideTime = RideTime;

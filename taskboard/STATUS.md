@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 01:22 Claude: sheet lightning in the wall as it comes on
+
+- Four more bolts on cue at 45, 50.5, 54.5 and 57.6 s, while the wall closes. The wall's pieces flare from within at about a third of the tunnel's strength (at the tunnel's strength the whole wall went pale blue from end to end). Frames at 50.7 and 57.7 s show the wall lit blue-white with the portal dark in it. It is one even flare over each piece, not a local one: Codex's review asks for a flash with a source and fall-off, and this is not that.
+- One frame at 50.6 s in an earlier run still showed the sepia border with the bloom strength at 0; it did not recur in the next run. Unexplained.
+
 ## 14 Nov 01:16 Claude: lightning on cue inside the cloud tunnel; sepia border on flashes gone
 
 - With the tunnel's air kept clear (Mist 0.15) the director's chance bolts, which need Mist above 0.3, never fell there, so the tunnel was ten seconds of dim grey. Four bolts now fall on cue at 60.8, 63.4, 66.3 and 69.5 s (`DCRideDirector.cpp`, by the `-DCLightningAt` hook). Each flash lights the tunnel's rolling walls blue-white from within through the material's flare; the third shows the first statues standing in the cloud. `review/54-lightning-in-the-tunnel`.

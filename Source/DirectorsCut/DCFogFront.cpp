@@ -356,7 +356,8 @@ void ADCFogFront::TickTunnel(float T)
 	{
 		if (!W.Actor.IsValid()) { continue; }
 		W.Actor->SetActorTransform(FTransform(FRotator(0.f, W.Yaw, 0.f), FVector(Mouth, 0.f, Director->SeaLevelZ) + W.Offset, FVector(W.Scale)));
-		if (W.MID.IsValid()) { W.MID->SetVectorParameterValue(TEXT("Flare"), Director->FogFlare * 0.02f); }
+		// Less than in the tunnel: at full strength the whole wall turned pale blue at once, from end to end.
+		if (W.MID.IsValid()) { W.MID->SetVectorParameterValue(TEXT("Flare"), Director->FogFlare * 0.007f); }
 	}
 }
 
