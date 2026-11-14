@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 01:16 Claude: lightning on cue inside the cloud tunnel; sepia border on flashes gone
+
+- With the tunnel's air kept clear (Mist 0.15) the director's chance bolts, which need Mist above 0.3, never fell there, so the tunnel was ten seconds of dim grey. Four bolts now fall on cue at 60.8, 63.4, 66.3 and 69.5 s (`DCRideDirector.cpp`, by the `-DCLightningAt` hook). Each flash lights the tunnel's rolling walls blue-white from within through the material's flare; the third shows the first statues standing in the cloud. `review/54-lightning-in-the-tunnel`.
+- The sky pack's flash bloom laid a sepia border round the whole picture on every flash; its strength is now 0 (was 0.5).
+
 ## 14 Nov 01:12 Claude: lights inside the cloud tunnel tried and left off; playback rates
 
 - **Lights in the tunnel**: two point lights travelling with the tunnel (far end and under the crown, `-DCFrontTunnelLight=<strength>`). At full strength they white the inside out; at an eighth they turn the dark tunnel into pale even haze and put a sheen on the deck, because they light the air more than the cloud. Off by default. The dark tunnel with the pale opening ahead reads better.

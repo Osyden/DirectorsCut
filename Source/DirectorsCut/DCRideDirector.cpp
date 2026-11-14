@@ -873,7 +873,7 @@ void ADCRideDirector::SetupUDS()
 	// Off: at these resolutions the drops on the lens read as dirt on the picture, not as rain.
 	SkyFlag(UDSWeather, TEXT("Enable Screen Droplets"), false);
 	// In fog a flash already fills the air with light; the pack's extra bloom on top of it whites the picture out.
-	SkyNum(UDSWeather, TEXT("Lightning Flash Light Bloom Intensity"), 0.5);
+	SkyNum(UDSWeather, TEXT("Lightning Flash Light Bloom Intensity"), 0.0);   // (it was 0.5: it laid a sepia border round the picture on every flash)
 	// At the pack's own strength a flash turned the near stone and the deck pure white for half a second.
 	// At 4 it lights the fog behind the ruins and leaves them as shapes against it.
 	SkyNum(UDSWeather, TEXT("Lightning Flash Light Intensity"), 4.0);
@@ -989,10 +989,16 @@ void ADCRideDirector::TickUDS()
 			static float ForcedAt = -1.f; static bool bForcedRead = false;
 			if (!bForcedRead) { bForcedRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCLightningAt="), ForcedAt); }
 			NextBolt -= GetWorld()->GetDeltaSeconds();
-			const bool bForced = ForcedAt >= 0.f && RideTime >= ForcedAt;
+			bool bForced = ForcedAt >= 0.f && RideTime >= ForcedAt;
+			// Inside the cloud tunnel the air is kept clear (Mist is low), so the chance bolts below do not fall
+			// there; but a flash is what shows the tunnel's rolling walls from within. Four on cue.
+			static const float TunnelBolts[] = { 60.8f, 63.4f, 66.3f, 69.5f };
+			static float LastRideTime = -1.f;
+			for (float Cue : TunnelBolts) { if (LastRideTime >= 0.f && LastRideTime < Cue && RideTime >= Cue && RideTime - LastRideTime < 1.f) { bForced = true; } }
+			LastRideTime = RideTime;
 			if (bForced || (NextBolt <= 0.f && Env.LightningRate > 4.f && Env.Mist > 0.3f))
 			{
-				if (bForced) { ForcedAt = -1.f; }
+				if (ForcedAt >= 0.f && RideTime >= ForcedAt) { ForcedAt = -1.f; }
 				NextBolt = FMath::FRandRange(3.5f, 8.f) * 10.f / FMath::Max(Env.LightningRate, 1.f);
 				const float Side = FMath::RandBool() ? 1.f : -1.f;
 				if (FParse::Param(FCommandLine::Get(), TEXT("DCLightningLog"))) { UE_LOG(LogDC, Log, TEXT("Lightning: director calls a bolt at ride time %.2f"), RideTime); }
