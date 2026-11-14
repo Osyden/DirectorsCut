@@ -1,5 +1,6 @@
 #include "DCMaelstrom.h"
 #include "Components/HeterogeneousVolumeComponent.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "SparseVolumeTexture/SparseVolumeTexture.h"
 #include "Misc/CommandLine.h"
@@ -34,6 +35,7 @@ TArray<TSharedPtr<FJsonValue>> FallVectorJson(const FVector& V)
 void ADCMaelstrom::UpdateProceduralFalls()
 {
     const bool bRenderFalls = FParse::Param(FCommandLine::Get(), TEXT("DCProceduralFalls"));
+    const bool bDensityDiagnostic = FParse::Param(FCommandLine::Get(), TEXT("DCFallDensityDiagnostic"));
     FString ExportPath;
     const bool bExportProfile = FParse::Value(FCommandLine::Get(), TEXT("DCExportWaterfallProfile="), ExportPath)
         || FParse::Param(FCommandLine::Get(), TEXT("DCExportWaterfallProfile"));
@@ -268,7 +270,18 @@ void ADCMaelstrom::UpdateProceduralFalls()
             MID->SetSparseVolumeTextureParameterValue(TEXT("SparseVolumeTexture"), Volume);
             float Density = Layer == 0 ? .004f : .0015f;
             FParse::Value(FCommandLine::Get(), Layer == 0 ? TEXT("DCFallDensity=") : TEXT("DCImpactDensity="), Density);
-            MID->SetScalarParameterValue(TEXT("Density"), FMath::Max(0.f, Density));
+            // Pure sampled-density emission isolates native SVT sampling from
+            // illumination/extinction. Never enable this for normal gameplay.
+            float DiagnosticEmission = bDensityDiagnostic ? 1.f : 0.f;
+            if (bDensityDiagnostic) { FParse::Value(FCommandLine::Get(), TEXT("DCFallDiagnosticEmission="), DiagnosticEmission); }
+            MID->SetScalarParameterValue(TEXT("Density"), bDensityDiagnostic ? 0.f : FMath::Max(0.f, Density));
+            MID->SetScalarParameterValue(TEXT("DiagnosticEmission"), FMath::Max(0.f, DiagnosticEmission));
+            if (bDensityDiagnostic)
+            {
+                float Available = 0.f;
+                if (!Base->GetScalarParameterValue(FMaterialParameterInfo(TEXT("DiagnosticEmission")), Available))
+                { UE_LOG(LogTemp, Error, TEXT("DC_FALL_DIAGNOSTIC material %s lacks DiagnosticEmission; rebuild waterfall materials before interpreting the capture"), *MaterialPath); }
+            }
             C->SetMaterial(0, MID);
             C->bPivotAtCentroid = false;
             C->bIssueBlockingRequests = false;
@@ -282,6 +295,11 @@ void ADCMaelstrom::UpdateProceduralFalls()
             UE_LOG(LogTemp, Display, TEXT("DC_PROCEDURAL_FALL %s feed=%d frames=%d resolution=%s foot=%s lip=%s originWorld=%s"),
                 Name, Feed.SourceIndex, Volume->GetNumFrames(), *Volume->GetVolumeResolution().ToString(),
                 *Feed.Foot.ToCompactString(), *Feed.Lip.ToCompactString(), *Actor->GetActorLocation().ToCompactString());
+            const FTransform NativeFrame = Volume->GetFrameTransform();
+            UE_LOG(LogTemp, Display, TEXT("DC_FALL_NATIVE actor=%s layer=%s asset=%s frameTranslation=%s frameScale=%s frameRotation=%s actorRelative=%s density=%.6f emission=%.6f"),
+                *Actor->GetName(), Name, *Volume->GetPathName(), *NativeFrame.GetTranslation().ToString(),
+                *NativeFrame.GetScale3D().ToString(), *NativeFrame.Rotator().ToString(),
+                *C->GetRelativeTransform().ToString(), bDensityDiagnostic ? 0.f : Density, DiagnosticEmission);
         }
         if (ProceduralFalls.Num() && FParse::Param(FCommandLine::Get(), TEXT("DCFallCamera")))
         {
@@ -301,6 +319,8 @@ void ADCMaelstrom::UpdateProceduralFalls()
     FParse::Value(FCommandLine::Get(), TEXT("DCWaterfallLoopSeconds="), LoopSeconds);
     float FPS = 0.f;
     FParse::Value(FCommandLine::Get(), TEXT("DCFallFPS="), FPS);
+    float FixedFrame = 0.f;
+    const bool bFixedFrame = FParse::Value(FCommandLine::Get(), TEXT("DCFallFixedFrame="), FixedFrame);
     for (FProceduralFall& Fall : ProceduralFalls)
     {
         if (AHeterogeneousVolume* Actor = Fall.Actor.Get())
@@ -308,15 +328,41 @@ void ADCMaelstrom::UpdateProceduralFalls()
             if (UHeterogeneousVolumeComponent* C = Actor->FindComponentByClass<UHeterogeneousVolumeComponent>())
             {
                 const float PlaybackFPS = FPS > 0.f ? FPS : Fall.Frames / FMath::Max(.1f, LoopSeconds);
-                C->SetFrame(FMath::Fmod(FMath::Max(0.f, Elapsed) * PlaybackFPS, static_cast<float>(Fall.Frames)));
+                C->SetFrame(bFixedFrame ? FMath::Clamp(FixedFrame, 0.f, Fall.Frames - 1.f)
+                    : FMath::Fmod(FMath::Max(0.f, Elapsed) * PlaybackFPS, static_cast<float>(Fall.Frames)));
+                // Wait for the component's native frame update and bounds
+                // refresh; a spawn-time component still has default bounds.
+                if (++Fall.DiagnosticTicks == 4)
+                {
+                    UE_LOG(LogTemp, Display, TEXT("DC_FALL_COMPONENT actor=%s frameTranslation=%s frameScale=%s frameRotation=%s worldScale=%s boundsOrigin=%s boundsExtent=%s resolution=%s pivotCentroid=%d visible=%d"),
+                        *Actor->GetName(), *C->FrameTransform.GetTranslation().ToString(), *C->FrameTransform.GetScale3D().ToString(),
+                        *C->FrameTransform.Rotator().ToString(), *C->GetComponentScale().ToString(),
+                        *C->Bounds.Origin.ToString(), *C->Bounds.BoxExtent.ToString(), *C->VolumeResolution.ToString(),
+                        C->bPivotAtCentroid, C->IsVisible());
+                }
             }
+        }
+    }
+    if (ProceduralFalls.Num())
+    {
+        auto HideForReview = [&](USceneComponent* Component)
+        {
+            if (!Component) { return; }
+            if (!FallHiddenComponents.ContainsByPredicate([Component](const FFallHiddenComponent& Entry)
+                { return Entry.Component.Get() == Component; }))
+            { FallHiddenComponents.Add({Component, Component->IsVisible()}); }
+            Component->SetVisibility(false);
+        };
+        if (FParse::Param(FCommandLine::Get(), TEXT("DCFallVolumesOnly"))) { HideForReview(Whitewater); }
+        if (FParse::Param(FCommandLine::Get(), TEXT("DCFallHideCliffs")))
+        {
+            HideForReview(Cliffs);
+            for (UInstancedStaticMeshComponent* Rock : CliffRocks) { HideForReview(Rock); }
+            for (UInstancedStaticMeshComponent* Rock : CliffShadowRocks) { HideForReview(Rock); }
         }
     }
     if (ACameraActor* Camera = FallReviewCamera.Get())
     {
-        // Isolate the volume from the existing opaque core and impact sheets;
-        // otherwise those can be mistaken for generated spray in a still.
-        if (FParse::Param(FCommandLine::Get(), TEXT("DCFallVolumesOnly"))) { Whitewater->SetVisibility(false); }
         if (ProceduralFalls.Num())
         {
             if (AActor* Fall = ProceduralFalls[0].Actor.Get())
@@ -332,10 +378,18 @@ void ADCMaelstrom::UpdateProceduralFalls()
 
 void ADCMaelstrom::ClearProceduralFalls()
 {
+    for (const FFallHiddenComponent& Entry : FallHiddenComponents)
+    {
+        if (USceneComponent* Component = Entry.Component.Get())
+        {
+            // Respect the encounter's normal hidden state on exit/early seek.
+            Component->SetVisibility(Entry.bWasVisible && bActive && Elapsed >= -7.f);
+        }
+    }
+    if (FallHiddenComponents.Num()) { UE_LOG(LogTemp, Display, TEXT("DC_FALL_DIAGNOSTIC restored %d component visibility states"), FallHiddenComponents.Num()); }
+    FallHiddenComponents.Reset();
     if (ACameraActor* Camera = FallReviewCamera.Get())
     {
-        if (FParse::Param(FCommandLine::Get(), TEXT("DCFallVolumesOnly")))
-        { Whitewater->SetVisibility(bActive && Elapsed >= -7.f); }
         if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
         {
             if (PC->GetViewTarget() == Camera) { PC->SetViewTarget(PC->GetPawn()); }

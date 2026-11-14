@@ -68,12 +68,15 @@ private:
 	{
 		TWeakObjectPtr<class AHeterogeneousVolume> Actor;
 		int32 Frames = 1;
+		int32 DiagnosticTicks = 0;
 	};
 	TArray<FProceduralFall> ProceduralFalls;
 	bool bProceduralFallsTried = false;
 	float PreviousFallTraceDistance = -1.f;
 	float AppliedFallTraceDistance = -1.f;
 	TWeakObjectPtr<class ACameraActor> FallReviewCamera;
+	struct FFallHiddenComponent { TWeakObjectPtr<class USceneComponent> Component; bool bWasVisible = false; };
+	TArray<FFallHiddenComponent> FallHiddenComponents;
 	struct FWaterFeed { FVector Foot; float Width; float Seed; TArray<FVector2D> Trail; FVector Lip = FVector::ZeroVector; int32 SourceIndex = INDEX_NONE;
 		float ContactV=0.f; FVector ContactPoint=FVector::ZeroVector; };
 	bool SampleReceivingWater(const FVector2D& Point,float& OutMeanHeight) const;
