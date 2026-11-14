@@ -28,6 +28,7 @@ ADCMaelstromAtmosphere::ADCMaelstromAtmosphere()
 void ADCMaelstromAtmosphere::BeginPlay()
 {
 	Super::BeginPlay();
+	ConfigureSkyCues();
 	if (UMaterialInterface* Material = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Maelstrom/M_MaelstromPlume.M_MaelstromPlume"), nullptr, LOAD_NoWarn | LOAD_Quiet))
 	{
 		SprayMID = UMaterialInstanceDynamic::Create(Material, this);
@@ -245,6 +246,7 @@ void ADCMaelstromAtmosphere::CaptureSun()
 		SavedSun.CloudResolution = Sun->CloudShadowMapResolutionScale;
 		SavedSun.bCloudShadows = Sun->bCastCloudShadows;
 		SavedSun.bVolumetricShadow = Sun->bCastVolumetricShadow;
+		SavedSun.LightFunction = Sun->LightFunctionMaterial;
 	}
 }
 
@@ -256,6 +258,9 @@ void ADCMaelstromAtmosphere::UpdateSun()
 	{
 		Sun->SetVolumetricScatteringIntensity(FMath::Max(SavedSun.Scattering, 1.15f));
 		Sun->SetCastVolumetricShadow(true);
+		// The bespoke volume casts its own shadows. The stock UDS light
+		// function samples a different density field and must not darken it twice.
+		if (SkyCloudMID && Sun->LightFunctionMaterial) { Sun->SetLightFunctionMaterial(nullptr); }
 		const float Extent = FMath::Max(5.f, SavedSun.CloudExtent);
 		const float Resolution = FMath::Max(2.f, SavedSun.CloudResolution);
 		if (!Sun->bCastCloudShadows || Sun->CloudShadowStrength != 0.85f || Sun->CloudShadowOnAtmosphereStrength != 1.f
@@ -278,6 +283,7 @@ void ADCMaelstromAtmosphere::RestoreSun()
 	{
 		Sun->SetVolumetricScatteringIntensity(SavedSun.Scattering);
 		Sun->SetCastVolumetricShadow(SavedSun.bVolumetricShadow);
+		Sun->SetLightFunctionMaterial(SavedSun.LightFunction.Get());
 		Sun->bCastCloudShadows = SavedSun.bCloudShadows;
 		Sun->CloudShadowStrength = SavedSun.CloudStrength;
 		Sun->CloudShadowOnAtmosphereStrength = SavedSun.CloudAtmosphere;
@@ -404,12 +410,12 @@ void ADCMaelstromAtmosphere::UpdateAtmosphere(ADCMaelstrom* Stage, float Elapsed
 	const bool bShow = bActive && IsValid(Stage) && Elapsed >= -1.f;
 	if (!bShow)
 	{
-		if (bEffectsActive) { SetEffectsVisible(false); RestoreSun(); RestoreVolumetrics(); bEffectsActive = false; }
+		if (bEffectsActive) { SetEffectsVisible(false); RestoreSun(); RestoreVolumetrics(); RestoreSky(); bEffectsActive = false; }
 		return;
 	}
 	SetActorTransform(Stage->GetArenaTransform());
 	if (!bBuilt) { BuildLayout(Stage); }
-	if (!bEffectsActive) { CaptureSun(); CaptureVolumetrics(); SetEffectsVisible(true); bEffectsActive = true; }
+	if (!bEffectsActive) { CaptureSky(); CaptureSun(); CaptureVolumetrics(); SetEffectsVisible(true); bEffectsActive = true; }
 	// Weather blueprints may reapply these every frame. Reassert only while this
 	// stage is active, without modifying their fog density or height distribution.
 	for (const FVolumetricState& Saved : SavedVolumetrics)
@@ -451,6 +457,7 @@ void ADCMaelstromAtmosphere::UpdateAtmosphere(ADCMaelstrom* Stage, float Elapsed
 		SprayMID->SetScalarParameterValue(TEXT("Density"), SprayDensity);
 	}
 	UpdateSun();
+	UpdateSkyVolume();
 	UpdateShafts(Stage, Elapsed, Reveal);
 }
 
@@ -458,5 +465,6 @@ void ADCMaelstromAtmosphere::EndPlay(const EEndPlayReason::Type Reason)
 {
 	RestoreSun();
 	RestoreVolumetrics();
+	RestoreSky();
 	Super::EndPlay(Reason);
 }

@@ -12,7 +12,7 @@ class UMaterialInterface;
 class UProceduralMeshComponent;
 class USpotLightComponent;
 
-/** Local falling-water atmosphere. Owns no global fog or weather actor. */
+/** Finale clouds and falling-water atmosphere; shared weather changes are restored on exit. */
 UCLASS()
 class ADCMaelstromAtmosphere : public AActor
 {
@@ -22,6 +22,9 @@ public:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
 	void UpdateAtmosphere(ADCMaelstrom* Stage, float Elapsed, bool bActive);
+	/** Authoring utility: finish shader compilation before a generated asset is saved. */
+	UFUNCTION(BlueprintCallable, Category="Maelstrom|Authoring")
+	static bool CompileSkyMaterial(UMaterialInterface* Material);
 
 	/** Density of the soft 3D billows; sheets add only their torn spray detail. */
 	UPROPERTY(EditAnywhere) float MistDensity = 0.60f;
@@ -67,6 +70,7 @@ private:
 		float CloudResolution = 1.f;
 		bool bCloudShadows = false;
 		bool bVolumetricShadow = false;
+		TWeakObjectPtr<UMaterialInterface> LightFunction;
 	};
 	struct FVolumetricState
 	{
@@ -85,6 +89,26 @@ private:
 	void RestoreVolumetrics();
 	void UpdateShafts(ADCMaelstrom* Stage, float Elapsed, float Reveal);
 	void SetEffectsVisible(bool bVisible);
+	void ConfigureSkyCues();
+	void CaptureSky();
+	void RestoreSky();
+	void RefreshSky();
+	void UpdateSkyVolume();
+	void SetSkyNumber(const TCHAR* Name, double Value);
+	void SetSkyColor(const TCHAR* Name, FLinearColor Value);
+	TWeakObjectPtr<AActor> StageSky;
+	TMap<FName, FString> SavedSkyProperties;
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> SkyCloudMID;
+	UPROPERTY() TObjectPtr<UMaterialInterface> PreviousCloudMaterial;
+	TWeakObjectPtr<class UVolumetricCloudComponent> StageCloud;
+	float PreviousCloudBottom = 0.f;
+	float PreviousCloudHeight = 0.f;
+	float PreviousCloudViewSamples = 1.f;
+	float PreviousCloudShadowSamples = 1.f;
+	float PreviousCloudBottomOcclusion = 0.5f;
+	FColor PreviousCloudGroundAlbedo = FColor::White;
+	bool bPreviousShafts = true;
+	int32 PreviousCloudRenderMode = -1;
 
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Spray;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> SprayMID;
