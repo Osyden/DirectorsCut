@@ -162,6 +162,7 @@ void ADCMaelstrom::BeginPlay()
 	BuildFoamSource();
 	BuildTunnel();
 	BuildLandmarks();
+	BuildCliffPreview();
 	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
 	{
 		// UDS also injects a sea-level density field through a volume material. It
@@ -691,6 +692,7 @@ void ADCMaelstrom::Tick(float DeltaSeconds)
 		// Let the defeated arms withdraw before the cut back to open sea.
 		Director->Seek(EndingStart);
 	}
+	UpdateCliffPreview();
 	PreviousTime = Director->RideTime;
 }
 
@@ -1623,6 +1625,7 @@ void ADCMaelstrom::RestoreAtmosphere()
 
 void ADCMaelstrom::EndPlay(const EEndPlayReason::Type Reason)
 {
+	ClearCliffPreview();
 	ClearProceduralFalls();
 	WaterBridge.Reset(WaterMID);
 	RestoreView();

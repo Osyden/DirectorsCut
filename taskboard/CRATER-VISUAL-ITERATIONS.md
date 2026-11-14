@@ -2,14 +2,14 @@
 
 User authorized recurring visual improvement and parallel workers. The Codex app heartbeat `directorscut-crater-visual-iterations` is active every 30 minutes in the existing maelstrom chat. This is implementation work with actual render review, not status polling. Latest user feedback takes precedence.
 
-Latest continuation: [ridged two-dimensional terrain and an isolated Nanite authoring preview](CRATER-RIDGED-PREVIEW-14NOV.md). Clean radial/catchment prototypes were rejected as dam-like. Blender's ridged multifractal/heterogeneous terrain is a more useful base; actual erosion and a physical-size FBX/Nanite import pass, but nothing has replaced the live cliff yet. Next is an isolated engine render and authoritative geometry/query integration, then real rock fracture. See the [previous direction and rim city pass](CRATER-EROSION-DIRECTION-14NOV.md). The safe shoreline, route and current gameplay defaults remain unchanged; the scene is still far from the reference.
+Latest continuation: [actual Unreal cliff preview, source/query proof and the necessary shape correction](CRATER-ENGINE-CLIFF-PREVIEW-14NOV.md). Source geometry, placement, masks and material now render correctly, but the isolated tile still looks like a faceted dam. The generator locks roughly 69% of the physical samples, including a continuous cap and apron. Next: release those blanket protections in favour of real shore/seam/temple anchors, generate connected hinterland and broken buttresses, then erode/fracture and review one sector again. Do not extend the current rejected shape around the rim. The [ridged-terrain provenance](CRATER-RIDGED-PREVIEW-14NOV.md) remains authoritative. Nothing has replaced the live cliff yet; gameplay, route and cloud/light ownership remain unchanged.
 
 ## Ownership and priorities
 
 - Integration checkout: `E:/Projects/DirectorsCut/Maelstrom-Saturday`, branch `codex/maelstrom-saturday`. Start checkpoint `e7d7f8b`.
-- Latest cliff worker: `Crater-Workers/Cliff-Contact`, `codex/cliff-landform-seed`. Owns clean macro-seed proposals/tests; dam-like candidates were rejected.
-- Latest terrain/erosion worker: `Crater-Workers/Flow-Seams`, `codex/crater-erosion-outflow`. Owns conserved boundary outflow and the independent Blender ridged seed alternative.
-- Latest waterfall/review worker: `Crater-Workers/Fitted-Waterfall`, `codex/crater-clay-review-pass6`. Owns locked CPU clay comparisons and original FBX export/mask roundtrip. Root owns Unreal imports and runtime integration.
+- Latest cliff worker: `Crater-Workers/Cliff-Contact`, `codex/cliff-authoritative-query`. Delivered original triangle/query export and tests; read-only preview lifecycle review completed.
+- Latest material worker: `Crater-Workers/Flow-Seams`, `codex/cliff-preview-material`. Delivered isolated stone generator and identified blanket boundary locks as the next shape blocker.
+- Latest waterfall/review worker: `Crater-Workers/Fitted-Waterfall`, `codex/cliff-import-audit-pass7`. Delivered complete source-mesh/mask import audit. Root owns Unreal imports and runtime integration. Workers finished this pass; check their actual branch/status before reusing.
 - Integrator owns shared `DCMaelstrom.cpp/.h`, runtime waterfall integration, import/material tooling, route review, builds and captures. Workers do not run Unreal or modify this checkout.
 
 Preserve the 3.2 km crater, 900 m depth, descending spiral and ship-centric transform. Boss mechanics remain deferred. Cloud/sky/light composition and early-game files remain with their respective chats. Keep public Git free of vendor assets and large generated volume caches.

@@ -56,6 +56,15 @@ private:
 	float CliffHeightAt(const FVector2D& Point) const;
 	FVector CliffSurfacePoint(float Angle,float V) const;
 	void BuildTerrain();
+	// Explicit authoring view only; it never supplies gameplay surface queries.
+	void BuildCliffPreview();
+	void UpdateCliffPreview();
+	void ClearCliffPreview();
+	UPROPERTY() TObjectPtr<class UStaticMeshComponent> CliffPreviewMesh;
+	TWeakObjectPtr<class ACameraActor> CliffPreviewCamera;
+	TWeakObjectPtr<AActor> CliffPreviewPreviousTarget;
+	struct FCliffPreviewHidden { TWeakObjectPtr<USceneComponent> Component; bool bVisible=false; };
+	TArray<FCliffPreviewHidden> CliffPreviewHidden;
 	void UpdateTerrainShadows();
 	float NextTerrainShadowUpdate=-1.f;
 	void BuildBasin();

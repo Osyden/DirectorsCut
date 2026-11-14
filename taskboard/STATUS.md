@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov Codex: actual eroded-cliff preview; shape rejected for integration
+
+- Imported terrain now renders in an isolated Unreal view with source-audited orientation/masks, original procedural stone and an exact source-triangle query utility. Editor/Game builds pass; actual active backward-seek and exit restoration pass. [Evidence and next shape plan](CRATER-ENGINE-CLIFF-PREVIEW-14NOV.md).
+- The new images still expose a faceted dam: the generator freezes the cap and lower apron, about 69% of samples. Next pass must free those regions except actual shore/seam/temple anchors and build connected geology behind the crest before erosion/fracture. More material detail alone will not solve it. Normal gameplay terrain/falls, clouds/light, early game and boss remain unchanged. No main merge/package.
+
 ## 14 Nov Codex: ridged cliff authoring proof, gameplay unchanged
 
 - Rejected three clean radial/catchment variants after matched CPU clay review. An independent Blender ridged-multifractal/heterogeneous terrain basis produces more irregular projecting masses and smaller broken shoulders. Actual erosion masks and an isolated 500 m Nanite preview import now work. [Evidence, reproduction and next gate](CRATER-RIDGED-PREVIEW-14NOV.md).
