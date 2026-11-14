@@ -25,6 +25,7 @@ public:
 
 	/** One line of help for the HUD, e.g. "E  take the helm". */
 	const FString& GetPrompt() const { return Prompt; }
+	const FString& GetFireFeedback() const { return FireFeedback; }
 	int32 GetNearbyStation() const { return NearbyStation; }
 	EDCSide GetGunSide() const { return ActiveSide; }
 	bool HasGunSolution() const { return bGunSolution; }
@@ -50,6 +51,7 @@ protected:
 	void TickCameraFeel(float DeltaSeconds);
 	void TickGraphicsKeys(APlayerController* PC);
 	void TickRag(float DeltaSeconds);
+	void CancelSwat();
 	void BuildRag();
 	UPROPERTY() TObjectPtr<class UProceduralMeshComponent> Rag;
 	UPROPERTY() TObjectPtr<class UStaticMeshComponent> RagHand;
@@ -57,6 +59,8 @@ protected:
 	float SwatAge = 10.f;
 	bool bSwatContact = false;
 	FVector SwatTarget = FVector::ZeroVector;
+	FString FireFeedback;
+	float FireFeedbackTime = 0.f;
 	int32 DLSSModeIndex = 0;
 	bool bFrameGen = false;
 	void EnterStation(APlayerController* PC, int32 Index);

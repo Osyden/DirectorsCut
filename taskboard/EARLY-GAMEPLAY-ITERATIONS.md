@@ -1,8 +1,8 @@
 # Early-game gameplay iterations — 14 November
 
-The first gameplay checkpoint is implemented and visually reviewed on codex/early-gameplay, based on 14ffeb6 (accepted fog/fire and individual cannons). Worktree: E:/Projects/DirectorsCut/Early-Gameplay. Main and other chats' source/assets are not part of this checkpoint.
+The autonomous early-gameplay session is implemented and visually reviewed on codex/early-gameplay, based on 14ffeb6 (accepted fog/fire and individual cannons). Worktree: E:/Projects/DirectorsCut/Early-Gameplay. Its checkpoints are saved on this branch; they have not been merged into main. Other chats' source/assets were preserved.
 
-The latest reported horizontal fog band is fixed. See [the worker's diagnosis and comparisons](FOG-CARD-BAND-14NOV.md). The original autonomous gameplay request remains active.
+The reported horizontal fog band is fixed. See [the worker's diagnosis and comparisons](FOG-CARD-BAND-14NOV.md). The final scheduled pass and remaining work are recorded below.
 
 ## Play this checkpoint
 
@@ -26,7 +26,7 @@ No purchased assets or shared material assets were edited. New geometry is gener
 
 ## Verification and evidence
 
-Final Development editor-module build succeeded. Cannon, rag, statue and full-crew checks use the same gameplay code except for a final correction preventing double-scaling encounter movement when dc.Ride.Speed differs from one. Normal play is unchanged by that correction; the final encounter check is rerun after it.
+The table records the first gameplay checkpoint. Subsequent passes below record the later builds, retests and comparisons; the final pass includes 29 rag checks and a complete natural route on the combined source. At the first checkpoint, the encounter check was rerun after correcting double time-scale multiplication; normal-speed play was unchanged by that correction.
 
 | Check | Result | Evidence |
 | --- | --- | --- |
@@ -53,7 +53,7 @@ Existing unattended startup warnings remain in UDS editor utilities, Python/tool
 6. The delegated fog worker isolated the stripe to giant flat detail cards. Grazing-angle fade removed it without thinning the actual grey banks. Forward volumetric glare is a separate outstanding issue.
 7. Review caught missing player-target lead and double time-scale multiplication. The player test now uses ResolveAim; movement scales only once. Particle cook coverage was added after the packaging audit.
 
-## Next autonomous passes
+## Subsequent autonomous passes
 
 Scheduled pass at 20:50 UTC: replaced the flat rag/hand/sleeve shading with private instances of the existing ship-pack fabric textures, increased cloth subdivisions, and added restrained glove seams. No shared assets were saved. Read-only parameter audit: Tools/inspect_cloth_materials.py. The larger and smaller trial cuffs both read as discs in screenshots and were removed; the accepted pass keeps the simpler wrist silhouette. Cloth grain and folds now read more clearly, but the hand is still procedural and swat audio remains outstanding. [Previous cloth](review/early-gameplay/accepted/rag-swat.png), [textured cloth](review/early-gameplay/cloth-and-default/rag-textured.png), [recovery](review/early-gameplay/cloth-and-default/rag-recovery.png), [final interaction results](review/early-gameplay/cloth-and-default/rag-results.txt).
 
@@ -105,7 +105,21 @@ The water-material directory is explicitly included in cooking. Review caught an
 
 The final exact source received another waterline capture after that portability correction: [100.5s](review/early-gameplay/bow-fan/after-detail-01005.png), [101s](review/early-gameplay/bow-fan/after-detail-01010.png), [particle samples](review/early-gameplay/bow-fan/fan-results.txt). The phase check stopped new births at 240s and retained zero live pulses/particles from 241.5s through 247s. [Cleanup results](review/early-gameplay/bow-fan/transition-results.txt). Six final capture processes exited normally with no fatal/assertion/Blueprint-runtime/material-compilation failure matches. Existing startup/plugin/voice-service warnings remain. The private runtime's Source/Config file sets and hashes match this worktree; all owned captures are closed. No shared assets or other chats' code were changed, and no frame-rate improvement is claimed.
 
-Next gameplay pass should prioritize auditioning swat/steam audio or a complete route check instead of further tiny bow adjustments. Preserve accepted navigation, fog and cannon behavior. A cooked/package test, stronger water breakup at distance and authored hand animation remain outstanding.
+The next scheduled pass below addresses fire interaction feedback and checks the complete route instead of making further tiny bow adjustments. A cooked/package test, stronger water breakup at distance and authored hand animation remain outstanding.
+
+Scheduled pass at 23:23 UTC: fixed interrupted rag swings that could resume after leaving a station and contacts that could land after the player turned away. Entering a station, external ship view or typed orders now permanently cancels the stroke; real contact rechecks facing and range. Successful contacts briefly show `FIRE WEAKENED` with remaining work or `FIRE OUT +50`. Misses and crew-completed fires give no player hit feedback. The accepted fire materials, three-contact requirement, partial suppression and crew bucket behavior remain intact.
+
+All 29 real-player fire-interaction checks passed, including the original three-contact progression, score once, cleanup, turning away, stepping out of reach, entering/leaving the actual helm in the same frame, and a crew bucket arriving before contact. Both final Development targets compile and link. Reviewed [confirmed contact](review/early-gameplay/rag-feedback/contact.png) and [completion](review/early-gameplay/rag-feedback/complete.png); the feedback is readable above the interaction prompt. The cloth retains its folds and woven surface, but the glove and sleeve still need authored animation/anatomy. [Results](review/early-gameplay/rag-feedback/results.txt), [validation](review/early-gameplay/rag-feedback/validation.txt). This is not a cooked/package test.
+
+Four licensed cloth/water audio candidates were extracted to the local working review directory for later audition. This session did not perceptually audition them, so no sound selection or audio-quality claim is made and no raw licensed recordings were committed. Swat/steam audio remains a concrete follow-up.
+
+The final combined build completed a normal-speed 0–246s route without the captain bot or scripted orders. Default crew defeated seven creatures and three statues; four fireballs reached the deck (one was capped at two active fires) and one statue delivered its beam. At 246s: 81.2% hull, score 1000, no fires or loose rigging. There were no recorded stone contacts; the 60–240s navigation window had four strong helm reversals and no successive reversals within four seconds. This is another random layout, not a guarantee of contact-free navigation. [Events](review/early-gameplay/session-final/events.txt), [metrics](review/early-gameplay/session-final/metrics.json).
+
+Reviewed [236s city](review/early-gameplay/session-final/route-0236.png), [239s exit approach](review/early-gameplay/session-final/route-0239.png) and [246s phase transition](review/early-gameplay/session-final/route-0246.png). The city keeps layered silhouettes and the original bright elevated card stripe is absent in the earlier port-camera regression captures. The later slide still has visibly simple enclosing water surfaces; that phase is owned separately and this route check does not establish its visual quality. Both final capture processes exited normally with no fatal/assertion/Blueprint-runtime/material-compilation failure matches. Existing startup/plugin/voice-service warnings remain. The private Source/Config sets and hashes match the tested worktree, and no owned runtime remains open.
+
+The fog worker also reviewed the small light patch at the distant waterline in the 239s opening. Its position, bounded by ruins and broadening into the 240s transition, is consistent with the existing exit/horizon transition rather than the earlier elevated card stripe. Its exact renderer source cannot be proven from screenshots alone. Keep the abrupt highlight as exit-transition polish; do not describe every remaining horizontal highlight as solved.
+
+## Remaining work
 
 1. Review encounters from both cannons and the walking deck, including fireball flight and impact rings. Check pacing without the automated crew-order bot.
 2. Test additional natural ruin layouts and deliberate contacts. Investigate repeated grinding or assistance opposing input; retain mild assistance rather than making a perfect autopilot.

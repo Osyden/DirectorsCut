@@ -76,6 +76,7 @@ void ADCPlayerCharacter::SetShipView(APlayerController* PC, bool bOn)
 {
 	if (bOn == bShipView) { return; }
 	bShipView = bOn;
+	if (bOn) { CancelSwat(); }
 	if (bOn && !ShipCamera)
 	{
 		FActorSpawnParameters Params;
@@ -230,6 +231,7 @@ void ADCPlayerCharacter::EnterStation(APlayerController* PC, int32 Index)
 	}
 
 	// Whoever was here steps aside.
+	CancelSwat();
 	if (ADCCrewMember* Old = S->Operator.Get())
 	{
 		Old->AssignStation(INDEX_NONE);
@@ -402,6 +404,7 @@ void ADCPlayerCharacter::DebugTakeStation(EDCStationType Type, EDCSide Side)
 void ADCPlayerCharacter::OpenOrderBox(APlayerController* PC)
 {
 	if (bTyping || !GEngine || !GEngine->GameViewport) { return; }
+	CancelSwat();
 	bTyping = true;
 
 	TWeakObjectPtr<ADCPlayerCharacter> Weak(this);

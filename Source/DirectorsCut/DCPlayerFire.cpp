@@ -114,15 +114,30 @@ bool ADCPlayerCharacter::TrySwatFire()
 	const FVector Toward = (Director->DeckToWorld(Fire) - Camera->GetComponentLocation()).GetSafeNormal();
 	if (FVector::DotProduct(Camera->GetForwardVector(), Toward) < .05f) { return false; }
 	SwatTarget = Fire;
+	FireFeedback.Reset();
+	FireFeedbackTime = 0.f;
 	SwatAge = 0.f;
 	bSwatContact = false;
 	if (!Rag) { BuildRag(); }
 	return true;
 }
 
+void ADCPlayerCharacter::CancelSwat()
+{
+	// Changing interaction mode permanently cancels this stroke, even if the
+	// player returns before its contact time. Never resume a hidden swing.
+	SwatAge = FMath::Max(SwatAge, .64f);
+	bSwatContact = true;
+	FireFeedback.Reset();
+	FireFeedbackTime = 0.f;
+}
+
 void ADCPlayerCharacter::TickRag(float DeltaSeconds)
 {
 	SwatAge += DeltaSeconds;
+	FireFeedbackTime = FMath::Max(0.f, FireFeedbackTime - DeltaSeconds);
+	if (FireFeedbackTime == 0.f) { FireFeedback.Reset(); }
+	if (IsAtStation() || bShipView || bTyping) { CancelSwat(); }
 	const bool bVisible = SwatAge < .62f && !IsAtStation() && !bShipView && !bTyping;
 	if (Rag) { Rag->SetVisibility(bVisible); }
 	if (RagHand) { RagHand->SetVisibility(bVisible, true); }
@@ -136,9 +151,17 @@ void ADCPlayerCharacter::TickRag(float DeltaSeconds)
 		if (Troubles && Director)
 		{
 			const FVector Here = Director->DeckTransform.InverseTransformPosition(GetActorLocation());
-			if (FVector::Distance(Here, SwatTarget) <= 350.f && Troubles->SwatNear(SwatTarget, 100.f))
+			const FVector Toward = (Director->DeckToWorld(SwatTarget) - Camera->GetComponentLocation()).GetSafeNormal();
+			if (FVector::Distance(Here, SwatTarget) <= 350.f
+				&& FVector::DotProduct(Camera->GetForwardVector(), Toward) > .2f
+				&& Troubles->SwatNear(SwatTarget, 100.f))
 			{
-				UE_LOG(LogDC, Log, TEXT("Rag contact: remaining=%d at %s"), Troubles->SwatsRemaining(SwatTarget), *SwatTarget.ToCompactString());
+				const int32 Remaining = Troubles->SwatsRemaining(SwatTarget);
+				FireFeedback = Remaining > 0
+					? FString::Printf(TEXT("FIRE WEAKENED   %d swat%s left"), Remaining, Remaining == 1 ? TEXT("") : TEXT("s"))
+					: TEXT("FIRE OUT   +50");
+				FireFeedbackTime = Remaining > 0 ? .9f : 1.5f;
+				UE_LOG(LogDC, Log, TEXT("Rag contact: remaining=%d at %s"), Remaining, *SwatTarget.ToCompactString());
 			}
 		}
 	}

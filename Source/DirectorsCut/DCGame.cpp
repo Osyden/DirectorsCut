@@ -249,6 +249,10 @@ void ADCHUD::DrawHUD()
 			if (!Impact.IsEmpty()) { Centered(Impact, Y + 29.f * S, 1.2f, Impact == TEXT("HIT") ? Gold : White, Font); }
 		}
 
+		if (!Captain->IsTypingOrder() && !Captain->IsAtStation() && !Captain->IsShipView() && !Captain->GetFireFeedback().IsEmpty())
+		{
+			Centered(Captain->GetFireFeedback(), H * .69f, 1.1f, FLinearColor(.72f, .9f, .72f), Font);
+		}
 		if (!Captain->IsTypingOrder() && !Captain->GetPrompt().IsEmpty())
 		{
 			Centered(Captain->GetPrompt(), H * (Side == EDCSide::None ? 0.74f : 0.77f), 1.25f, Gold, Font);
