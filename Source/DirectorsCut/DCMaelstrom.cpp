@@ -9,6 +9,8 @@
 #include "DCPlayer.h"
 #include "DCTreadmill.h"
 #include "DCTroubles.h"
+#include "DCAudio.h"
+#include "Kismet/GameplayStatics.h"
 #include "DCCrew.h"
 #include "Components/HeterogeneousVolumeComponent.h"
 #include "SparseVolumeTexture/SparseVolumeTexture.h"
@@ -582,7 +584,18 @@ void ADCMaelstrom::Tick(float DeltaSeconds)
 		}
 	}
 	if (Boss) { Boss->UpdateEncounter(Elapsed, GetArenaTransform(), Radius, Depth, bActive); }
-	if (bActive) { UpdateTwisters(DeltaSeconds); UpdateBoulders(DeltaSeconds); UpdatePlume(); } else if (Twisters.Num() || TwistersRaised || Boulders.Num() || BouldersThrown) { ClearTwisters(); }
+	if (bActive) { UpdateTwisters(DeltaSeconds); UpdateBoulders(DeltaSeconds); UpdatePlume(); }
+	if (ADCAudio* Sound = Cast<ADCAudio>(UGameplayStatics::GetActorOfClass(GetWorld(), ADCAudio::StaticClass())))
+	{
+		// The wind rises as a spout comes on and while the plume stands.
+		float Roar = 0.f;
+		if (bActive)
+		{
+			for (const FTwister& T : Twisters) { Roar = FMath::Max(Roar, FMath::Clamp(1.f - FMath::Abs(T.Ahead) / 45000.f, 0.f, 1.f)); }
+			if (AActor* P = Plume.Get()) { if (!P->IsHidden()) { Roar = FMath::Max(Roar, 0.8f); } }
+		}
+		Sound->SpoutRoar = Roar;
+	} else if (Twisters.Num() || TwistersRaised || Boulders.Num() || BouldersThrown) { ClearTwisters(); }
 	if (Atmosphere) { Atmosphere->UpdateAtmosphere(this, Elapsed, bActive); }
 	WaterBridge.Update(GetWorld(), WaterMID, bActive);
 	if (bActive && Boss && Boss->ShouldExitEncounter(Elapsed))
@@ -929,6 +942,7 @@ void ADCMaelstrom::UpdatePlume()
 	{
 		bPlumeShaken = true;
 		Director->Trauma = FMath::Min(1.f, Director->Trauma + 0.7f);   // the deck jumps as it goes
+		if (ADCAudio* Sound = Cast<ADCAudio>(UGameplayStatics::GetActorOfClass(GetWorld(), ADCAudio::StaticClass()))) { Sound->Boom(1.2f); }
 	}
 	if (!Plume.IsValid())
 	{
@@ -1077,6 +1091,7 @@ void ADCMaelstrom::UpdateBoulders(float DeltaSeconds)
 			if (!bHit) { At.Z = SampleSurfaceWorld(At); }
 			if (AActor* Fx = GetWorld()->SpawnActor<AActor>(Burst, At, FRotator::ZeroRotator, Params)) { Fx->SetActorScale3D(FVector(bHit ? 2.f : 4.f)); Fx->SetLifeSpan(4.f); }
 		}
+		if (ADCAudio* Sound = Cast<ADCAudio>(UGameplayStatics::GetActorOfClass(GetWorld(), ADCAudio::StaticClass()))) { Sound->Boom(bHit ? 1.f : 0.6f); }
 		UE_LOG(LogDC, Log, TEXT("Boulder %s at %.1f s (%.0f m abeam)"), bHit ? TEXT("struck the ship") : TEXT("fell clear"), Elapsed, B.Fall.Y / 100.f);
 		if (AActor* A = B.Actor.Get()) { A->Destroy(); }
 		Boulders.RemoveAt(i);

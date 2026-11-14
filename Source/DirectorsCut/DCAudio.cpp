@@ -361,7 +361,7 @@ void ADCAudio::Tick(float DeltaSeconds)
 
 	// Each bed prefers a recording when one has been imported (Content/Sonniss) and falls back to the
 	// synthesised layer otherwise, so the project still makes sound on a machine without the recordings.
-	const float WindTarget = FMath::Clamp(0.12f + Storm * 0.55f + Env.Tube * 0.5f + Env.FogDensity * 1.2f, 0.f, 1.f) * (BellDuck > 0.f ? 0.55f : 1.f);
+	const float WindTarget = FMath::Clamp(0.12f + Storm * 0.55f + Env.Tube * 0.5f + Env.FogDensity * 1.2f + SpoutRoar * 0.7f, 0.f, 1.4f) * (BellDuck > 0.f ? 0.55f : 1.f);
 	const float SeaTarget = FMath::Clamp(0.35f + Storm * 0.6f + Env.Tube * 0.4f, 0.f, 1.2f);
 	const float Rough = FMath::Clamp((Storm - 0.3f) / 0.5f, 0.f, 1.f);
 	const ADCTroubles* Troubles = ADCTroubles::Get(this);
@@ -434,6 +434,12 @@ void ADCAudio::Tick(float DeltaSeconds)
 			OneShots.RemoveAtSwap(i);
 		}
 	}
+}
+
+void ADCAudio::Boom(float Volume)
+{
+	PlayReal(TEXT("water_impact"), FMath::Clamp(Volume, 0.3f, 1.f), FMath::FRandRange(0.6f, 0.8f));
+	if (Thunder.Num()) { PlayOneShot(Thunder[FMath::RandRange(0, Thunder.Num() - 1)], Volume); }
 }
 
 void ADCAudio::OnShipHit(float Amount)

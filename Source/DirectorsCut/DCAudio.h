@@ -26,6 +26,10 @@ public:
 
 	UPROPERTY(EditAnywhere) float MasterVolume = 0.8f;
 	UPROPERTY(EditAnywhere) float BellVolume = 1.f;
+	/** Extra wind, 0 to 1, set each frame by whatever is roaring near the ship (a waterspout, the creature's end). */
+	float SpoutRoar = 0.f;
+	/** A heavy report: thunder and a crash of water together (a burning stone coming down, the plume going up). */
+	void Boom(float Volume);
 
 protected:
 	struct FLayer

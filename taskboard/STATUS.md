@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 01:36 Claude: sound for the spouts, the stones and the plume (written, not heard)
+
+- `DCAudio`: `SpoutRoar` (0 to 1) adds to the wind bed; `Boom(volume)` plays the recorded water impact pitched down with one of the synthesised thunders. The maelstrom sets the roar from the nearest spout (full when it is on the ship, nothing beyond 450 m) and holds it at 0.8 while the plume stands; a stone coming down and the plume going up each make a boom.
+- One run with the sound device on (about 40 s, from 296 s, a spout, a stone, the plume): no errors. **It played through the speakers at about 01:40; I should not have run it with sound at night and have not again.** Nobody has heard whether it is right.
+- Not in the thirteenth build.
+
 ## 14 Nov 01:33 Claude: thirteenth build packaged and run: `2026-11-14_0128_f26af10_helm-order-dodge`
 
 - `Builds/2026-11-14_0128_f26af10_helm-order-dodge/Windows/DirectorsCut.exe`. Run from the exe at 1600x900: wall and portal at 56 s, a flash in the tunnel at 63.5, the city at 120 (81 to 104 fps); then the whole maelstrom at 3x with the bot captain from 262 s: 11 spouts and stones struck (the bot does not turn), 8 arms broken, "beaten on the clock at 160.0 s", plume, stage exited at 450.00, ending card. No script errors.
