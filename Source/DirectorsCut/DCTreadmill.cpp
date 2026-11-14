@@ -270,21 +270,15 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 		const int32 Before = Objects.Num();
 		SpawnAtlantis();
 		SpawnAhead = 0.f;
-		if (bEarly)
+		// One visibility owner for the entire city, including zero-radius gates and fog cards.
+		for (int32 i = Before; i < Objects.Num(); ++i)
 		{
-			for (int32 i = Before; i < Objects.Num(); ++i)
+			Objects[i].bCityObject = true;
+			Objects[i].bTunnelHid = true;
+			if (AActor* A = Objects[i].Actor.Get())
 			{
-				if (AActor* A = Objects[i].Actor.Get()) { A->SetActorHiddenInGame(true); AtlantisHidden.Add(A); }
+				A->SetActorHiddenInGame(true);
 			}
-		}
-	}
-	// Not until the ship is deep in the murk of the front: shown as the fog began, the city popped up close by in thin haze.
-	if (AtlantisHidden.Num() && Director->GetPhase() != EDCPhase::OpenSea && Director->RideTime > FogStart + 5.5f)
-	{
-		// A couple a frame: showing them all at once still cost a quarter of a second. They are inside the front and out of sight meanwhile.
-		for (int32 n = 0; n < 2 && AtlantisHidden.Num(); ++n)
-		{
-			if (AActor* A = AtlantisHidden.Pop().Get()) { A->SetActorHiddenInGame(false); }
 		}
 	}
 	SpawnForPhase(Director->GetPhase(), DeltaSeconds * Director->TimeScale);
@@ -390,12 +384,27 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 			Local.Z += Director->SeaRise(Mid) - Director->SeaRise(LaneOffset);
 		}
 		Actor->SetActorLocationAndRotation(Rock.TransformPosition(Local), Rock.GetRotation() * FRotator(0.f, Obj.Yaw, 0.f).Quaternion());
-		// Stone alongside the cloud tunnel showed through its wall as a dark outline. It is kept out of sight until the
-		// tunnel's far end has gone by it, and so comes out of the cloud. (Radius over 100: stone, not the fog's own banks and cards.)
-		if (Obj.Radius > 100.f)
+		// Own visibility here, including gates (radius zero). The old reveal queue unhides
+		// actors behind this check's back, leaving bTunnelHid stale and leaking ruins through the front.
+		if (Obj.bCityObject || Obj.Radius > 100.f)
 		{
-			const bool bHide = Local.X < Director->CloudTunnelFarX;
-			if (bHide != Obj.bTunnelHid) { Obj.bTunnelHid = bHide; Actor->SetActorHiddenInGame(bHide); }
+			const bool bBeforeCity = Obj.bCityObject && (Director->GetPhase() == EDCPhase::OpenSea || Director->RideTime < 63.5f);
+			const bool bInTunnel = (Obj.Radius > 100.f || Obj.Radius < 1.f) && Local.X < Director->CloudTunnelFarX;
+			// The destination is a 700 m tall water shell. Its crown was visible above the
+			// low city fog kilometres away. Admit it only behind the approach curtain;
+			// the curtain then loses density continuously as we travel into it.
+			const bool bDistantExit = Actor->IsA<ADCPortal>() && Local.X > 65000.f;
+			const bool bHide = bBeforeCity || bInTunnel || bDistantExit;
+			if (bHide != Obj.bTunnelHid)
+			{
+				Obj.bTunnelHid = bHide;
+				Actor->SetActorHiddenInGame(bHide);
+				if (Actor->IsA<ADCPortal>())
+				{
+					UE_LOG(LogDC, Log, TEXT("City exit visibility: %s, distance %.0f cm at %.2f s"),
+						bHide ? TEXT("concealed") : TEXT("behind reveal curtain"), Local.X, Director->RideTime);
+				}
+			}
 		}
 		// (Rocks in the lane used to be a circle the ship ran through: three damage and the rock vanished. They are
 		// stone like the rest now: the hull's feelers find them and she is shouldered off. Owner, 14 Nov.)
@@ -1111,8 +1120,9 @@ void ADCTreadmill::SpawnAtlantis()
 	{
 		FRandomStream Rng(613);
 		int32 Seed = 0;
-		auto Lay = [&](const FDCFogBankDesc& D, float X, float Y, float Z)
+		auto Lay = [&](FDCFogBankDesc D, float X, float Y, float Z)
 		{
+			D.bCityLayer = true;
 			if (ADCFogBank* Bank = ADCFogBank::Spawn(World, D, ++Seed)) { Register(Bank, FVector(X, Y, Z), 1.5f, false, 1.f, 0.f, false); }
 		};
 		// Inside the storm front (the first 300 m after the fog begins): a tunnel of cloud. Rings of heavy
@@ -1147,8 +1157,8 @@ void ADCTreadmill::SpawnAtlantis()
 			{
 				if (Rng.FRand() < 0.18f) { continue; }   // a gap: a look out to the side
 				FDCFogBankDesc D;
-				D.Radii = FVector(Rng.FRandRange(10000.f, 16000.f), Rng.FRandRange(8000.f, 13000.f), Rng.FRandRange(2400.f, 4600.f));
-				D.Density = Rng.FRandRange(0.04f, 0.065f);
+				D.Radii = FVector(Rng.FRandRange(13000.f, 20000.f), Rng.FRandRange(9000.f, 14000.f), Rng.FRandRange(5500.f, 9500.f));
+				D.Density = Rng.FRandRange(0.035f, 0.055f);
 				D.Size = Rng.FRandRange(5000.f, 8000.f);
 				D.Erode = Rng.FRandRange(0.4f, 0.65f);
 				D.Drift = FVector(Rng.FRandRange(-350.f, -150.f), Side * Rng.FRandRange(-60.f, 160.f), 0.f);
@@ -1165,12 +1175,33 @@ void ADCTreadmill::SpawnAtlantis()
 			for (float Side : { -1.f, 1.f })
 			{
 				FDCFogBankDesc D;
-				D.Radii = FVector(Rng.FRandRange(18000.f, 26000.f), Rng.FRandRange(14000.f, 22000.f), Rng.FRandRange(2000.f, 3400.f));
+				D.Radii = FVector(Rng.FRandRange(20000.f, 32000.f), Rng.FRandRange(14000.f, 22000.f), Rng.FRandRange(6000.f, 11000.f));
 				D.Density = Rng.FRandRange(0.014f, 0.024f);
 				D.Size = Rng.FRandRange(8000.f, 12000.f);
 				D.Erode = Rng.FRandRange(0.45f, 0.6f);
 				D.Drift = FVector(Rng.FRandRange(-250.f, -100.f), Side * Rng.FRandRange(-40.f, 120.f), 0.f);
 				Lay(D, X + Rng.FRandRange(-6000.f, 6000.f), Side * Rng.FRandRange(30000.f, 46000.f), SeaZ + D.Radii.Z * 0.3f);
+			}
+		}
+		// Staggered shelves above the low banks: different heights and gaps let
+		// the near bases, middle arches and distant crowns resolve separately.
+		// A separate stream preserves the existing curtain and water-card layout.
+		FRandomStream ShelfRng(614);
+		for (float X = 56000.f; X < 280000.f; X += ShelfRng.FRandRange(15000.f, 23000.f))
+		{
+			const float Side = ShelfRng.FRand() < 0.5f ? -1.f : 1.f;
+			FDCFogBankDesc D;
+			D.Radii = FVector(ShelfRng.FRandRange(17000.f, 24000.f), ShelfRng.FRandRange(14000.f, 21000.f), ShelfRng.FRandRange(4500.f, 7000.f));
+			D.Density = ShelfRng.FRandRange(0.04f, 0.065f);
+			D.Size = ShelfRng.FRandRange(5500.f, 8500.f);
+			D.Erode = 0.45f;
+			D.Stretch = FVector(1.6f, 1.f, 0.75f);
+			D.Drift = FVector(-180.f, Side * 90.f, 15.f);
+			D.bCityLayer = true;
+			// Keep the haze above the ship's working space and across the city shoulders.
+			if (ADCFogBank* Bank = ADCFogBank::Spawn(World, D, 500 + FMath::RoundToInt(X / 1000.f)))
+			{
+				Register(Bank, FVector(X, Side * ShelfRng.FRandRange(18000.f, 33000.f), SeaZ + ShelfRng.FRandRange(4500.f, 8500.f)), 1.5f, false, 1.f, 0.f, false);
 			}
 		}
 		// Curtains before the great figures and the temples.
@@ -1188,7 +1219,16 @@ void ADCTreadmill::SpawnAtlantis()
 			D.Erode = 0.5f;
 			D.Drift = FVector(-200.f, 0.f, 60.f);
 			D.RevealWithin = FMath::Abs(H.Y) * 0.62f + 15000.f;
+			D.RevealFalloff = 22000.f;
 			D.bHero = FParse::Param(FCommandLine::Get(), TEXT("DCHeroBanks"));   // a tower of sharp cloud that thins away as the ship comes up
+			if (H.X == 76000.f || H.X == 150000.f || H.X == 240000.f || H.X == 262000.f)
+			{
+				D.bHero = true;
+				D.Density = 0.00085f;
+				D.Tint = FLinearColor(0.28f, 0.33f, 0.4f);
+				D.Size = 6500.f;
+				D.Erode = 0.55f;
+			}
 			// Between the ship's course and the figure, and a little before it.
 			Lay(D, H.X - 7000.f, H.Y * 0.62f, SeaZ + H.Height * 0.45f);
 		}
@@ -1282,15 +1322,15 @@ void ADCTreadmill::SpawnAtlantis()
 				// A sheet on the water, anywhere from the course to well out among the ruins.
 				LayCard(FVector(X, Rng.FRandRange(-14000.f, 14000.f), SeaZ + Rng.FRandRange(180.f, 420.f)), Rng.FRandRange(14000.f, 38000.f), 0.f, Rng.FRandRange(0.f, 360.f), Rng.FRandRange(0.5f, 0.9f));
 				// Every other step, a rag of scud leaning over one shoulder of the channel.
-				if (Rng.FRand() < 0.5f)
+				if (FParse::Param(FCommandLine::Get(), TEXT("DCOverheadFogCards")) && Rng.FRand() < 0.5f)
 				{
 					const float Side = Rng.FRand() < 0.5f ? -1.f : 1.f;
 					LayCard(FVector(X + 2500.f, Side * Rng.FRandRange(7000.f, 18000.f), SeaZ + Rng.FRandRange(2500.f, 7000.f)), Rng.FRandRange(9000.f, 22000.f), Rng.FRandRange(50.f, 78.f), Rng.FRandRange(-25.f, 25.f), Rng.FRandRange(0.35f, 0.7f));
 				}
 			}
 			UE_LOG(LogDC, Log, TEXT("Fog cards: %d laid"), Cards);
-			// And across the deck: six upright rags that come in over the bow and run aft past the masts, over and over.
-			if (!FParse::Param(FCommandLine::Get(), TEXT("DCNoDeckWisps")))
+			// Opt-in diagnostic only: flat cards over the deck read as stripes when viewed edge-on.
+			if (FParse::Param(FCommandLine::Get(), TEXT("DCDeckWisps")) && !FParse::Param(FCommandLine::Get(), TEXT("DCNoDeckWisps")))
 			{
 				for (int32 i = 0; i < 6; ++i)
 				{
@@ -1433,6 +1473,28 @@ void ADCTreadmill::SpawnAtlantis()
 		{
 			// Radius 0 marks it as something the ship is meant to sail into, so it is not pushed aside.
 			Register(Portal, FVector(PortalDistance, 0.f, SeaZ), 0.f, false, 1.f, 0.f, false);
+			// Full-height overlapping veils cover the shell's crown as well as its feet.
+			// They follow the destination's centreline under steering, then part over 550 m.
+			for (int32 Layer = 0; Layer < 2; ++Layer)
+			{
+				FDCFogBankDesc D;
+				D.bCityLayer = true;
+				D.Radii = FVector(28000.f, 95000.f, 85000.f);
+				D.Density = 0.035f;
+				D.Size = 18000.f;
+				D.Erode = 0.22f;
+				// This thick backlit veil must obscure the exit without becoming
+				// a luminous white column among the darker city banks.
+				D.Tint = FLinearColor(0.36f, 0.42f, 0.5f);
+				D.Drift = FVector(-160.f, Layer ? -100.f : 120.f, 25.f);
+				D.RevealWithin = 10000.f;
+				D.RevealFalloff = 55000.f;
+				if (ADCFogBank* Curtain = ADCFogBank::Spawn(World, D, 301 + Layer))
+				{
+					Register(Curtain, FVector(PortalDistance - 16000.f + Layer * 11000.f, 0.f, SeaZ + 27000.f),
+						0.f, false, 1.f, 0.f, false);
+				}
+			}
 		}
 	}
 

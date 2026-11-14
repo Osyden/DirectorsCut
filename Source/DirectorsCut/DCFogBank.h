@@ -25,6 +25,10 @@ struct FDCFogBankDesc
 	FVector Stretch = FVector(1.f, 1.f, 1.f);
 	/** If above zero, the bank thins away to nothing when the ship comes within this distance: what it hid is revealed. */
 	float RevealWithin = 0.f;
+	/** When nonzero, reveal continuously over this approach distance rather than a timed disappearance. */
+	float RevealFalloff = 0.f;
+	/** Blend with the city atmosphere only; does not add ground haze to the opening storm. */
+	bool bCityLayer = false;
 	FLinearColor Tint = FLinearColor(0.8f, 0.86f, 0.95f);
 	/** Stays round the ship (wisps across the deck) instead of lying in the sea. */
 	bool bOnDeck = false;

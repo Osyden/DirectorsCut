@@ -52,16 +52,19 @@ protected:
 		float Radial = 0.f, High = 0.f, Shown = -1.f;
 	};
 	TArray<FBank> Banks;
-	/** The mouth of the front: a rolling tunnel of cloud (the bought looping volume, if it is installed) that the ship sails through into the fog. */
+	/** The unified sloping storm and mist-filled throat; the bought tube is a diagnostic fallback. */
 	UPROPERTY() TObjectPtr<class AHeterogeneousVolume> Tunnel;
 	UPROPERTY() TObjectPtr<class UMaterialInstanceDynamic> TunnelMID;
 	/** Light inside the tunnel: daylight coming down it from its far end, and a little overhead, so its rolling walls are seen from within. */
 	UPROPERTY() TArray<TObjectPtr<class APointLight>> TunnelLights;
 	float TunnelLight = 0.f;   // off: tried 14 Nov, the lights fill the air in the tunnel with pale haze rather than modelling its walls
-	float TunnelScale = 300.f;
-	float TunnelSink = 5000.f;
+	float TunnelScale = 600.f;
+	float TunnelSink = 15624.f; // sea crosses voxel 62, inside the enlarged throat rather than its dense lower rim
 	float TunnelShown = -1.f;
-	float TunnelDensity = 1.f;
+	float TunnelDensity = 0.4f;
+	float MouthWidth = 1600.f;
+	bool bUnifiedFront = false;
+	UPROPERTY() TObjectPtr<class ADirectionalLight> FrontFill;
 	/** The wall of the front either side of and over the mouth: the same volume, much enlarged and laid across the course like a roll cloud. */
 	struct FWallPiece
 	{
@@ -71,6 +74,8 @@ protected:
 		float Scale = 900.f;
 		float Density = 1.f;
 		float Yaw = 0.f;
+		float Side = 0.f;
+		float Unit = 1.f;
 	};
 	TArray<FWallPiece> Wall;
 	UPROPERTY() TArray<TObjectPtr<class UMaterialInstanceDynamic>> WallMIDs;

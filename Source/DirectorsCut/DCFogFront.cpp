@@ -6,6 +6,8 @@
 #include "Components/HeterogeneousVolumeComponent.h"
 #include "Engine/PointLight.h"
 #include "Components/PointLightComponent.h"
+#include "Engine/DirectionalLight.h"
+#include "Components/DirectionalLightComponent.h"
 #include "HAL/IConsoleManager.h"
 #include "SparseVolumeTexture/SparseVolumeTexture.h"
 #include "Engine/StaticMesh.h"
@@ -135,7 +137,7 @@ void ADCFogFront::Tick(float DeltaSeconds)
 	Director->StormMouthRadius = 35000.f;
 	TickTunnel(T);
 	// With the wall of cloud volumes the old skirt of fog domes under the front only lays a pale belt across its foot.
-	if (Director->bUDS && (Wall.Num() == 0 || FParse::Param(FCommandLine::Get(), TEXT("DCFrontSkirt"))))
+	if (Director->bUDS && ((!bUnifiedFront && Wall.Num() == 0) || FParse::Param(FCommandLine::Get(), TEXT("DCFrontSkirt"))))
 	{
 		if (Banks.Num() == 0) { BuildBanks(); }
 		// World space: the actor itself only moves when the old billows are shown.
@@ -210,6 +212,41 @@ void ADCFogFront::Tick(float DeltaSeconds)
 
 void ADCFogFront::BuildTunnel()
 {
+	if (!FParse::Param(FCommandLine::Get(), TEXT("DCLegacyFront")))
+	{
+		if (UMaterialInterface* Unified = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_UnifiedStorm.M_UnifiedStorm"), nullptr, LOAD_NoWarn | LOAD_Quiet))
+		{
+			Tunnel = GetWorld()->SpawnActor<AHeterogeneousVolume>();
+			UHeterogeneousVolumeComponent* H = Tunnel ? Tunnel->FindComponentByClass<UHeterogeneousVolumeComponent>() : nullptr;
+			if (H)
+			{
+				H->SetMobility(EComponentMobility::Movable);
+				H->bPivotAtCentroid = true;
+				TunnelMID = UMaterialInstanceDynamic::Create(Unified, this);
+				H->SetMaterial(0, TunnelMID);
+				H->SetVolumeResolution(FIntVector(256, 512, 256));
+				// This is a procedural field; the director supplies time and fixed bounds.
+				H->SetComponentTickEnabled(false);
+				H->FrameTransform = FTransform::Identity;
+				H->LightingDownsampleFactor = 1.f;
+				H->StepFactor = 0.75f;
+				H->ShadowStepFactor = 1.f;
+				bUnifiedFront = true; Director->bCloudWall = true;
+				FrontFill = GetWorld()->SpawnActor<ADirectionalLight>(FVector::ZeroVector, FRotator(-35.f, -30.f, 0.f));
+				if (FrontFill)
+				{
+					ULightComponent* L = FrontFill->GetLightComponent();
+					L->SetMobility(EComponentMobility::Movable);
+					L->SetIntensity(0.f);
+					L->SetLightColor(FLinearColor(0.78f, 0.84f, 0.94f));
+					L->SetVolumetricScatteringIntensity(1.f);
+				}
+				if (IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(TEXT("r.HeterogeneousVolumes.MaxTraceDistance"))) { V->Set(1000000.f, ECVF_SetByCode); }
+				UE_LOG(LogDC, Log, TEXT("FogFront: unified sloping storm with mist-filled throat"));
+				return;
+			}
+		}
+	}
 	// Clouds Tunnel Vdb Effects Pack Loop (bought, not in the repository): absent, the front simply has no mouth.
 	int32 Index = 1;
 	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnel="), Index);
@@ -225,21 +262,22 @@ void ADCFogFront::BuildTunnel()
 	if (!H) { return; }
 	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnelScale="), TunnelScale);
 	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnelSink="), TunnelSink);
+	FParse::Value(FCommandLine::Get(), TEXT("DCFrontMouthWidth="), MouthWidth);
 	float Rate = 24.f, Temp = 0.f;   // no light of its own: only lightning lights it from within
 	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnelDensity="), TunnelDensity);
 	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnelRate="), Rate);
 	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnelTemp="), Temp);
 	H->SetMobility(EComponentMobility::Movable);
-	TunnelMID = UMaterialInstanceDynamic::Create(Base, this);
+	UMaterialInterface* Throat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_StormFrontVdb.M_StormFrontVdb"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	TunnelMID = UMaterialInstanceDynamic::Create(Throat ? Throat : Base, this);
 	TunnelMID->SetSparseVolumeTextureParameterValue(TEXT("SparseVolumeTexture"), Volume);
-	// The cloud stands on the sea: nothing below a floor just above the water, thickening over the first metres.
-	// (Owner, 14 Nov: a gap showed between the sea and the foot of the front. The floor was 2.5 m over the water with a
-	// 10 m fade; it is now at the water with a 3 m fade.)
-	float Floor = TunnelSink / (TunnelScale * 0.42f) + 0.2f, Soft = 2.5f;
+	// Finish the density fade below the wave troughs, not at mean sea level: a surface-level
+	// cutoff leaves a bright horizontal gap. Volume/translucency composition lets water cover the submerged cloud.
+	float Floor = TunnelSink / (TunnelScale * 0.42f) - 16.f, Soft = 8.f;
 	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnelFloor="), Floor);
 	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnelSoft="), Soft);
-	// Storm cloud is dark and cold: a low blue-grey albedo, so the low sun cannot turn it to sand.
-	FLinearColor StormTint(0.34f, 0.42f, 0.58f);
+	// Cool scattering with enough albedo to retain folds instead of crushed black smoke.
+	FLinearColor StormTint(0.5f, 0.65f, 0.85f);
 	{
 		FString TintText;
 		if (FParse::Value(FCommandLine::Get(), TEXT("DCFrontTint="), TintText, false))
@@ -282,7 +320,8 @@ void ADCFogFront::BuildTunnel()
 	// the mouth, and one over it whose foot is cut away above the tunnel's crown.
 	if (FParse::Param(FCommandLine::Get(), TEXT("DCNoFrontWall"))) { return; }
 	float WallScale = 1400.f, WallDensity = 1.f, WallGap = 11000.f;
-	float WallCrown = 118.f, WallCrownRoll = 30.f;   // test hooks: -DCFrontWallCrown= (0 = off) -DCFrontWallCrownRoll=, in voxels of 160
+	// Broad high rolls break up the distant slab silhouette while leaving a continuous lower cloud mass.
+	float WallCrown = 140.f, WallCrownRoll = 24.f;   // test hooks: -DCFrontWallCrown= (0 = off) -DCFrontWallCrownRoll=, in voxels of 160
 	FParse::Value(FCommandLine::Get(), TEXT("DCFrontWallCrown="), WallCrown);
 	FParse::Value(FCommandLine::Get(), TEXT("DCFrontWallCrownRoll="), WallCrownRoll);
 	FParse::Value(FCommandLine::Get(), TEXT("DCFrontWallScale="), WallScale);
@@ -293,9 +332,9 @@ void ADCFogFront::BuildTunnel()
 	// Unequal sizes, a few degrees of turn and one set back, so the top of the wall is not one level line.
 	struct FPlace { float Side, Lift, Floor, Frame, Size, Yaw, Back, Soft; };
 	const FPlace Places[] = {
-		// Floors at the water (40 voxels are under the sea): at 42 the wall's foot stood 12 m clear of it.
-		{ -1.f, 0.f, 39.7f, 0.f, 1.f, 7.f, 0.f, 0.8f },
-		{ 1.f, 0.f, 39.7f, 70.f, 1.25f, -5.f, 9000.f, 0.8f },
+		// 40 voxels are submerged. Finish the eight-voxel fade four voxels below the sea.
+		{ -1.f, 0.f, 28.f, 0.f, 1.f, 22.f, 0.f, 8.f },
+		{ 1.f, 0.f, 28.f, 70.f, 1.25f, -18.f, 9000.f, 8.f },
 		{ 0.f, 0.f, 40.f + 15000.f / Unit, 135.f, 1.1f, 0.f, 4000.f, 70.f },
 	};
 	static const bool bNoOver = FParse::Param(FCommandLine::Get(), TEXT("DCNoFrontOver"));   // test hook: leave out the piece over the mouth
@@ -319,7 +358,10 @@ void ADCFogFront::BuildTunnel()
 		C->bIssueBlockingRequests = true;
 		FWallPiece W;
 		W.Actor = A; W.MID = M; W.Scale = WallScale * P.Size; W.Density = WallDensity; W.Yaw = P.Yaw;
-		W.Offset = FVector(HalfThrough * P.Size - 6000.f + P.Back, P.Side * (WallGap + HalfLong * P.Size), P.Lift - WallSink * P.Size);
+		W.Side = P.Side; W.Unit = Unit;
+		// Recede away from the mouth in a broad crescent instead of laying all pieces on one flat plane.
+		const FVector Along = FRotator(0.f, P.Yaw, 0.f).RotateVector(FVector(0.f, P.Side * HalfLong * P.Size, 0.f));
+		W.Offset = Along + FVector(HalfThrough * P.Size - 6000.f + P.Back, P.Side * WallGap, P.Lift - WallSink * P.Size);
 		Wall.Add(W);
 		WallMIDs.Add(M);
 		Director->bCloudWall = true;
@@ -330,6 +372,33 @@ void ADCFogFront::TickTunnel(float T)
 {
 	if (!Tunnel && TunnelShown < 0.f) { TunnelShown = 0.f; BuildTunnel(); }
 	if (!Tunnel) { return; }
+	if (bUnifiedFront)
+	{
+		// Match the metre-space layout in Tools/make_unified_storm.py. The bounds extend below
+		// the troughs and ahead of the most protruding curls; one field contains both cloud and mist.
+		const float Reach = ArrivalTime * (1.f - 6000.f / 1500000.f);
+		const float Mouth = FMath::Max(Director->StormFrontX, 6000.f - (T - Reach) * 11250.f);
+		const float Opening = FMath::SmoothStep(ArrivalTime - 18.f, ArrivalTime - 2.f, T);
+		const float Shown = FMath::SmoothStep(0.25f, 0.9f, Director->StormGrowth) * (1.f - FMath::SmoothStep(ArrivalTime + 16.f, ArrivalTime + 20.f, T));
+		Tunnel->SetActorTransform(FTransform(FRotator::ZeroRotator, FVector(Mouth+65000.f, 0.f, Director->SeaLevelZ+80000.f), FVector(1000.f,1200.f,750.f)));
+		TunnelMID->SetScalarParameterValue(TEXT("Opening"), Opening);
+		TunnelMID->SetScalarParameterValue(TEXT("StormTime"), T);
+		TunnelMID->SetScalarParameterValue(TEXT("Density"), Shown);
+		if (FrontFill)
+		{
+			const float Fill = FMath::SmoothStep(34.f, 50.f, T) * (1.f - FMath::SmoothStep(58.f, 68.f, T));
+			FrontFill->GetLightComponent()->SetIntensity(2.f * Fill);
+		}
+		if (TunnelShown <= 0.01f && Shown > 0.01f)
+		{
+			const UHeterogeneousVolumeComponent* H = Tunnel->FindComponentByClass<UHeterogeneousVolumeComponent>();
+			UE_LOG(LogDC, Log, TEXT("Unified storm runtime resolution: %s"), H ? *H->VolumeResolution.ToString() : TEXT("missing"));
+		}
+		TunnelShown = Shown;
+		Tunnel->SetActorHiddenInGame(Shown <= 0.001f);
+		Director->CloudTunnelFarX = Shown > 0.01f ? Mouth+175000.f : -1.e9f;
+		return;
+	}
 	// The volume is 672 voxels of 0.42 cm long, its foot at the actor.
 	const float Half = 0.5f * 672.f * 0.42f * TunnelScale;
 	// It rides on the face of the front until its mouth reaches the bow, then draws aft over the ship
@@ -338,9 +407,16 @@ void ADCFogFront::TickTunnel(float T)
 	const float Through = (2.f * Half + 6000.f) / 16.f;
 	const float Reach = ArrivalTime * (1.f - 6000.f / 1500000.f);   // when the face is at the bow
 	const float Mouth = FMath::Max(Director->StormFrontX, 6000.f - (T - Reach) * Through);
-	Tunnel->SetActorTransform(FTransform(FRotator(0.f, -90.f, 0.f), FVector(Mouth + Half, 0.f, Director->SeaLevelZ - TunnelSink), FVector(TunnelScale)));
-	Director->CloudTunnelFarX = TunnelShown > 0.01f ? Mouth + 2.f * Half - 4000.f : -1.e9f;
+	// The storm first reads as one mass. Its shoulders part and its curled throat widens only on approach.
+	// Keep passage depth fixed while widening; traversal still fits the sixteen-second entry.
+	const float Opening = FMath::SmoothStep(ArrivalTime - 17.f, ArrivalTime - 2.f, T);
+	const float Width = FMath::Lerp(MouthWidth * 0.72f, MouthWidth, Opening);
+	const float Sink = TunnelSink * Width / TunnelScale;
+	const float LipOffset = FMath::Lerp(10000.f, -28000.f, Opening);
+	Tunnel->SetActorTransform(FTransform(FRotator(0.f, -90.f, 0.f), FVector(Mouth + Half + LipOffset, 0.f, Director->SeaLevelZ - Sink), FVector(Width, TunnelScale, Width)));
+	Director->CloudTunnelFarX = TunnelShown > 0.01f ? Mouth + LipOffset + 2.f * Half - 4000.f : -1.e9f;
 	TunnelMID->SetVectorParameterValue(TEXT("Flare"), Director->FogFlare * 0.02f);
+	TunnelMID->SetScalarParameterValue(TEXT("StormTime"), T);
 	// Daylight down the tunnel from its far end, and a dimmer light under its crown a third of the way in. Both come up
 	// as the mouth nears and flare with the lightning.
 	{
@@ -371,7 +447,15 @@ void ADCFogFront::TickTunnel(float T)
 	for (FWallPiece& W : Wall)
 	{
 		if (!W.Actor.IsValid()) { continue; }
-		W.Actor->SetActorTransform(FTransform(FRotator(0.f, W.Yaw, 0.f), FVector(Mouth, 0.f, Director->SeaLevelZ) + W.Offset, FVector(W.Scale)));
+		FVector Offset = W.Offset;
+		Offset.Y += W.Side * FMath::Lerp(-33000.f, 24000.f, Opening);
+		W.Actor->SetActorTransform(FTransform(FRotator(0.f, W.Yaw, 0.f), FVector(Mouth, 0.f, Director->SeaLevelZ) + Offset, FVector(W.Scale)));
+		if (W.Side == 0.f && W.MID.IsValid())
+		{
+			// Peel the canopy up into the throat's crown; far away it veils the distinct little portal.
+			const float ClearHeight = FMath::Lerp(-18000.f, 40000.f, Opening);
+			W.MID->SetVectorParameterValue(TEXT("Floor"), FLinearColor(40.f + ClearHeight / (W.Unit * 1.1f), 45.f, 0.f, 0.f));
+		}
 		// Less than in the tunnel: at full strength the whole wall turned pale blue at once, from end to end.
 		if (W.MID.IsValid()) { W.MID->SetVectorParameterValue(TEXT("Flare"), Director->FogFlare * 0.007f); }
 	}

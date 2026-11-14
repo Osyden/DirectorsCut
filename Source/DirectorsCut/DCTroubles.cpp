@@ -1,13 +1,12 @@
 #include "DCTroubles.h"
+#include "DCDeckFireEffect.h"
 #include "DCRideDirector.h"
 #include "DCTreadmill.h"
 #include "DCCrew.h"
-#include "Components/PointLightComponent.h"
-#include "Components/StaticMeshComponent.h"
-#include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
-#include "Materials/MaterialInstanceDynamic.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 
 ADCTroubles::ADCTroubles()
 {
@@ -39,52 +38,25 @@ bool ADCTroubles::NearestFire(const FVector& From, FVector& OutLocation) const
 void ADCTroubles::StartFire(const FVector& Location)
 {
 	FActorSpawnParameters Params;
+	Params.Owner = this;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	AActor* Visual = GetWorld()->SpawnActor<AActor>(AActor::StaticClass(), FTransform(Location), Params);
-	USceneComponent* Root = NewObject<USceneComponent>(Visual, TEXT("Root"));
-	Root->SetMobility(EComponentMobility::Movable);
-	Visual->SetRootComponent(Root);
-	Root->RegisterComponent();
-	// Fires are reckoned on the ship at rest; the flames themselves are put on the deck where it is now and ride with her.
+	ADCDeckFireEffect* Visual = GetWorld()->SpawnActor<ADCDeckFireEffect>(Location, FRotator::ZeroRotator, Params);
+	if (!Visual) { return; }
+	// The hazard stays in resting-deck coordinates; its effect follows the moving ship.
 	if (const ADCRideDirector* Dir = ADCRideDirector::Get(this))
 	{
 		Visual->SetActorLocation(Dir->DeckToWorld(Location));
-		if (Dir->ShipActor) { Visual->AttachToActor(Dir->ShipActor, FAttachmentTransformRules::KeepWorldTransform); }
+		if (Dir->ShipActor)
+		{
+			Visual->SetActorRotation(Dir->ShipActor->GetActorRotation());
+			Visual->AttachToActor(Dir->ShipActor, FAttachmentTransformRules::KeepWorldTransform);
+		}
 	}
-	else { Visual->SetActorLocation(Location); }
-
-	// Flames: a few glowing tongues that the tick stretches and sways.
-	UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Flame.M_Flame"));
-	UStaticMesh* Cone = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cone.Cone"));
-	for (int32 i = 0; i < 5; ++i)
-	{
-		UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(Visual);
-		C->SetMobility(EComponentMobility::Movable);
-		C->SetStaticMesh(Cone);
-		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		C->SetCastShadow(false);
-		if (Base) { C->SetMaterial(0, Base); }
-		C->SetupAttachment(Root);
-		C->SetRelativeLocation(FVector(FMath::FRandRange(-45.f, 45.f), FMath::FRandRange(-45.f, 45.f), 40.f));
-		C->RegisterComponent();
-	}
-
-	UPointLightComponent* Light = NewObject<UPointLightComponent>(Visual);
-	Light->SetMobility(EComponentMobility::Movable);
-	Light->SetupAttachment(Root);
-	Light->SetRelativeLocation(FVector(0.f, 0.f, 90.f));
-	Light->SetLightColor(FLinearColor(1.f, 0.42f, 0.1f));
-	Light->SetIntensity(6000.f);
-	Light->SetAttenuationRadius(1400.f);
-	Light->SetCastShadows(true);
-	Light->RegisterComponent();
-
 	FDCFire& F = Fires.AddDefaulted_GetRef();
 	F.Location = Location;
 	F.Seed = FMath::FRandRange(0.f, 100.f);
 	F.Visual = Visual;
-	F.Light = Light;
-
+	Visual->Initialize(F.Seed);
 	if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
 	{
 		Crew->Report(TEXT("Fire on deck! We need hands on the buckets!"), true);
@@ -97,7 +69,7 @@ bool ADCTroubles::ExtinguishNear(const FVector& Location, float Reach)
 	{
 		if (FVector::DistSquared(Fires[i].Location, Location) < Reach * Reach)
 		{
-			if (AActor* V = Fires[i].Visual.Get()) { V->Destroy(); }
+			if (ADCDeckFireEffect* V = Cast<ADCDeckFireEffect>(Fires[i].Visual.Get())) { V->Extinguish(); }
 			Fires.RemoveAt(i);
 			if (Director) { Director->Score += 50; }
 			return true;
@@ -143,10 +115,41 @@ void ADCTroubles::Tick(float DeltaSeconds)
 	const EDCPhase Phase = Director->GetPhase();
 	const float Dt = DeltaSeconds * Director->TimeScale;
 
+#if !UE_BUILD_SHIPPING
+	// Repeatable visual/lifecycle review; ordinary play never enters this path.
+	float ReviewAt = -1.f, ReviewOut = -1.f;
+	if (FParse::Value(FCommandLine::Get(), TEXT("DCFireReviewAt="), ReviewAt) && DeckPoints.Num())
+	{
+		if (Director->RideTime >= ReviewAt && !Tags.Contains(TEXT("FireReviewStarted")))
+		{
+			Tags.Add(TEXT("FireReviewStarted"));
+			StartFire(DeckPoints[FMath::Min(2, DeckPoints.Num()-1)]);
+			UE_LOG(LogDC, Log, TEXT("Fire review: started at %.2f, active=%d, deck=%s"), Director->RideTime, NumFires(),
+				*DeckPoints[FMath::Min(2, DeckPoints.Num()-1)].ToCompactString());
+		}
+		if (FParse::Value(FCommandLine::Get(), TEXT("DCFireReviewOut="), ReviewOut) && Director->RideTime >= ReviewOut
+			&& !Tags.Contains(TEXT("FireReviewOut")))
+		{
+			Tags.Add(TEXT("FireReviewOut"));
+			const float Before = Director->Score;
+			const bool bOut = ExtinguishNear(DeckPoints[FMath::Min(2, DeckPoints.Num()-1)]);
+			UE_LOG(LogDC, Log, TEXT("Fire review: extinguish=%d, active=%d, score delta=%.0f"), bOut, NumFires(), Director->Score-Before);
+		}
+		const float GoneAt = ReviewOut >= 0.f ? ReviewOut+4.f : ReviewAt+FireBurnTime+4.1f;
+		if (Director->RideTime >= GoneAt && !Tags.Contains(TEXT("FireReviewClean")))
+		{
+			Tags.Add(TEXT("FireReviewClean"));
+			int32 Effects = 0;
+			for (TActorIterator<ADCDeckFireEffect> It(GetWorld()); It; ++It) { ++Effects; }
+			UE_LOG(LogDC, Log, TEXT("Fire review: after cleanup active=%d, effects=%d"), NumFires(), Effects);
+		}
+	}
+#endif
+
 	// Clear water: whatever was still wrong is behind us.
 	if (Phase == EDCPhase::Ending)
 	{
-		for (FDCFire& F : Fires) { if (AActor* V = F.Visual.Get()) { V->Destroy(); } }
+		for (FDCFire& F : Fires) { if (ADCDeckFireEffect* V = Cast<ADCDeckFireEffect>(F.Visual.Get())) { V->Extinguish(); } }
 		Fires.Reset();
 		bRiggingLoose = false;
 	}
@@ -178,35 +181,19 @@ void ADCTroubles::Tick(float DeltaSeconds)
 	{
 		if (Fires[i].Age > FireBurnTime)
 		{
-			if (AActor* V = Fires[i].Visual.Get()) { V->Destroy(); }
+			if (ADCDeckFireEffect* V = Cast<ADCDeckFireEffect>(Fires[i].Visual.Get())) { V->Extinguish(); }
 			Fires.RemoveAt(i);
 		}
 	}
 
-	// Fires burn the ship and animate.
+	// Gameplay damage and burn duration remain independent of the new effect's fade-out.
 	for (FDCFire& F : Fires)
 	{
 		F.Age += DeltaSeconds;
 		Director->DamageShip(FireDamagePerSecond * Dt, true);
-		const float Grow = FMath::Clamp(F.Age / 3.f, 0.25f, 1.f);
-		if (UPointLightComponent* L = F.Light.Get())
+		if (ADCDeckFireEffect* V = Cast<ADCDeckFireEffect>(F.Visual.Get()))
 		{
-			L->SetIntensity(Grow * (5000.f + 2500.f * FMath::Sin(Clock * 17.f + F.Seed) * FMath::Sin(Clock * 7.3f + F.Seed * 2.f)));
-		}
-		if (AActor* V = F.Visual.Get())
-		{
-			TArray<UStaticMeshComponent*> Tongues;
-			V->GetComponents(Tongues);
-			for (int32 i = 0; i < Tongues.Num(); ++i)
-			{
-				const float P = Clock * (5.f + i) + F.Seed + i * 1.7f;
-				const float H = Grow * (1.1f + 0.5f * FMath::Sin(P)) * (1.f + 0.25f * i);
-				Tongues[i]->SetRelativeScale3D(FVector(0.55f + 0.1f * FMath::Sin(P * 1.3f), 0.55f + 0.1f * FMath::Cos(P * 1.1f), H));
-				FVector Loc = Tongues[i]->GetRelativeLocation();
-				Loc.Z = H * 50.f;
-				Tongues[i]->SetRelativeLocation(Loc);
-				Tongues[i]->SetRelativeRotation(FRotator(6.f * FMath::Sin(P * 0.9f), 0.f, 6.f * FMath::Cos(P * 0.7f)));
-			}
+			V->SetStrength(FMath::Clamp(F.Age / 3.f, 0.25f, 1.f));
 		}
 	}
 

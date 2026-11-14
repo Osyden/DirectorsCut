@@ -125,8 +125,8 @@ void ADCRideDirector::BuildDefaultPhases()
 	{
 		FDCEnvState& E = Add(EDCPhase::OpenSea, 0.f, 0.f);
 		E.FogColor = FLinearColor(0.75f, 0.55f, 0.4f); E.FogDensity = 0.0004f; E.CloudCover = 0.05f; E.CloudBase = 520000.f;
-		E.SunColor = FLinearColor(1.f, 0.86f, 0.68f); E.SunIntensity = 7.f; E.SunPitch = -16.f; E.SunYaw = 150.f; // low and ahead to port, behind the storm front: the wall stands dark against the light with silver edges, and shafts fall across the deck
-		E.SeaColor = FLinearColor(0.03f, 0.09f, 0.13f); E.SeaRoughness = 1.2f; E.ShipSpeed = 1000.f; E.WaveHeight = 70.f; E.Foam = 0.5f; E.Exposure = 1.0f;
+		E.SunColor = FLinearColor(1.f, 0.86f, 0.68f); E.SunIntensity = 7.f; E.SunPitch = -35.f; E.SunYaw = 110.f; // higher, off-axis sun: cool cloud detail without sunset glare
+		E.SeaColor = FLinearColor(0.03f, 0.09f, 0.13f); E.SeaRoughness = 1.2f; E.ShipSpeed = 1000.f; E.WaveHeight = 70.f; E.Foam = 0.5f; E.Exposure = 0.65f;
 	}
 	{
 		FDCEnvState& E = Add(EDCPhase::Fog, 58.f, 3.5f); // the mouth of the storm front closes over the bow at 60 s (DCFogFront); dark a few seconds into the tunnel
@@ -136,7 +136,7 @@ void ADCRideDirector::BuildDefaultPhases()
 		// (13 Nov night: the front now has a tunnel of cloud for a mouth. The air inside it is kept nearly clear,
 		// so its rolling walls and the light at its far end are what is seen; the thick air was hiding them.)
 		E.FogColor = FLinearColor(0.1f, 0.14f, 0.18f); E.FogDensity = 0.004f; E.FogHeightFalloff = 0.002f; E.CloudCover = 1.f; E.CloudBase = 50000.f; E.Mist = 0.15f;
-		E.SunColor = FLinearColor(0.5f, 0.7f, 0.8f); E.SunIntensity = 1.6f; E.SunPitch = -20.f; E.SkyIntensity = 0.6f;
+		E.SunColor = FLinearColor(0.5f, 0.7f, 0.8f); E.SunIntensity = 1.6f; E.SunPitch = -35.f; E.SunYaw = 110.f; E.SkyIntensity = 0.6f;
 		E.SeaColor = FLinearColor(0.01f, 0.03f, 0.035f); E.SeaRoughness = 2.5f; E.Rain = 0.7f; E.LightningRate = 8.f; E.ShipSpeed = 1500.f; E.WaveHeight = 130.f; E.Foam = 0.7f; E.Exposure = 0.6f;
 	}
 	{
@@ -308,9 +308,52 @@ void ADCRideDirector::StrikeHull(const FVector& Where, float Strength, bool bGri
 	OnHullStrike.Broadcast(Where, Strength);
 }
 
+void ADCRideDirector::RestoreFrontVolumeQuality()
+{
+	if (SavedFrontVolumeDownsample < 0.f) { return; }
+	if (IConsoleVariable* VolumeQuality = IConsoleManager::Get().FindConsoleVariable(TEXT("r.HeterogeneousVolumes.DownsampleFactor")))
+	{
+		VolumeQuality->Set(SavedFrontVolumeDownsample, ECVF_SetByConsole);
+		UE_LOG(LogDC, Log, TEXT("Front volume quality: restored downsample %.0f"), SavedFrontVolumeDownsample);
+	}
+	SavedFrontVolumeDownsample = -1.f;
+}
+
+void ADCRideDirector::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	ApplyCityFog(0.f);
+	RestoreFrontVolumeQuality();
+	Super::EndPlay(EndPlayReason);
+}
+
 void ADCRideDirector::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	// UDS applies its cloud quality preset after our BeginPlay and selects mode 2.
+	// That mode cannot intersect opaque geometry: ruins and rigging cut holes in clouds.
+	// Own this integration setting after the pack's startup/preset updates as well.
+	static IConsoleVariable* Mode = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricRenderTarget.Mode"));
+	if (Mode)
+	{
+		if (Mode->GetInt() == 2)
+		{
+			Mode->Set(1, ECVF_SetByConsole);
+			UE_LOG(LogDC, Log, TEXT("Cloud depth integration: replaced UDS render-target mode 2 with mode 1"));
+		}
+	}
+	// Half-resolution volume depth leaves bright outlines around ropes in the VDB front.
+	// Keep this cost local to the front, and restore on exit, restart and early shutdown.
+	static IConsoleVariable* VolumeQuality = IConsoleManager::Get().FindConsoleVariable(TEXT("r.HeterogeneousVolumes.DownsampleFactor"));
+	if (VolumeQuality && bCloudWall && RideTime < 80.f)
+	{
+		if (SavedFrontVolumeDownsample < 0.f)
+		{
+			SavedFrontVolumeDownsample = VolumeQuality->GetFloat();
+			UE_LOG(LogDC, Log, TEXT("Front volume quality: full resolution, saved downsample %.0f"), SavedFrontVolumeDownsample);
+		}
+		if (VolumeQuality->GetFloat() > 1.f) { VolumeQuality->Set(1.f, ECVF_SetByConsole); }
+	}
+	else { RestoreFrontVolumeQuality(); }
 	if (!Phases.Num())
 	{
 		return;
@@ -845,7 +888,7 @@ void ADCRideDirector::SetupUDS()
 	// Far enough for shafts between ruins a few hundred metres off, and strong enough to see.
 	SkyNum(UDSSky, TEXT("Volumetric Fog Distance"), 70000.0);
 	SkyNum(UDSSky, TEXT("Sun Volumetric Scattering Intensity"), 3.0);
-	SkyFlag(UDSSky, TEXT("Enable Sun Light Shaft Bloom"), true);
+	SkyFlag(UDSSky, TEXT("Enable Sun Light Shaft Bloom"), false);
 	// The director keeps its own fixed exposure per phase, so dark scenes stay dark.
 	SkyFlag(UDSSky, TEXT("Apply Exposure Settings"), false);
 	SkyNum(UDSSky, TEXT("Time of Day"), 1300.0);
@@ -918,6 +961,27 @@ void ADCRideDirector::SetupUDS()
 
 void ADCRideDirector::TickUDS()
 {
+	// City-only atmosphere: preserve the accepted front and restore the later ride.
+	const float CityFog = FMath::SmoothStep(76.f, 94.f, RideTime)
+		* (1.f - FMath::SmoothStep(240.f, 248.f, RideTime));
+	static float CityDensityScale = 1.25f, CityFalloff = 0.055f, CityFogLight = 1.6f;
+	static bool bCityTuningRead = false;
+	if (!bCityTuningRead)
+	{
+		bCityTuningRead = true;
+		FParse::Value(FCommandLine::Get(), TEXT("DCCityDensity="), CityDensityScale);
+		FParse::Value(FCommandLine::Get(), TEXT("DCCityFalloff="), CityFalloff);
+		FParse::Value(FCommandLine::Get(), TEXT("DCCityFogLight="), CityFogLight);
+	}
+	// UDW's Fog=0 still retains UDS's base and cloud-coverage fog contributions.
+	// Keep a little aerial perspective so the wall reads as cloud, then restore city fog on entering.
+	SkyNum(UDSSky, TEXT("Scale Fog Density"), FMath::Lerp(0.2f, 1.f, FMath::SmoothStep(56.f, 62.f, RideTime)) * FMath::Lerp(1.f, CityDensityScale, CityFog));
+	SkyNum(UDSSky, TEXT("Volumetric Fog Distance"), FMath::Lerp(70000.f, 100000.f, CityFog));
+	// Keep the original later-stage lighting; only remove the early front's screen-space glare.
+	SkyFlag(UDSSky, TEXT("Enable Sun Light Shaft Bloom"), RideTime >= 240.f);
+	// Keep the front's internal light readable: a full-strength sky flash bleaches the entire volume.
+	SkyNum(UDSWeather, TEXT("Lightning Flash Light Intensity"), FMath::Lerp(
+		FMath::Lerp(0.65f, 4.f, FMath::SmoothStep(76.f, 82.f, RideTime)), 1.3f, CityFog));
 	// The director's light points down along its pitch; the pack wants a point to hang the sun on.
 	if (FStructProperty* Target = FindFProperty<FStructProperty>(UDSSky->GetClass(), TEXT("Sun Target")))
 	{
@@ -928,13 +992,15 @@ void ADCRideDirector::TickUDS()
 	{
 		static float ForcedCloud = -1.f;   // test hook: -DCCloud=6 fixes the pack's cloud coverage (0..10)
 		static const bool bForcedCloud = FParse::Value(FCommandLine::Get(), TEXT("DCCloud="), ForcedCloud);
-		SkyNum(UDSWeather, TEXT("Cloud Coverage"), bForcedCloud ? ForcedCloud : FMath::Clamp(2.0 + 8.0 * Env.CloudCover, 0.0, 10.0));
+		// The sky gathers over the approach, connecting the sculpted front to the weather above it.
+		const float ApproachCover = RideTime < 62.f ? 0.78f * FMath::SmoothStep(32.f, 58.f, RideTime) : 0.f;
+		SkyNum(UDSWeather, TEXT("Cloud Coverage"), bForcedCloud ? ForcedCloud : FMath::Clamp(2.0 + 8.0 * FMath::Max(Env.CloudCover, ApproachCover), 0.0, 10.0));
 	}
 	{
 		// Test hook: -DCFog=8 fixes the pack's fog amount (0..10).
 		static float ForcedFog = -1.f;
 		static const bool bForcedFog = FParse::Value(FCommandLine::Get(), TEXT("DCFog="), ForcedFog);
-		SkyNum(UDSWeather, TEXT("Fog"), bForcedFog ? ForcedFog : FMath::Clamp(Env.FogDensity * 250.0 + Env.Mist * 4.0, 0.0, 10.0));
+		SkyNum(UDSWeather, TEXT("Fog"), bForcedFog ? ForcedFog : (CurrentPhase == EDCPhase::OpenSea ? 0.0 : FMath::Clamp(Env.FogDensity * 250.0 + Env.Mist * 4.0, 0.0, 10.0)));
 		// The drowned city (the only stretch with heavy mist) stands in dense, pale, low-lying fog: thick on
 		// the sea and round the feet of the ruins, thinning with height so that their heads and the storm
 		// cloud show above it, and bright, because fog this thick glows with whatever light there is.
@@ -942,9 +1008,10 @@ void ADCRideDirector::TickUDS()
 		const double K = FMath::Clamp(Env.Mist / 0.75, 0.0, 1.0);
 		static float Falloff = 0.3f; static bool bFalloffRead = false;   // test hook: -DCFogFalloff=
 		if (!bFalloffRead) { bFalloffRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCFogFalloff="), Falloff); }
-		SkyNum(UDSSky, TEXT("Foggy Height Fog Falloff"), FMath::Lerp(0.015, (double)Falloff, K));
-		SkyNum(UDSSky, TEXT("Overcast Brightness Day"), FMath::Lerp(0.2, 1.0, K));
-		SkyNum(UDSSky, TEXT("Fog Color Intensity Scale"), FMath::Lerp(1.0, 3.0, K));
+		SkyNum(UDSSky, TEXT("Foggy Height Fog Falloff"), FMath::Lerp(FMath::Lerp(0.015, (double)Falloff, K), (double)CityFalloff, (double)CityFog));
+		const double OvercastBase = FMath::Lerp(0.6, 0.2, static_cast<double>(FMath::SmoothStep(58.f, 66.f, RideTime)));
+		SkyNum(UDSSky, TEXT("Overcast Brightness Day"), FMath::Lerp(FMath::Lerp(OvercastBase, 1.0, K), 0.8, (double)CityFog));
+		SkyNum(UDSSky, TEXT("Fog Color Intensity Scale"), FMath::Lerp(FMath::Lerp(1.0, 3.0, K), (double)CityFogLight, (double)CityFog));
 		// Test hooks on the pack's own height fog: -DCFogCutoff= (cm; nothing further than this is fogged, so the sky is not) and -DCFogMaxOpacity=.
 		{
 			static float Cutoff = -1.f, MaxOpacity = -1.f; static bool bFogHooks = false;
@@ -991,13 +1058,8 @@ void ADCRideDirector::TickUDS()
 			if (!bForcedRead) { bForcedRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCLightningAt="), ForcedAt); }
 			NextBolt -= GetWorld()->GetDeltaSeconds();
 			bool bForced = ForcedAt >= 0.f && RideTime >= ForcedAt;
-			// Inside the cloud tunnel the air is kept clear (Mist is low), so the chance bolts below do not fall
-			// there; but a flash is what shows the tunnel's rolling walls from within. Four on cue.
-			static const float TunnelBolts[] = { 45.f, 50.5f, 54.5f, 57.6f, 60.8f, 63.4f, 66.3f, 69.5f };   // the first four are in the wall as it comes on
-			static float LastRideTime = -1.f;
-			for (float Cue : TunnelBolts) { if (LastRideTime >= 0.f && LastRideTime < Cue && RideTime >= Cue && RideTime - LastRideTime < 1.f) { bForced = true; } }
-			LastRideTime = RideTime;
-			if (bForced || (NextBolt <= 0.f && Env.LightningRate > 4.f && Env.Mist > 0.3f))
+			// The front carries local internal pulses. Broad sky flashes bleach its full face and sea reflection.
+			if (RideTime >= 76.f && (bForced || (NextBolt <= 0.f && Env.LightningRate > 4.f && Env.Mist > 0.3f)))
 			{
 				if (ForcedAt >= 0.f && RideTime >= ForcedAt) { ForcedAt = -1.f; }
 				NextBolt = FMath::FRandRange(3.5f, 8.f) * 10.f / FMath::Max(Env.LightningRate, 1.f);
@@ -1064,19 +1126,28 @@ void ADCRideDirector::TickUDS()
 				TInlineComponentArray<UDirectionalLightComponent*> Lights(UDSWeather);
 				for (UDirectionalLightComponent* L : Lights) { if (L->GetName().Contains(TEXT("Lightning"))) { UDSLightning = L; L->SetVolumetricScatteringIntensity(1.f); } }
 			}
+			if (UDSLightning.IsValid())
+			{
+				// Flash the cloud detail without bleaching entire city curtains white.
+				UDSLightning->SetVolumetricScatteringIntensity(FMath::Lerp(1.f, 0.35f, CityFog));
+			}
 			const float Struck = UDSLightning.IsValid() && UDSLightning->IsVisible() ? FMath::Clamp(UDSLightning->Intensity / 5.f, 0.f, 3.f) : 0.f;
-			if (Struck > 0.f && LightningNow <= 0.f && FParse::Param(FCommandLine::Get(), TEXT("DCLightningLog"))) { UE_LOG(LogDC, Log, TEXT("Lightning: flash light on (%.1f) at ride time %.2f"), UDSLightning->Intensity, RideTime); }
+			if (Struck > 0.f && LightningNow <= 0.f && FParse::Param(FCommandLine::Get(), TEXT("DCLightningLog")))
+			{
+				UE_LOG(LogDC, Log, TEXT("Lightning: flash light on (%.1f, fog scattering %.2f) at ride time %.2f"),
+					UDSLightning->Intensity, UDSLightning->VolumetricScatteringIntensity, RideTime);
+			}
 			LightningNow = Struck;
 			FogGlow = FLinearColor(0.5f, 0.62f, 0.8f) * (0.35f * Env.SkyIntensity) * GlowScale;
 			FogFlare = FLinearColor(0.6f, 0.75f, 1.f) * (0.5f * Struck) * GlowScale;
 		}
 		// Looking into the sun on the open sea, strong scattering in the air whites the picture out; in the mist of the city it is what makes the shafts.
-		SkyNum(UDSSky, TEXT("Sun Volumetric Scattering Intensity"), FMath::Lerp(0.6, 3.0, K));
+		SkyNum(UDSSky, TEXT("Sun Volumetric Scattering Intensity"), FMath::Lerp(FMath::Lerp(0.6, 3.0, K), 0.25, (double)CityFog));
 	}
 	SkyNum(UDSWeather, TEXT("Rain"), FMath::Clamp(Env.Rain * 10.0, 0.0, 10.0));
 	SkyNum(UDSWeather, TEXT("Wind Intensity"), FMath::Clamp(Env.WaveHeight / 30.0, 1.0, 10.0));
 	// The pack's own lightning (bolts, flashes in the cloud, thunder) replaces the director's.
-	SkyNum(UDSWeather, TEXT("Thunder/Lightning"), FMath::Clamp(Env.LightningRate * 0.45, 0.0, 10.0));
+	SkyNum(UDSWeather, TEXT("Thunder/Lightning"), RideTime < 76.f ? 0.0 : FMath::Clamp(Env.LightningRate * 0.45, 0.0, 10.0));
 	SkyNum(UDSWeather, TEXT("Material Wetness"), FMath::Clamp(Env.Rain * 3.0, 0.0, 1.0));
 	SkyNum(UDSSky, TEXT("Sun Light Intensity"), Env.SunIntensity * 0.75 + 2.0);
 	SkyNum(UDSSky, TEXT("Sky Light Intensity"), Env.SkyIntensity);
@@ -1093,14 +1164,113 @@ void ADCRideDirector::TickUDS()
 		StormGrowth = G;
 		const float Radius = StormRadius * FMath::Lerp(0.12f, 1.f, G);
 		SkyNum(UDSStorm, TEXT("Outer Radius"), Radius);
-		// With the wall of cloud volumes standing in front of it, the pack's storm is two fronts in one sky: a
-		// flat-topped slab with streaked sides behind and above the wall (the owner's "stencilling"). It is then
-		// kept out until the wall is nearly on the ship, and comes in over her as the dark overhead and the rain.
+		// Keep the radial storm out of the VDB throat: the independent volumes otherwise
+		// overlap across its opening. Ordinary sky coverage supplies the overcast on entry;
+		// the radial storm takes over after the VDB finishes fading at 80 s.
 		static float LateFrom = 50.f, LateTo = 61.f; static bool bLateRead = false;   // test hooks: -DCStormLateFrom= -DCStormLateTo=
 		if (!bLateRead) { bLateRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCStormLateFrom="), LateFrom); FParse::Value(FCommandLine::Get(), TEXT("DCStormLateTo="), LateTo); }
-		const float Alpha = bCloudWall ? FMath::SmoothStep(LateFrom, LateTo, RideTime) : FMath::Clamp(G * 1.6f, 0.f, 1.f);
+		const float Alpha = bCloudWall ? FMath::SmoothStep(FMath::Max(LateFrom, 80.f), FMath::Max(LateTo, 88.f), RideTime) : FMath::Clamp(G * 1.6f, 0.f, 1.f);
 		SkyNum(UDSStorm, TEXT("Storm Alpha"), Alpha);
 		SkyCall(UDSStorm, TEXT("Set Storm Location"), FVector(Face + Radius, 0.f, SeaLevelZ));
+	}
+	ApplyCityFog(CityFog);
+}
+
+void ADCRideDirector::ApplyCityFog(float Weight)
+{
+	if (!bCityFogSaved && Weight > 0.f && UDSSky)
+	{
+		TInlineComponentArray<UExponentialHeightFogComponent*> Components(UDSSky);
+		for (UExponentialHeightFogComponent* F : Components)
+		{
+			if (!F->IsRegistered()) { continue; }
+			CityFogComponent = F;
+			SavedCitySecondFog = F->SecondFogData;
+			bSavedCityFSSS = F->bEnableFSSS;
+			SavedCityScatterAmount = F->FSSSSceneColorScatteringAmountScale;
+			SavedCityScatterSpread = F->FSSSSpreadScale;
+			SavedCityScatterBlur = F->FSSSBlurControl;
+			SavedCityFogDistance = F->VolumetricFogDistance;
+			TInlineComponentArray<UDirectionalLightComponent*> Lights(UDSSky);
+			for (UDirectionalLightComponent* L : Lights)
+			{
+				if (!L->IsRegistered() || !L->GetName().Contains(TEXT("Sun"))) { continue; }
+				CitySunComponent = L;
+				SavedCitySunFogScattering = L->VolumetricScatteringIntensity;
+				UE_LOG(LogDC, Log, TEXT("City fog: saved live sun %s scattering %.3f"), *L->GetName(), SavedCitySunFogScattering);
+				break;
+			}
+			bCityFogSaved = true;
+			UE_LOG(LogDC, Log, TEXT("City fog: saved second layer %.4f / %.4f, FSSS %d, anisotropy %.3f"),
+				SavedCitySecondFog.FogDensity, SavedCitySecondFog.FogHeightFalloff, bSavedCityFSSS, F->VolumetricFogScatteringDistribution);
+			break;
+		}
+	}
+	UExponentialHeightFogComponent* F = CityFogComponent.Get();
+	if (!bCityFogSaved || !F) { return; }
+	static float UpperDensity = 0.008f, ScreenScatter = 0.f;
+	static bool bRead = false;
+	if (!bRead)
+	{
+		bRead = true;
+		FParse::Value(FCommandLine::Get(), TEXT("DCCityUpperFog="), UpperDensity);
+		FParse::Value(FCommandLine::Get(), TEXT("DCCityFSSS="), ScreenScatter);
+	}
+	FExponentialHeightFogData Layer = SavedCitySecondFog;
+	Layer.FogDensity = FMath::Lerp(Layer.FogDensity, UpperDensity, Weight);
+	Layer.FogHeightFalloff = FMath::Lerp(Layer.FogHeightFalloff, 0.025f, Weight);
+	Layer.FogHeightOffset = FMath::Lerp(Layer.FogHeightOffset, 3000.f, Weight);
+	F->SetSecondFogData(Layer);
+	// The sky pack caches its distance on construction; changing only its Blueprint
+	// parameter did not extend the live component's 700 m grid in the capture run.
+	F->SetVolumetricFogDistance(FMath::Lerp(SavedCityFogDistance, 100000.f, Weight));
+	// Drive the live light as well as its Blueprint setting. The sun-facing fog
+	// must keep its grey body rather than turning into disconnected white shafts.
+	if (UDirectionalLightComponent* L = CitySunComponent.Get())
+	{
+		L->SetVolumetricScatteringIntensity(FMath::Lerp(SavedCitySunFogScattering, 0.25f, Weight));
+	}
+	if (Weight == 1.f && AppliedCityFogWeight < 1.f)
+	{
+		UE_LOG(LogDC, Log, TEXT("City fog settled: base %.4f / %.4f, upper %.4f / %.4f, volume %.0f cm, anisotropy %.3f"),
+			F->FogDensity, F->FogHeightFalloff, F->SecondFogData.FogDensity,
+			F->SecondFogData.FogHeightFalloff, F->VolumetricFogDistance, F->VolumetricFogScatteringDistribution);
+		if (UDirectionalLightComponent* L = CitySunComponent.Get())
+		{
+			UE_LOG(LogDC, Log, TEXT("City fog: live sun scattering %.3f"), L->VolumetricScatteringIntensity);
+		}
+	}
+	// Optional screen-space scattering trial. Off by default: it softened the
+	// separate banks into an even haze. Preserve and restore the sky's prior state.
+	if (FMath::Abs(AppliedCityFogWeight - Weight) > 0.01f || Weight == 0.f || Weight == 1.f)
+	{
+		const bool bEnabled = Weight > 0.f && ScreenScatter > 0.f ? true : bSavedCityFSSS;
+		const float Amount = FMath::Lerp(bSavedCityFSSS ? SavedCityScatterAmount : 0.f, ScreenScatter, Weight);
+		const float Spread = FMath::Lerp(SavedCityScatterSpread, 0.04f, Weight);
+		const float Blur = FMath::Lerp(SavedCityScatterBlur, 0.35f, Weight);
+		if (F->bEnableFSSS != bEnabled || !FMath::IsNearlyEqual(F->FSSSSceneColorScatteringAmountScale, Amount)
+			|| !FMath::IsNearlyEqual(F->FSSSSpreadScale, Spread) || !FMath::IsNearlyEqual(F->FSSSBlurControl, Blur))
+		{
+			F->bEnableFSSS = bEnabled;
+			F->FSSSSceneColorScatteringAmountScale = Weight == 0.f ? SavedCityScatterAmount : Amount;
+			F->FSSSSpreadScale = Spread;
+			F->FSSSBlurControl = Blur;
+			F->MarkRenderStateDirty();
+		}
+		AppliedCityFogWeight = Weight;
+	}
+	if (Weight == 0.f)
+	{
+		UE_LOG(LogDC, Log, TEXT("City fog: restored second layer %.4f, scattering %d / %.3f, distance %.0f cm, anisotropy %.3f"),
+			F->SecondFogData.FogDensity, F->bEnableFSSS, F->FSSSSceneColorScatteringAmountScale, F->VolumetricFogDistance, F->VolumetricFogScatteringDistribution);
+		bCityFogSaved = false;
+		AppliedCityFogWeight = -1.f;
+		CityFogComponent.Reset();
+		if (UDirectionalLightComponent* L = CitySunComponent.Get())
+		{
+			UE_LOG(LogDC, Log, TEXT("City fog: restored live sun scattering %.3f"), L->VolumetricScatteringIntensity);
+		}
+		CitySunComponent.Reset();
 	}
 }
 

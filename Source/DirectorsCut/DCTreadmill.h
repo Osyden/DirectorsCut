@@ -32,6 +32,8 @@ struct FDCWorldObject
 	float Reach = 0.f;
 	/** Kept out of sight because the cloud tunnel has not yet passed it. */
 	bool bTunnelHid = false;
+	/** Built ahead of time, but never visible on the open sea or through the approaching front. */
+	bool bCityObject = false;
 	/** The lookout has already called this one. */
 	bool bCalled = false;
 	/** Seconds until a hostile alongside fires on us again. */
@@ -99,7 +101,6 @@ protected:
 	bool bAtlantisBuilt = false;
 	/** The drowned city is built in the first seconds of the voyage, further off by the distance still to
 	 *  run, and kept hidden until the fog: building it all in the frame the fog began froze the game for half a second. */
-	TArray<TWeakObjectPtr<AActor>> AtlantisHidden;
 	float SpawnAhead = 0.f;
 	bool bOutliersBuilt = false;
 	/** The ruins are solid: feelers run out from the hull to the waterline find their stone, the ship is

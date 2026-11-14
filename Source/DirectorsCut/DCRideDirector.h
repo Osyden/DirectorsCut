@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "DCTypes.h"
+#include "Rendering/ExponentialHeightFogData.h"
 #include "DCRideDirector.generated.h"
 
 class UDirectionalLightComponent;
@@ -27,6 +28,7 @@ public:
 	ADCRideDirector();
 
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void Tick(float DeltaSeconds) override;
 
 	UFUNCTION(BlueprintCallable) void Seek(float NewTime);
@@ -198,4 +200,18 @@ protected:
 	FTransform WorldRock;
 	float FlashTimeLeft = 0.f;
 	float NextFlashIn = 5.f;
+	float SavedFrontVolumeDownsample = -1.f;
+	void RestoreFrontVolumeQuality();
+	void ApplyCityFog(float Weight);
+	TWeakObjectPtr<UExponentialHeightFogComponent> CityFogComponent;
+	TWeakObjectPtr<UDirectionalLightComponent> CitySunComponent;
+	float SavedCitySunFogScattering = 0.f;
+	FExponentialHeightFogData SavedCitySecondFog;
+	bool bCityFogSaved = false;
+	bool bSavedCityFSSS = false;
+	float SavedCityScatterAmount = 0.f;
+	float SavedCityScatterSpread = 0.f;
+	float SavedCityScatterBlur = 0.f;
+	float SavedCityFogDistance = 0.f;
+	float AppliedCityFogWeight = -1.f;
 };
