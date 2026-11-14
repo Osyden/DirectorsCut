@@ -2,6 +2,8 @@
 
 Input NPZ: float32 height_m, bedrock_m, erodibility and protected_mask grids;
 positive scalar cell_size_m. Optional loose_m seeds movable surface sediment.
+Optional heightfield_valid_mask excludes nonphysical padding from rainfall and
+all transport. Invalid padding must also be fully protected.
 Other non-object arrays (origin/basis/profile metadata) pass through unchanged.
 protected_mask==1 remains bitwise fixed. Bedrock is an immutable lower bound.
 
@@ -83,6 +85,12 @@ def validate_seed(data):
             raise ValueError("loose_m must be a finite nonnegative matching grid")
         if np.any(loose.astype(np.float64) > data["height_m"].astype(np.float64)-data["bedrock_m"]+1.e-6):
             raise ValueError("loose_m exceeds the material above bedrock")
+    if "heightfield_valid_mask" in data:
+        domain = data["heightfield_valid_mask"]
+        if domain.shape != shape or not np.isfinite(domain).all() or np.any((domain != 0) & (domain != 1)):
+            raise ValueError("heightfield_valid_mask must be a matching binary grid")
+        if np.any((domain == 0) & (data["protected_mask"] != 1)):
+            raise ValueError("Nonphysical padding must be fully protected")
     if any(value.dtype.hasobject for value in data.values()):
         raise ValueError("Object/pickled metadata is unsupported")
     return float(cell.item())
@@ -112,6 +120,7 @@ def erode(data, cfg=Settings(), progress=None):
     erodibility = data["erodibility"].astype(np.float64)
     mobility = 1.-data["protected_mask"].astype(np.float64)
     fixed = mobility == 0
+    domain = np.asarray(data.get("heightfield_valid_mask", np.ones(height.shape, dtype=bool)), dtype=bool)
     loose = (data["loose_m"].astype(np.float64).copy() if "loose_m" in data else
              np.minimum(height-bedrock, cfg.initial_loose_m)*erodibility*mobility)
     water = np.zeros_like(height)
@@ -134,6 +143,7 @@ def erode(data, cfg=Settings(), progress=None):
     started = time.perf_counter()
     for step in range(cfg.steps):
         rain = cfg.rainfall_m*cfg.dt*rng.uniform(1-cfg.rainfall_jitter, 1+cfg.rainfall_jitter, height.shape)
+        rain *= domain
         water += rain
         rainfall_total += float(np.sum(rain, dtype=np.float64))
         head = height+water
@@ -141,10 +151,11 @@ def erode(data, cfg=Settings(), progress=None):
         max_ground_slope = np.zeros_like(height)
         flux.fill(0)
         for k, (src, dst, distance) in enumerate(links):
-            slope = np.maximum((head[src]-head[dst])/(cell*distance), 0.)
+            valid_link = domain[src] & domain[dst]
+            slope = np.maximum((head[src]-head[dst])/(cell*distance), 0.)*valid_link
             flux[k][src] = slope
             np.maximum(max_water_slope[src], slope, out=max_water_slope[src])
-            np.maximum(max_ground_slope[src], (height[src]-height[dst])/(cell*distance), out=max_ground_slope[src])
+            np.maximum(max_ground_slope[src], (height[src]-height[dst])/(cell*distance)*valid_link, out=max_ground_slope[src])
         weights = flux.sum(axis=0)
         budget = np.minimum(water*cfg.water_fraction, cfg.flow_rate*cfg.dt*max_water_slope)
         scale = np.divide(budget, weights, out=np.zeros_like(height), where=weights > 0)
@@ -178,7 +189,7 @@ def erode(data, cfg=Settings(), progress=None):
         flux.fill(0)
         for k, (src, dst, distance) in enumerate(links):
             excess = np.maximum(height[src]-height[dst]-repose*cell*distance, 0.)
-            flux[k][src] = excess*thermal_alpha*mobility[src]*mobility[dst]
+            flux[k][src] = excess*thermal_alpha*mobility[src]*mobility[dst]*(domain[src] & domain[dst])
         demand = flux.sum(axis=0)
         thermal_scale = np.divide(np.minimum(loose, demand), demand, out=np.zeros_like(height), where=demand > 0)
         flux *= thermal_scale[None, :, :]
@@ -221,6 +232,15 @@ def erode(data, cfg=Settings(), progress=None):
     grad_y, grad_x = np.gradient(height, cell)
     angle = np.arctan(np.hypot(grad_x, grad_y))
     curvature = np.gradient(grad_x, cell, axis=1)+np.gradient(grad_y, cell, axis=0)
+    # Two gradient stencils are used for curvature. Suppress diagnostic masks
+    # beside nonphysical padding rather than interpreting its fill height as rock.
+    diagnostic_valid = domain.copy()
+    for _ in range(2):
+        valid_before = diagnostic_valid.copy()
+        for src, dst, _ in links:
+            diagnostic_valid[src] &= valid_before[dst]
+    angle[~diagnostic_valid] = 0
+    curvature[~diagnostic_valid] = 0
     flow_log = np.log1p(accumulation)
     arrays = {key: value.copy() for key, value in data.items()}
     arrays.update(height_m=final, water_m=water.astype(np.float32), suspended_m=sediment.astype(np.float32),
@@ -229,6 +249,7 @@ def erode(data, cfg=Settings(), progress=None):
                   flow_mask=(flow_log/max(float(flow_log.max()), 1.e-12)).astype(np.float32),
                   slope=(angle/(np.pi*.5)).astype(np.float32), slope_degrees=np.rad2deg(angle).astype(np.float32),
                   curvature=np.tanh(curvature*cell).astype(np.float32), curvature_m_inv=curvature.astype(np.float32))
+    arrays["diagnostic_valid_mask"] = diagnostic_valid.astype(np.uint8)
     serial_error = float(np.sum(final.astype(np.float64)-bedrock)+np.sum(arrays["suspended_m"], dtype=np.float64)-initial_solid)*cell*cell
     quantization = .5*cell*cell*float(np.sum(np.abs(np.spacing(final)), dtype=np.float64)
                                     +np.sum(np.abs(np.spacing(arrays["suspended_m"])), dtype=np.float64))
@@ -236,6 +257,7 @@ def erode(data, cfg=Settings(), progress=None):
         raise ArithmeticError("Serialized mass error exceeds float32 rounding bound")
     metrics = dict(shape=list(height.shape), steps=cfg.steps, elapsed_seconds=time.perf_counter()-started,
                    boundary="closed D8", fixed_cells=int(np.count_nonzero(fixed)),
+                   physical_cells=int(np.count_nonzero(domain)), excluded_padding_cells=int(np.count_nonzero(~domain)),
                    solver_solid_mass_error_m3=solid_error*cell*cell, serialized_solid_mass_error_m3=serial_error,
                    float32_quantization_bound_m3=quantization, water_budget_error_m3=water_error*cell*cell,
                    rainfall_m3=rainfall_total*cell*cell, evaporated_m3=evaporated_total*cell*cell,
@@ -278,6 +300,10 @@ def main():
     parser.add_argument("--seed", type=int, default=71421)
     parser.add_argument("--rainfall-m", type=float, default=.002, help="Accelerated rain depth per model time unit")
     parser.add_argument("--thermal-rate", type=float, default=.20)
+    parser.add_argument("--sediment-capacity", type=float, default=4.0)
+    parser.add_argument("--erosion-rate", type=float, default=.25)
+    parser.add_argument("--deposition-rate", type=float, default=.35)
+    parser.add_argument("--max-erosion-cell-fraction", type=float, default=.025)
     args = parser.parse_args()
     if args.input and args.input.resolve() == args.output.resolve():
         parser.error("Input seed is immutable; choose a different output path")
@@ -289,7 +315,9 @@ def main():
     else:
         data = demo_seed(args.demo_size)
         print("DEMO ONLY: synthetic test slope, not actual crater geometry", flush=True)
-    cfg = Settings(steps=args.steps, seed=args.seed, rainfall_m=args.rainfall_m, thermal_rate=args.thermal_rate)
+    cfg = Settings(steps=args.steps, seed=args.seed, rainfall_m=args.rainfall_m, thermal_rate=args.thermal_rate,
+                   sediment_capacity=args.sediment_capacity, erosion_rate=args.erosion_rate,
+                   deposition_rate=args.deposition_rate, max_erosion_cell_fraction=args.max_erosion_cell_fraction)
     arrays, metrics = erode(data, cfg, lambda step, total, elapsed: print(f"erosion {step}/{total} ({elapsed:.1f}s)", flush=True))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(args.output, **arrays)

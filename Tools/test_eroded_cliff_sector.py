@@ -96,6 +96,24 @@ class ErosionTests(unittest.TestCase):
             with self.assertRaises(ValueError, msg=corruption):
                 erode(seed, Settings(steps=1))
 
+    def test_nonphysical_padding_cannot_feed_erosion(self):
+        seed = demo_seed(24)
+        domain = np.ones(seed["height_m"].shape, np.uint8)
+        domain[:, :5] = 0
+        seed["heightfield_valid_mask"] = domain
+        seed["protected_mask"][:, :5] = 1
+        cfg = Settings(steps=40, rainfall_jitter=0)
+        a, metrics = erode(seed, cfg)
+        seed["height_m"][:, :5] += 1000
+        seed["bedrock_m"][:, :5] += 1000
+        b, _ = erode(seed, cfg)
+        valid = domain == 1
+        for name in ("height_m", "eroded_m", "deposited_m", "water_m", "flow_accumulation"):
+            np.testing.assert_array_equal(a[name][valid], b[name][valid], err_msg=name)
+        self.assertEqual(float(a["water_m"][~valid].sum()), 0)
+        expected_rain = cfg.steps*cfg.rainfall_m*float(seed["cell_size_m"])**2*np.count_nonzero(valid)
+        self.assertAlmostEqual(metrics["rainfall_m3"], expected_rain, places=8)
+
 
 if __name__ == "__main__":
     unittest.main()
