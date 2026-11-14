@@ -163,6 +163,17 @@ class FittedWaterfall(Waterfall):
     """Advect particles on the exported physical path; never stretch a cache."""
     def __init__(self, args, profile):
         self.profile = profile
+        water = profile["receiving_water"]
+        if "coverage_y_major" not in water:
+            raise ValueError("Profile lacks receiving-water coverage; re-export the contact-trimmed core")
+        self.water_count = int(water["count"])
+        self.water_origin = np.asarray(water["origin_local_cm"][:2], dtype=float) / 100
+        self.water_step = float(water["step_cm"]) / 100
+        self.water_heights = np.asarray(water["heights_local_cm_y_major"], dtype=float).reshape(self.water_count, self.water_count) / 100
+        self.water_coverage = np.asarray(water["coverage_y_major"], dtype=float).reshape(self.water_count, self.water_count)
+        self.water_shore = None
+        if "shore_clearance_cm_y_major" in water:
+            self.water_shore = np.asarray(water["shore_clearance_cm_y_major"], dtype=float).reshape(self.water_count, self.water_count) / 100
         super().__init__(args)
         points = np.asarray(profile["samples_local_cm"], dtype=float) / 100
         length = np.linalg.norm(np.diff(points, axis=0), axis=1)
@@ -204,16 +215,28 @@ class FittedWaterfall(Waterfall):
         normals[normals[:, 1] < 0] *= -1
         self.path_normal = np.vstack((normals, normals[-1]))
         self.speed_scale = .85 + .30 * (self.terminal - 26) / 9
-        self.flight = times[-1] / self.speed_scale
-        self.impact_birth = np.mod(self.birth + self.flight, args.duration)
+        self.path_end_age = times[-1] / self.speed_scale
+        self.flight = self.path_end_age + 1.5
         self.profile_ready = True
+        # Locate each strand's first actual water entry. Lateral tracks and the
+        # small air-side offset can contact at different times. A short ballistic
+        # continuation handles a profile endpoint just above the receiving sea.
+        self.flight, self.contact_valid = self.first_water_hit(self.fall_positions, self.flight, steps=128)
+        if not np.any(self.contact_valid):
+            raise ValueError("No fitted strand reaches covered receiving water; inspect ContactV/coverage export")
+        self.contact_stats = {"strands": len(self.contact_valid), "strands_with_water_entry": int(self.contact_valid.sum()),
+                              "unmatched_source_mass_fraction": float(self.strength[~self.contact_valid].sum()/max(self.strength.sum(), 1e-9))}
+        self.impact_birth = np.mod(self.birth + self.flight, args.duration)
         self.foot = self.fall_positions(self.flight)
-        self.foot[:, 2] = self.water_height(self.foot[:, :2]) + .15
+        # The submerged core endpoint is never lifted. Surface spray is a
+        # separate response, anchored above the water at the entry XY/time.
+        self.foot[:, 2] = self.water_surface(self.foot[:, :2])[0] + .15
         current = np.asarray(profile["current_local_cm_s"], dtype=float) / 100
         current[2] = 0
         self.current = current
         self.along = current / max(np.linalg.norm(current), 1e-6)
         self.across = np.array((self.along[1], -self.along[0], 0))
+        self.impact_life, _ = self.first_water_hit(self.impact_positions, self.impact_life, steps=64, start_age=.03)
         # A separate subset leaves the core as short ballistic fragments. The
         # density remains close to the source rather than becoming rising smoke.
         self.spray_indices = np.arange(0, len(self.birth), 5)
@@ -240,18 +263,55 @@ class FittedWaterfall(Waterfall):
         b = self.cross_tracks[i+1, j] * (1-x) + self.cross_tracks[i+1, j+1] * x
         return a*(1-t) + b*t
 
-    def water_height(self, xy):
-        water = self.profile["receiving_water"]
-        n = int(water["count"])
-        height = np.asarray(water["heights_local_cm_y_major"], dtype=float).reshape(n, n) / 100
-        origin = np.asarray(water["origin_local_cm"][:2], dtype=float) / 100
-        index = (xy - origin) / (float(water["step_cm"]) / 100)
+    def water_surface(self, xy):
+        n = self.water_count
+        index = (xy - self.water_origin) / self.water_step
+        inside = np.all((index >= 0) & (index <= n-1), axis=1)
         index = np.clip(index, 0, n - 1.000001)
         cell = np.floor(index).astype(int)
         f = index - cell
         x, y = cell[:, 0], cell[:, 1]
-        return ((height[y, x] * (1-f[:, 0]) + height[y, x+1] * f[:, 0]) * (1-f[:, 1])
-                + (height[y+1, x] * (1-f[:, 0]) + height[y+1, x+1] * f[:, 0]) * f[:, 1])
+        def sample(grid):
+            return ((grid[y, x]*(1-f[:, 0])+grid[y, x+1]*f[:, 0])*(1-f[:, 1])
+                    +(grid[y+1, x]*(1-f[:, 0])+grid[y+1, x+1]*f[:, 0])*f[:, 1])
+        covered = sample(self.water_shore) >= 0 if self.water_shore is not None else sample(self.water_coverage) >= .5
+        return sample(self.water_heights), inside & covered
+
+    def first_water_hit(self, trajectory, max_age, steps, start_age=0):
+        found = np.zeros(len(max_age), dtype=bool)
+        lo = np.full(len(max_age), start_age)
+        hi = max_age.copy()
+        previous = lo.copy()
+        for step in range(1, steps+1):
+            age = start_age + (max_age-start_age)*(step/steps)
+            p = trajectory(age)
+            height, covered = self.water_surface(p[:, :2])
+            new = ~found & covered & (p[:, 2] <= height)
+            lo[new], hi[new] = previous[new], age[new]
+            found |= new
+            previous = age
+        for _ in range(20):
+            age = (lo+hi)*.5
+            p = trajectory(age)
+            height, covered = self.water_surface(p[:, :2])
+            below = covered & (p[:, 2] <= height)
+            hi = np.where(found & below, age, hi)
+            lo = np.where(found & ~below, age, lo)
+        return np.where(found, hi, max_age), found
+
+    def impact_positions(self, age):
+        travel = self.impact_drag*(1-np.exp(-age/self.impact_drag))
+        p = self.foot.copy()
+        p += self.across*(self.impact_vx*travel)[:, None]
+        p += self.along*(self.impact_vy*travel)[:, None] + self.current*(age*.25)[:, None]
+        p[:, 2] += ((self.impact_vz+self.impact_g*self.impact_drag)*travel-self.impact_g*self.impact_drag*age)
+        return p
+
+    def keep_airborne(self, p, mass):
+        height, covered = self.water_surface(p[:, :2])
+        mass *= np.where(covered, smoothstep(0, .12, p[:, 2]-height), 1.0)
+        active = mass > 0
+        return p[active], mass[active]
 
     def fall_positions(self, age):
         if not getattr(self, "profile_ready", False):
@@ -262,9 +322,9 @@ class FittedWaterfall(Waterfall):
         # Pure radial clearance matches the core's contact-safe offset. Raising
         # a sample in Z can put it inside a downward-facing rock ledge.
         p[:, 1] += outward
-        # Blend into the actual contact surface across the source width.
-        join = smoothstep(self.flight - .15, self.flight, age)
-        p[:, 2] += (self.water_height(p[:, :2]) + .15 - p[:, 2]) * join
+        coast = np.maximum(0, age-self.path_end_age)
+        p += self.path_tangent[-1] * (self.path_speed[-1]*self.speed_scale*coast)[:, None]
+        p[:, 2] -= .5*9.81*coast**2
         return p
 
     def particles(self, time_s, component):
@@ -272,7 +332,7 @@ class FittedWaterfall(Waterfall):
             p, mass = super().particles(time_s, component)
             indices = self.spray_indices
             age = np.mod(round(time_s % self.a.duration, 12) - self.spray_birth[indices], self.a.duration)
-            active = age < .85
+            active = (age < .85) & (self.spray_launch_time[indices]/self.speed_scale[indices] < self.flight[indices])
             indices, age = indices[active], age[active]
             launch = self.spray_launch_time[indices]
             normal = np.tile((0.0, 1.0, 0.0), (len(indices), 1))
@@ -286,24 +346,17 @@ class FittedWaterfall(Waterfall):
             clearance = spray[:, 1] - expected[:, 1]
             fade = smoothstep(0, .08, age) * (1-smoothstep(.55, .85, age)) * smoothstep(0, .4, clearance)
             spray_mass = self.mass * self.strength[indices] * fade * .35
-            return np.concatenate((p, spray)), np.concatenate((mass, spray_mass))
+            return self.keep_airborne(np.concatenate((p, spray)), np.concatenate((mass, spray_mass)))
         positions, masses = [], []
         base_age = np.mod(round(time_s % self.a.duration, 12) - self.impact_birth, self.a.duration)
         for cycle in range(math.ceil(float(self.impact_life.max()) / self.a.duration) + 1):
             age = base_age + cycle * self.a.duration
-            drag = self.impact_drag
-            travel = drag * (1 - np.exp(-age / drag))
-            p = self.foot.copy()
-            p += self.across * (self.impact_vx * travel)[:, None]
-            p += self.along * (self.impact_vy * travel)[:, None] + self.current * (age * .25)[:, None]
-            p[:, 2] += ((self.impact_vz + self.impact_g * drag) * travel - self.impact_g * drag * age)
-            clearance = p[:, 2] - self.water_height(p[:, :2])
+            p = self.impact_positions(age)
             fade = smoothstep(0, .07, age) * (1-smoothstep(self.impact_life-.35, self.impact_life, age))
-            fade *= smoothstep(-.15, .25, clearance)
             mass = self.mass * self.strength * fade * self.impact_mass
-            active = (age < self.impact_life) & (clearance > -.15)
+            active = (age < self.impact_life) & self.contact_valid
             positions.append(p[active]); masses.append(mass[active])
-        return np.concatenate(positions), np.concatenate(masses)
+        return self.keep_airborne(np.concatenate(positions), np.concatenate(masses))
 
     def bounds(self, component):
         low, high = np.full(3, np.inf), np.full(3, -np.inf)
@@ -336,6 +389,13 @@ class Raster:
             raise ValueError("Preview volume exceeds 12 million voxels; increase --voxel-m.")
         self.anchors = [(x, y, z) for x in (0, self.shape[0] - 1)
                         for y in (0, self.shape[1] - 1) for z in (0, self.shape[2] - 1)]
+        self.receiving_height = self.receiving_coverage = None
+        if isinstance(model, FittedWaterfall):
+            x, y = np.meshgrid((np.arange(self.shape[0])+self.lo[0])*args.voxel_m,
+                               (np.arange(self.shape[1])+self.lo[1])*args.voxel_m, indexing="ij")
+            height, covered = model.water_surface(np.column_stack((x.ravel(), y.ravel())))
+            self.receiving_height = height.reshape(self.shape[:2])
+            self.receiving_coverage = covered.reshape(self.shape[:2])
 
     def make(self, model, t):
         points, mass = model.particles(t, self.component)
@@ -370,6 +430,12 @@ class Raster:
                 selection[axis] = slice(offset, offset + self.shape[axis])
                 result += padded[tuple(selection)] * weight
             density = result
+        if self.receiving_height is not None:
+            # Raster reconstruction must respect contact too; otherwise a blur
+            # kernel reintroduces airborne mist below the sea after particle kill.
+            for z in range(self.shape[2]):
+                below = self.receiving_coverage & ((z+self.lo[2])*self.a.voxel_m <= self.receiving_height)
+                density[:, :, z][below] = 0
         density[density < self.a.threshold] = 0
         # Tiny markers stabilize the active bounds. Their density is below an
         # 8-bit import quantum and far below visible extinction; no solid box.
@@ -465,6 +531,9 @@ def main():
         manifest["coordinates"]["lip_cm"] = profile["source_local_cm"]
         manifest["coordinates"]["nominal_foot_cm"] = profile["foot_local_cm"]
         manifest["physics"]["model"] = "gravity/drag path advection on actual core profile, short outward ballistic spray, current-aligned impact on sampled receiving water"
+        manifest["water_contact"] = {**model.contact_stats, "coverage_required": True,
+                                      "outside_height_grid_is_water": False, "post_blur_submerged_density_mask": True,
+                                      "core_endpoint_lift": False, "impact_timing": "first actual covered water entry per strand"}
     for component in ("Falling", "Impact"):
         raster = Raster(args, component, model)
         metrics, changes, projections, side_projections = [], [], [], []
