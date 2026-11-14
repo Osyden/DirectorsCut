@@ -4,7 +4,7 @@
 
 ## Play this
 
-`E:\projects\directorscut\Builds\2026-11-14_0226_201abae_spawnlings-sinkable\Windows\DirectorsCut.exe`. It has been run from its exe at 1600x900 through the front, the tunnel and the city (82 to 105 fps) and through the whole maelstrom to the ending card at triple speed, and it holds everything in the table below.
+`E:\projects\directorscut\Builds\2026-11-14_0235_0a152ce_guns-reach-down-slope\Windows\DirectorsCut.exe`. It has been run from its exe at 1600x900 through the front, the tunnel and the city (81 to 111 fps) and through the whole maelstrom to the ending card at triple speed, and it holds everything in the table below.
 
 Every earlier build is still in `Builds\` for the dev log.
 
@@ -15,7 +15,7 @@ Every earlier build is still in `Builds\` for the dev log.
 | Open sea, 30 to 58 s | The storm front is a wall of the bought cloud volume, about 4 km long and 900 m high, with the tunnel as a lit opening through it at sea level. Sheet lightning flares in it four times as it closes. | `review/47`, `review/54` |
 | 59 to 75 s | The ship sails through the cloud tunnel. The air inside is clear, so its walls and the light at the far end show; four bolts on cue light the walls blue-white from within. | `review/47`, `review/54` |
 | City, 76 to 240 s | The white self-lit banks are gone. Easy Fog cards lie on the water and hang over the channel's shoulders; six rags of mist run aft across the deck. Lightning lights the fog behind the ruins instead of whiting the stone out. | `review/48`, `review/51`, `review/53` |
-| Guns | Shots are iron balls with a thin grey streak; the lower-deck guns fire from outside the hull. | `review/49` |
+| Guns | Shots are iron balls with a thin grey streak; the lower-deck guns fire from outside the hull. In the maelstrom, shots fired below the ship's level no longer burst on the hidden open sea beside her. | `review/49` |
 | Maelstrom, from 270 s | The ship drops into the bowl in the first 20 s. Six waterspouts and five burning stones come on a schedule; each has a tell and a crew call, and the helm carries the ship clear. Two of the creature's young swim in on the beam, to be sunk by that side's guns before they reach the hull. The creature is beaten on the clock at 160 s after the breach, with a kilometre-high plume from the crater's heart. The results card shows damage taken and arms broken. The wind rises with a spout and the stones and the plume have a boom. | `review/50`, `review/52`, `review/55` |
 
 ## Not verified by anyone

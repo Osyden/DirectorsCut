@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 02:41 Claude: seventeenth build packaged and run: `2026-11-14_0235_0a152ce_guns-reach-down-slope`
+
+- `Builds/2026-11-14_0235_0a152ce_guns-reach-down-slope/Windows/DirectorsCut.exe`. Run from the exe at 1600x900 without sound: wall and portal at 56 s, a flash in the tunnel at 63.5, the city at 120 (81 to 111 fps); the whole maelstrom at 3x with the bot captain from 262 s: port spawnling sunk 160 m off, starboard one sunk 151 m off, 8 arms broken, beaten on the clock at 160.0 s, plume, exit at 450.01, ending card, hull 50.
+- This is the build to play. It has everything logged so far.
+
 ## 14 Nov 02:35 Claude: found why shots to starboard never reached anything below the ship in the maelstrom
 
 - `-DCGunLog` showed every ball fired at the starboard spawnling ending at exactly sea level, 8 to 15 m from the ship's side, as a "hit". The open sea (`BP_DynamicRealWater`) is hidden in the maelstrom but its flat sheet still stops the shot's line trace, so anything fired down the bowl's slope burst on an unseen plane beside the hull. This is older than tonight: it will have stopped the captain's own shots at anything below the ship's level too.
