@@ -2,6 +2,14 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 03:59 Claude: the city against `References/fog-city-reveal.jpg`, and two things tried
+
+Side by side with the 4K frame at 120 s:
+- **Like it**: dusk-blue palette, warm lanterns as the only warmth, wet deck, ruins standing as shapes in pale fog, lightning behind them.
+- **Unlike it**: (1) the reference's sea is torn white, with breaking crests and spray blowing off them; ours is dark and glossy with no white on it. (2) Its fog is everywhere and is the brightest thing in the picture, with the far city fading into it in layers; ours is patches with clear dark air between. (3) It has figures working the deck; ours has mannequins standing. (4) Faces in the cloud (parked).
+- **Tried, no gain**: the fog cards at 2.2 times density (`-DCFogCards=2.2`) mostly thickened the rags across the deck, which then catch the lantern light as a yellow smear; the water plugin's foam strength at 1.2 against 0.45 (`-DCSeaFoam=1.2`) made no visible difference to the sea in the city. Both left as they were.
+- **So the next real step for the city** is whitecaps and blown spray on the sea (the plugin's foam does not answer; it wants its own layer, as the wake and shore foam have) and a continuous pale mist layer low over the whole channel, not more patches.
+
 ## 14 Nov 03:47 Claude: foam disc not found again; dev log notes written
 
 - The solid disc of foam round shallow broken columns (seen from the air on 13 Nov) did not show in four aerial frames over the city at 104 to 176 s, and it cannot be seen from the deck. Fixing it means re-patching the water plugin's material; not done for a fault the player does not see.
