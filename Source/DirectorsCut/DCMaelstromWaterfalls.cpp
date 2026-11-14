@@ -36,16 +36,27 @@ TArray<TSharedPtr<FJsonValue>> FallVectorJson(const FVector& V)
 void ADCMaelstrom::UpdateProceduralFalls()
 {
     const bool bRenderFalls = FParse::Param(FCommandLine::Get(), TEXT("DCProceduralFalls"));
+    const bool bReviewCamera = FParse::Param(FCommandLine::Get(), TEXT("DCFallCamera"));
     const bool bDensityDiagnostic = FParse::Param(FCommandLine::Get(), TEXT("DCFallDensityDiagnostic"));
     FString ExportPath;
     const bool bExportProfile = FParse::Value(FCommandLine::Get(), TEXT("DCExportWaterfallProfile="), ExportPath)
         || FParse::Param(FCommandLine::Get(), TEXT("DCExportWaterfallProfile"));
-    if (!bRenderFalls && !bExportProfile) { return; }
+    if (!bRenderFalls && !bExportProfile && !bReviewCamera) { return; }
     if (!bActive || Elapsed < 0.f)
     {
         ClearProceduralFalls();
         return;
     }
+    const auto UpdateReviewCamera=[&]()
+    {
+        if(ACameraActor* Camera=FallReviewCamera.Get())
+        {
+            const FTransform ArenaFrame=GetArenaTransform();
+            const FVector Eye=ArenaFrame.TransformPosition(FallReviewLocalFrame.TransformPosition(FVector(7000.f,14500.f,4300.f)));
+            const FVector Target=ArenaFrame.TransformPosition(FallReviewLocalFrame.TransformPosition(FVector(0.f,700.f,3400.f)));
+            Camera->SetActorLocationAndRotation(Eye,(Target-Eye).Rotation());
+        }
+    };
     if (!bProceduralFallsTried)
     {
         bProceduralFallsTried = true;
@@ -76,6 +87,26 @@ void ADCMaelstrom::UpdateProceduralFalls()
         // Generator contract: centimetres, +X across, +Y out from cliff, +Z up;
         // the contact is (0, 1000, 0). Preserve voxel scale and imported pivot.
         const FVector Origin = Feed.Foot - Inward * 1000.f;
+        if(bReviewCamera)
+        {
+            // Anchor the review to the measured source frame, not an optional
+            // volume actor. The detached core intentionally has no old cache.
+            FallReviewLocalFrame=FTransform(FRotator(0.f,Yaw,0.f),Origin);
+            FActorSpawnParameters CameraParams; CameraParams.Owner=this;
+            FallReviewCamera=GetWorld()->SpawnActor<ACameraActor>(ACameraActor::StaticClass(),FTransform::Identity,CameraParams);
+            if(ACameraActor* Camera=FallReviewCamera.Get())
+            {
+                Camera->GetCameraComponent()->SetFieldOfView(60.f);
+                Camera->GetCameraComponent()->bConstrainAspectRatio=false;
+                UpdateReviewCamera();
+                if(APlayerController* PC=GetWorld()->GetFirstPlayerController())
+                {
+                    FallReviewPreviousTarget=PC->GetViewTarget();
+                    PC->SetViewTarget(Camera);
+                }
+                UE_LOG(LogTemp,Display,TEXT("DC_FALL_CAMERA source=%d origin=%s yaw=%.4f independent_of_volume=1"),Feed.SourceIndex,*Origin.ToCompactString(),Yaw);
+            }
+        }
         if (bExportProfile)
         {
             // Match the centre of the existing procedural water core. Export in
@@ -351,16 +382,6 @@ void ADCMaelstrom::UpdateProceduralFalls()
                 *NativeFrame.GetScale3D().ToString(), *NativeFrame.Rotator().ToString(),
                 *C->GetRelativeTransform().ToString(), AppliedDensity, DiagnosticEmission);
         }
-        if (ProceduralFalls.Num() && FParse::Param(FCommandLine::Get(), TEXT("DCFallCamera")))
-        {
-            FallReviewCamera = GetWorld()->SpawnActor<ACameraActor>();
-            if (ACameraActor* Camera = FallReviewCamera.Get())
-            {
-                Camera->GetCameraComponent()->SetFieldOfView(60.f);
-                Camera->GetCameraComponent()->bConstrainAspectRatio = false;
-                if (APlayerController* PC = GetWorld()->GetFirstPlayerController()) { PC->SetViewTarget(Camera); }
-            }
-        }
     }
     // Both the coarse 48-frame and fine 96-frame generated loops last four
     // seconds. Derive playback from frame count instead of slowing the fine
@@ -414,7 +435,7 @@ void ADCMaelstrom::UpdateProceduralFalls()
             }
         }
     }
-    if (ProceduralFalls.Num())
+    if (ProceduralFalls.Num() || FallReviewCamera.IsValid())
     {
         auto HideForReview = [&](USceneComponent* Component)
         {
@@ -432,19 +453,7 @@ void ADCMaelstrom::UpdateProceduralFalls()
             for (UInstancedStaticMeshComponent* Rock : CliffShadowRocks) { HideForReview(Rock); }
         }
     }
-    if (ACameraActor* Camera = FallReviewCamera.Get())
-    {
-        if (ProceduralFalls.Num())
-        {
-            if (AActor* Fall = ProceduralFalls[0].Actor.Get())
-            {
-                const FTransform Frame = Fall->GetActorTransform();
-                const FVector Eye = Frame.TransformPosition(FVector(7000.f, 14500.f, 4300.f));
-                const FVector Target = Frame.TransformPosition(FVector(0.f, 700.f, 3400.f));
-                Camera->SetActorLocationAndRotation(Eye, (Target-Eye).Rotation());
-            }
-        }
-    }
+    UpdateReviewCamera();
 }
 
 void ADCMaelstrom::ClearProceduralFalls()
@@ -466,11 +475,17 @@ void ADCMaelstrom::ClearProceduralFalls()
     {
         if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
         {
-            if (PC->GetViewTarget() == Camera) { PC->SetViewTarget(PC->GetPawn()); }
+            if (PC->GetViewTarget() == Camera)
+            {
+                AActor* Previous=FallReviewPreviousTarget.Get();
+                PC->SetViewTarget(Previous ? Previous : PC->GetPawn());
+            }
         }
         Camera->Destroy();
     }
     FallReviewCamera.Reset();
+    FallReviewPreviousTarget.Reset();
+    FallReviewLocalFrame=FTransform::Identity;
     for (FProceduralFall& Fall : ProceduralFalls)
     {
         if (AActor* Actor = Fall.Actor.Get()) { Actor->Destroy(); }

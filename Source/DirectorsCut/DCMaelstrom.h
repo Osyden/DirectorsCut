@@ -76,6 +76,8 @@ private:
 	float PreviousFallTraceDistance = -1.f;
 	float AppliedFallTraceDistance = -1.f;
 	TWeakObjectPtr<class ACameraActor> FallReviewCamera;
+	FTransform FallReviewLocalFrame=FTransform::Identity;
+	TWeakObjectPtr<AActor> FallReviewPreviousTarget;
 	struct FFallHiddenComponent { TWeakObjectPtr<class USceneComponent> Component; bool bWasVisible = false; };
 	TArray<FFallHiddenComponent> FallHiddenComponents;
 	struct FWaterFeed { FVector Foot; float Width; float Seed; TArray<FVector2D> Trail; FVector Lip = FVector::ZeroVector; int32 SourceIndex = INDEX_NONE;
