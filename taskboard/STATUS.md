@@ -2,6 +2,16 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 05:18 Claude: WRITTEN, NOT COMPILED, NOT COMMITTED: popping, clipping, current, tunnel rock, bolt material
+
+The owner's Unreal editor has been open since 05:10, so nothing can be built. These edits are in the working tree only (`DCTreadmill.cpp/.h`, `DCFogFront.cpp`, `DCRideDirector.cpp/.h`). The next firing that finds the editor closed builds and tests them; until then the newest tested build is still `2026-11-14_0431_9a61a5e_torn-sea`.
+
+- **Objects popping in ahead**: rocks, columns and statues were spawned 300 m ahead, inside what can be seen in the city. Now 650 m.
+- **The ship clipping through things**: rocks in the lane were not stone at all: a circle that, when the ship reached it, took 3 hull and vanished. They are now felt by the hull's feelers like the ruins, so she is shouldered off and grinds. (Also: the fog cards were being given collision when near, because they are registered like scenery; they no longer are.)
+- **A set of the current round big stone**: three lines run 90 m ahead from the bow (keel and each side). Stone on the keel's line sets her toward the clearer side at 1.8 to 6.2 m a second, harder the nearer it is, until the keel's line is free; stone on one side only is left, so she grazes it. `-DCNoCurrent`.
+- **Rock showing through the cloud tunnel**: stone is kept out of sight until the tunnel's far end has gone by it.
+- **Bolt material**: the drawn lightning bolts switched to `M_Bolt` (not fogged), thinner colour.
+
 ## 14 Nov 05:16 Claude: lightning bolts drawn (part built); the owner's editor is open, so no builds for now
 
 - **Bolts**: the sky pack's "Flash Lightning" shows no streak in our fog. The director now draws one with every bolt it calls: a jagged line of white-hot rods from 750 m up to the sea with two forks, for a third of a second, ahead of the ship and inside the helm's view (`-DCNoBolts`, `-DCLightningLog` prints where). As built, it uses the glow material and is fogged out beyond a few hundred metres: one frame shows a faint streak. `M_Bolt` (`Tools/make_bolt_material.py`: additive, unlit, not fogged) is made and the source switched to it, **but that last step is not compiled**: the owner opened the Unreal editor at 05:10 and a build cannot run while it is open.
