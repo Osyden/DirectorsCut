@@ -259,6 +259,18 @@ void ADCMaelstrom::UpdateProceduralFalls()
                 UE_LOG(LogTemp, Warning, TEXT("DC_PROCEDURAL_FALL %s feed=%d missing at %s; no cross-feed fitted fallback"), Name, Feed.SourceIndex, *Root);
                 continue;
             }
+            const FTransform NativeFrame = Volume->GetFrameTransform();
+            const FVector NativeVoxel = NativeFrame.GetScale3D();
+            float MaterialVoxelCm = 0.f;
+            const bool bHasVoxelUnits = Base->GetScalarParameterValue(FMaterialParameterInfo(TEXT("VoxelSizeCm")), MaterialVoxelCm);
+            if (NativeVoxel.X <= 0.f || !FMath::IsNearlyEqual(NativeVoxel.X, NativeVoxel.Y, .001)
+                || !FMath::IsNearlyEqual(NativeVoxel.X, NativeVoxel.Z, .001)
+                || !bHasVoxelUnits || !FMath::IsNearlyEqual(static_cast<float>(NativeVoxel.X), MaterialVoxelCm, .001f))
+            {
+                UE_LOG(LogTemp, Error, TEXT("DC_FALL_UNITS rejected %s nativeVoxel=%s materialVoxelCm=%.6f present=%d; require matching isotropic import and refreshed waterfall materials"),
+                    *VolumePath, *NativeVoxel.ToString(), MaterialVoxelCm, bHasVoxelUnits);
+                continue;
+            }
             FActorSpawnParameters Params;
             Params.Owner = this;
             AHeterogeneousVolume* Actor = GetWorld()->SpawnActor<AHeterogeneousVolume>(AHeterogeneousVolume::StaticClass(), FTransform::Identity, Params);
@@ -269,6 +281,9 @@ void ADCMaelstrom::UpdateProceduralFalls()
             UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(Base, Actor);
             MID->SetSparseVolumeTextureParameterValue(TEXT("SparseVolumeTexture"), Volume);
             float Density = Layer == 0 ? .004f : .0015f;
+            // CLI/material Density is extinction per world centimetre. The
+            // generated material multiplies by verified VoxelSizeCm because
+            // native HV integration uses voxel-local marching distance.
             FParse::Value(FCommandLine::Get(), Layer == 0 ? TEXT("DCFallDensity=") : TEXT("DCImpactDensity="), Density);
             // Pure sampled-density emission isolates native SVT sampling from
             // illumination/extinction. Never enable this for normal gameplay.
@@ -295,7 +310,6 @@ void ADCMaelstrom::UpdateProceduralFalls()
             UE_LOG(LogTemp, Display, TEXT("DC_PROCEDURAL_FALL %s feed=%d frames=%d resolution=%s foot=%s lip=%s originWorld=%s"),
                 Name, Feed.SourceIndex, Volume->GetNumFrames(), *Volume->GetVolumeResolution().ToString(),
                 *Feed.Foot.ToCompactString(), *Feed.Lip.ToCompactString(), *Actor->GetActorLocation().ToCompactString());
-            const FTransform NativeFrame = Volume->GetFrameTransform();
             UE_LOG(LogTemp, Display, TEXT("DC_FALL_NATIVE actor=%s layer=%s asset=%s frameTranslation=%s frameScale=%s frameRotation=%s actorRelative=%s density=%.6f emission=%.6f"),
                 *Actor->GetName(), Name, *Volume->GetPathName(), *NativeFrame.GetTranslation().ToString(),
                 *NativeFrame.GetScale3D().ToString(), *NativeFrame.Rotator().ToString(),
