@@ -114,6 +114,97 @@ class ErosionTests(unittest.TestCase):
         expected_rain = cfg.steps*cfg.rainfall_m*float(seed["cell_size_m"])**2*np.count_nonzero(valid)
         self.assertAlmostEqual(metrics["rainfall_m3"], expected_rain, places=8)
 
+    def test_empty_outflow_mask_preserves_closed_default(self):
+        seed = demo_seed(24)
+        cfg = Settings(steps=32)
+        closed, metrics = erode(seed, cfg)
+        seed["outflow_mask"] = np.zeros(seed["height_m"].shape, np.uint8)
+        explicit, _ = erode(seed, cfg)
+        for name in ("height_m", "water_m", "suspended_m", "eroded_m", "deposited_m", "flow_accumulation"):
+            np.testing.assert_array_equal(closed[name], explicit[name], err_msg=name)
+        self.assertEqual(metrics["boundary"], "closed D8")
+        self.assertEqual(metrics["outflow_water_m3"], 0)
+        self.assertEqual(metrics["outflow_sediment_m3"], 0)
+
+    def test_open_outflow_conserves_exported_water_and_sediment(self):
+        seed = demo_seed(40)
+        seed["outflow_mask"] = np.zeros(seed["height_m"].shape, np.uint8)
+        seed["outflow_mask"][0, :] = 1
+        initial = {key: value.copy() for key, value in seed.items()}
+        output, metrics = erode(seed, Settings(steps=128, rainfall_jitter=0, thermal_rate=0))
+        outlets = seed["outflow_mask"] == 1
+        fixed = seed["protected_mask"] == 1
+        self.assertGreater(metrics["outflow_water_m3"], 1.)
+        self.assertGreater(metrics["outflow_sediment_m3"], .01)
+        self.assertLess(abs(metrics["solver_solid_mass_error_m3"]), 1.e-6)
+        self.assertLess(abs(metrics["water_budget_error_m3"]), 1.e-6)
+        self.assertEqual(float(output["water_m"][outlets].sum()), 0)
+        self.assertEqual(float(output["suspended_m"][outlets].sum()), 0)
+        self.assertGreater(float(output["suspended_m"][~outlets].sum()), 0)  # no terminal dump
+        self.assertEqual(float(output["outflow_water_m3"][~outlets].sum()), 0)
+        self.assertEqual(float(output["outflow_sediment_m3"][~outlets].sum()), 0)
+        self.assertAlmostEqual(float(output["outflow_water_m3"].sum()), metrics["outflow_water_m3"], places=8)
+        self.assertAlmostEqual(float(output["outflow_sediment_m3"].sum()), metrics["outflow_sediment_m3"], places=8)
+        np.testing.assert_array_equal(output["height_m"][fixed].view(np.uint32), seed["height_m"][fixed].view(np.uint32))
+        area = float(seed["cell_size_m"])**2
+        solid_change = float(np.sum(output["height_m"].astype(np.float64)-seed["height_m"])) * area
+        remaining = float(np.sum(output["suspended_m"], dtype=np.float64))*area
+        error = solid_change+remaining+metrics["outflow_sediment_m3"]
+        self.assertLessEqual(abs(error), metrics["float32_quantization_bound_m3"]+1.e-6)
+        for name, value in initial.items():
+            np.testing.assert_array_equal(seed[name], value, err_msg=name)
+
+    def test_outflow_at_invalid_padding_boundary_is_not_padding_flux(self):
+        seed = demo_seed(28)
+        seed["heightfield_valid_mask"] = np.ones(seed["height_m"].shape, np.uint8)
+        seed["heightfield_valid_mask"][:, :5] = 0
+        seed["protected_mask"][:, :6] = 1
+        seed["outflow_mask"] = np.zeros(seed["height_m"].shape, np.uint8)
+        seed["outflow_mask"][:, 5] = 1
+        cfg = Settings(steps=40, rainfall_jitter=0)
+        a, metrics = erode(seed, cfg)
+        seed["height_m"][:, :5] += 1000
+        seed["bedrock_m"][:, :5] += 1000
+        b, _ = erode(seed, cfg)
+        valid = seed["heightfield_valid_mask"] == 1
+        for name in ("height_m", "water_m", "suspended_m", "outflow_water_m3", "outflow_sediment_m3"):
+            np.testing.assert_array_equal(a[name][valid], b[name][valid], err_msg=name)
+        for name in ("water_m", "suspended_m", "outflow_water_m3", "outflow_sediment_m3"):
+            self.assertEqual(float(a[name][~valid].sum()), 0, name)
+        self.assertGreater(metrics["outflow_water_m3"], 0)
+
+    def test_outflow_only_removes_available_boundary_reservoirs(self):
+        seed = demo_seed(16)
+        seed["outflow_mask"] = np.zeros(seed["height_m"].shape, np.uint8)
+        seed["outflow_mask"][0, :] = 1
+        cfg = Settings(steps=20, rainfall_jitter=0, flow_rate=0, thermal_rate=0, evaporation_rate=0)
+        output, metrics = erode(seed, cfg)
+        expected = 16*cfg.steps*cfg.rainfall_m*float(seed["cell_size_m"])**2
+        self.assertAlmostEqual(metrics["outflow_water_m3"], expected, places=9)
+        self.assertEqual(metrics["outflow_sediment_m3"], 0)
+        np.testing.assert_array_equal(output["height_m"], seed["height_m"])
+        dry, metrics = erode(seed, replace(cfg, rainfall_m=0))
+        self.assertEqual(metrics["outflow_water_m3"], 0)
+        self.assertEqual(float(dry["water_m"].sum()), 0)
+
+    def test_outflow_validation_rejects_interior_and_invalid_sinks(self):
+        for corruption in ("interior", "movable", "padding", "nonbinary", "shape"):
+            seed = demo_seed(16)
+            mask = np.zeros(seed["height_m"].shape, np.float32)
+            mask[0, :] = 1
+            if corruption == "interior":
+                mask[8, 8] = 1
+                seed["protected_mask"][8, 8] = 1
+            if corruption == "movable": seed["protected_mask"][0, 8] = 0
+            if corruption == "padding":
+                seed["heightfield_valid_mask"] = np.ones(mask.shape, np.uint8)
+                seed["heightfield_valid_mask"][0, 8] = 0
+            if corruption == "nonbinary": mask[0, 8] = .5
+            if corruption == "shape": mask = mask[:-1]
+            seed["outflow_mask"] = mask
+            with self.assertRaises(ValueError, msg=corruption):
+                erode(seed, Settings(steps=1))
+
 
 if __name__ == "__main__":
     unittest.main()

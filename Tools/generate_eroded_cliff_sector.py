@@ -1,16 +1,20 @@
-"""Original offline, closed-boundary heightfield erosion kernel (NumPy only).
+"""Original offline heightfield erosion kernel with explicit outflow (NumPy only).
 
 Input NPZ: float32 height_m, bedrock_m, erodibility and protected_mask grids;
 positive scalar cell_size_m. Optional loose_m seeds movable surface sediment.
 Optional heightfield_valid_mask excludes nonphysical padding from rainfall and
 all transport. Invalid padding must also be fully protected.
+Optional binary outflow_mask marks fixed VALID boundary cells that discharge
+water and suspended sediment outside the domain; removal is fully accounted.
+No mask means the original closed boundary. Outlets cannot erase terrain,
+transport into nonphysical padding, or dump residual sediment at the end.
 Other non-object arrays (origin/basis/profile metadata) pass through unchanged.
 protected_mask==1 remains bitwise fixed. Bedrock is an immutable lower bound.
 
 D8 available-water-limited flux carries suspended sediment conservatively.
 Capacity-dependent erosion/deposition exchanges solid with the terrain. A
 separate repose-limited thermal flux moves only tracked loose material. All
-boundaries are closed; water, suspended sediment and loose sediment are saved.
+unmarked boundaries are closed; remaining reservoirs and outflow are saved.
 This is an accelerated morphology tool, not a calibrated fluid/weather solver.
 
 Example: python Tools/generate_eroded_cliff_sector.py --input sector.npz
@@ -59,6 +63,16 @@ def neighbours(shape):
         yield src, dst, float(np.hypot(dy, dx))
 
 
+def physical_boundary(domain):
+    """Valid cells touching an array edge or nonphysical padding (D8)."""
+    edge = np.zeros(domain.shape, dtype=bool)
+    edge[[0, -1], :] = True
+    edge[:, [0, -1]] = True
+    for src, dst, _ in neighbours(domain.shape):
+        edge[src] |= ~domain[dst]
+    return edge & domain
+
+
 def validate_seed(data):
     required = ("height_m", "bedrock_m", "erodibility", "protected_mask")
     for name in required:
@@ -91,6 +105,13 @@ def validate_seed(data):
             raise ValueError("heightfield_valid_mask must be a matching binary grid")
         if np.any((domain == 0) & (data["protected_mask"] != 1)):
             raise ValueError("Nonphysical padding must be fully protected")
+    if "outflow_mask" in data:
+        outlet = data["outflow_mask"]
+        if outlet.shape != shape or not np.isfinite(outlet).all() or np.any((outlet != 0) & (outlet != 1)):
+            raise ValueError("outflow_mask must be a matching binary grid")
+        domain = np.asarray(data.get("heightfield_valid_mask", np.ones(shape, dtype=bool)), dtype=bool)
+        if np.any((outlet != 0) & ((data["protected_mask"] != 1) | ~physical_boundary(domain))):
+            raise ValueError("Outflow cells must be fixed valid cells on the physical domain boundary")
     if any(value.dtype.hasobject for value in data.values()):
         raise ValueError("Object/pickled metadata is unsupported")
     return float(cell.item())
@@ -121,6 +142,8 @@ def erode(data, cfg=Settings(), progress=None):
     mobility = 1.-data["protected_mask"].astype(np.float64)
     fixed = mobility == 0
     domain = np.asarray(data.get("heightfield_valid_mask", np.ones(height.shape, dtype=bool)), dtype=bool)
+    outlet = np.asarray(data.get("outflow_mask", np.zeros(height.shape, dtype=bool)), dtype=bool)
+    has_outflow = bool(outlet.any())
     loose = (data["loose_m"].astype(np.float64).copy() if "loose_m" in data else
              np.minimum(height-bedrock, cfg.initial_loose_m)*erodibility*mobility)
     water = np.zeros_like(height)
@@ -128,6 +151,10 @@ def erode(data, cfg=Settings(), progress=None):
     eroded = np.zeros_like(height)
     deposited = np.zeros_like(height)
     accumulation = np.zeros_like(height)
+    # Equivalent depths accumulated in float64; convert to physical m3 once.
+    # These are exported mass reservoirs, not an end-of-run sediment deposit.
+    outflow_water = np.zeros_like(height)
+    outflow_sediment = np.zeros_like(height)
     flux = np.zeros((8, *height.shape), dtype=np.float64)
     incoming_water = np.zeros_like(height)
     incoming_sediment = np.zeros_like(height)
@@ -146,6 +173,12 @@ def erode(data, cfg=Settings(), progress=None):
         rain *= domain
         water += rain
         rainfall_total += float(np.sum(rain, dtype=np.float64))
+        if has_outflow:
+            # Rain on a boundary outlet leaves immediately. It must not flow
+            # back uphill into the model before the outlet is drained.
+            outflow_water[outlet] += water[outlet]
+            accumulation[outlet] += water[outlet]*cell*cell
+            water[outlet] = 0.
         head = height+water
         max_water_slope = np.zeros_like(height)
         max_ground_slope = np.zeros_like(height)
@@ -170,6 +203,14 @@ def erode(data, cfg=Settings(), progress=None):
         water += incoming_water-outgoing_water
         sediment += incoming_sediment-outgoing_water*concentration
         accumulation += outgoing_water*cell*cell
+        if has_outflow:
+            # Remove only water and suspended sediment that actually reached
+            # the specified physical boundary. Fixed toe rock is untouched.
+            outflow_water[outlet] += water[outlet]
+            outflow_sediment[outlet] += sediment[outlet]
+            accumulation[outlet] += water[outlet]*cell*cell
+            water[outlet] = 0.
+            sediment[outlet] = 0.
 
         # Capacity has equivalent-solid-depth units. A steep flowing reach can
         # erode; a flatter receiving reach deposits transported material.
@@ -216,8 +257,10 @@ def erode(data, cfg=Settings(), progress=None):
         raise ArithmeticError("Negative reservoir or bedrock violation")
     if not np.array_equal(height[fixed], initial[fixed].astype(np.float64)):
         raise ArithmeticError("Protected height changed internally")
-    solid_error = float(np.sum(height-bedrock)+np.sum(sediment)-initial_solid)
-    water_error = float(np.sum(water)-rainfall_total+evaporated_total)
+    exported_solid = float(np.sum(outflow_sediment, dtype=np.float64))
+    exported_water = float(np.sum(outflow_water, dtype=np.float64))
+    solid_error = float(np.sum(height-bedrock)+np.sum(sediment)+exported_solid-initial_solid)
+    water_error = float(np.sum(water)+exported_water-rainfall_total+evaporated_total)
     if abs(solid_error) > max(1.e-7, initial_solid*1.e-10):
         raise ArithmeticError(f"Solid mass imbalance: {solid_error*cell*cell} m3")
     if abs(water_error) > max(1.e-8, rainfall_total*1.e-10):
@@ -250,13 +293,17 @@ def erode(data, cfg=Settings(), progress=None):
                   slope=(angle/(np.pi*.5)).astype(np.float32), slope_degrees=np.rad2deg(angle).astype(np.float32),
                   curvature=np.tanh(curvature*cell).astype(np.float32), curvature_m_inv=curvature.astype(np.float32))
     arrays["diagnostic_valid_mask"] = diagnostic_valid.astype(np.uint8)
-    serial_error = float(np.sum(final.astype(np.float64)-bedrock)+np.sum(arrays["suspended_m"], dtype=np.float64)-initial_solid)*cell*cell
+    arrays["outflow_water_m3"] = outflow_water*cell*cell
+    arrays["outflow_sediment_m3"] = outflow_sediment*cell*cell
+    serial_error = float(np.sum(final.astype(np.float64)-bedrock)+np.sum(arrays["suspended_m"], dtype=np.float64)+exported_solid-initial_solid)*cell*cell
     quantization = .5*cell*cell*float(np.sum(np.abs(np.spacing(final)), dtype=np.float64)
                                     +np.sum(np.abs(np.spacing(arrays["suspended_m"])), dtype=np.float64))
     if abs(serial_error) > quantization+abs(solid_error)*cell*cell+1.e-7:
         raise ArithmeticError("Serialized mass error exceeds float32 rounding bound")
     metrics = dict(shape=list(height.shape), steps=cfg.steps, elapsed_seconds=time.perf_counter()-started,
-                   boundary="closed D8", fixed_cells=int(np.count_nonzero(fixed)),
+                   boundary="explicit open outlets, otherwise closed D8" if has_outflow else "closed D8", fixed_cells=int(np.count_nonzero(fixed)),
+                   outflow_cells=int(np.count_nonzero(outlet)), outflow_water_m3=exported_water*cell*cell,
+                   outflow_sediment_m3=exported_solid*cell*cell,
                    physical_cells=int(np.count_nonzero(domain)), excluded_padding_cells=int(np.count_nonzero(~domain)),
                    solver_solid_mass_error_m3=solid_error*cell*cell, serialized_solid_mass_error_m3=serial_error,
                    float32_quantization_bound_m3=quantization, water_budget_error_m3=water_error*cell*cell,
@@ -267,11 +314,12 @@ def erode(data, cfg=Settings(), progress=None):
                    minimum_bedrock_clearance_m=float(np.min(height-bedrock)), settings=asdict(cfg))
     arrays["metrics_json"] = np.array(json.dumps(metrics, sort_keys=True))
     arrays["erosion_metadata_json"] = np.array(json.dumps({
-        "generator": "original_numpy_d8_erosion_v1", "seed": cfg.seed, "numpy": np.__version__,
+        "generator": "original_numpy_d8_erosion_v2", "seed": cfg.seed, "numpy": np.__version__,
         "height_units": "absolute metres, unchanged input frame", "flow_accumulation_units": "cumulative outgoing water m3",
         "slope": "atan(gradient)/(pi/2), [0,1]", "curvature": "tanh(laplacian(height)*cell_size), [-1,1], positive concave",
         "eroded_m_deposited_m": "gross thickness including hydraulic and thermal exchange",
-        "limits": "heightfield only; no overhangs or momentum; accelerated morphology; closed boundaries pond water; fixed pads are immutable",
+        "outflow": "Optional fixed valid physical-boundary cells discharge water and suspended sediment each step. Per-cell float64 exported m3; no terrain removal or final dump.",
+        "limits": "heightfield only; no overhangs or momentum; accelerated morphology; D8 grid-direction bias; unmarked boundaries pond water; fixed pads are immutable",
     }, sort_keys=True))
     return arrays, metrics
 
