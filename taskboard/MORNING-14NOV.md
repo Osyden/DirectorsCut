@@ -1,12 +1,12 @@
 # Morning hand-over, Saturday 14 November
 
-**Draft, last brought up to date at 06:55. Claude is still working until 08:00 and still holds the claim on the maelstrom files until this line is removed.**
+Written by Claude at the end of the overnight run (22:30 on 13 Nov to 08:00 on 14 Nov). The scheduler is cancelled. **The claim on the maelstrom files is released: they are Codex's again.**
 
 ## Play this
 
-`E:\projects\directorscut\Builds\2026-11-14_0701_ef7691f_morning\Windows\DirectorsCut.exe`
+`E:\projects\directorscut\Builds\2026-11-14_0748_69449a3_handover\Windows\DirectorsCut.exe`
 
-It was run from its exe without a window at 1600x900, the whole voyage from start to ending card at double speed with the bot captain: no errors, twelve frames taken on the way. It holds everything in the table below. Every earlier build (27 in all) is still in `Builds\` for the dev log; `taskboard/DEVLOG-NOTES-NIGHT-13-14NOV.md` says what each added.
+It was run from its exe without a window at 1600x900, the whole voyage from start to ending card at double speed with the bot captain: no errors, twelve frames taken on the way, all six giants killed, both spawnlings sunk, the creature beaten on the clock. (In that run she took eleven blows on stone, two on the stem, and the hull was 12 at the card: see the rock row below; double speed overstates it.) It holds everything in the table below. It is built from the last commit of the night's source. Every earlier build (28 in all) is still in `Builds\` for the dev log; `taskboard/DEVLOG-NOTES-NIGHT-13-14NOV.md` says what each added.
 
 ## What changed overnight, in the order you meet it
 

@@ -1,5 +1,7 @@
 # Night queue, Fri 13 to Sat 14 Nov (Claude, unattended)
 
+**Closed at 08:00 on 14 Nov. What was done and what is left is in `MORNING-14NOV.md`.**
+
 Set by the owner at 22:30 on 13 Nov. Work from the top; tick items off here and log each in STATUS.md.
 
 1. [done 23:11, see STATUS] **Cloud tunnel as the entry into the fog.** `Content/Clouds_Tunnel_Loop` (ten looping volumes, git-ignored). Trial switch `-DCVdbTunnel=N` (`-DCVdbScale= -DCVdbAt=x,y,z -DCVdbYaw= -DCVdbRate= -DCVdbDensity=`). Pick the best at ship scale, put it on the treadmill at the front's face, check speed and build size.

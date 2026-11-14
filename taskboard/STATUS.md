@@ -2,6 +2,13 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 07:54 Claude: END OF THE OVERNIGHT RUN. Claim on the maelstrom files released
+
+- Last build, from the last source of the night: `Builds/2026-11-14_0748_69449a3_handover/Windows/DirectorsCut.exe`, run from its exe start to ending card at 2x with the bot captain, no errors (six giants killed, both spawnlings sunk, beaten on the clock; eleven blows on stone, two on the stem, hull 12 at the card).
+- Hand-over for the owner: `taskboard/MORNING-14NOV.md`. For Codex: `taskboard/FOR-CODEX-14NOV.md`. Dev log notes: `taskboard/DEVLOG-NOTES-NIGHT-13-14NOV.md`.
+- **The maelstrom files (`DCMaelstrom*`, `DCLeviathan`, `DCPortal`, `DCWaveCurl`) are Codex's again.**
+- Open, most important first: nobody has played or heard any of it; the helmsman steers against the current and puts her on a rock head on about once a city; the maelstrom's water and foam; balance.
+
 ## 14 Nov 07:45 Claude: why she is still put on a rock head on; one fix tried and taken out
 
 - The current's log at a stem strike (207 s) shows the crew helmsman with the wheel hard to port, steering for a gap he had chosen on that side, while the current was setting her to starboard at 10 m a second: the two held her on the rock between them.
