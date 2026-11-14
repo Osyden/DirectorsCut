@@ -9,10 +9,65 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "HAL/IConsoleManager.h"
 #include "Materials/Material.h"
+#include "Engine/VolumeTexture.h"
 #if WITH_EDITOR
 #include "ShaderCompiler.h"
 #include "MaterialShared.h"
 #endif
+
+bool ADCMaelstromAtmosphere::BuildSkyNoise(UVolumeTexture* Texture)
+{
+#if WITH_EDITOR
+	if (!Texture) { return false; }
+	// Seeded periodic Worley F1 at 4/8/16/32 cells. Baking keeps the cost of
+	// intricate silhouettes to one filtered texture read per volume sample.
+	auto Hash = [](uint32 V) { V ^= V >> 16; V *= 0x7feb352dU; V ^= V >> 15; V *= 0x846ca68bU; return V ^ (V >> 16); };
+	TArray<FVector3f> Features[4];
+	for (int32 Level = 0; Level < 4; ++Level)
+	{
+		const int32 N = 4 << Level;
+		Features[Level].SetNumUninitialized(N*N*N);
+		for (int32 I = 0; I < N*N*N; ++I)
+		{
+			const uint32 Seed = Hash(I + 71391U + Level*6791U);
+			Features[Level][I] = FVector3f((Hash(Seed) & 65535)/65535.f,
+				(Hash(Seed+1) & 65535)/65535.f, (Hash(Seed+2) & 65535)/65535.f) * 0.8f + FVector3f(0.1f);
+		}
+	}
+	Texture->PreEditChange(nullptr); // Finish the factory's initial texture compile before changing settings.
+	Texture->SRGB = false;
+	Texture->CompressionSettings = TC_VectorDisplacementmap; // Uncompressed RGBA8: preserve density thresholds.
+	Texture->MipGenSettings = TMGS_SimpleAverage;
+	Texture->AddressMode = TA_Wrap;
+	Texture->NeverStream = true;
+	const bool bBuilt = Texture->UpdateSourceFromFunction([&Features](int32 X, int32 Y, int32 Z, void* Out)
+	{
+		uint8 Channels[4];
+		for (int32 Level = 0; Level < 4; ++Level)
+		{
+			const int32 N = 4 << Level;
+			const FVector3f P = FVector3f(X+0.5f, Y+0.5f, Z+0.5f) * (N/128.f);
+			const FIntVector Cell(FMath::FloorToInt(P.X), FMath::FloorToInt(P.Y), FMath::FloorToInt(P.Z));
+			float Nearest = 10.f;
+			for (int32 DZ = -1; DZ <= 1; ++DZ)
+			for (int32 DY = -1; DY <= 1; ++DY)
+			for (int32 DX = -1; DX <= 1; ++DX)
+			{
+				const FIntVector C = Cell + FIntVector(DX,DY,DZ);
+				const int32 Index = (C.X & (N-1)) + N*((C.Y & (N-1)) + N*(C.Z & (N-1)));
+				const FVector3f Delta = FVector3f(C) + Features[Level][Index] - P;
+				Nearest = FMath::Min(Nearest, Delta.SizeSquared());
+			}
+			Channels[Level] = FMath::RoundToInt(FMath::Clamp(1.f - FMath::Sqrt(Nearest)*0.9f, 0.f, 1.f)*255.f);
+		}
+		*static_cast<FColor*>(Out) = FColor(Channels[0],Channels[1],Channels[2],Channels[3]);
+	}, 128, 128, 128, TSF_BGRA8);
+	Texture->MarkPackageDirty();
+	return bBuilt;
+#else
+	return false;
+#endif
+}
 
 bool ADCMaelstromAtmosphere::CompileSkyMaterial(UMaterialInterface* Material)
 {
@@ -34,6 +89,20 @@ bool ADCMaelstromAtmosphere::CompileSkyMaterial(UMaterialInterface* Material)
 void ADCMaelstromAtmosphere::ConfigureSkyCues()
 {
 	if (FParse::Param(FCommandLine::Get(), TEXT("DCOriginalMaelstromSky"))) { return; }
+	// Load during startup, before the tunnel reveal. In editor-game reviews a new
+	// material can otherwise still be compiling when its first capture is taken.
+	SkyCloudTemplate = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Maelstrom/Sky/M_MaelstromCumulus.M_MaelstromCumulus"));
+#if WITH_EDITOR
+	if (SkyCloudTemplate)
+	{
+		if (FMaterialResource* Resource = SkyCloudTemplate->GetMaterialResource(GMaxRHIShaderPlatform))
+		{
+			Resource->FinishCompilation();
+			if (!Resource->IsGameThreadShaderMapComplete()) { CompileSkyMaterial(SkyCloudTemplate); }
+			UE_LOG(LogDC, Log, TEXT("MAEL_SKY startup shader complete=%d"), Resource->IsGameThreadShaderMapComplete());
+		}
+	}
+#endif
 	if (ADCRideDirector* Director = ADCRideDirector::Get(this))
 	{
 		for (FDCPhaseDef& Phase : Director->Phases)
@@ -129,9 +198,9 @@ void ADCMaelstromAtmosphere::CaptureSky()
 	SetSkyColor(TEXT("Volumetric Cloud Ambient Light (Day)"), FLinearColor(0.32f, 0.40f, 0.52f));
 	SetSkyNumber(TEXT("Multiscattering Light Intensity"), 0.65);
 	SetSkyNumber(TEXT("Multiscattering Light Occlusion"), 0.65);
-	SetSkyNumber(TEXT("View Sample Scale (Day)"), 3.0);
-	SetSkyNumber(TEXT("Shadow Sample Scale"), 1.0);
-	SetSkyNumber(TEXT("Shadow Tracing Distance"), 4.0);
+	SetSkyNumber(TEXT("View Sample Scale (Day)"), 4.0);
+	SetSkyNumber(TEXT("Shadow Sample Scale"), 3.0);
+	SetSkyNumber(TEXT("Shadow Tracing Distance"), 2.0);
 	SetSkyNumber(TEXT("Macro Variation"), 0.35);
 	SetSkyNumber(TEXT("Macro Scale"), 0.8);
 	SetSkyNumber(TEXT("Cloud Speed"), 0.12);
@@ -181,8 +250,15 @@ void ADCMaelstromAtmosphere::CaptureSky()
 					FParse::Value(FCommandLine::Get(), TEXT("DCMaelCloudRenderMode="), RenderMode);
 					Mode->SetWithCurrentPriority(FMath::Clamp(RenderMode,0,3));
 				}
+				if (IConsoleVariable* Distance = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricCloud.DistanceToSampleMaxCount")))
+				{
+					PreviousCloudSampleDistance = Distance->GetFloat();
+					float SampleDistance = 6.f;
+					FParse::Value(FCommandLine::Get(), TEXT("DCMaelCloudSampleDistance="), SampleDistance);
+					Distance->SetWithCurrentPriority(FMath::Clamp(SampleDistance, 1.f, 20.f));
+				}
 				SkyCloudMID = UMaterialInstanceDynamic::Create(Material, this);
-				float Density = 0.025f, Erosion = 0.18f, Opening = 0.23f;
+				float Density = 0.035f, Erosion = 0.35f, Opening = 0.14f;
 				FParse::Value(FCommandLine::Get(), TEXT("DCMaelCloudDensity="), Density);
 				FParse::Value(FCommandLine::Get(), TEXT("DCMaelCloudErosion="), Erosion);
 				FParse::Value(FCommandLine::Get(), TEXT("DCMaelCloudOpening="), Opening);
@@ -208,6 +284,13 @@ void ADCMaelstromAtmosphere::UpdateSkyVolume()
 {
 	if (SkyCloudMID && StageCloud.IsValid())
 	{
+		if (FParse::Param(FCommandLine::Get(), TEXT("DCMaelSkyDiagnostics")) && GFrameCounter % 120 == 0)
+		{
+			UE_LOG(LogDC, Log, TEXT("MAEL_SKY state bottom=%.3f height=%.3f view=%.3f shadow=%.3f ao=%.3f dirty=%d material=%s"),
+				StageCloud->LayerBottomAltitude, StageCloud->LayerHeight, StageCloud->ViewSampleCountScale,
+				StageCloud->ShadowViewSampleCountScale, StageCloud->SkyLightCloudBottomOcclusion,
+				StageCloud->IsRenderStateDirty(), *GetNameSafe(StageCloud->Material.Get()));
+		}
 		StageCloud->SetMaterial(SkyCloudMID);
 		// The ship stays at the origin while the crater rises around it on descent.
 		// Keep the sky above the rim rather than letting the far wall enter clouds.
@@ -217,8 +300,8 @@ void ADCMaelstromAtmosphere::UpdateSkyVolume()
 		// every frame. Only density moves, smoothly, inside this envelope.
 		StageCloud->SetLayerBottomAltitude(0.55f);
 		StageCloud->SetLayerHeight(6.f);
-		StageCloud->SetViewSampleCountScale(3.f);
-		StageCloud->SetShadowViewSampleCountScale(2.f);
+		StageCloud->SetViewSampleCountScale(4.f);
+		StageCloud->SetShadowViewSampleCountScale(3.f);
 		StageCloud->SetSkyLightCloudBottomOcclusion(0.5f);
 		SkyCloudMID->SetScalarParameterValue(TEXT("RimHeight"), RimKm);
 		if (const ADCRideDirector* Director = ADCRideDirector::Get(this))
@@ -256,6 +339,12 @@ void ADCMaelstromAtmosphere::RestoreSky()
 	}
 	SavedSkyProperties.Empty();
 	StageSky.Reset();
+	if (PreviousCloudSampleDistance >= 0.f)
+	{
+		if (IConsoleVariable* Distance = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricCloud.DistanceToSampleMaxCount")))
+		{ Distance->SetWithCurrentPriority(PreviousCloudSampleDistance); }
+		PreviousCloudSampleDistance = -1.f;
+	}
 	if (PreviousCloudRenderMode >= 0)
 	{
 		if (IConsoleVariable* Mode = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricRenderTarget.Mode")))

@@ -25,6 +25,9 @@ public:
 	/** Authoring utility: finish shader compilation before a generated asset is saved. */
 	UFUNCTION(BlueprintCallable, Category="Maelstrom|Authoring")
 	static bool CompileSkyMaterial(UMaterialInterface* Material);
+	/** Bake periodic cellular noise at four scales for cloud density erosion. */
+	UFUNCTION(BlueprintCallable, Category="Maelstrom|Authoring")
+	static bool BuildSkyNoise(class UVolumeTexture* Texture);
 
 	/** Density of the soft 3D billows; sheets add only their torn spray detail. */
 	UPROPERTY(EditAnywhere) float MistDensity = 0.60f;
@@ -68,6 +71,15 @@ private:
 		float CloudSurface = 1.f;
 		float CloudExtent = 1.f;
 		float CloudResolution = 1.f;
+		float CloudRaySamples = 1.f;
+		bool bShaftBloom = false;
+		bool bShaftOcclusion = false;
+		float BloomScale = 0.f;
+		float BloomThreshold = 1.f;
+		float BloomMaximum = 100.f;
+		FColor BloomTint = FColor::White;
+		float OcclusionDarkness = 1.f;
+		float OcclusionDistance = 100000.f;
 		bool bCloudShadows = false;
 		bool bVolumetricShadow = false;
 		TWeakObjectPtr<UMaterialInterface> LightFunction;
@@ -77,6 +89,7 @@ private:
 		TWeakObjectPtr<class UExponentialHeightFogComponent> Component;
 		bool bEnabled = false;
 		float ExtinctionScale = 1.f;
+		float ScatteringDistribution = 0.2f;
 	};
 	void BuildLayout(ADCMaelstrom* Stage);
 	void BuildSpray();
@@ -98,6 +111,7 @@ private:
 	void SetSkyColor(const TCHAR* Name, FLinearColor Value);
 	TWeakObjectPtr<AActor> StageSky;
 	TMap<FName, FString> SavedSkyProperties;
+	UPROPERTY() TObjectPtr<UMaterialInterface> SkyCloudTemplate;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> SkyCloudMID;
 	UPROPERTY() TObjectPtr<UMaterialInterface> PreviousCloudMaterial;
 	TWeakObjectPtr<class UVolumetricCloudComponent> StageCloud;
@@ -109,6 +123,7 @@ private:
 	FColor PreviousCloudGroundAlbedo = FColor::White;
 	bool bPreviousShafts = true;
 	int32 PreviousCloudRenderMode = -1;
+	float PreviousCloudSampleDistance = -1.f;
 
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Spray;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> SprayMID;

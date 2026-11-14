@@ -244,6 +244,16 @@ void ADCMaelstromAtmosphere::CaptureSun()
 		SavedSun.CloudSurface = Sun->CloudShadowOnSurfaceStrength;
 		SavedSun.CloudExtent = Sun->CloudShadowExtent;
 		SavedSun.CloudResolution = Sun->CloudShadowMapResolutionScale;
+		SavedSun.CloudRaySamples = Sun->CloudShadowRaySampleCountScale;
+		SavedSun.bShaftBloom = Sun->bEnableLightShaftBloom;
+		SavedSun.bShaftOcclusion = Sun->bEnableLightShaftOcclusion;
+		SavedSun.BloomScale = Sun->BloomScale;
+		SavedSun.BloomThreshold = Sun->BloomThreshold;
+		SavedSun.BloomMaximum = Sun->BloomMaxBrightness;
+		SavedSun.BloomTint = Sun->BloomTint;
+		SavedSun.OcclusionDarkness = Sun->OcclusionMaskDarkness;
+		SavedSun.OcclusionDistance = Sun->OcclusionDepthRange;
+		UE_LOG(LogDC, Log, TEXT("MAEL_SKY original cloud-shadow extent=%.1fkm resolution=%.1f"), SavedSun.CloudExtent, SavedSun.CloudResolution);
 		SavedSun.bCloudShadows = Sun->bCastCloudShadows;
 		SavedSun.bVolumetricShadow = Sun->bCastVolumetricShadow;
 		SavedSun.LightFunction = Sun->LightFunctionMaterial;
@@ -256,22 +266,42 @@ void ADCMaelstromAtmosphere::UpdateSun()
 	if (!SavedSun.Component.IsValid()) { CaptureSun(); }
 	if (UDirectionalLightComponent* Sun = SavedSun.Component.Get())
 	{
-		Sun->SetVolumetricScatteringIntensity(FMath::Max(SavedSun.Scattering, 1.15f));
+		Sun->SetVolumetricScatteringIntensity(FMath::Max(SavedSun.Scattering, SkyCloudMID ? 3.5f : 1.15f));
 		Sun->SetCastVolumetricShadow(true);
 		// The bespoke volume casts its own shadows. The stock UDS light
 		// function samples a different density field and must not darken it twice.
 		if (SkyCloudMID && Sun->LightFunctionMaterial) { Sun->SetLightFunctionMaterial(nullptr); }
-		const float Extent = FMath::Max(5.f, SavedSun.CloudExtent);
-		const float Resolution = FMath::Max(2.f, SavedSun.CloudResolution);
-		if (!Sun->bCastCloudShadows || Sun->CloudShadowStrength != 0.85f || Sun->CloudShadowOnAtmosphereStrength != 1.f
-			|| Sun->CloudShadowOnSurfaceStrength != 0.7f || Sun->CloudShadowExtent != Extent || Sun->CloudShadowMapResolutionScale != Resolution)
+		if (SkyCloudMID)
+		{
+			// Cloud-rim highlights produce directional rays around the visible sun;
+			// native volume shadows continue to carry their depth through the bowl.
+			float RayBloom = 0.35f;
+			FParse::Value(FCommandLine::Get(), TEXT("DCMaelRayBloom="), RayBloom);
+			Sun->SetEnableLightShaftBloom(RayBloom > 0.f);
+			Sun->SetBloomScale(RayBloom);
+			Sun->SetBloomThreshold(0.5f);
+			Sun->SetBloomMaxBrightness(2.f);
+			Sun->SetBloomTint(FColor(255,244,226));
+			Sun->SetEnableLightShaftOcclusion(true);
+			Sun->SetOcclusionMaskDarkness(0.65f);
+			Sun->SetOcclusionDepthRange(200000.f);
+		}
+		// A 150 km world shadow map cannot resolve openings over a 3.2 km crater.
+		const float Extent = SkyCloudMID ? 4.f : FMath::Max(5.f, SavedSun.CloudExtent);
+		const float Resolution = SkyCloudMID ? 2.f : FMath::Max(2.f, SavedSun.CloudResolution);
+		const float Strength = SkyCloudMID ? 1.f : 0.85f;
+		const float RaySamples = SkyCloudMID ? 2.f : SavedSun.CloudRaySamples;
+		if (!Sun->bCastCloudShadows || Sun->CloudShadowStrength != Strength || Sun->CloudShadowOnAtmosphereStrength != 1.f
+			|| Sun->CloudShadowOnSurfaceStrength != 0.7f || Sun->CloudShadowExtent != Extent || Sun->CloudShadowMapResolutionScale != Resolution
+			|| Sun->CloudShadowRaySampleCountScale != RaySamples)
 		{
 			Sun->bCastCloudShadows = true;
-			Sun->CloudShadowStrength = 0.85f;
+			Sun->CloudShadowStrength = Strength;
 			Sun->CloudShadowOnAtmosphereStrength = 1.f;
 			Sun->CloudShadowOnSurfaceStrength = 0.7f;
 			Sun->CloudShadowExtent = Extent;
 			Sun->CloudShadowMapResolutionScale = Resolution;
+			Sun->CloudShadowRaySampleCountScale = RaySamples;
 			Sun->MarkRenderStateDirty();
 		}
 	}
@@ -290,6 +320,15 @@ void ADCMaelstromAtmosphere::RestoreSun()
 		Sun->CloudShadowOnSurfaceStrength = SavedSun.CloudSurface;
 		Sun->CloudShadowExtent = SavedSun.CloudExtent;
 		Sun->CloudShadowMapResolutionScale = SavedSun.CloudResolution;
+		Sun->CloudShadowRaySampleCountScale = SavedSun.CloudRaySamples;
+		Sun->SetEnableLightShaftBloom(SavedSun.bShaftBloom);
+		Sun->SetEnableLightShaftOcclusion(SavedSun.bShaftOcclusion);
+		Sun->SetBloomScale(SavedSun.BloomScale);
+		Sun->SetBloomThreshold(SavedSun.BloomThreshold);
+		Sun->SetBloomMaxBrightness(SavedSun.BloomMaximum);
+		Sun->SetBloomTint(SavedSun.BloomTint);
+		Sun->SetOcclusionMaskDarkness(SavedSun.OcclusionDarkness);
+		Sun->SetOcclusionDepthRange(SavedSun.OcclusionDistance);
 		Sun->MarkRenderStateDirty();
 	}
 	SavedSun.Component.Reset();
@@ -306,8 +345,9 @@ void ADCMaelstromAtmosphere::CaptureVolumetrics()
 		for (UExponentialHeightFogComponent* Fog : Fogs)
 		{
 			if (!Fog->IsRegistered() || !Fog->IsVisible() || Fog->bHiddenInGame) { continue; }
-			SavedVolumetrics.Add({Fog, Fog->bEnableVolumetricFog, Fog->VolumetricFogExtinctionScale});
+			SavedVolumetrics.Add({Fog, Fog->bEnableVolumetricFog, Fog->VolumetricFogExtinctionScale, Fog->VolumetricFogScatteringDistribution});
 			Fog->SetVolumetricFog(true);
+			if (SkyCloudMID) { Fog->SetVolumetricFogScatteringDistribution(0.45f); }
 			Fog->SetVolumetricFogExtinctionScale(FMath::Max(0.f, VolumetricExtinctionScale));
 		}
 	}
@@ -321,6 +361,7 @@ void ADCMaelstromAtmosphere::RestoreVolumetrics()
 		if (UExponentialHeightFogComponent* Fog = Saved.Component.Get())
 		{
 			Fog->SetVolumetricFogExtinctionScale(Saved.ExtinctionScale);
+			Fog->SetVolumetricFogScatteringDistribution(Saved.ScatteringDistribution);
 			Fog->SetVolumetricFog(Saved.bEnabled);
 		}
 	}

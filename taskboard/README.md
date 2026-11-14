@@ -2,7 +2,7 @@
 
 | Task | Status | Owner | Done when |
 | --- | --- | --- | --- |
-| Maelstrom sky, cloud composition and godrays | Implemented; isolated integration review | Codex, `codex/maelstrom-sky` | [Sky pass, authoring and review](MAELSTROM-SKY-14NOV.md). Owns DCMaelstromAtmosphere.*, new stage sky helper and sky-specific tools/material. Includes spiral checkpoint 73300a6 for review. Preserve water, route, crest spray and shared DCRideDirector. |
+| Maelstrom sky, cloud composition and godrays | Cloud-detail and stronger-ray follow-up ready for integration | Codex, `codex/maelstrom-sky` | [Sky pass, authoring and review](MAELSTROM-SKY-14NOV.md). Owns DCMaelstromAtmosphere.*, new stage sky helper and sky-specific tools/material. Includes spiral checkpoint 73300a6 for review. Preserve water, route, crest spray and shared DCRideDirector. |
 | Maelstrom crater, tunnel exit and timed naval boss encounter | Descending spiral prototype; clouds separate; boss deferred | Codex, `codex/maelstrom-saturday` | [Descending spiral geometry and movement prototype](MAELSTROM-SPIRAL-PROTOTYPE-14NOV.md); [water direction](MAELSTROM-WATER-DIRECTION-14NOV.md). Geometry/flow/foam/crest spray remain here; separate chat can own cloud composition and lighting. Not yet reference quality. [Earlier checkpoint](MAELSTROM-SCENE-POLISH-14NOV.md); [orbit/contact handoff](MAELSTROM-14NOV-CODEX.md). |
 | Initialize Git and Git LFS | Done | Codex | Baseline is on `origin/main` at `dcf3e85`. |
 | Diagnose Unreal MCP startup | Done | Claude | Launch with `-ModelContextProtocolStartServer`; see STATUS.md. |
