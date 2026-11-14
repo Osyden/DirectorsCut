@@ -6,7 +6,39 @@
  * piecewise-planar fractures produce ledges rather than rounded noise hills. */
 namespace DCCliffGenerator
 {
+    inline constexpr int32 MeshSectors=1536,MeshRows=160;
     inline constexpr float TempleAngles[]={-143.f,-109.f,-76.f,-38.f,2.f,38.f,77.f,112.f,144.f};
+
+    /** Interpolate the same diagonal as BuildTerrain, not the analytic surface
+     * between its vertices. VertexAt(Side,Row) may read the rendered section. */
+    template<typename VertexSampler>
+    inline FVector SampleRenderedSurface(float Angle,float V,const VertexSampler& VertexAt)
+    {
+        float Turns=FMath::Fmod(Angle/UE_TWO_PI,1.f);
+        if(Turns<0.f) { Turns+=1.f; }
+        const float X=Turns*MeshSectors,Y=FMath::Clamp(V,0.f,1.f)*MeshRows;
+        const int32 Side=FMath::Min(FMath::FloorToInt(X),MeshSectors-1);
+        const int32 Row=FMath::Min(FMath::FloorToInt(Y),MeshRows-1);
+        const float U=X-Side,W=Y-Row;
+        const FVector P10=VertexAt(Side+1,Row),P01=VertexAt(Side,Row+1);
+        if(U+W<=1.f)
+        {
+            const FVector P00=VertexAt(Side,Row);
+            return P00+(P10-P00)*U+(P01-P00)*W;
+        }
+        const FVector P11=VertexAt(Side+1,Row+1);
+        return P11+(P01-P11)*(1.f-U)+(P10-P11)*(1.f-W);
+    }
+
+    inline FVector WaterContactOffset(float Angle,float V)
+    {
+        // A +Z offset enters downward-facing ledges. Radial inward offset
+        // remains on the basin side of every monotone-height wall triangle.
+        // The low rubble apron can slope upward/outward. Lift that region only;
+        // extending the lift above V=.20 would reintroduce the overhang defect.
+        const float TalusLift=120.f*(1.f-FMath::SmoothStep(.10f,.20f,V));
+        return FVector(-FMath::Cos(Angle)*180.f,-FMath::Sin(Angle)*180.f,TalusLift);
+    }
     inline float Hash(int32 X,int32 Y,int32 Period)
     {
         const uint32 Wrapped=static_cast<uint32>((X%Period+Period)%Period);

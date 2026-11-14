@@ -1,0 +1,21 @@
+# Cliff and waterfall contact pass
+
+Owner: Codex cliff worker, `codex/crater-cliff-contact`, isolated checkout `E:/Projects/DirectorsCut/Crater-Workers/Cliff-Contact`, starting at `989e064`. Claim: cliff generator/test helpers, terrain (except `WaterEdgeRadius`, owned by the flow worker), surface-whitewater geometry and rock material if needed. No Unreal builds or GPU work. Root owns integration and visual acceptance; the waterfall worker owns profile export and the VDB runtime.
+
+The actual `cliff-close-c_0300.png` contains dark rock ledges cutting through the surface-water core. Investigation and validation are recorded below as this bounded fix proceeds.
+
+## Findings and fix
+
+- Both the rock and surface-whitewater material generators have no world-position-offset output. The observed cut is not explained by material displacement. The water core samples the analytic cliff on a separate 144-by-8 grid, while the rendered cliff has 1536 sectors and 160 rows. Its triangles therefore bridge different fracture points and can pass inside the actual rock. A fixed additional +60 cm Z offset also pushes the core into downward-facing ledges.
+- Each stream is now clipped from the actual cliff section triangles. The mesh follows their exact diagonal and vertex positions, so stream triangles cannot cut chords through unsampled rock features. It uses direct normals/tangents for this core instead of the overlap-search tangent generator. Stream seeds, widths and supply/impact layout are preserved.
+- `DCCliffGenerator::SampleRenderedSurface(Angle,V,VertexAt)` and shared mesh dimensions expose that same rendered surface to the VDB profile exporter. `WaterContactOffset(Angle,V)` offsets 180 cm toward the basin on the wall; a 120 cm upward lift exists only on the low rubble apron and fades out before V=.20. This clears local upward/outward rubble while leaving overhangs unlifted. The last 6% still blends to the receiving-water foot +40 cm.
+- The old endpoint's across-stream vector pointed opposite to increasing sample angle, twisting the final blend. It now uses the matching positive circumferential direction.
+- Cliff normals now accumulate the actual rendered triangle areas, with shared seam normals. The previous tiny analytic derivative stencil included fractures absent from the coarse mesh, causing inconsistent close-up lighting. Mesh positions, crater scale, rim and temple supports are unchanged. This can improve shading consistency; it does not resolve all visibly flat geological faces.
+
+## CPU evidence and required review
+
+An offline numerical port exercised nine feed angles against the real 1536-by-160 sampling pattern. On the wide-cliff fixture the old centerline chords intersected the rock in 33 of 1215 samples, as deep as 76.5 cm; the old upward offset alone failed 19 samples. The 50 m inlet fixture had 44 intersecting old chords. Matching triangle contact plus the new offset had positive sampled face clearance: minimum 20.25 cm on the wide fixture, 4.27 cm on the narrow fixture and 4.02 cm on a 20 m stress case. These are CPU fixtures, not actual in-engine contact measurements or a claim of visual acceptance.
+
+Added Unreal automation `DirectorsCut.Maelstrom.CliffWaterContact`: it reproduces upward-offset penetration on an overhang, checks safe wall offset, negative-angle wrapping, and both triangle halves of a folded quad. Existing cliff-continuity tests remain. Runtime `DC_WHITEWATER_CONTACT` logs core triangle count and minimum face clearance before the receiving-water blend, and asserts positive clearance. `git diff --check` passes. No Unreal compilation, engine automation, material generation or GPU capture was run here.
+
+After integration: build Editor/Game; run `CliffContinuity` and `CliffWaterContact`; export the VDB profile using the shared sampler and offset before regenerating/importing the fitted sequence. Recheck the exact close failure view and the matched deck view. Verify that dark rock crossings disappear, branch endpoints no longer twist, facet lighting is consistent, and the extra core triangles do not create visible cracks or unacceptable build/runtime cost. The actual final blend into moving receiving water still needs motion review. No material regeneration is required for this source-only contact fix. VSM overflow is not suppressed or claimed solved.

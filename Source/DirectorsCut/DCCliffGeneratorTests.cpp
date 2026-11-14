@@ -82,4 +82,40 @@ bool FDCCliffGeneratorTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("Rock masses vary without becoming crater-wide shelves"),RadialRange>2000.f && RadialRange<(Sections[0].LipRadius-Sections[0].ToeRadius)*.60f);
     return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDCCliffWaterContactTest,"DirectorsCut.Maelstrom.CliffWaterContact",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FDCCliffWaterContactTest::RunTest(const FString& Parameters)
+{
+    using namespace DCCliffGenerator;
+    // An overhanging rock face: raising an inward-offset point embeds it in the
+    // ledge. This reproduces the sign error that cut dark bands through falls.
+    const auto Vertex=[](int32 Side,int32 Row)
+    {
+        const float Angle=Side*UE_TWO_PI/MeshSectors;
+        const float R=300000.f-Row*800.f;
+        return FVector(FMath::Cos(Angle)*R,FMath::Sin(Angle)*R,Row*100.f);
+    };
+    const float Angle=12.33f*UE_TWO_PI/MeshSectors,V=60.37f/MeshRows;
+    const FVector Surface=SampleRenderedSurface(Angle,V,Vertex);
+    const FVector P00=Vertex(12,60),P10=Vertex(13,60),P01=Vertex(12,61);
+    const FVector Normal=FVector::CrossProduct(P01-P00,P10-P00).GetSafeNormal();
+    TestTrue(TEXT("Contact follows the rendered triangle plane"),FMath::Abs(FVector::DotProduct(Surface-P00,Normal))<.1f);
+    TestTrue(TEXT("Radial contact offset clears overhanging rock"),FVector::DotProduct(WaterContactOffset(Angle,V),Normal)>10.f);
+    TestTrue(TEXT("Regression fixture reproduces old upward-offset penetration"),
+        FVector::DotProduct(WaterContactOffset(Angle,V)+FVector(0,0,60),Normal)<0.f);
+    TestTrue(TEXT("Rendered contact sampler wraps negative angles"),
+        FVector::Dist(SampleRenderedSurface(-.02f,.45f,Vertex),SampleRenderedSurface(UE_TWO_PI-.02f,.45f,Vertex))<1.f);
+
+    // A folded quad is not a bilinear patch. Check both actual triangle halves;
+    // sampling the smooth analytic function again would restore the mismatch.
+    const auto Fold=[](int32 Side,int32 Row)
+    { return FVector(Side*100.f,Row*100.f,(Side==8 && Row==51)?800.f:0.f); };
+    const FVector Lower=SampleRenderedSurface(7.2f*UE_TWO_PI/MeshSectors,50.3f/MeshRows,Fold);
+    const FVector Upper=SampleRenderedSurface(7.8f*UE_TWO_PI/MeshSectors,50.7f/MeshRows,Fold);
+    TestTrue(TEXT("Lower triangle excludes the opposite folded corner"),FMath::Abs(Lower.Z)<.1f);
+    TestTrue(TEXT("Upper triangle follows the mesh diagonal"),FMath::Abs(Upper.Z-400.f)<.1f);
+    return true;
+}
 #endif

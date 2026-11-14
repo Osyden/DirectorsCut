@@ -95,15 +95,12 @@ void ADCMaelstrom::BuildTerrain()
 {
     TArray<FVector> V,N; TArray<FVector2D> UV; TArray<FColor> C;
     TArray<int32> I; TArray<FProcMeshTangent> Tangents;
-    constexpr int32 Sectors=1536,Rows=160;
+    constexpr int32 Sectors=DCCliffGenerator::MeshSectors,Rows=DCCliffGenerator::MeshRows;
     for(int32 Row=0;Row<=Rows;++Row) for(int32 Side=0;Side<=Sectors;++Side)
     {
         const float A=Side*UE_TWO_PI/Sectors,T=static_cast<float>(Row)/Rows;
         const FVector P=CliffSurfacePoint(A,T);
-        const FVector Around=CliffSurfacePoint(A+.00015f,T)-CliffSurfacePoint(A-.00015f,T);
-        const FVector Up=CliffSurfacePoint(A,FMath::Min(1.f,T+.0005f))-CliffSurfacePoint(A,FMath::Max(0.f,T-.0005f));
-        const FVector Normal=FVector::CrossProduct(Up,Around).GetSafeNormal();
-        V.Add(P); N.Add(Normal); Tangents.Add(FProcMeshTangent(Around.GetSafeNormal(),false));
+        V.Add(P); N.Add(FVector::ZeroVector); Tangents.Add(FProcMeshTangent());
         UV.Add(FVector2D(A*Radius*.01f,P.Z*.01f));
         const float ToeZ=CliffSurfacePoint(A,0.f).Z+900.f;
         const float Wet=1.f-FMath::SmoothStep(150.f,1800.f,static_cast<float>(P.Z-ToeZ));
@@ -115,7 +112,28 @@ void ADCMaelstrom::BuildTerrain()
         if(Row<Rows && Side<Sectors)
         { const int32 B=Row*(Sectors+1)+Side,D=B+Sectors+1; I.Append({B,B+1,D,B+1,D+1,D}); }
     }
-    // UE clockwise winding matches Cross(Up,Around): inward wall, upward cap.
+    // Lighting must describe the rendered triangles. Sub-cell analytic normals
+    // exposed fractures absent from this mesh, making close faces look folded.
+    for(int32 Triangle=0;Triangle<I.Num();Triangle+=3)
+    {
+        const int32 A=I[Triangle],B=I[Triangle+1],D=I[Triangle+2];
+        const FVector WeightedNormal=FVector::CrossProduct(V[D]-V[A],V[B]-V[A]);
+        N[A]+=WeightedNormal; N[B]+=WeightedNormal; N[D]+=WeightedNormal;
+    }
+    for(int32 Row=0;Row<=Rows;++Row)
+    {
+        const int32 First=Row*(Sectors+1),Last=First+Sectors;
+        const FVector SeamNormal=N[First]+N[Last];
+        N[First]=SeamNormal; N[Last]=SeamNormal;
+        for(int32 Side=0;Side<=Sectors;++Side)
+        {
+            const int32 Index=First+Side;
+            N[Index].Normalize();
+            const FVector Along=V[First+(Side+1)%Sectors]-V[First+(Side+Sectors-1)%Sectors];
+            Tangents[Index]=FProcMeshTangent((Along-N[Index]*FVector::DotProduct(Along,N[Index])).GetSafeNormal(),false);
+        }
+    }
+    // UE clockwise winding faces into the basin and up from the plateau.
     Cliffs->CreateMeshSection(0,V,I,N,UV,C,Tangents,false);
     if(UMaterialInterface* M=LoadObject<UMaterialInterface>(nullptr,TEXT("/Game/DC/Maelstrom/M_CraterRock.M_CraterRock")))
     { Cliffs->SetMaterial(0,M); }
