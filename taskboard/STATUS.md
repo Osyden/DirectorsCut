@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 02:56 Claude: clean 4K pictures for the store page and dev log
+
+- `-DCNoHUD` draws no HUD (the crew's name tags, which are in the world, still show).
+- Thirteen true 3840x2160 frames without the HUD are in `E:/projects/directorscut/StoreShots/2026-11-14` (outside the repository, 147 MB): the wall and portal at 56 and 57.7 s (the second on a flash), the tunnel mouth, two flashes inside the tunnel, the city at 90, 100.1 (a flash), 120 and 150 s, and four of the maelstrom with a spout and a burning stone. A contact sheet of the first nine is in `review/56-store-shots`.
+- Not in the seventeenth build (the switch only).
+
 ## 14 Nov 02:51 Claude: the seventeenth build run from start to ending card at normal speed
 
 - From the packaged exe at 1600x900, bot captain, no sound, 0 to 470 s without time scaling: no errors, 23 frames taken on the way. 110 fps on the open sea, 75 to 86 through the wall and tunnel, 111 to 154 in the city, 102 to 105 in the slide, 65 to 73 in the maelstrom, 131 at the ending.

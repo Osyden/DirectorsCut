@@ -75,6 +75,9 @@ void ADCHUD::DrawHUD()
 {
 	Super::DrawHUD();
 	if (!Canvas) { return; }
+	// -DCNoHUD: clean pictures for the store page and the dev log.
+	static const bool bNoHUD = FParse::Param(FCommandLine::Get(), TEXT("DCNoHUD"));
+	if (bNoHUD) { return; }
 
 	ADCRideDirector* D = ADCRideDirector::Get(this);
 	ADCTreadmill* T = ADCTreadmill::Get(this);
