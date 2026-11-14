@@ -101,6 +101,8 @@ private:
 		float Abeam = 0.f;        // cm to starboard of her course
 		bool bStruck = false;
 		bool bCalled = false;
+		TWeakObjectPtr<AActor> Skirt;     // churned water and spray round its foot (an Easy Fog card, if installed)
+		TWeakObjectPtr<UMaterialInstanceDynamic> SkirtMID;
 	};
 	/** Rolling cloud lining the last of the water tunnel and collaring its mouth (the bought volume, if installed). */
 	TWeakObjectPtr<class AHeterogeneousVolume> Throat;

@@ -756,7 +756,7 @@ void ADCMaelstrom::UpdateThroat(float ExitX)
 
 void ADCMaelstrom::ClearTwisters()
 {
-	for (FTwister& T : Twisters) { if (AActor* A = T.Actor.Get()) { A->Destroy(); } }
+	for (FTwister& T : Twisters) { if (AActor* A = T.Actor.Get()) { A->Destroy(); } if (AActor* S = T.Skirt.Get()) { S->Destroy(); } }
 	Twisters.Reset();
 	TwisterMIDs.Reset();
 	TwistersRaised = 0;
@@ -809,6 +809,31 @@ void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
 				TwisterMIDs.Add(M);
 			}
 		}
+		UStaticMesh* CardMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/EasyFog/Meshes/SM_easyFogCard_02.SM_easyFogCard_02"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+		UMaterialInterface* CardBase = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/EasyFog/Materials/M_BP_EasyFog.M_BP_EasyFog"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+		if (CardMesh && CardBase && T.Actor.IsValid())
+		{
+			FActorSpawnParameters SkirtParams;
+			SkirtParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			if (AStaticMeshActor* S = GetWorld()->SpawnActor<AStaticMeshActor>(FVector::ZeroVector, FRotator::ZeroRotator, SkirtParams))
+			{
+				UStaticMeshComponent* C = S->GetStaticMeshComponent();
+				C->SetMobility(EComponentMobility::Movable);
+				C->SetStaticMesh(CardMesh);
+				C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+				C->SetCastShadow(false);
+				UMaterialInstanceDynamic* M = UMaterialInstanceDynamic::Create(CardBase, this);
+				if (UTexture* Mask = LoadObject<UTexture>(nullptr, TEXT("/Game/EasyFog/Textures/Fog/T_smoothRadial_mask.T_smoothRadial_mask"), nullptr, LOAD_NoWarn | LOAD_Quiet)) { M->SetTextureParameterValue(TEXT("Opacity Map"), Mask); }
+				M->SetScalarParameterValue(TEXT("Fog Density"), 0.f);
+				M->SetScalarParameterValue(TEXT("Fading Distance"), 1500.f);
+				M->SetScalarParameterValue(TEXT("Camera Fading Distance"), 2500.f);
+				M->SetScalarParameterValue(TEXT("Emissive Intensity"), 0.f);
+				M->SetVectorParameterValue(TEXT("Base Color Tint"), FLinearColor(0.95f, 0.97f, 1.f));
+				C->SetMaterial(0, M);
+				T.Skirt = S; T.SkirtMID = M;
+				TwisterMIDs.Add(M);
+			}
+		}
 		Twisters.Add(T);
 		UE_LOG(LogDC, Log, TEXT("Twister %d raised at %.1f s, %.0f m ahead, %.0f m abeam%s"), Index + 1, Elapsed, T.Ahead / 100.f, T.Abeam / 100.f, T.Actor.IsValid() ? TEXT("") : TEXT(" (no volume: unseen)"));
 	}
@@ -851,6 +876,16 @@ void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
 				UE_LOG(LogDC, Log, TEXT("Twister: age %.1f foot %s actor %s bounds %s hidden %d res %s"), Age, *Foot.ToCompactString(), *A->GetActorLocation().ToCompactString(), C ? *C->Bounds.ToString() : TEXT("-"), A->IsHidden(), C ? *C->VolumeResolution.ToString() : TEXT("-"));
 			}
 		}
+		if (AActor* S = T.Skirt.Get())
+		{
+			// A wide dome of white water lying on the slope where the spout stands, turning with it.
+			const FVector Dx(600.f, 0.f, SampleSurfaceWorld(Foot + FVector(600.f, 0.f, 0.f)) - Foot.Z), Dy(0.f, 600.f, SampleSurfaceWorld(Foot + FVector(0.f, 600.f, 0.f)) - Foot.Z);
+			const FVector Up = FVector::CrossProduct(Dx, Dy).GetSafeNormal();
+			const FQuat Lie = FQuat::FindBetweenNormals(FVector::UpVector, Up) * FQuat(FVector::UpVector, FMath::DegreesToRadians(Director->RideTime * 40.f));
+			const float Across = Height * 0.7f * FMath::Lerp(0.3f, 1.f, Rise);
+			S->SetActorTransform(FTransform(Lie, Foot + Up * 250.f, FVector(Across / 1160.f, Across / 1160.f, Across / 1160.f * 2.5f)));
+			if (UMaterialInstanceDynamic* M = T.SkirtMID.Get()) { M->SetScalarParameterValue(TEXT("Fog Density"), 2.2f * Rise * (1.f - Gone)); }
+		}
 		// Struck: the spout's core passes over the ship.
 		if (!T.bStruck && Age > Tell && FMath::Abs(T.Ahead) < 3000.f && FMath::Abs(T.Abeam) < 3800.f)
 		{
@@ -868,6 +903,7 @@ void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
 		}
 		if (Gone >= 1.f)
 		{
+			if (AActor* S = T.Skirt.Get()) { S->Destroy(); }
 			if (AActor* A = T.Actor.Get()) { A->Destroy(); }
 			Twisters.RemoveAt(i);
 		}

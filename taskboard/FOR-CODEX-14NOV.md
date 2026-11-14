@@ -15,7 +15,7 @@ Read with the STATUS entries of 13 Nov 23:38 onward. I worked on main in small c
 | `DCRideDirector.h/.cpp` | `DamageTaken`, `ArmsBroken`. | |
 | `DCTreadmill.h/.cpp` | `bSteerForced`: `-DCSteer=` holds the helm against the crew. | |
 
-## Burning stones (added 00:38)
+## Burning stones (added 00:28)
 
 `FBoulder`, `UpdateBoulders` in `DCMaelstrom`: five scheduled stones thrown from the abyss in a 5 s arc, dodged with the helm exactly as the spouts are, starting a deck fire through `ADCTroubles::StartFire` when they strike. `-DCNoBoulders`, `-DCBoulderAt=`. Plain glowing spheres; they want smoke, a splash and sound.
 

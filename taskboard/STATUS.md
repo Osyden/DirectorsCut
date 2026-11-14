@@ -2,7 +2,7 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
-## 14 Nov 00:38 Claude: burning stones from the deep, with deck fires
+## 14 Nov 00:28 Claude: burning stones from the deep, with deck fires
 
 - `DCMaelstrom::UpdateBoulders`: five on a schedule (86, 104, 110, 126, 141 s after the breach, between the spouts). Each leaves the water 520 m off the starboard bow with a crew call ("Fire from the deep! ... Turn her, Captain!"), comes over in a 160 m arc for 5 s as a glowing stone with a tail of fire and a light, and falls where the ship was. The helm carries her out from under it at the same rate as for the spouts. Struck: 5 damage and a fire at the nearest deck point (the existing fire trouble, so the crew or the captain must put it out). Clear: 100 points and a burst on the water. `-DCNoBoulders`, `-DCBoulderAt=<s>` throws an extra one.
 - Checked: helm amidships it strikes and "FIRE ON DECK" shows with flames by the wheel; `-DCSteer=-1` it falls 56 m clear. Spout damage lowered from 6 to 5.
