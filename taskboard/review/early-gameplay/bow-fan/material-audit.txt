@@ -1,0 +1,15 @@
+[2026.11.14-22.58.38:078][  0]LogPython: Warning: DC_BOW material M_Water_Footfall Mask U Scale=0.25
+[2026.11.14-22.58.38:078][  0]LogPython: Warning: DC_BOW material M_Water_Footfall Mask V Scale=1.5
+[2026.11.14-22.58.38:078][  0]LogPython: Warning: DC_BOW material M_Water_Footfall Spec Brightness=200.0
+[2026.11.14-22.58.38:078][  0]LogPython: Warning: DC_BOW material M_Water_Footfall Smooth Step Min=0.0
+[2026.11.14-22.58.38:078][  0]LogPython: Warning: DC_BOW material M_Water_Footfall Softness=0.05000000074505806
+[2026.11.14-22.58.38:078][  0]LogPython: Warning: DC_BOW material M_Water_Footfall Mask Opacity=0.5
+[2026.11.14-22.58.38:078][  0]LogPython: Warning: DC_BOW material M_Water_Drops_Master Spec Brightness=50.0
+[2026.11.14-22.58.38:078][  0]LogPython: Warning: DC_BOW material M_Water_Drops_Master Mask Opacity=0.17431199550628662
+[2026.11.14-22.58.38:078][  0]LogPython: Warning: DC_BOW material M_Water_Drops_Master ParticleSpeed=150.0
+[2026.11.14-22.58.38:084][  0]LogPython: Warning: DC_BOW material M_WaterMist Radius=0.4000000059604645
+[2026.11.14-22.58.38:084][  0]LogPython: Warning: DC_BOW material M_WaterMist Camera_Offset=0.0
+[2026.11.14-22.58.38:087][  0]LogPython: Warning: DC_BOW material M_WaterImpact_Strand Mask Opacity=0.9100919961929321
+[2026.11.14-22.58.38:087][  0]LogPython: Warning: DC_BOW material M_WaterImpact_Strand Offset Amount=-50.0
+[2026.11.14-22.58.38:087][  0]LogPython: Warning: DC_BOW material M_WaterImpact_Strand Spec Brightness=460.61212158203125
+[2026.11.14-22.58.38:087][  0]LogPython: Warning: DC_BOW material M_WaterImpact_Strand Refraction Max=1.8093559741973877

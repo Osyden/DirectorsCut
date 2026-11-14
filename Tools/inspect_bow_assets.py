@@ -13,3 +13,10 @@ system = unreal.load_asset('/Game/ParagonRampage/FX/Particles/Abilities/RipNToss
 unreal.log_warning('DC_BOW splash=%s' % (system.get_path_name() if system else 'missing'))
 # ParticleSystem.Emitters is protected from Python. The game's -DCBowAssetAudit
 # reads emitter names/materials/local-space flags through the native API.
+for name in ('M_Water_Footfall', 'M_Water_Drops_Master', 'M_WaterMist', 'M_WaterImpact_Strand'):
+    material = unreal.load_asset('/Game/ParagonRampage/FX/Materials/Water/' + name)
+    if not material:
+        continue
+    for parameter in mel.get_scalar_parameter_names(material):
+        value = mel.get_material_default_scalar_parameter_value(material, parameter)
+        unreal.log_warning('DC_BOW material %s %s=%s' % (name, parameter, value))

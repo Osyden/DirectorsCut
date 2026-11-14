@@ -7,10 +7,25 @@
 #include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystem.h"
 #include "Particles/ParticleSystemComponent.h"
+#include "ParticleEmitterInstances.h"
+#include "ParticleHelper.h"
 #include "Particles/ParticleEmitter.h"
 #include "Particles/ParticleLODLevel.h"
 #include "Particles/ParticleModuleRequired.h"
 #include "Particles/TypeData/ParticleModuleTypeDataMesh.h"
+#include "Particles/ParticleSpriteEmitter.h"
+#include "Particles/Color/ParticleModuleColorOverLife.h"
+#include "Particles/Lifetime/ParticleModuleLifetime.h"
+#include "Particles/Location/ParticleModuleLocation.h"
+#include "Particles/Size/ParticleModuleSize.h"
+#include "Particles/Velocity/ParticleModuleVelocity.h"
+#include "Particles/Acceleration/ParticleModuleAcceleration.h"
+#include "Particles/Spawn/ParticleModuleSpawn.h"
+#include "Distributions/DistributionFloatConstant.h"
+#include "Distributions/DistributionFloatConstantCurve.h"
+#include "Distributions/DistributionFloatUniform.h"
+#include "Distributions/DistributionVectorConstant.h"
+#include "Distributions/DistributionVectorUniform.h"
 #include "Engine/StaticMesh.h"
 
 namespace
@@ -19,6 +34,103 @@ namespace
 	const float WakeBowX = 2550.f;      // where the cutwater meets the sea
 	const float WakeSternX = -2000.f;
 	const float WakeEndX = -11000.f;    // the wake is followed 90 m astern
+
+	template <typename TRaw, typename TObject>
+	void BowDistribution(TRaw& Value, TObject* Distribution)
+	{
+		// Do not retain any baked class-default table after replacing its source.
+		Value = TRaw();
+		Value.Distribution = Distribution;
+		Value.InitLookupTable();
+	}
+
+	void BowConstant(UObject* Owner, FRawDistributionFloat& Value, float Constant)
+	{
+		UDistributionFloatConstant* D = NewObject<UDistributionFloatConstant>(Owner);
+		D->Constant = Constant; BowDistribution(Value, D);
+	}
+
+	void BowVector(UObject* Owner, FRawDistributionVector& Value, const FVector& Min, const FVector& Max)
+	{
+		UDistributionVectorUniform* D = NewObject<UDistributionVectorUniform>(Owner);
+		D->Min = Min; D->Max = Max; BowDistribution(Value, D);
+	}
+
+	UParticleSystem* MakeBowSpray(UObject* Owner)
+	{
+		// Small CPU bursts give us bounded counts and inspectable trajectories.
+		// Raw distributions also evaluate their runtime objects in non-editor builds;
+		// InitLookupTable only adds the editor's optional lookup-table acceleration.
+		UParticleSystem* System = NewObject<UParticleSystem>(Owner, NAME_None, RF_Transient);
+		System->LODDistances = {0.f};
+		for (bool bMist : {false, true})
+		{
+			UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, bMist
+				? TEXT("/Game/ParagonRampage/FX/Materials/Water/M_WaterMist.M_WaterMist")
+				: TEXT("/Game/ParagonRampage/FX/Materials/Water/M_Water_Drops_Master.M_Water_Drops_Master"));
+			if (!Base) { continue; }
+			UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(Base, System);
+			if (!bMist)
+			{
+				Material->SetScalarParameterValue(TEXT("Spec Brightness"), .9f);
+				Material->SetScalarParameterValue(TEXT("Mask Opacity"), .32f);
+			}
+			UParticleSpriteEmitter* Emitter = NewObject<UParticleSpriteEmitter>(System);
+			Emitter->SetEmitterName(bMist ? TEXT("BowAeratedSpray") : TEXT("BowDroplets"));
+			Emitter->CreateLODLevel(0);
+			UParticleLODLevel* LOD = Emitter->LODLevels[0];
+			LOD->RequiredModule->Material = Material;
+			LOD->RequiredModule->bUseLocalSpace = true;
+			LOD->RequiredModule->ScreenAlignment = PSA_FacingCameraPosition;
+			LOD->RequiredModule->EmitterDuration = .12f;
+			LOD->RequiredModule->EmitterLoops = 1;
+			BowConstant(LOD->SpawnModule, LOD->SpawnModule->Rate, 0.f);
+			BowConstant(LOD->SpawnModule, LOD->SpawnModule->RateScale, 1.f);
+			BowConstant(LOD->SpawnModule, LOD->SpawnModule->BurstScale, 1.f);
+			FParticleBurst Burst;
+			Burst.Count = bMist ? 30 : 140; Burst.CountLow = -1; Burst.Time = 0.f;
+			LOD->SpawnModule->BurstList = {Burst};
+
+			UParticleModuleLifetime* Life = NewObject<UParticleModuleLifetime>(System);
+			UDistributionFloatUniform* Lifetime = NewObject<UDistributionFloatUniform>(Life);
+			Lifetime->Min = bMist ? .38f : .55f; Lifetime->Max = bMist ? .65f : .95f;
+			BowDistribution(Life->Lifetime, Lifetime);
+			LOD->Modules.Add(Life);
+			UParticleModuleLocation* Location = NewObject<UParticleModuleLocation>(System);
+			BowVector(Location, Location->StartLocation, FVector(-25,-35,0), FVector(25,35,20));
+			LOD->Modules.Add(Location);
+			UParticleModuleVelocity* Velocity = NewObject<UParticleModuleVelocity>(System);
+			Velocity->bApplyOwnerScale = false;
+			BowVector(Velocity, Velocity->StartVelocity, FVector(-140,-160,280), FVector(140,160,560));
+			BowConstant(Velocity, Velocity->StartVelocityRadial, 0.f);
+			LOD->Modules.Add(Velocity);
+			UParticleModuleAcceleration* Gravity = NewObject<UParticleModuleAcceleration>(System);
+			Gravity->bAlwaysInWorldSpace = true; Gravity->bApplyOwnerScale = false;
+			UDistributionVectorConstant* Down = NewObject<UDistributionVectorConstant>(Gravity);
+			Down->Constant = FVector(0,0,-680);
+			BowDistribution(Gravity->Acceleration, Down);
+			LOD->Modules.Add(Gravity);
+			UParticleModuleSize* Size = NewObject<UParticleModuleSize>(System);
+			BowVector(Size, Size->StartSize, bMist ? FVector(40) : FVector(2), bMist ? FVector(80) : FVector(6));
+			LOD->Modules.Add(Size);
+			UParticleModuleColorOverLife* Color = NewObject<UParticleModuleColorOverLife>(System);
+			UDistributionVectorConstant* Tint = NewObject<UDistributionVectorConstant>(Color);
+			Tint->Constant = FVector(.62,.7,.76);
+			BowDistribution(Color->ColorOverLife, Tint);
+			UDistributionFloatConstantCurve* Fade = NewObject<UDistributionFloatConstantCurve>(Color);
+			const float Opacity = bMist ? .15f : .55f;
+			Fade->ConstantCurve.AddPoint(0.f, 0.f);
+			Fade->ConstantCurve.AddPoint(.1f, Opacity);
+			Fade->ConstantCurve.AddPoint(.5f, Opacity * .7f);
+			Fade->ConstantCurve.AddPoint(1.f, 0.f);
+			BowDistribution(Color->AlphaOverLife, Fade);
+			LOD->Modules.Add(Color);
+			LOD->UpdateModuleLists();
+			System->Emitters.Add(Emitter);
+		}
+		System->BuildEmitters();
+		return System;
+	}
 }
 
 ADCWake::ADCWake()
@@ -257,37 +369,45 @@ void ADCWake::TickBowSpray(float DeltaSeconds)
 		int32 Particles = 0;
 		for (const FBowPulse& P : BowPulses) { if (P.Effect.IsValid()) { Particles += P.Effect->GetNumActiveParticles(); } }
 		UE_LOG(LogDC, Log, TEXT("Bow state: pulses=%d particles=%d at %.1f"), BowPulses.Num(), Particles, Director->RideTime);
+		if (FParse::Param(FCommandLine::Get(), TEXT("DCBowParticleAudit")))
+		{
+			for (const FBowPulse& P : BowPulses)
+			{
+				UParticleSystemComponent* Effect = P.Effect.Get();
+				if (!Effect || P.Age < .08f || P.Age > .5f) { continue; }
+				// Diagnostic only: join simulation before inspecting CPU particle data.
+				Effect->ForceAsyncWorkCompletion(UParticleSystemComponent::STALL);
+				for (FParticleEmitterInstance* Emitter : Effect->EmitterInstances)
+				{
+					if (!Emitter || !Emitter->CurrentLODLevel || !Emitter->ActiveParticles) { continue; }
+					FBox Positions(ForceInit);
+					float Size = 0.f, Alpha = 0.f;
+					int32 Count = 0;
+					for (int32 I = 0; I < FMath::Min(Emitter->ActiveParticles, 64); ++I)
+					{
+						const FBaseParticle* Particle = Emitter->GetParticle(I);
+						if (!Particle) { continue; }
+						const FVector World = Emitter->CurrentLODLevel->RequiredModule->bUseLocalSpace
+							? Effect->GetComponentTransform().TransformPosition(Particle->Location) : Particle->Location;
+						Positions += World - P.Origin;
+						Size = FMath::Max(Size, Particle->Size.GetAbsMax());
+						Alpha = FMath::Max(Alpha, Particle->Color.A);
+						++Count;
+					}
+					UE_LOG(LogDC, Log, TEXT("Bow particles: %s age=%.2f count=%d sampled=%d relative=%s size=%.2f alpha=%.2f ignoreScale=%d at %.1f"),
+						*Emitter->SpriteTemplate->GetEmitterName().ToString(), P.Age, Emitter->ActiveParticles, Count,
+						*Positions.ToString(), Size, Alpha, Emitter->bIgnoreComponentScale, Director->RideTime);
+				}
+				break;
+			}
+		}
 	}
 	if (!bActive) { for (FBowContact& Contact : BowContacts) { Contact.bValid = false; } return; }
 	if (!BowSplash)
 	{
-		UParticleSystem* Source = LoadObject<UParticleSystem>(nullptr, TEXT("/Game/ParagonRampage/FX/Particles/Abilities/RipNToss/FX/P_RipNToss_WaterImpact.P_RipNToss_WaterImpact"), nullptr, LOAD_NoWarn | LOAD_Quiet);
-		// The similarly named Rock_HitWorld_WaterImpact contains rock fragments
-		// and smoke. Use an actual curved splash mesh/droplets, without impact rings.
-		// Only this transient copy changes; authored assets stay untouched.
-		BowSplash = Source ? DuplicateObject<UParticleSystem>(Source, this) : nullptr;
-		if (!BowSplash) { return; }
-		BowSplash->SetFlags(RF_Transient);
-		for (UParticleEmitter* Emitter : BowSplash->Emitters)
-		{
-			if (!Emitter) { continue; }
-			const FName Name = Emitter->GetEmitterName();
-			const bool bWater = Name == TEXT("SplashMesh") || Name == TEXT("Droplets") || Name == TEXT("Droplets_Spherical") || Name == TEXT("Inner Droplet");
-			for (UParticleLODLevel* LOD : Emitter->LODLevels)
-			{
-				if (!LOD || !LOD->RequiredModule) { continue; }
-				LOD->bEnabled = bWater;
-				// The pulse frame advects aft through the stationary ship's scene;
-				// local particles follow that current after they leave the stem.
-				LOD->RequiredModule->bUseLocalSpace = true;
-			}
-			if (FParse::Param(FCommandLine::Get(), TEXT("DCBowLog")) && bWater && Emitter->LODLevels.Num())
-			{
-				UParticleModuleRequired* Required = Emitter->LODLevels[0]->RequiredModule;
-				UE_LOG(LogDC, Log, TEXT("Bow water emitter: %s duration=%.2f delay=%.2f loops=%d"), *Emitter->GetEmitterName().ToString(),
-					Required->EmitterDuration, Required->EmitterDelay, Required->EmitterLoops);
-			}
-		}
+		// Runtime-only emitters avoid the shallow, reflective footfall mesh.
+		BowSplash = MakeBowSpray(this);
+		if (!BowSplash || !BowSplash->Emitters.Num()) { return; }
 		if (FParse::Param(FCommandLine::Get(), TEXT("DCBowAssetAudit")))
 		{
 			for (const TCHAR* Path : {
@@ -351,9 +471,8 @@ void ADCWake::TickBowSpray(float DeltaSeconds)
 		}
 		const FVector Outward = Director->DeckTransform.TransformVectorNoScale(FVector(-.35f, Side * .85f, .8f));
 		const float Variation = 1.f + .08f * FMath::Sin(Director->RideTime * 2.7f + Side * 1.3f);
-		// The source splash was authored for a character footfall. Scale its
-		// curved sheet to the ship's cutwater, with smaller wash on gentle contact.
-		const float Scale = (.96f + 1.14f * Force) * Speed * Variation;
+		// A contact fan grows with impact, while gentle wash stays low.
+		const float Scale = (.75f + .7f * Force) * Speed * Variation;
 		UParticleSystemComponent* Effect = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BowSplash, Origin,
 			FRotationMatrix::MakeFromZ(Outward).Rotator(), FVector(Scale), true);
 		if (Effect)
