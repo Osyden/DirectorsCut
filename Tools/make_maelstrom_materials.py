@@ -506,7 +506,8 @@ output(specular,unreal.MaterialProperty.MP_SPECULAR)
 opacity = custom(water,"return lerp(lerp(0.20,1.0,saturate(Foam)),1.0,saturate(Tunnel));",FLOAT,{"Foam":foam,"Tunnel":tunnel_flow},300)
 output(opacity,unreal.MaterialProperty.MP_OPACITY)
 
-normal_inputs = dict(base_inputs, Strength=normal_strength, Foam=foam, Amp=wave_height, Cam=camera)
+normal_inputs = dict(base_inputs, Strength=normal_strength, Foam=foam, Amp=wave_height, Cam=camera,
+                     VN=vertex_normal, VT=vertex_tangent)
 if normal_texture:
     for index, coordinate in enumerate(("q", "q2")):
         sample_uv = custom(water,FLOW+"return "+coordinate+"/9.0;",FLOAT2,base_inputs,400+index*100)
@@ -518,10 +519,15 @@ if foam_texture and foam_normal_texture:
 normal_code = NOISE + FLOW + r"""
 float nearHull=smoothstep(1200.0,4000.0,length(P.xy*float2(.5,2)));
 float distanceM=length(P-Cam)*0.01;
-float2 slope=-lerp(wn.wave_field(q,T).yz,wn.wave_field(q2,T).yz,blend)*(min(max(Amp,0.0),650.0)*0.01);
-float2 breakingSlope=lerp(wn.breaking_field(q,T).yz,wn.breaking_field(q2,T).yz,blend);
-slope-=breakingSlope*(1-saturate(Tunnel));
-slope*=lerp(0.0,1.0,nearHull)*lerp(1.0,.70,smoothstep(500.0,3000.0,distanceM));
+// Retain each phase's covector until after the flow-map chain rule. Averaging
+// the q/q2 derivatives first loses their different rotations and stretches.
+float amplitude=min(max(Amp,0.0),650.0)*0.01;
+float2 slope0=-wn.wave_field(q,T).yz*amplitude;
+float2 slope1=-wn.wave_field(q2,T).yz*amplitude;
+slope0-=wn.breaking_field(q,T).yz*(1-saturate(Tunnel));
+slope1-=wn.breaking_field(q2,T).yz*(1-saturate(Tunnel));
+float largeWeight=nearHull*lerp(1.0,.70,smoothstep(500.0,3000.0,distanceM));
+slope0*=largeWeight; slope1*=largeWeight;
 // Intermediate wind waves connect the large swells to the close surface detail.
 // Fade unresolved frequencies with true camera distance, including crater depth.
 float2 chop0=cos(dot(q,float2(0.55,0.28))-T*2.45)*float2(0.55,0.28)*0.18
@@ -535,19 +541,41 @@ if(Tunnel<.5) {
     chop0=wn.short_wave_slope(q,T,pixelMeters);
     chop1=wn.short_wave_slope(q2,T,pixelMeters);
 }
-slope-=lerp(chop0,chop1,blend)*1.65*(1.0-smoothstep(450.0,1500.0,distanceM))*(1.0-Foam*0.65);
+float chopWeight=1.65*(1.0-smoothstep(450.0,1500.0,distanceM))*(1.0-Foam*0.65);
+slope0-=chop0*chopWeight; slope1-=chop1*chopWeight;
 """
 if normal_texture:
     normal_code += "float detailAmount=lerp(0.20,0.012,smoothstep(50.0,400.0,distanceM));\n"
-    normal_code += "slope += lerp(Detail0.xy,Detail1.xy,blend) * detailAmount * (1.0-Foam*0.85);\n"
+    normal_code += "slope0+=Detail0.xy*detailAmount*(1.0-Foam*0.85); slope1+=Detail1.xy*detailAmount*(1.0-Foam*0.85);\n"
 if foam_texture and foam_normal_texture:
     normal_code += r"""
-float2 foamSlope=lerp(FoamNormal0.xy,FoamNormal1.xy,blend);
+float2 foamSlope0=FoamNormal0.xy,foamSlope1=FoamNormal1.xy;
 // Inverse of the rotation used by the paired 1.5m colour/normal samples.
-foamSlope=float2(foamSlope.x*0.8-foamSlope.y*0.6,foamSlope.x*0.6+foamSlope.y*0.8);
-slope+=foamSlope*Foam*lerp(0.30,0.04,smoothstep(80.0,650.0,distanceM));
+foamSlope0=float2(foamSlope0.x*0.8-foamSlope0.y*0.6,foamSlope0.x*0.6+foamSlope0.y*0.8);
+foamSlope1=float2(foamSlope1.x*0.8-foamSlope1.y*0.6,foamSlope1.x*0.6+foamSlope1.y*0.8);
+float foamWeight=Foam*lerp(0.30,0.04,smoothstep(80.0,650.0,distanceM));
+slope0+=foamSlope0*foamWeight; slope1+=foamSlope1*foamWeight;
 """
-normal_code += "return normalize(float3(slope*Strength*(1.0-Foam*0.22),1.0));"
+normal_code += r"""
+float2 slope=lerp(slope0,slope1,blend);
+if(Tunnel<.5) {
+    // q is advected arena XY in metres, not distance along an orthonormal
+    // tangent frame. Chain through each actual flow map, then reconstruct the
+    // surface differential using world-space metres. This also accounts for
+    // steep bank foreshortening and an arena rotated around the stationary ship.
+    float sx=lerp(dot(slope0,ddx(q)),dot(slope1,ddx(q2)),blend);
+    float sy=lerp(dot(slope0,ddy(q)),dot(slope1,ddy(q2)),blend);
+    float3 n=normalize(VN),t=normalize(VT-n*dot(VT,n));
+    float3 b=cross(n,t),px=ddx(P)*.01,py=ddy(P)*.01;
+    float3 rx=cross(py,n),ry=cross(n,px);
+    float determinant=dot(px,rx);
+    // Degenerate screen derivatives at an edge must not create an unbounded
+    // specular spike. They carry no reliable resolved surface differential.
+    float3 perturbation=abs(determinant)>1e-8 ? (rx*sx+ry*sy)/determinant : float3(0,0,0);
+    slope=float2(dot(perturbation,t),dot(perturbation,b));
+}
+return normalize(float3(slope*Strength*(1.0-Foam*0.22),1.0));
+"""
 detail_normal = custom(water,normal_code,FLOAT3,normal_inputs,600)
 # Transform the detailed tangent normal to world space before reshaping the shelf normal.
 detail_world = expression(water,unreal.MaterialExpressionTransform,-200,650)
