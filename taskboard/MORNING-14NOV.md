@@ -4,7 +4,7 @@
 
 ## Play this
 
-`E:\projects\directorscut\Builds\2026-11-14_0116_26370c7_tunnel-lightning\Windows\DirectorsCut.exe`. It has been run from its exe at 1600x900 through the front, the tunnel, the city, a spout and the creature's end (67 to 112 fps), and it holds everything in the table below.
+`E:\projects\directorscut\Builds\2026-11-14_0128_f26af10_helm-order-dodge\Windows\DirectorsCut.exe`. It has been run from its exe at 1600x900 through the front, the tunnel and the city (81 to 104 fps) and through the whole maelstrom to the ending card at triple speed, and it holds everything in the table below.
 
 Every earlier build is still in `Builds\` for the dev log.
 
