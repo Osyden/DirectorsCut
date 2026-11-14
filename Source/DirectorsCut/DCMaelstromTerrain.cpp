@@ -106,9 +106,11 @@ void ADCMaelstrom::BuildTerrain()
         V.Add(P); N.Add(Normal); Tangents.Add(FProcMeshTangent(Around.GetSafeNormal(),false));
         UV.Add(FVector2D(A*Radius*.01f,P.Z*.01f));
         const float ToeZ=CliffSurfacePoint(A,0.f).Z+900.f;
-        const float Wet=1.f-FMath::SmoothStep(500.f,4500.f,static_cast<float>(P.Z-ToeZ));
-        const float Cavity=(T>.2f && T<.84f) ? FMath::SmoothStep(.25f,.85f,
-            DCCliffGenerator::Facet(A/UE_TWO_PI,(T-.2f)*32.f,288))*.55f : 0.f;
+        const float Wet=1.f-FMath::SmoothStep(150.f,1800.f,static_cast<float>(P.Z-ToeZ));
+        // Recess shading follows actual geometric cleaves, not an unrelated
+        // noise field painted on the wall.
+        const float Cavity=(T>.2f && T<.84f)
+            ? DCCliffGenerator::FaceRelief(A/UE_TWO_PI,(T-.2f)/.64f).Recess*.65f : 0.f;
         C.Add(FLinearColor(Wet,Cavity,0,1).ToFColor(false));
         if(Row<Rows && Side<Sectors)
         { const int32 B=Row*(Sectors+1)+Side,D=B+Sectors+1; I.Append({B,B+1,D,B+1,D+1,D}); }

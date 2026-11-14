@@ -101,7 +101,9 @@ to_world.set_editor_property('transform_source_type',unreal.MaterialVectorCoordT
 to_world.set_editor_property('transform_type',unreal.MaterialVectorCoordTransform.TRANSFORM_WORLD)
 M.connect_material_expressions(detail,'',to_world,'')
 output(to_world,unreal.MaterialProperty.MP_NORMAL)
-output(custom('return lerp(.78+Weather.x*.09,.43,Weather.z);',unreal.CustomMaterialOutputType.CMOT_FLOAT1,{'Weather':weather}),unreal.MaterialProperty.MP_ROUGHNESS)
+# Spray-darkened rock remains microscopically rough. A glossy wet apron under
+# the low sun looked like a second metallic water surface in the cliff review.
+output(custom('return lerp(.78+Weather.x*.09,.56,Weather.z);',unreal.CustomMaterialOutputType.CMOT_FLOAT1,{'Weather':weather}),unreal.MaterialProperty.MP_ROUGHNESS)
 output(custom('return lerp(1,.72,Weather.w);',unreal.CustomMaterialOutputType.CMOT_FLOAT1,{'Weather':weather}),unreal.MaterialProperty.MP_AMBIENT_OCCLUSION)
 output(constant(.32),unreal.MaterialProperty.MP_SPECULAR)
 M.recompile_material(mat)

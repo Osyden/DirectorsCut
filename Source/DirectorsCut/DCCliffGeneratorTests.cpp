@@ -11,6 +11,8 @@ bool FDCCliffGeneratorTest::RunTest(const FString& Parameters)
     // Include the narrow river opening as well as a 500m tall far cliff.
     const FSection Sections[]={{105000,162000,210000,-50000,1800},{168000,173000,210000,-5000,1800}};
     bool Finite=true,OutsideWater=true,Seam=true,Connected=true,InwardFaces=true;
+    bool NarrowTalus=true,LowCap=true;
+    float MinFan=MAX_flt,MaxFan=0.f;
     for(const FSection& S:Sections)
     {
         for(int32 Row=0;Row<=160;++Row)
@@ -32,6 +34,20 @@ bool FDCCliffGeneratorTest::RunTest(const FString& Parameters)
                 }
             }
         }
+        for(int32 Side=0;Side<192;++Side)
+        {
+            const float A=Side*UE_TWO_PI/192;
+            const FVector Toe=Point(S,A,0.f,0.f),Foot=Point(S,A,.20f,0.f);
+            const float Fan=Foot.Size2D()-Toe.Size2D();
+            // This catches the previous broad lit apron, which occupied most
+            // of the horizontal toe-to-lip gap and hid the monumental face.
+            NarrowTalus &= Fan<=(S.LipRadius-S.ToeRadius)*.30f+1.f;
+            NarrowTalus &= Foot.Z-Toe.Z<=(S.TopZ-S.WaterZ)*.18f;
+            if(S.LipRadius-S.ToeRadius>30000.f)
+            { MinFan=FMath::Min(MinFan,Fan); MaxFan=FMath::Max(MaxFan,Fan); }
+            for(float CapV:{.84f,.90f,.96f,1.f})
+            { LowCap &= FMath::Abs(Point(S,A,CapV,0.f).Z-S.TopZ)<350.f; }
+        }
         for(float A:{0.f,.7f,2.3f,5.7f}) for(float Boundary:{.20f,.84f})
         { Connected &= FVector::Dist(Point(S,A,Boundary-.000001f,0),Point(S,A,Boundary+.000001f,0))<10.f; }
     }
@@ -40,6 +56,9 @@ bool FDCCliffGeneratorTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("Toe, wall and cap connect"),Connected);
     TestTrue(TEXT("Even narrow inlet cliffs stay outside receiving water"),OutsideWater);
     TestTrue(TEXT("Cliff face normals point toward the crater"),InwardFaces);
+    TestTrue(TEXT("Talus stays a minority of cliff footprint and height"),NarrowTalus);
+    TestTrue(TEXT("Debris fans vary instead of forming a constant-width apron"),MaxFan>MinFan*1.25f);
+    TestTrue(TEXT("Plateau behind temples stays low"),LowCap);
     return true;
 }
 #endif
