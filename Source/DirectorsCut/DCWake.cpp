@@ -7,6 +7,11 @@
 #include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystem.h"
 #include "Particles/ParticleSystemComponent.h"
+#include "Particles/ParticleEmitter.h"
+#include "Particles/ParticleLODLevel.h"
+#include "Particles/ParticleModuleRequired.h"
+#include "Particles/TypeData/ParticleModuleTypeDataMesh.h"
+#include "Engine/StaticMesh.h"
 
 namespace
 {
@@ -37,6 +42,8 @@ void ADCWake::Build()
 		for (UPrimitiveComponent* Hull : Parts)
 		{
 			if (Hull->GetName() != TEXT("HullShip")) { continue; }
+			BowHull = Hull;
+			BowContacts[1].Timer = .21f;
 			FCollisionQueryParams Query(TEXT("DCBowWaterline"), true);
 			FHitResult Front, Side;
 			const float Z = Director->SeaLevelZ + 30.f;
@@ -239,35 +246,125 @@ void ADCWake::TickBowSpray(float DeltaSeconds)
 		if (!Effect || P.Age > 2.2f) { if (Effect) { Effect->DestroyComponent(); } BowPulses.RemoveAtSwap(I); continue; }
 		if (!bActive || P.Age > .45f) { Effect->DeactivateSystem(); }
 		// Breakaway spray is carried aft and out, never attached to a rocking deck.
-		Effect->SetWorldLocation(P.Origin + FVector(-Env.ShipSpeed * P.Age * .55f, P.Side * P.Age * 150.f, 0.f));
+		// The hull widens rapidly behind the stem. Carry the wash round that
+		// shoulder; a straight aft path put almost all spray inside the planking.
+		const float Out = 240.f * P.Age + 340.f * (1.f - FMath::Exp(-3.f * P.Age));
+		Effect->SetWorldLocation(P.Origin + FVector(-Env.ShipSpeed * P.Age * .55f, P.Side * Out, 0.f));
 	}
-	if (!bActive) { bBowHeightValid = false; return; }
+	if (FParse::Param(FCommandLine::Get(), TEXT("DCBowLog")) && (BowLogTimer -= DeltaSeconds) <= 0.f)
+	{
+		BowLogTimer = .5f;
+		int32 Particles = 0;
+		for (const FBowPulse& P : BowPulses) { if (P.Effect.IsValid()) { Particles += P.Effect->GetNumActiveParticles(); } }
+		UE_LOG(LogDC, Log, TEXT("Bow state: pulses=%d particles=%d at %.1f"), BowPulses.Num(), Particles, Director->RideTime);
+	}
+	if (!bActive) { for (FBowContact& Contact : BowContacts) { Contact.bValid = false; } return; }
 	if (!BowSplash)
 	{
-		BowSplash = LoadObject<UParticleSystem>(nullptr, TEXT("/Game/ParagonRampage/FX/Particles/Abilities/RipNToss/FX/P_Rampage_Rock_HitWorld_WaterImpact.P_Rampage_Rock_HitWorld_WaterImpact"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+		UParticleSystem* Source = LoadObject<UParticleSystem>(nullptr, TEXT("/Game/ParagonRampage/FX/Particles/Abilities/RipNToss/FX/P_RipNToss_WaterImpact.P_RipNToss_WaterImpact"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+		// The similarly named Rock_HitWorld_WaterImpact contains rock fragments
+		// and smoke. Use an actual curved splash mesh/droplets, without impact rings.
+		// Only this transient copy changes; authored assets stay untouched.
+		BowSplash = Source ? DuplicateObject<UParticleSystem>(Source, this) : nullptr;
 		if (!BowSplash) { return; }
+		BowSplash->SetFlags(RF_Transient);
+		for (UParticleEmitter* Emitter : BowSplash->Emitters)
+		{
+			if (!Emitter) { continue; }
+			const FName Name = Emitter->GetEmitterName();
+			const bool bWater = Name == TEXT("SplashMesh") || Name == TEXT("Droplets") || Name == TEXT("Droplets_Spherical") || Name == TEXT("Inner Droplet");
+			for (UParticleLODLevel* LOD : Emitter->LODLevels)
+			{
+				if (!LOD || !LOD->RequiredModule) { continue; }
+				LOD->bEnabled = bWater;
+				// The pulse frame advects aft through the stationary ship's scene;
+				// local particles follow that current after they leave the stem.
+				LOD->RequiredModule->bUseLocalSpace = true;
+			}
+			if (FParse::Param(FCommandLine::Get(), TEXT("DCBowLog")) && bWater && Emitter->LODLevels.Num())
+			{
+				UParticleModuleRequired* Required = Emitter->LODLevels[0]->RequiredModule;
+				UE_LOG(LogDC, Log, TEXT("Bow water emitter: %s duration=%.2f delay=%.2f loops=%d"), *Emitter->GetEmitterName().ToString(),
+					Required->EmitterDuration, Required->EmitterDelay, Required->EmitterLoops);
+			}
+		}
+		if (FParse::Param(FCommandLine::Get(), TEXT("DCBowAssetAudit")))
+		{
+			for (const TCHAR* Path : {
+				TEXT("/Game/ParagonRampage/FX/Particles/Abilities/RipNToss/FX/P_Rampage_Rock_HitWorld_WaterImpact"),
+				TEXT("/Game/ParagonRampage/FX/Particles/Abilities/RipNToss/FX/P_RipNToss_WaterImpact"),
+				TEXT("/Game/ParagonRampage/FX/Particles/Abilities/RipNToss/FX/P_RipNToss_Rip_WaterImpact"),
+				TEXT("/Game/ParagonRampage/FX/Particles/Abilities/Lunge/FX/P_Rampage_Lunge_Impact_WaterImpact")})
+			{
+				UParticleSystem* System = LoadObject<UParticleSystem>(nullptr, Path);
+				if (!System) { continue; }
+				UE_LOG(LogDC, Log, TEXT("Bow asset: %s"), *System->GetPathName());
+				for (UParticleEmitter* Emitter : System->Emitters)
+				{
+					UParticleLODLevel* LOD = Emitter && Emitter->LODLevels.Num() ? Emitter->LODLevels[0] : nullptr;
+					if (!LOD || !LOD->RequiredModule) { continue; }
+					UParticleModuleTypeDataMesh* Type = Cast<UParticleModuleTypeDataMesh>(LOD->TypeDataModule);
+					UE_LOG(LogDC, Log, TEXT("Bow emitter: %s enabled=%d local=%d material=%s mesh=%s meshMaterial=%s"), *Emitter->GetEmitterName().ToString(), LOD->bEnabled,
+						LOD->RequiredModule->bUseLocalSpace, *GetNameSafe(LOD->RequiredModule->Material),
+						Type ? *GetNameSafe(Type->Mesh) : TEXT("none"), Type && Type->Mesh ? *GetNameSafe(Type->Mesh->GetMaterial(0)) : TEXT("none"));
+				}
+			}
+		}
 	}
-	BowTimer -= DeltaSeconds;
-	if (BowTimer > 0.f) { return; }
 	const float Speed = FMath::Clamp(Env.ShipSpeed / 1500.f, .3f, 1.25f);
 	const float Roughness = FMath::Clamp(Env.WaveHeight / 250.f, .15f, 1.f);
-	const FVector Bow = Director->DeckToWorld(FVector(BowSprayX, 0.f, Director->SeaLevelZ));
-	const float Surface = SurfaceAt(FVector2D(Bow.X, Bow.Y), 220);
-	const float Rise = bBowHeightValid ? FMath::Clamp((Surface - PreviousBowHeight) / 65.f, 0.f, 1.f) : 0.f;
-	PreviousBowHeight = Surface; bBowHeightValid = true;
-	BowTimer = FMath::Lerp(.62f, .28f, FMath::Clamp(Roughness * .55f + Rise * .45f, 0.f, 1.f)) / Speed;
-	for (float Side : {-1.f, 1.f})
+	for (int32 Index = 0; Index < 2; ++Index)
 	{
-		FVector Origin = Director->DeckToWorld(FVector(BowSprayX, Side * BowSprayY, Director->SeaLevelZ));
-		Origin.Z = SurfaceAt(FVector2D(Origin.X, Origin.Y), Side < 0 ? 221 : 222) + 8.f;
-		const FVector Outward(-.2f, Side * .48f, 1.f);
-		const float Scale = (.3f + .25f * Roughness + .22f * Rise) * Speed;
+		const float Side = Index == 0 ? -1.f : 1.f;
+		FBowContact& Contact = BowContacts[Index];
+		const FVector Anchor = Director->DeckToWorld(FVector(BowSprayX, Side * BowSprayY, Director->SeaLevelZ));
+		// Keep asynchronous water queries warm every frame, not only at emission.
+		// Measure water relative to the pitching hull: a lifting bow sheds spray,
+		// while a rising wave striking a descending bow gives a stronger burst.
+		const float Surface = SurfaceAt(FVector2D(Anchor.X, Anchor.Y), 221 + Index);
+		const float Depth = Surface - Anchor.Z;
+		const float Closing = Contact.bValid ? FMath::Clamp((Depth - Contact.PreviousDepth) / FMath::Max(DeltaSeconds, .001f), -400.f, 400.f) : 0.f;
+		Contact.Closing = FMath::FInterpTo(Contact.Closing, Closing, DeltaSeconds, 7.f);
+		Contact.PreviousDepth = Depth; Contact.bValid = true;
+		Contact.Timer -= DeltaSeconds;
+		const float Wet = FMath::SmoothStep(-45.f, 25.f, Depth);
+		if (Contact.Timer > 0.f || Wet < .08f || BowPulses.Num() >= 16) { continue; }
+		const float Impact = FMath::Clamp(Contact.Closing / 180.f, 0.f, 1.f);
+		const float Force = FMath::Clamp((.20f + .40f * Roughness + .55f * Impact) * Wet, 0.f, 1.f);
+		Contact.Timer = FMath::Lerp(.95f, .36f, Force) / Speed + (Index == 0 ? .04f : .11f);
+		FVector Origin(Anchor.X, Anchor.Y, Surface + 8.f);
+		if (UPrimitiveComponent* Hull = BowHull.Get())
+		{
+			FCollisionQueryParams Probe(TEXT("DCBowContact"), true);
+			FHitResult Front, Edge;
+			FVector From = Director->DeckToWorld(FVector(3500.f, 0.f, Director->SeaLevelZ));
+			FVector To = Director->DeckToWorld(FVector(-1800.f, 0.f, Director->SeaLevelZ));
+			From.Z = To.Z = Origin.Z;
+			if (!Hull->LineTraceComponent(Front, From, To, Probe)) { continue; }
+			const float X = Director->DeckTransform.InverseTransformPosition(Front.ImpactPoint).X - 80.f;
+			From = Director->DeckToWorld(FVector(X, Side * 1200.f, Director->SeaLevelZ));
+			To = Director->DeckToWorld(FVector(X, 0.f, Director->SeaLevelZ));
+			From.Z = To.Z = Origin.Z;
+			if (!Hull->LineTraceComponent(Edge, From, To, Probe)) { continue; }
+			Origin = Edge.ImpactPoint + Director->DeckTransform.TransformVectorNoScale(FVector(0.f, Side * 18.f, 0.f));
+			Origin.Z = Surface + 8.f;
+		}
+		const FVector Outward = Director->DeckTransform.TransformVectorNoScale(FVector(-.35f, Side * .85f, .8f));
+		const float Variation = 1.f + .08f * FMath::Sin(Director->RideTime * 2.7f + Side * 1.3f);
+		// The source splash was authored for a character footfall. Scale its
+		// curved sheet to the ship's cutwater, with smaller wash on gentle contact.
+		const float Scale = (.96f + 1.14f * Force) * Speed * Variation;
 		UParticleSystemComponent* Effect = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BowSplash, Origin,
 			FRotationMatrix::MakeFromZ(Outward).Rotator(), FVector(Scale), true);
 		if (Effect)
 		{
 			Effect->SetCastShadow(false);
 			BowPulses.Add({Effect, 0.f, Origin, Side});
+			if (FParse::Param(FCommandLine::Get(), TEXT("DCBowLog")))
+			{
+				UE_LOG(LogDC, Log, TEXT("Bow pulse: side=%.0f depth=%.0f closing=%.0f scale=%.2f origin=%s active=%d at %.1f"),
+					Side, Depth, Contact.Closing, Scale, *Origin.ToCompactString(), BowPulses.Num(), Director->RideTime);
+			}
 		}
 	}
 }
@@ -310,7 +407,7 @@ void ADCWake::TickHullFoam(float DeltaSeconds)
 		{
 			// The old 6.5m solid-white skirt swallowed the bow spray. Keep a narrow
 			// broken wash at the hull and let the moving droplets supply the height.
-			M->SetScalarParameterValue(TEXT("DCShoreFoamWidth"), V.Width * (bEarly ? FMath::Lerp(.30f, .48f, Storm) : 1.f));
+			M->SetScalarParameterValue(TEXT("DCShoreFoamWidth"), V.Width * (bEarly ? FMath::Lerp(.16f, .30f, Storm) : 1.f));
 			M->SetScalarParameterValue(TEXT("DCShoreFoam"), V.Strength * (bEarly ? FMath::Lerp(.65f, .9f, Storm) : 1.f));
 		}
 	}

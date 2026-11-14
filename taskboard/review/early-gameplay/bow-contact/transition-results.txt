@@ -1,0 +1,48 @@
+[2026.11.14-22.50.47:303][  1]LogDC: Bow spray waterline: x=1216 halfwidth=78
+[2026.11.14-22.50.47:303][  1]LogDC: Bow wash: tuned 2 live water materials; shared assets unchanged
+[2026.11.14-22.50.47:303][  1]LogDC: Bow state: pulses=0 particles=0 at 235.3
+[2026.11.14-22.50.47:421][  1]LogDC: Bow water emitter: Droplets duration=2.00 delay=0.00 loops=1
+[2026.11.14-22.50.47:421][  1]LogDC: Bow water emitter: SplashMesh duration=3.00 delay=0.00 loops=1
+[2026.11.14-22.50.47:421][  1]LogDC: Bow water emitter: Droplets duration=3.00 delay=0.00 loops=1
+[2026.11.14-22.50.47:421][  1]LogDC: Bow water emitter: Droplets_Spherical duration=3.00 delay=0.00 loops=1
+[2026.11.14-22.50.47:421][  1]LogDC: Bow water emitter: Inner Droplet duration=3.00 delay=0.00 loops=1
+[2026.11.14-22.50.47:421][  1]LogDC: Bow pulse: side=-1 depth=0 closing=0 scale=1.30 origin=V(X=1223.02, Y=-53.38, Z=238.00) active=1 at 235.3
+[2026.11.14-22.50.47:421][  1]LogDC: Bow pulse: side=1 depth=0 closing=0 scale=1.47 origin=V(X=1223.02, Y=53.38, Z=238.00) active=2 at 235.3
+[2026.11.14-22.50.47:825][  4]LogDC: Bow state: pulses=2 particles=2066 at 235.8
+[2026.11.14-22.50.48:346][ 18]LogDC: Bow state: pulses=2 particles=1968 at 236.3
+[2026.11.14-22.50.48:380][ 20]LogDC: Bow pulse: side=-1 depth=-26 closing=161 scale=1.22 origin=V(X=1201.38, Y=-48.32, Z=202.84) active=3 at 236.4
+[2026.11.14-22.50.48:380][ 20]LogDC: Bow pulse: side=1 depth=-31 closing=109 scale=0.98 origin=V(X=1202.34, Y=44.59, Z=204.03) active=4 at 236.4
+[2026.11.14-22.50.48:842][ 60]LogDC: Bow state: pulses=4 particles=2096 at 236.9
+[2026.11.14-22.50.49:278][101]LogDC: Bow pulse: side=-1 depth=66 closing=-158 scale=1.41 origin=V(X=1248.78, Y=-79.29, Z=346.12) active=3 at 237.3
+[2026.11.14-22.50.49:350][108]LogDC: Bow state: pulses=3 particles=1217 at 237.4
+[2026.11.14-22.50.49:393][112]LogDC: Bow pulse: side=1 depth=31 closing=-186 scale=1.66 origin=V(X=1236.47, Y=48.76, Z=328.62) active=4 at 237.4
+[2026.11.14-22.50.49:854][157]LogDC: Bow state: pulses=2 particles=1376 at 237.9
+[2026.11.14-22.50.50:364][207]LogDC: Bow state: pulses=1 particles=256 at 238.4
+[2026.11.14-22.50.50:456][216]LogDC: Bow pulse: side=-1 depth=-31 closing=116 scale=1.15 origin=V(X=1197.41, Y=-39.64, Z=225.04) active=1 at 238.5
+[2026.11.14-22.50.50:528][223]LogDC: Bow pulse: side=1 depth=-32 closing=165 scale=0.98 origin=V(X=1206.91, Y=45.87, Z=235.00) active=2 at 238.5
+[2026.11.14-22.50.50:871][257]LogDC: Bow state: pulses=2 particles=1794 at 238.9
+[2026.11.14-22.50.51:040][270]LogDC: Auto shot shot_0239.png at ride time 239.0, 97 fps (game 38.4 ms, render 13.1 ms, gpu 6.0 ms)
+[2026.11.14-22.50.51:040][270]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 239.0
+[2026.11.14-22.50.51:657][271]LogDC: Bow state: pulses=2 particles=704 at 239.4
+[2026.11.14-22.50.51:658][271]LogDC: Bow pulse: side=-1 depth=60 closing=-9 scale=1.42 origin=V(X=1256.03, Y=-69.29, Z=318.75) active=3 at 239.4
+[2026.11.14-22.50.51:764][278]LogDC: Bow pulse: side=1 depth=40 closing=-101 scale=1.63 origin=V(X=1247.83, Y=61.10, Z=307.69) active=3 at 239.6
+[2026.11.14-22.50.52:167][314]LogDC: Bow state: pulses=2 particles=1409 at 240.0
+[2026.11.14-22.50.52:676][355]LogDC: Bow state: pulses=2 particles=528 at 240.5
+[2026.11.14-22.50.53:185][394]LogDC: Bow state: pulses=0 particles=0 at 241.0
+[2026.11.14-22.50.53:229][398]LogDC: Auto shot shot_0241.png at ride time 241.0, 80 fps (game 12.3 ms, render 12.1 ms, gpu 6.2 ms)
+[2026.11.14-22.50.53:229][398]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 241.0
+[2026.11.14-22.50.53:684][427]LogDC: Bow state: pulses=0 particles=0 at 241.5
+[2026.11.14-22.50.54:190][473]LogDC: Bow state: pulses=0 particles=0 at 242.0
+[2026.11.14-22.50.54:696][520]LogDC: Bow state: pulses=0 particles=0 at 242.5
+[2026.11.14-22.50.55:205][566]LogDC: Bow state: pulses=0 particles=0 at 243.0
+[2026.11.14-22.50.55:225][568]LogDC: Auto shot shot_0243.png at ride time 243.0, 91 fps (game 11.4 ms, render 10.7 ms, gpu 4.8 ms)
+[2026.11.14-22.50.55:225][568]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 243.0
+[2026.11.14-22.50.55:715][601]LogDC: Bow state: pulses=0 particles=0 at 243.5
+[2026.11.14-22.50.56:225][649]LogDC: Bow state: pulses=0 particles=0 at 244.0
+[2026.11.14-22.50.56:735][694]LogDC: Bow state: pulses=0 particles=0 at 244.5
+[2026.11.14-22.50.57:240][740]LogDC: Bow state: pulses=0 particles=0 at 245.0
+[2026.11.14-22.50.57:744][787]LogDC: Bow state: pulses=0 particles=0 at 245.5
+[2026.11.14-22.50.58:227][835]LogDC: Auto shot shot_0246.png at ride time 246.0, 99 fps (game 10.1 ms, render 10.3 ms, gpu 5.2 ms)
+[2026.11.14-22.50.58:227][835]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 246.0
+[2026.11.14-22.50.58:362][836]LogDC: Bow state: pulses=0 particles=0 at 246.2
+[2026.11.14-22.50.58:870][887]LogDC: Bow state: pulses=0 particles=0 at 246.7

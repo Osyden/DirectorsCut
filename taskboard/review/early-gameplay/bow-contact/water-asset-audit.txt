@@ -1,0 +1,66 @@
+[2026.11.14-22.31.35:025][  1]LogDC: Bow asset: /Game/ParagonRampage/FX/Particles/Abilities/RipNToss/FX/P_Rampage_Rock_HitWorld_WaterImpact.P_Rampage_Rock_HitWorld_WaterImpact
+[2026.11.14-22.31.35:025][  1]LogDC: Bow emitter: MeshPieceA enabled=1 local=0 material=WorldGridMaterial mesh=SM_Rampage_Rock_FragA meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:025][  1]LogDC: Bow emitter: MeshPieceB enabled=1 local=0 material=WorldGridMaterial mesh=SM_Rampage_Rock_FragB meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:025][  1]LogDC: Bow emitter: MeshPieceC enabled=1 local=0 material=WorldGridMaterial mesh=SM_Rampage_Rock_FragC meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:025][  1]LogDC: Bow emitter: MeshPieceD enabled=1 local=0 material=WorldGridMaterial mesh=SM_Rampage_Rock_FragD meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:025][  1]LogDC: Bow emitter: Rocks enabled=1 local=0 material=M_ImposterRock_Translucent_Inst mesh=none meshMaterial=none
+[2026.11.14-22.31.35:025][  1]LogDC: Bow emitter: MeshPieceE enabled=1 local=0 material=WorldGridMaterial mesh=SM_Rampage_Rock_FragE meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:025][  1]LogDC: Bow emitter: RocksOutward enabled=1 local=0 material=M_ImposterRock_Translucent_Inst mesh=none meshMaterial=none
+[2026.11.14-22.31.35:025][  1]LogDC: Bow emitter: SmallRocks enabled=1 local=0 material=M_TransDebris_NoEmissive_Simple mesh=none meshMaterial=none
+[2026.11.14-22.31.35:025][  1]LogDC: Bow emitter: SmallRocksOutward enabled=1 local=0 material=M_TransDebris_NoEmissive_Simple mesh=none meshMaterial=none
+[2026.11.14-22.31.35:025][  1]LogDC: Bow emitter: FingerImpact enabled=1 local=0 material=M_ThickSmoke_Spears_Inst mesh=none meshMaterial=none
+[2026.11.14-22.31.35:025][  1]LogDC: Bow emitter: RoundImpact enabled=1 local=0 material=M_RoundSmoke_Inst mesh=none meshMaterial=none
+[2026.11.14-22.31.35:025][  1]LogDC: Bow emitter: ThicksmokeA enabled=1 local=0 material=M_ThickSmoke_Spears_Inst mesh=none meshMaterial=none
+[2026.11.14-22.31.35:025][  1]LogDC: Bow emitter: ThicksmokeB enabled=1 local=0 material=M_ThickSmoke_Omni_Inst mesh=none meshMaterial=none
+[2026.11.14-22.31.35:025][  1]LogDC: Bow emitter: BigRound enabled=1 local=1 material=M_RoundSmoke_Inst mesh=none meshMaterial=none
+[2026.11.14-22.31.35:124][  1]LogDC: Bow asset: /Game/ParagonRampage/FX/Particles/Abilities/RipNToss/FX/P_RipNToss_WaterImpact.P_RipNToss_WaterImpact
+[2026.11.14-22.31.35:124][  1]LogDC: Bow emitter: Droplets enabled=1 local=0 material=M_Water_Drops_Master mesh=none meshMaterial=none
+[2026.11.14-22.31.35:124][  1]LogDC: Bow emitter: SplashMesh enabled=1 local=0 material=M_Water_Footfall mesh=SM_Water_Footfall_Average meshMaterial=M_Water_Footfall
+[2026.11.14-22.31.35:124][  1]LogDC: Bow emitter: Droplets enabled=1 local=0 material=M_Water_Drops_Master mesh=none meshMaterial=none
+[2026.11.14-22.31.35:124][  1]LogDC: Bow emitter: Droplets_Spherical enabled=1 local=0 material=M_Water_Drops_Master mesh=none meshMaterial=none
+[2026.11.14-22.31.35:124][  1]LogDC: Bow emitter: Inner Droplet enabled=1 local=0 material=M_Water_Drops_Master mesh=none meshMaterial=none
+[2026.11.14-22.31.35:124][  1]LogDC: Bow emitter: FoamRippleFast enabled=1 local=1 material=WorldGridMaterial mesh=SM_WaterFall_RippleMeshes meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:124][  1]LogDC: Bow emitter: FoamRipple enabled=1 local=1 material=WorldGridMaterial mesh=SM_WaterFall_RippleMeshes meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:124][  1]LogDC: Bow emitter: FoamRipple enabled=1 local=1 material=WorldGridMaterial mesh=SM_WaterFall_RippleMeshes meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:124][  1]LogDC: Bow emitter: MotionBlurSplashes enabled=1 local=1 material=WorldGridMaterial mesh=SM_Plasma_Mesh_Reduced meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:124][  1]LogDC: Bow emitter: MotionBlurSplashes enabled=1 local=1 material=WorldGridMaterial mesh=SM_Plasma_Mesh_Reduced meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:124][  1]LogDC: Bow emitter: Central Mesh enabled=1 local=0 material=WorldGridMaterial mesh=SM_WaterImpact_ImpactCylinder meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:124][  1]LogDC: Bow emitter: MotionBlurSplashes enabled=1 local=1 material=WorldGridMaterial mesh=SM_Plasma_Mesh_Reduced meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:124][  1]LogDC: Bow emitter: MotionBlurStrandsDelayed enabled=1 local=1 material=WorldGridMaterial mesh=SM_Plasma_Mesh_Reduced meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:124][  1]LogDC: Bow emitter: FoamRippleResidual enabled=1 local=1 material=WorldGridMaterial mesh=SM_WaterFall_RippleMeshes meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:124][  1]LogDC: Bow emitter: Particle Emitter enabled=1 local=0 material=M_WaterBubbles_Inst mesh=none meshMaterial=none
+[2026.11.14-22.31.35:170][  1]LogDC: Bow asset: /Game/ParagonRampage/FX/Particles/Abilities/RipNToss/FX/P_RipNToss_Rip_WaterImpact.P_RipNToss_Rip_WaterImpact
+[2026.11.14-22.31.35:170][  1]LogDC: Bow emitter: Refraction enabled=1 local=0 material=WorldGridMaterial mesh=SM_ShockRing meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:170][  1]LogDC: Bow emitter: Ripple enabled=1 local=0 material=M_Footfall_Ripple mesh=none meshMaterial=none
+[2026.11.14-22.31.35:170][  1]LogDC: Bow emitter: Mist enabled=1 local=0 material=M_WaterMist mesh=none meshMaterial=none
+[2026.11.14-22.31.35:170][  1]LogDC: Bow emitter: Mist_UpwardsV enabled=1 local=0 material=M_WaterMist mesh=none meshMaterial=none
+[2026.11.14-22.31.35:170][  1]LogDC: Bow emitter: Strands enabled=1 local=0 material=M_WaterImpact_Strand mesh=none meshMaterial=none
+[2026.11.14-22.31.35:170][  1]LogDC: Bow emitter: Droplets enabled=1 local=0 material=M_Water_Drops_Master mesh=none meshMaterial=none
+[2026.11.14-22.31.35:418][  1]LogDC: Bow asset: /Game/ParagonRampage/FX/Particles/Abilities/Lunge/FX/P_Rampage_Lunge_Impact_WaterImpact.P_Rampage_Lunge_Impact_WaterImpact
+[2026.11.14-22.31.35:418][  1]LogDC: Bow emitter: Light enabled=1 local=0 material=M_Cone_Flare_Soft_Inst mesh=none meshMaterial=none
+[2026.11.14-22.31.35:418][  1]LogDC: Bow emitter: NEW_Sphere enabled=1 local=1 material=WorldGridMaterial mesh=SM_refractive_sphere meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:418][  1]LogDC: Bow emitter: Droplets enabled=1 local=0 material=M_Water_Drops_Master mesh=none meshMaterial=none
+[2026.11.14-22.31.35:418][  1]LogDC: Bow emitter: Central Mesh_Reverse_Outer enabled=1 local=0 material=WorldGridMaterial mesh=SM_WaterImpact_Large_Cylinder_Reverse meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:418][  1]LogDC: Bow emitter: Central Mesh_Reverse enabled=1 local=0 material=WorldGridMaterial mesh=SM_WaterImpact_Large_Cylinder_Reverse meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:418][  1]LogDC: Bow emitter: Central Mesh_Outer enabled=1 local=0 material=WorldGridMaterial mesh=SM_WaterImpact_Large_Cylinder meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:418][  1]LogDC: Bow emitter: Central Mesh enabled=1 local=0 material=WorldGridMaterial mesh=SM_WaterImpact_Large_Cylinder meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:418][  1]LogDC: Bow emitter: SplashMesh enabled=1 local=0 material=M_Water_Footfall mesh=SM_Water_Footfall_Average meshMaterial=M_Water_Footfall
+[2026.11.14-22.31.35:418][  1]LogDC: Bow emitter: Droplets enabled=1 local=0 material=M_Water_Drops_Master mesh=none meshMaterial=none
+[2026.11.14-22.31.35:418][  1]LogDC: Bow emitter: Inner Droplet enabled=1 local=0 material=M_Water_Drops_Master mesh=none meshMaterial=none
+[2026.11.14-22.31.35:418][  1]LogDC: Bow emitter: FoamRippleFast enabled=1 local=1 material=WorldGridMaterial mesh=SM_WaterFall_RippleMeshes meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:418][  1]LogDC: Bow emitter: FoamRipple enabled=1 local=1 material=WorldGridMaterial mesh=SM_WaterFall_RippleMeshes meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:418][  1]LogDC: Bow emitter: Masked enabled=1 local=1 material=WorldGridMaterial mesh=SM_Plasma_Mesh_Reduced meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:418][  1]LogDC: Bow emitter: FoamRipple enabled=1 local=1 material=WorldGridMaterial mesh=SM_WaterFall_RippleMeshes meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:418][  1]LogDC: Bow emitter: MotionBlurSplashes enabled=1 local=1 material=WorldGridMaterial mesh=SM_Plasma_Mesh_Reduced meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:418][  1]LogDC: Bow emitter: MotionBlurSplashesSides enabled=1 local=1 material=WorldGridMaterial mesh=SM_Plasma_Mesh_Reduced meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:418][  1]LogDC: Bow emitter: MotionBlurSplashesUP enabled=1 local=1 material=WorldGridMaterial mesh=SM_Plasma_Mesh_Reduced meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:419][  1]LogDC: Bow emitter: MotionBlurSplashesSec enabled=1 local=1 material=WorldGridMaterial mesh=SM_Plasma_Mesh_Reduced meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:419][  1]LogDC: Bow emitter: Central Mesh enabled=1 local=0 material=WorldGridMaterial mesh=SM_WaterImpact_ImpactCylinder meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:419][  1]LogDC: Bow emitter: MotionBlurSplashes enabled=1 local=1 material=WorldGridMaterial mesh=SM_Plasma_Mesh_Reduced meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:419][  1]LogDC: Bow emitter: MotionBlurStrandsDelayed enabled=1 local=1 material=WorldGridMaterial mesh=SM_Plasma_Mesh_Reduced meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:419][  1]LogDC: Bow emitter: FoamRipple enabled=1 local=0 material=WorldGridMaterial mesh=SM_WaterFall_RippleMeshes meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:419][  1]LogDC: Bow emitter: FoamRippleResidual enabled=1 local=1 material=WorldGridMaterial mesh=SM_WaterFall_RippleMeshes meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:419][  1]LogDC: Bow emitter: ExtremeBright enabled=1 local=0 material=M_Flare_Procedural_Noise_Tex_Glow_RoundFade_Inst mesh=none meshMaterial=none
+[2026.11.14-22.31.35:419][  1]LogDC: Bow emitter: ShockWave enabled=1 local=0 material=WorldGridMaterial mesh=SM_Plasma_Mesh meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:419][  1]LogDC: Bow emitter: Chroma enabled=1 local=0 material=WorldGridMaterial mesh=SM_Rampage_SlowDome meshMaterial=WorldGridMaterial
+[2026.11.14-22.31.35:419][  1]LogDC: Bow emitter: ChromaVertical enabled=1 local=0 material=WorldGridMaterial mesh=SM_Rampage_SlowDome meshMaterial=WorldGridMaterial

@@ -1,0 +1,20 @@
+[2026.11.14-22.45.45:300][  4]LogDC: Bow spray waterline: x=1216 halfwidth=78
+[2026.11.14-22.45.45:300][  4]LogDC: Bow wash: tuned 2 live water materials; shared assets unchanged
+[2026.11.14-22.47.15:316][ 88]LogDC: Display: Encounter group 1: 2 creatures on port at 90.0
+[2026.11.14-22.47.21:777][700]LogDC: Display: Encounter firing window: creature port distance=15685 at 96.8
+[2026.11.14-22.47.23:159][835]LogDC: Display: Encounter firing window: creature port distance=17454 at 98.2
+[2026.11.14-22.47.24:941][  1]LogDC: Auto shot shot_0100.png at ride time 100.0, 91 fps (game 8.8 ms, render 11.0 ms, gpu 6.1 ms)
+[2026.11.14-22.47.24:941][  1]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 100.0
+[2026.11.14-22.47.29:944][406]LogDC: Display: Encounter charge: creature exposure=8.0 at 104.8
+[2026.11.14-22.47.34:095][741]LogDC: Display: Encounter charge: creature exposure=10.8 at 109.0
+[2026.11.14-22.47.35:083][826]LogDC: Auto shot shot_0110.png at ride time 110.0, 84 fps (game 9.7 ms, render 11.9 ms, gpu 5.8 ms)
+[2026.11.14-22.47.35:083][826]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 110.0
+[2026.11.14-22.47.35:314][834]LogDC: Display: Encounter impact: fireball deck=V(X=-190.63, Y=140.00, Z=471.88) fires=0->1 at 110.2
+[2026.11.14-22.47.37:083][985]LogDC: Sentinel eye 0 local=V(X=-69.17, Y=-27.18, Z=1737.33) figure bounds=V(X=1779.84, Y=1739.63, Z=4108.27)
+[2026.11.14-22.47.37:083][985]LogDC: Sentinel eye 1 local=V(X=-69.17, Y=27.18, Z=1737.33) figure bounds=V(X=1779.84, Y=1739.63, Z=4108.27)
+[2026.11.14-22.47.37:083][985]LogDC: Display: Sentinel 1 placed on starboard at 112.0
+[2026.11.14-22.47.39:504][192]LogDC: Display: Encounter impact: fireball deck=V(X=409.37, Y=60.00, Z=509.73) fires=1->2 at 114.4
+[2026.11.14-22.47.47:041][851]LogDC: Display: Encounter firing window: sentinel starboard distance=13374 at 122.0
+[2026.11.14-22.47.48:850][ 11]LogDC: Display: Encounter charge: creature exposure=2.5 at 123.8
+[2026.11.14-22.47.50:093][119]LogDC: Auto shot shot_0125.png at ride time 125.0, 81 fps (game 10.9 ms, render 13.8 ms, gpu 6.6 ms)
+[2026.11.14-22.47.50:093][119]LogDC: Capture state: hull=95.6 score=0 fires=2 rigging=0 at 125.0

@@ -38,10 +38,11 @@ protected:
 	UPROPERTY() TObjectPtr<class UParticleSystem> BowSplash;
 	struct FBowPulse { TWeakObjectPtr<class UParticleSystemComponent> Effect; float Age = 0.f; FVector Origin; float Side = 1.f; };
 	TArray<FBowPulse> BowPulses;
-	float BowTimer = 0.f;
+	struct FBowContact { float PreviousDepth = 0.f, Closing = 0.f, Timer = 0.f; bool bValid = false; };
+	FBowContact BowContacts[2];
+	float BowLogTimer = 0.f;
+	TWeakObjectPtr<class UPrimitiveComponent> BowHull;
 	float BowSprayX = 2350.f, BowSprayY = 240.f;
-	float PreviousBowHeight = 0.f;
-	bool bBowHeightValid = false;
 
 	UPROPERTY() TObjectPtr<UProceduralMeshComponent> Mesh;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> MID;
