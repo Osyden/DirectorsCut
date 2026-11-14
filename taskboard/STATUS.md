@@ -2,6 +2,10 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 00:42 Claude: 4K speed with the night's work
+
+True 3840x2160 (`-RenderOffscreen -ForceRes`, DLSS at 67 percent, no frame generation), from the editor build: open sea with the wall coming 82 to 88 fps, entering the tunnel 74, inside it 85 to 89, city with cards and wisps 97, maelstrom with a spout up 68 to 72 (55 in the frame the spout is raised). Tried and not kept: turning the fog off for the cloud volumes makes the far wall dark and detailed but it then reads as a cliff pasted on the horizon with its ends showing; with the fog it is a pale bank, which is what a far storm looks like.
+
 ## 14 Nov 00:34 Claude: rags of mist across the deck; white water at the spout's foot
 
 - **Deck wisps** (`DCTreadmill::TickDeckWisps`): six upright Easy Fog cards, 9 to 22 m, come in over the bow and run aft past the masts at 7 to 13 m a second, over and over, while the mist is up (Mist above 0.45, so the city, not the tunnel). They fade near the eye and at each end of the run. Where they pass the lanterns they catch the warm light. `-DCNoDeckWisps`. Frames half a second apart in `review/53-deck-wisps` (the pictures were taken at a density a third higher than is now set). Not judged in motion.
