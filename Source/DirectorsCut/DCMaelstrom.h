@@ -26,7 +26,7 @@ public:
 	bool IsActive() const { return bActive; }
 	float GetElapsed() const { return Elapsed; }
 	float GetRouteOffset() const { return RouteOffset; }
-	void EmitWaterContact(const FVector& Position, float Strength = 1.f);
+	void EmitWaterContact(const FVector& Position, float Strength = 1.f, bool ProjectToSurface = true);
 	FTransform GetArenaTransform() const;
 	float SampleSurfaceWorld(const FVector& Position) const;
 	float GetRimRadius(float Angle) const;
@@ -44,6 +44,10 @@ private:
 	void UpdateContacts(float DeltaSeconds);
 	float RimGroundHeight(float R, float Angle) const;
 	void BuildBasin();
+	void BuildBreakers();
+	void BuildFoamSource();
+	UPROPERTY() TObjectPtr<class UTexture2D> FoamSourceTexture;
+	void UpdateBreakers();
 	void BuildTunnel();
 	void BuildLandmarks();
 	void UpdateStage(float DeltaSeconds);
@@ -58,6 +62,13 @@ private:
 	UPROPERTY(VisibleAnywhere) TObjectPtr<USceneComponent> Arena;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Basin;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> ContactMesh;
+	struct FBreakingWave { FVector2D Center, Along, Across; float Length, Width, Height, Seed; };
+	TArray<FBreakingWave> BreakingWaves;
+	UPROPERTY() TObjectPtr<UProceduralMeshComponent> CrestSpray;
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> CrestSprayMID;
+	float BreakerHeight(const FVector2D& Point, float* Foam = nullptr) const;
+	TArray<FVector> BreakerSprayPoints;
+	float NextBreakerSpray=0.f;
 	struct FContactParticle { FVector Position, Velocity; float Age, Life, Size; };
 	TArray<FContactParticle> ContactParticles;
 	float NextWakeAt = 0.f;

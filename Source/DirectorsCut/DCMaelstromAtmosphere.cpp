@@ -136,7 +136,7 @@ void ADCMaelstromAtmosphere::BuildLayout(ADCMaelstrom* Stage)
 		const FPlume& P = Plumes[Index];
 		const FVector Inward(-FMath::Cos(P.Angle), -FMath::Sin(P.Angle), 0.f);
 		const FVector Tangent(-FMath::Sin(P.Angle), FMath::Cos(P.Angle), 0.f);
-		AddFogLobe({Index, FVector(0.f, 0.f, P.Height * 0.22f), P.Width * 0.70f, P.Density * 0.82f, false});
+		AddFogLobe({Index, FVector(0.f, 0.f, P.Height * 0.14f), P.Width * 0.90f, P.Density * 0.52f, false});
 		AddFogLobe({Index, Inward * P.Height * 0.30f + Tangent * P.Height * (P.Seed - 0.5f) * 0.35f
 			+ FVector(0.f, 0.f, P.Height * 0.65f), P.Width * 0.46f, P.Density * 0.48f, true});
 		// Connected asymmetric lobes trail DOWN the actual slope. A single sphere

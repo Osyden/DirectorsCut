@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov Codex: maelstrom environment checkpoint; boss deferred
+
+- Continued on `codex/maelstrom-saturday` in the isolated project. [Changes, replay instructions, review captures and remaining quality gaps](MAELSTROM-SCENE-POLISH-14NOV.md).
+- Integrated wave crests, advected foam source, crest spray, corrected tunnel winding/normals and clearer daylight atmosphere. Crater dimensions and route retained. A rejected detached-sheet experiment was removed.
+- Editor build and material generation pass; native 1440p reveal/descent captures taken. This is not finalized, packaged or merged into the active project. Boss iteration remains on hold at the user's request.
+
 ## 14 Nov Codex: maelstrom orbit/contact pass, isolated review branch
 
 - Branch `codex/maelstrom-saturday`, based on `cf49b3b`; project `E:/Projects/DirectorsCut/Maelstrom-Saturday`. [Changes, tests and remaining gaps](MAELSTROM-14NOV-CODEX.md).

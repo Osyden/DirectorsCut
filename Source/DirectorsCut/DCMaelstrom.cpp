@@ -47,6 +47,8 @@ ADCMaelstrom::ADCMaelstrom()
 	Arena->SetupAttachment(RootComponent);
 	Basin = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("Basin"));
 	Basin->SetupAttachment(Arena);
+	CrestSpray=CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("CrestSpray"));
+	CrestSpray->SetupAttachment(Arena); CrestSpray->SetCollisionEnabled(ECollisionEnabled::NoCollision); CrestSpray->SetCastShadow(false);
 	ContactMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("ContactSpray"));
 	ContactMesh->SetupAttachment(RootComponent);
 	ContactMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -109,18 +111,19 @@ void ADCMaelstrom::BeginPlay()
 		if (Phase.Phase == EDCPhase::Breach || Phase.Phase == EDCPhase::Maelstrom)
 		{
 			Phase.BlendTime = Phase.Phase == EDCPhase::Breach ? 5.f : 3.f;
-			Phase.Env.FogDensity = 0.0015f;
+			Phase.Env.FogColor = FLinearColor(.55f,.67f,.77f);
+			Phase.Env.FogDensity = 0.0045f;
 			Phase.Env.FogHeightFalloff = 0.0018f;
 			Phase.Env.Mist = 0.f;
 			Phase.Env.Rain = 0.f;
 			Phase.Env.SunIntensity = 9.f;
-			Phase.Env.SunColor = FLinearColor(1.f, 0.97f, 0.91f);
-			Phase.Env.SunPitch = -38.f;
-			Phase.Env.SunYaw = 230.f;
-			Phase.Env.CloudCover = 0.16f;
+			Phase.Env.SunColor = FLinearColor(1.f, 0.98f, 0.94f);
+			Phase.Env.SunPitch = -28.f;
+			Phase.Env.SunYaw = 258.f;
+			Phase.Env.CloudCover = 0.20f;
 			Phase.Env.CloudBase = 260000.f;
-			Phase.Env.SkyIntensity = 1.2f;
-			Phase.Env.Exposure = -0.15f;
+			Phase.Env.SkyIntensity = 1.5f;
+			Phase.Env.Exposure = 0.15f;
 			Phase.Env.LightningRate = 0.f;
 		}
 		if (Phase.Phase == EDCPhase::Ending) { Phase.BlendTime = 0.f; }
@@ -129,6 +132,7 @@ void ADCMaelstrom::BeginPlay()
 	{
 		WaterMID = UMaterialInstanceDynamic::Create(Water, this);
 		TunnelMID = UMaterialInstanceDynamic::Create(Water, this);
+		WaterMID->SetScalarParameterValue(TEXT("WaveHeight"),420.f);
 		Basin->SetMaterial(0, WaterMID);
 		Tunnel->SetMaterial(0, TunnelMID);
 	}
@@ -137,7 +141,9 @@ void ADCMaelstrom::BeginPlay()
 		CascadeMID = UMaterialInstanceDynamic::Create(Cascade, this);
 		Falls->SetMaterial(0, CascadeMID);
 	}
+	BuildBreakers();
 	BuildBasin();
+	BuildFoamSource();
 	BuildTunnel();
 	BuildLandmarks();
 	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
@@ -228,7 +234,11 @@ float ADCMaelstrom::BaseHeightAt(const FVector2D& Point) const
 	float Height;
 	if (U <= Join)
 	{
-		Height = -Depth + (Depth + LipHeight - LipDrop) * FMath::Pow(U / Join, Power);
+		const float Joined=-Depth+(Depth+LipHeight-LipDrop)*FMath::Pow(U/Join,Power);
+        // Rim channels must not become kilometre-long mountain buttresses.
+        // Keep their irregularity near the falls, then merge into the main bowl.
+        const float Bowl=-Depth+Depth*.75f*FMath::Pow(R/(Radius*.88f),Power);
+        Height=FMath::Lerp(Bowl,Joined,FMath::SmoothStep(Join-.20f,Join,U));
 	}
 	else
 	{
@@ -268,13 +278,13 @@ float ADCMaelstrom::HeightAt(const FVector2D& Point, bool bWaves) const
     Height += Lane * ShoulderVariation * (Outer*1700.f + Inner*200.f);
     if (!bWaves) { return Height; }
     // Unequal, crossing swell packets; no polar sinusoid producing concentric ribs.
-    const FVector2D Q = Point + FVector2D(FMath::PerlinNoise2D(Point/27000.f),FMath::PerlinNoise2D(Point/31000.f+FVector2D(21,5)))*2200.f;
-    const float Wave = 430.f*FMath::Sin(FVector2D::DotProduct(Q,FVector2D(.91f,.41f))*UE_TWO_PI/17800.f)
-        + 240.f*FMath::Sin(FVector2D::DotProduct(Q,FVector2D(.64f,-.77f))*UE_TWO_PI/9500.f+1.8f)
-        + 110.f*FMath::Sin(FVector2D::DotProduct(Q,FVector2D(.28f,.96f))*UE_TWO_PI/4100.f+4.1f);
+    const FVector2D Q = Point + FVector2D(FMath::PerlinNoise2D(Point/27000.f),FMath::PerlinNoise2D(Point/31000.f+FVector2D(21,5)))*6500.f;
+    const float Wave = 1600.f*FMath::Sin(FVector2D::DotProduct(Q,FVector2D(.91f,.41f))*UE_TWO_PI/17800.f)
+        + 650.f*FMath::Sin(FVector2D::DotProduct(Q,FVector2D(.64f,-.77f))*UE_TWO_PI/9500.f+1.8f)
+        + 230.f*FMath::Sin(FVector2D::DotProduct(Q,FVector2D(.28f,.96f))*UE_TWO_PI/4100.f+4.1f);
     const float Envelope = FMath::Clamp(.65f+FMath::PerlinNoise2D(Point/19000.f),.15f,1.f);
-    const float CalmLane = 1.f - .65f*Lane*FMath::Exp(-FMath::Square(Across/6500.f));
-    return Height + Wave*Envelope*CalmLane*(1.f-FMath::SmoothStep(.88f,1.03f,U)*.8f)*FMath::SmoothStep(.08f,.22f,U);
+    const float CalmLane = 1.f - .90f*Lane*FMath::Exp(-FMath::Square(Across/6500.f));
+    return Height + BreakerHeight(Point) + Wave*Envelope*CalmLane*(1.f-FMath::SmoothStep(.88f,1.03f,U)*.8f)*FMath::SmoothStep(.08f,.22f,U);
 }
 
 float ADCMaelstrom::RimGroundHeight(float R, float Angle) const
@@ -285,7 +295,7 @@ float ADCMaelstrom::RimGroundHeight(float R, float Angle) const
 
 void ADCMaelstrom::BuildBasin()
 {
-	constexpr int32 Rings = 320;
+	constexpr int32 Rings = 448;
 	constexpr int32 Sectors = 768;
 	TArray<FVector> Vertices, Normals;
 	TArray<FVector2D> UVs;
@@ -308,7 +318,9 @@ void ADCMaelstrom::BuildBasin()
 			UVs.Add(P / 10000.f);
 			// Only swell displacement is a crest. Channel shaping must not paint
 			// the entire raised bank with an uninterrupted band of foam.
-			const float Crest = FMath::Clamp((Z - HeightAt(P, false)) / 650.f, 0.f, 1.f);
+			float Crest=0.f;
+			const float Breaking=BreakerHeight(P,&Crest);
+			Crest=FMath::Max(Crest,FMath::Clamp((Z-HeightAt(P,false)-Breaking)/2200.f,0.f,1.f)*.90f);
 			const float UpstreamAngle = A + (8.f / 3.5f) * FMath::Loge(FMath::Clamp(R / GetRimRadius(A), 0.08f, 1.f));
 			Colors.Add(FLinearColor(Crest, R / GetRimRadius(A), FMath::Clamp(-Z / Depth, 0.f, 1.f), GetOverflowAmount(UpstreamAngle)).ToFColor(false));
 			if (Ring < Rings && Side < Sectors)
@@ -388,24 +400,32 @@ void ADCMaelstrom::BuildTunnel()
 	constexpr float TubeRadius = 9000.f;
 	for (int32 X = 0; X <= LengthSteps; ++X)
 	{
-		const float Along = FMath::Lerp(-200000.f, 0.f, X / static_cast<float>(LengthSteps));
+		const float Along = -200000.f*FMath::Pow(1.f-X/static_cast<float>(LengthSteps),1.5f);
 		for (int32 Y = 0; Y <= Around; ++Y)
 		{
 			const float A = Y * UE_TWO_PI / Around;
-			const float Ripple = 180.f * FMath::Sin(A * 9.f + Along * 0.0009f) + 80.f * FMath::Sin(A * 17.f - Along * 0.0017f);
-			const float R = TubeRadius + Ripple;
-			Verts.Add(FVector(Along, FMath::Sin(A) * R, TubeRadius - FMath::Cos(A) * R));
+			const float Ripple = 650.f*FMath::Sin(A*5.f+Along*.00025f) + 350.f*FMath::Sin(A*11.f-Along*.00055f)
+				+220.f*FMath::PerlinNoise2D(FVector2D(Along/2200.f,A*5.f));
+			const float Mouth=FMath::SmoothStep(-24000.f,0.f,Along);
+			const float R = TubeRadius + Ripple + Mouth*1200.f*(.65f+.35f*FMath::Sin(A*3.f+.7f));
+			// Unequal receding lip: the daylight reveal must not expose a flat
+			// circular cut through an otherwise cylindrical tube.
+			const float Lip=Mouth*(2600.f*FMath::Sin(A*3.f+.4f)+1200.f*FMath::Sin(A*7.f-1.2f));
+			Verts.Add(FVector(Along+Lip, FMath::Sin(A) * R, TubeRadius - FMath::Cos(A) * R));
 			Normals.Add(FVector(0.f, -FMath::Sin(A), FMath::Cos(A)));
 			Tangents.Add(FProcMeshTangent(FVector::ForwardVector, false));
 			UVs.Add(FVector2D(Along / 10000.f, A * TubeRadius / 10000.f));
-			Colors.Add(FLinearColor(FMath::Clamp(Ripple / 250.f, 0.f, 1.f), 0.5f, 0.2f, 1.f).ToFColor(false));
+			Colors.Add(FLinearColor(FMath::Clamp(Ripple / 1200.f, 0.f, 1.f), 0.5f, 0.2f, 1.f).ToFColor(false));
 			if (X < LengthSteps && Y < Around)
 			{
 				const int32 I = X * (Around + 1) + Y, J = I + Around + 1;
-				Triangles.Append({I, J, I + 1, I + 1, J, J + 1});
+				Triangles.Append({I, I + 1, J, I + 1, J + 1, J});
 			}
 		}
 	}
+	// Clockwise winding points INTO the tube; compute normals from the actual
+	// corrugation and flared lip instead of shading it as a perfect cylinder.
+	UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Verts,Triangles,UVs,Normals,Tangents);
 	Tunnel->CreateMeshSection(0, Verts, Triangles, Normals, UVs, Colors, Tangents, false);
 }
 
@@ -529,6 +549,7 @@ void ADCMaelstrom::DisableLegacyEncounter()
 void ADCMaelstrom::SetStageVisible(bool bVisible)
 {
 	Basin->SetVisibility(bVisible);
+	CrestSpray->SetVisibility(bVisible);
 	Falls->SetVisibility(bVisible);
 	RimLand->SetVisibility(bVisible);
 	Tunnel->SetVisibility(bVisible);
@@ -627,9 +648,11 @@ void ADCMaelstrom::Tick(float DeltaSeconds)
 			if (USceneComponent* OldSea = Director->GetSea()) { OldSea->SetVisibility(false, true); }
 		}
 	}
+	if (bActive) { UpdateBreakers(); }
 	UpdateContacts(DeltaSeconds);
-	if (Boss) { Boss->UpdateEncounter(Elapsed, GetArenaTransform(), Radius, Depth, bActive); }
-	if (bActive) { UpdateTwisters(DeltaSeconds); UpdateBoulders(DeltaSeconds); UpdateSpawnlings(DeltaSeconds); UpdatePlume(); }
+	static const bool SceneReview=FParse::Param(FCommandLine::Get(),TEXT("DCSceneReview"));
+	if (Boss) { Boss->UpdateEncounter(Elapsed, GetArenaTransform(), Radius, Depth, bActive && !SceneReview); }
+	if (bActive && !SceneReview) { UpdateTwisters(DeltaSeconds); UpdateBoulders(DeltaSeconds); UpdateSpawnlings(DeltaSeconds); UpdatePlume(); }
 	if (ADCAudio* Sound = Cast<ADCAudio>(UGameplayStatics::GetActorOfClass(GetWorld(), ADCAudio::StaticClass())))
 	{
 		// The wind rises as a spout comes on and while the plume stands.
@@ -651,12 +674,12 @@ void ADCMaelstrom::Tick(float DeltaSeconds)
 	PreviousTime = Director->RideTime;
 }
 
-void ADCMaelstrom::EmitWaterContact(const FVector& Position, float Strength)
+void ADCMaelstrom::EmitWaterContact(const FVector& Position, float Strength, bool ProjectToSurface)
 {
 	if (!bActive || Elapsed < 0.f) { return; }
 	const FTransform Frame = GetArenaTransform();
 	FVector Surface = Position;
-	Surface.Z = SampleSurfaceWorld(Surface) + 35.f;
+	if (ProjectToSurface) { Surface.Z = SampleSurfaceWorld(Surface) + 35.f; }
 	if (ContactSound && Strength>=1.f && Elapsed>NextContactSoundAt)
 	{
 		const ADCAudio* Mix=Cast<ADCAudio>(UGameplayStatics::GetActorOfClass(GetWorld(),ADCAudio::StaticClass()));
@@ -800,6 +823,9 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
 	}
 	if (WaterMID)
 	{
+		static float WaterReview=0.f;
+		static const bool ReadWaterReview=FParse::Value(FCommandLine::Get(),TEXT("DCWaterReview="),WaterReview);
+		WaterMID->SetScalarParameterValue(TEXT("WaterReview"),WaterReview);
 		WaterMID->SetScalarParameterValue(TEXT("Clock"), Director->RideTime);
 		WaterMID->SetScalarParameterValue(TEXT("HullFlatten"), 1.f);
 		WaterMID->SetScalarParameterValue(TEXT("OverflowFoam"), 1.f);
@@ -835,12 +861,14 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
 			if (UExponentialHeightFogComponent* Fog = Saved.Component.Get())
 			{
 				FVector Location = Saved.Location;
-				Location.Z = FMath::Lerp(Saved.Location.Z, Arena->GetComponentLocation().Z - Depth + 10000.f, Clear);
+				Location.Z = FMath::Lerp(Saved.Location.Z, Arena->GetComponentLocation().Z - Depth * .35f, Clear);
 				Fog->SetWorldLocation(Location);
 				Fog->SetFogHeightFalloff(FMath::Lerp(Saved.Falloff, 0.0018f, Clear));
-				// UDS maps the phase's weather input to a much denser fog (~0.0062).
-				// Clamp the rendered component here so the abyss stays legible.
-				Fog->SetFogDensity(FMath::Lerp(Fog->FogDensity, 0.0015f, Clear));
+				// Keep a light participating medium for shafts; local fall plumes
+				// supply the dense banks instead of veiling the whole crater.
+				static float StageFog=.0045f;
+                static const bool HasStageFog=FParse::Value(FCommandLine::Get(),TEXT("DCStageFog="),StageFog);
+                Fog->SetFogDensity(FMath::Lerp(Fog->FogDensity, StageFog, Clear));
 				Fog->SetVolumetricFogDistance(FMath::Lerp(Saved.Distance, 400000.f, Clear));
 				if (!bReportedFog && Clear >= 1.f)
 				{
@@ -1511,8 +1539,8 @@ void ADCMaelstrom::UpdateView(float DeltaSeconds)
 		const float Look = FMath::SmoothStep(4.f, 10.f, Elapsed);
 		const FVector DesiredWorld = Captain->GetActorLocation() + FVector(-20.f * Offset, 180.f * Offset, 64.f + 216.f * Offset);
 		Camera->SetWorldLocation(DesiredWorld);
-		const float OrbitLook = FMath::Lerp(38.f,58.f,FMath::SmoothStep(25.f,45.f,Elapsed));
-		Camera->AddAdditiveOffset(FTransform(FRotator(-12.f * Look, OrbitLook * Look, 0.f)), 0.f);
+		const float OrbitLook = FMath::Lerp(38.f,70.f,FMath::SmoothStep(25.f,45.f,Elapsed));
+		Camera->AddAdditiveOffset(FTransform(FRotator(-16.f * Look, OrbitLook * Look, 0.f)), 0.f);
 	}
 	// Over the lip: the view opens out as she starts down and closes again as she settles into the spiral.
 	const float Over = FMath::SmoothStep(11.f, 16.f, Elapsed) * (1.f - FMath::SmoothStep(20.f, 32.f, Elapsed));

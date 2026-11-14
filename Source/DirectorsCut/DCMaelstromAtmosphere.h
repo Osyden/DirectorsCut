@@ -24,14 +24,14 @@ public:
 	void UpdateAtmosphere(ADCMaelstrom* Stage, float Elapsed, bool bActive);
 
 	/** Density of the soft 3D billows; sheets add only their torn spray detail. */
-	UPROPERTY(EditAnywhere) float MistDensity = 0.85f;
-	UPROPERTY(EditAnywhere) float SprayDensity = 0.65f;
+	UPROPERTY(EditAnywhere) float MistDensity = 0.60f;
+	UPROPERTY(EditAnywhere) float SprayDensity = 0.42f;
 	UPROPERTY(EditAnywhere) bool bEnableShafts = true;
 	/** Actual spot lights inject into existing volumetric fog. No visible cone mesh. */
 	UPROPERTY(EditAnywhere) float ShaftCandela = 900000000.f;
 	/** Match the actual UDS sun's lux; its multiplier is not the director's 0..10 cue. */
 	UPROPERTY(EditAnywhere) float ShaftSunFraction = 0.28f;
-	UPROPERTY(EditAnywhere) float ShaftScattering = 4.0f;
+	UPROPERTY(EditAnywhere) float ShaftScattering = 2.0f;
 	/** Keep the existing sun responsible for surface lighting. */
 	UPROPERTY(EditAnywhere) float ShaftDiffuseScale = 0.005f;
 	/** UDS can disable the medium with extinction zero even while fog is enabled. */
