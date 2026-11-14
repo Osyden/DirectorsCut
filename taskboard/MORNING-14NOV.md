@@ -4,7 +4,7 @@
 
 ## Play this
 
-`E:\projects\directorscut\Builds\2026-11-14_0143_b4a71b8_spout-sound-cut\Windows\DirectorsCut.exe`. It has been run from its exe at 1600x900 through the front, the tunnel and the city (82 to 103 fps) and through the whole maelstrom to the ending card at triple speed, and it holds everything in the table below.
+`E:\projects\directorscut\Builds\2026-11-14_0207_974b398_spawnlings\Windows\DirectorsCut.exe`. It has been run from its exe at 1600x900 through the front, the tunnel and the city (83 to 105 fps) and through the whole maelstrom to the ending card at triple speed, and it holds everything in the table below.
 
 Every earlier build is still in `Builds\` for the dev log.
 
@@ -16,7 +16,7 @@ Every earlier build is still in `Builds\` for the dev log.
 | 59 to 75 s | The ship sails through the cloud tunnel. The air inside is clear, so its walls and the light at the far end show; four bolts on cue light the walls blue-white from within. | `review/47`, `review/54` |
 | City, 76 to 240 s | The white self-lit banks are gone. Easy Fog cards lie on the water and hang over the channel's shoulders; six rags of mist run aft across the deck. Lightning lights the fog behind the ruins instead of whiting the stone out. | `review/48`, `review/51`, `review/53` |
 | Guns | Shots are iron balls with a thin grey streak; the lower-deck guns fire from outside the hull. | `review/49` |
-| Maelstrom, from 270 s | The ship drops into the bowl in the first 20 s. Six waterspouts and five burning stones come on a schedule; each has a tell and a crew call, and the helm carries the ship clear. The creature is beaten on the clock at 160 s after the breach, with a kilometre-high plume from the crater's heart. The results card shows damage taken and arms broken. The wind rises with a spout and the stones and the plume have a boom. | `review/50`, `review/52` |
+| Maelstrom, from 270 s | The ship drops into the bowl in the first 20 s. Six waterspouts and five burning stones come on a schedule; each has a tell and a crew call, and the helm carries the ship clear. Two of the creature's young swim in on the beam, to be sunk by that side's guns before they reach the hull. The creature is beaten on the clock at 160 s after the breach, with a kilometre-high plume from the crater's heart. The results card shows damage taken and arms broken. The wind rises with a spout and the stones and the plume have a boom. | `review/50`, `review/52`, `review/55` |
 
 ## Not verified by anyone
 
@@ -31,10 +31,11 @@ Every earlier build is still in `Builds\` for the dev log.
 
 - The maelstrom's water is still striped and its foam is in contour lines; the reveal has no lip or crest. These are in Codex's plan (`MAELSTROM-NEXT-PASS-PLAN.md`) and untouched.
 - The spout is the tunnel volume stood on end: its top is darker than its foot.
-- The burning stone is a plain glowing ball with a tail of balls.
+- The burning stone is a rock with a tail of plain glowing balls.
+- The creature's young die by vanishing, have no wake, and do not come on deck. The batteries only open fire inside 130 m, so they sink about one in three by themselves.
 - From far off (40 to 50 s) the wall is a pale bank with a fairly level top.
 - The helmsman still strikes rocks in the city (hull about 81 by the slide with nobody steering).
-- With nobody steering in the maelstrom every spout and stone strikes and the hull ends near 27. There is no sinking.
+- With nobody steering or giving an order in the maelstrom every spout and stone strikes and the hull ends between 28 and 46 from 100. There is no sinking.
 - Without the bought packs installed the front has no tunnel or wall, the city has no cards and the spouts are unseen.
 
 ## Speed

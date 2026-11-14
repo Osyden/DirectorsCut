@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 02:13 Claude: fifteenth build packaged and run: `2026-11-14_0207_974b398_spawnlings`
+
+- `Builds/2026-11-14_0207_974b398_spawnlings/Windows/DirectorsCut.exe`. Run from the exe at 1600x900 without sound: wall and portal at 56 s, a flash in the tunnel at 63.5, the city at 120 (83 to 105 fps); the whole maelstrom at 3x with the bot captain from 262 s: the first spawnling sunk 21 m off, the second reached the hull, 8 arms broken, beaten on the clock at 160.0 s, plume, exit at 450.03, ending card, hull 46.
+- This is the build to play. It has everything logged so far.
+
 ## 14 Nov 02:07 Claude: maelstrom damage lowered; second spawnling comes to starboard
 
 - With the spawnlings added, a voyage on which nobody steers or gives an order ended at hull 0 before the finale. Now a spout or a stone does 3 (was 5), a spawnling at the hull 5 (was 8) and it has 3 health (was 5). The same passive run through the maelstrom alone now ends at 28 from 100. The creature's arms still do 2.5 a strike.
