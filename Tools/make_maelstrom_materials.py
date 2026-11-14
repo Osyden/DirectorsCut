@@ -465,9 +465,18 @@ roughness = custom(water, "float f=saturate(Foam); return lerp(sqrt(lerp(0.30*0.
 if fft_surface:
     roughness=custom(water,r"""
 float distanceM=length(P-Cam)*0.01;
-float filtered=max(Surface.a,lerp(0.22,0.48,smoothstep(250.0,1400.0,distanceM)));
-return lerp(Fallback,max(Fallback,filtered),saturate(Enabled)*step(0.5,Count));
-""",FLOAT,{"Fallback":roughness,"Surface":fft_surface,"P":position,"Cam":camera,"Enabled":use_live_fft,"Count":live_count},1400)
+// The installed helper's alpha is a wave-roughness MASK (base + compression +
+// windward + crest), not the final BRDF roughness or unresolved slope variance.
+// Its stock material remaps that mask separately. Taking max(Fallback,alpha)
+// forced clear water toward .5--1 roughness and blurred sky into pale sheets.
+float liquidRoughness=lerp(.16,.28,saturate(Surface.a));
+// Bound the distant filtering floor independently of the wave mask. It cannot
+// erase the liquid/foam distinction or manufacture whitewater coverage.
+float filteredLiquid=max(liquidRoughness,lerp(.18,.36,smoothstep(250.0,1400.0,distanceM)));
+float areaRoughness=sqrt(lerp(filteredLiquid*filteredLiquid,.78*.78,saturate(Foam)));
+float weight=saturate(Enabled)*step(.5,Count)*(1-saturate(Tunnel));
+return lerp(Fallback,areaRoughness,weight);
+""",FLOAT,{"Fallback":roughness,"Surface":fft_surface,"P":position,"Cam":camera,"Enabled":use_live_fft,"Count":live_count,"Foam":foam,"Tunnel":tunnel_flow},1400)
 output(roughness, unreal.MaterialProperty.MP_ROUGHNESS)
 specular=scalar(water,"Specular",0.18)
 output(specular,unreal.MaterialProperty.MP_SPECULAR)
