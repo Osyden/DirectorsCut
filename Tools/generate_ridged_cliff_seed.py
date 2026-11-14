@@ -62,7 +62,7 @@ def generate(data, seed=71421, octaves=2):
         raise ValueError("Nonphysical padding must be protected")
     center = float(frame["source_angle_rad"])
     theta = center+np.angle(np.exp(1j*(np.arctan2(xy[..., 1], xy[..., 0])-center)))
-    angles = np.asarray(data.get("constraint_angles_rad", data.get("clean_profile_angles_rad")))
+    angles = np.asarray(data.get("constraint_angles_rad", data.get("base_profile_angles_rad", data.get("clean_profile_angles_rad"))))
     if angles.ndim != 1 or len(angles) < 2 or np.any(np.diff(angles) <= 0):
         raise ValueError("Expected increasing measured constraint angles")
     low_r, high_r, low_z, high_z = [np.interp(theta, angles, data[key]) for key in (
