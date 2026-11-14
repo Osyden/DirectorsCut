@@ -65,3 +65,6 @@ Content/Demon*/
 
 # Original procedural waterfall caches; regenerate with Tools/generate_waterfall_vdb.py.
 Content/DC/Maelstrom/ProceduralWaterfalls/
+
+# Original offline cliff authoring previews; regenerate from Tools scripts.
+Content/DC/Maelstrom/GeneratedCliffPreview/

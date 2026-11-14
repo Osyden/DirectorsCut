@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov Codex: ridged cliff authoring proof, gameplay unchanged
+
+- Rejected three clean radial/catchment variants after matched CPU clay review. An independent Blender ridged-multifractal/heterogeneous terrain basis produces more irregular projecting masses and smaller broken shoulders. Actual erosion masks and an isolated 500 m Nanite preview import now work. [Evidence, reproduction and next gate](CRATER-RIDGED-PREVIEW-14NOV.md).
+- Added explicit conserved shoreline outflow to the offline erosion kernel; thirteen tests pass, plus six seed tests and deterministic ridge checks. FBX physical dimensions and Blender mask roundtrip pass; Unreal import builds Nanite successfully. GPU/in-game preview, final fracture detail, exact live seams/temple support and a shared contact sampler remain outstanding. No runtime replacement or visual-finalization claim.
+- No game C++, cloud/light, water, boss or gameplay changes this pass. Other chats' renders were preserved; only CPU authoring and NullRHI imports ran. Own review branch, no main merge/package. Automation updated to follow the new landform direction.
+
 ## 14 Nov Codex: erosion direction, actual diagnostics and irregular rim city
 
 - Added irregular columns, arches, broken courts and statues around the rim: 50 groups with actual rendered-triangle footing checks. Retained finite bank wave packets outside the ship and shoreline protections; detached waterfall trajectories remain opt-in. [Changes, actual reviews and next plan](CRATER-EROSION-DIRECTION-14NOV.md).
