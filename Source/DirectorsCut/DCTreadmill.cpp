@@ -233,7 +233,11 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 	{
 		if (UMaterialParameterCollectionInstance* Sea = GetWorld()->GetParameterCollectionInstance(SeaCollection))
 		{
-			Sea->SetVectorParameterValue(TEXT("Trough"), FLinearColor(-LaneOffset, Director->TroughRise, Director->TroughHalfWidth, 0.f));
+			// The fourth number is how much the wave crests break white: nothing on the open sea, full in the gale over the city.
+			static float Caps = -1.f; static bool bCapsRead = false;   // test hook: -DCWhitecaps=
+			if (!bCapsRead) { bCapsRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCWhitecaps="), Caps); }
+			const float Whitecaps = Caps >= 0.f ? Caps : FMath::SmoothStep(100.f, 185.f, Env.WaveHeight);
+			Sea->SetVectorParameterValue(TEXT("Trough"), FLinearColor(-LaneOffset, Director->TroughRise, Director->TroughHalfWidth, Whitecaps));
 			// Her wake, drawn by the sea's own material astern of her: stronger the faster she goes. -DCNoWakeFoam switches it off.
 			static const bool bNoWake = FParse::Param(FCommandLine::Get(), TEXT("DCNoWakeFoam"));
 			Sea->SetVectorParameterValue(TEXT("Wake"), FLinearColor(bNoWake ? 0.f : FMath::Clamp(Env.ShipSpeed / 1300.f, 0.5f, 1.3f), 1900.f, 330.f, 0.2f));

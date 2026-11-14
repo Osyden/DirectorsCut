@@ -88,6 +88,19 @@ if (back > 0.0 && Wake.x > 0.0)
     float wk = saturate((sqrt(inside) * 0.7 + arms * 0.4) * fade * 1.8 - (1.0 - l) * 1.05);
     foam = max(foam, wk * Wake.x);
 }
+// Whitecaps: where a wave stands well above the sea's own level (the level of the trough at this place),
+// its crest breaks into the same lace. Trough.w says how much (0 on a quiet sea).
+float u = abs(WP.y - Trough.x) / max(Trough.z, 1.0);
+float f = u <= 1.0 ? u * u * (3.0 - 2.0 * u) : 1.0;
+float us = abs(Trough.x) / max(Trough.z, 1.0);
+float fs = us <= 1.0 ? us * us * (3.0 - 2.0 * us) : 1.0;
+float crest = WP.z - 230.0 - Trough.y * (f - fs);   // 230 = the game's sea level
+// (Tried first: only where the surface stands above the sea's level. Nothing showed; the height read here is
+// evidently not the wave's. So the white comes in drifting patches a hundred metres across instead, as wind-torn
+// water does, and the lace inside each patch is the same as the shore's.)
+float patch = smoothstep(0.02, 0.4, NZ(float3(q * 0.00011 + 0.19, T * 0.02)));
+float cap = saturate(l * 1.7 - 0.3) * patch * Trough.w * 0.85;
+foam = max(foam, cap);
 return max(Existing, foam * Strength);
 """
 
@@ -184,7 +197,7 @@ return float3(0.0, -slope, 0.0);
     node.set_editor_property("description", "DCShoreFoam")
     node.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT1)
     inputs = []
-    for name in ["Existing", "Wake", "Dist", "Behind", "WP", "T", "Width", "Strength", "Tex"]:
+    for name in ["Existing", "Wake", "Dist", "Behind", "WP", "T", "Width", "Strength", "Tex", "Trough"]:
         ci = unreal.CustomInput()
         ci.set_editor_property("input_name", name)
         inputs.append(ci)
@@ -212,6 +225,10 @@ return float3(0.0, -slope, 0.0);
     wake.set_editor_property("parameter_name", "Wake")
     ok = mel.connect_material_expressions(existing, existing_out, node, "Existing")
     ok = mel.connect_material_expressions(wake, "", node, "Wake") and ok
+    trough_f = mel.create_material_expression(m, unreal.MaterialExpressionCollectionParameter, -700, 3200)
+    trough_f.set_editor_property("collection", unreal.load_asset("/Game/DC/Materials/MPC_Sea"))
+    trough_f.set_editor_property("parameter_name", "Trough")
+    ok = mel.connect_material_expressions(trough_f, "", node, "Trough") and ok
     for src, name in [(dist, "Dist"), (behind, "Behind"), (wp, "WP"), (time, "T"), (width, "Width"), (strength, "Strength"), (tex, "Tex")]:
         ok = mel.connect_material_expressions(src, "", node, name) and ok
     ok = mel.connect_material_expressions(node, "", shading, "Foam") and ok

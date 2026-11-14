@@ -2,6 +2,13 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 04:31 Claude: wind-torn white on the sea in the city
+
+- The reference's sea is torn white; ours was dark and glossy. `Tools/patch_drw_shorefoam.py` (the water plugin patch; re-run both steps after pulling) now adds drifting patches of the shore's foam lace over the open water, as much as the fourth number of `MPC_Sea`'s `Trough` says. The game sets that from the wave height: nothing on the open sea (checked at 30 s: clean), full over the city. `-DCWhitecaps=0..1` fixes it.
+- Result at 90 to 200 s: the sea is greyer and broken, with streaks of foam on the swells; it is not the reference's breaking crests with spray. `review/59-whitecaps`. 87 to 125 fps at 1280x720, no change.
+- What did not work: putting the white only on wave crests. The surface height the material reads did not pick the crests out at any threshold I tried, so the white is in patches by position, not by wave.
+- Not in the twentieth build.
+
 ## 14 Nov 03:59 Claude: the city against `References/fog-city-reveal.jpg`, and two things tried
 
 Side by side with the 4K frame at 120 s:
