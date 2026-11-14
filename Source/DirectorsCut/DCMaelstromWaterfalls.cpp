@@ -9,13 +9,33 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/Pawn.h"
+#include "DCMaelstromRoute.h"
+#include "Dom/JsonObject.h"
+#include "Serialization/JsonSerializer.h"
+#include "Serialization/JsonWriter.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
+#include "Misc/SecureHash.h"
+#include "HAL/FileManager.h"
+
+namespace
+{
+TArray<TSharedPtr<FJsonValue>> FallVectorJson(const FVector& V)
+{
+    return {MakeShared<FJsonValueNumber>(V.X), MakeShared<FJsonValueNumber>(V.Y), MakeShared<FJsonValueNumber>(V.Z)};
+}
+}
 
 // First measured prototype: one physically sized lower falling reach and its
 // impact. The full cliff's thin water core and advected surface foam remain.
 // Enable explicitly until captures establish quality: -DCProceduralFalls.
 void ADCMaelstrom::UpdateProceduralFalls()
 {
-    if (!FParse::Param(FCommandLine::Get(), TEXT("DCProceduralFalls"))) { return; }
+    const bool bRenderFalls = FParse::Param(FCommandLine::Get(), TEXT("DCProceduralFalls"));
+    FString ExportPath;
+    const bool bExportProfile = FParse::Value(FCommandLine::Get(), TEXT("DCExportWaterfallProfile="), ExportPath)
+        || FParse::Param(FCommandLine::Get(), TEXT("DCExportWaterfallProfile"));
+    if (!bRenderFalls && !bExportProfile) { return; }
     if (!bActive || Elapsed < 0.f)
     {
         ClearProceduralFalls();
@@ -46,6 +66,100 @@ void ADCMaelstrom::UpdateProceduralFalls()
         // Generator contract: centimetres, +X across, +Y out from cliff, +Z up;
         // the contact is (0, 1000, 0). Preserve voxel scale and imported pivot.
         const FVector Origin = Feed.Foot - Inward * 1000.f;
+        if (bExportProfile)
+        {
+            // Match the centre of the existing procedural water core. Export in
+            // the same yaw-only, physical-centimetre frame as the runtime SVT.
+            const FTransform LocalFrame(FRotator(0.f, Yaw, 0.f), Origin);
+            const float Angle = FMath::Atan2(Feed.Lip.Y, Feed.Lip.X);
+            TArray<FVector> Complete;
+            constexpr int32 Samples = 512;
+            for (int32 I = 0; I <= Samples; ++I)
+            {
+                const float U = static_cast<float>(I) / Samples;
+                FVector P = CliffSurfacePoint(Angle, .84f * (1.f - U));
+                P += Inward * 180.f + FVector(0.f, 0.f, 60.f);
+                P = FMath::Lerp(P, Feed.Foot + FVector(0.f, 0.f, 40.f), FMath::SmoothStep(.94f, 1.f, U));
+                Complete.Add(P);
+            }
+            float LowerHeight = 8000.f;
+            FParse::Value(FCommandLine::Get(), TEXT("DCWaterfallProfileHeight="), LowerHeight);
+            const float CutZ = Feed.Foot.Z + FMath::Max(100.f, LowerHeight);
+            TArray<FVector> Lower;
+            for (int32 I = 0; I < Complete.Num(); ++I)
+            {
+                if (Lower.IsEmpty() && Complete[I].Z > CutZ) { continue; }
+                if (Lower.IsEmpty() && I > 0 && Complete[I - 1].Z > CutZ)
+                {
+                    const float Blend = (Complete[I - 1].Z - CutZ) / FMath::Max(.01, Complete[I - 1].Z - Complete[I].Z);
+                    Lower.Add(FMath::Lerp(Complete[I - 1], Complete[I], Blend));
+                }
+                Lower.Add(Complete[I]);
+            }
+            if (Lower.Num() >= 2)
+            {
+                TSharedRef<FJsonObject> Profile = MakeShared<FJsonObject>();
+                Profile->SetStringField(TEXT("schema"), TEXT("directorscut.waterfall_profile.v1"));
+                Profile->SetStringField(TEXT("units"), TEXT("centimeters"));
+                Profile->SetNumberField(TEXT("feed_index"), FeedIndex);
+                Profile->SetNumberField(TEXT("source_half_width_cm"), Feed.Width);
+                Profile->SetArrayField(TEXT("local_origin_arena_cm"), FallVectorJson(Origin));
+                Profile->SetNumberField(TEXT("local_yaw_degrees"), Yaw);
+                Profile->SetArrayField(TEXT("basis_x_arena"), FallVectorJson(LocalFrame.GetUnitAxis(EAxis::X)));
+                Profile->SetArrayField(TEXT("basis_y_arena"), FallVectorJson(LocalFrame.GetUnitAxis(EAxis::Y)));
+                Profile->SetArrayField(TEXT("basis_z_arena"), FallVectorJson(LocalFrame.GetUnitAxis(EAxis::Z)));
+                Profile->SetArrayField(TEXT("source_local_cm"), FallVectorJson(LocalFrame.InverseTransformPosition(Lower[0])));
+                Profile->SetArrayField(TEXT("foot_local_cm"), FallVectorJson(LocalFrame.InverseTransformPosition(Feed.Foot)));
+                const float RouteT = DCMaelstromRoute::SecondsAtAngle(Angle);
+                const FVector2D Current = DCMaelstromRoute::Tangent(FMath::Clamp(RouteT, -7.f, 179.f), Radius) * 1800.f;
+                Profile->SetArrayField(TEXT("current_local_cm_s"), FallVectorJson(LocalFrame.InverseTransformVectorNoScale(FVector(Current, 0.f))));
+                TArray<TSharedPtr<FJsonValue>> Points;
+                float PathLength = 0.f;
+                for (int32 I = 0; I < Lower.Num(); ++I)
+                {
+                    if (I) { PathLength += FVector::Distance(Lower[I - 1], Lower[I]); }
+                    Points.Add(MakeShared<FJsonValueArray>(FallVectorJson(LocalFrame.InverseTransformPosition(Lower[I]))));
+                }
+                Profile->SetArrayField(TEXT("samples_local_cm"), Points);
+                Profile->SetNumberField(TEXT("path_length_cm"), PathLength);
+                // Surface samples, not a horizontal impact plane: the local
+                // receiving water slopes into the spiral and changes across it.
+                constexpr int32 GridCount = 25;
+                constexpr float GridStep = 400.f;
+                TSharedRef<FJsonObject> Water = MakeShared<FJsonObject>();
+                const FVector FootLocal = LocalFrame.InverseTransformPosition(Feed.Foot);
+                const FVector GridOrigin = FootLocal - FVector(GridStep * 12, GridStep * 12, 0);
+                Water->SetNumberField(TEXT("count"), GridCount);
+                Water->SetNumberField(TEXT("step_cm"), GridStep);
+                Water->SetArrayField(TEXT("origin_local_cm"), FallVectorJson(GridOrigin));
+                TArray<TSharedPtr<FJsonValue>> Heights;
+                for (int32 Y = 0; Y < GridCount; ++Y)
+                {
+                    for (int32 X = 0; X < GridCount; ++X)
+                    {
+                        const FVector P = LocalFrame.TransformPosition(GridOrigin + FVector(X * GridStep, Y * GridStep, 0));
+                        Heights.Add(MakeShared<FJsonValueNumber>(HeightAt(FVector2D(P)) - Origin.Z));
+                    }
+                }
+                Water->SetArrayField(TEXT("heights_local_cm_y_major"), Heights);
+                Profile->SetObjectField(TEXT("receiving_water"), Water);
+                FString Payload;
+                FJsonSerializer::Serialize(Profile, TJsonWriterFactory<>::Create(&Payload));
+                const FTCHARToUTF8 Bytes(*Payload);
+                FSHAHash Hash;
+                FSHA1::HashBuffer(Bytes.Get(), Bytes.Length(), Hash.Hash);
+                Profile->SetStringField(TEXT("profile_sha1"), Hash.ToString());
+                Payload.Reset();
+                FJsonSerializer::Serialize(Profile, TJsonWriterFactory<>::Create(&Payload));
+                if (ExportPath.IsEmpty()) { ExportPath = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("WaterfallProfile.json")); }
+                ExportPath = FPaths::ConvertRelativePathToFull(ExportPath);
+                IFileManager::Get().MakeDirectory(*FPaths::GetPath(ExportPath), true);
+                const bool bSaved = FFileHelper::SaveStringToFile(Payload, *ExportPath, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+                UE_LOG(LogTemp, Display, TEXT("DC_WATERFALL_PROFILE saved=%d path=%s feed=%d samples=%d length=%.1fm hash=%s"),
+                    bSaved, *ExportPath, FeedIndex, Lower.Num(), PathLength * .01f, *Hash.ToString());
+            }
+        }
+        if (!bRenderFalls) { return; }
         if (IConsoleVariable* Range = IConsoleManager::Get().FindConsoleVariable(TEXT("r.HeterogeneousVolumes.MaxTraceDistance")))
         {
             // The default 300m trace range omits physically sized falls across
