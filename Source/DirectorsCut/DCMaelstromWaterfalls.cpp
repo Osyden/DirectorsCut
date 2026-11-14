@@ -56,7 +56,12 @@ void ADCMaelstrom::UpdateProceduralFalls()
             const float Distance = Frame.TransformPosition(Feed.Foot).SizeSquared();
             if (Distance < Best) { Best = Distance; FeedIndex = I; }
         }
-        FParse::Value(FCommandLine::Get(), TEXT("DCFallFeed="), FeedIndex);
+        int32 RequestedSource = INDEX_NONE;
+        if (FParse::Value(FCommandLine::Get(), TEXT("DCFallFeed="), RequestedSource))
+        {
+            FeedIndex = WaterFeeds.IndexOfByPredicate([RequestedSource](const FWaterFeed& Candidate)
+            { return Candidate.SourceIndex == RequestedSource; });
+        }
         if (!WaterFeeds.IsValidIndex(FeedIndex))
         {
             UE_LOG(LogTemp, Warning, TEXT("DC_PROCEDURAL_FALL no suitable 80m receiving reach"));
@@ -121,7 +126,8 @@ void ADCMaelstrom::UpdateProceduralFalls()
                 TSharedRef<FJsonObject> Profile = MakeShared<FJsonObject>();
                 Profile->SetStringField(TEXT("schema"), TEXT("directorscut.waterfall_profile.v1"));
                 Profile->SetStringField(TEXT("units"), TEXT("centimeters"));
-                Profile->SetNumberField(TEXT("feed_index"), FeedIndex);
+                Profile->SetNumberField(TEXT("feed_index"), Feed.SourceIndex);
+                Profile->SetNumberField(TEXT("feed_array_index"), FeedIndex);
                 Profile->SetNumberField(TEXT("source_half_width_cm"), Feed.Width);
                 Profile->SetArrayField(TEXT("local_origin_arena_cm"), FallVectorJson(Origin));
                 Profile->SetNumberField(TEXT("local_yaw_degrees"), Yaw);
@@ -195,7 +201,7 @@ void ADCMaelstrom::UpdateProceduralFalls()
                 IFileManager::Get().MakeDirectory(*FPaths::GetPath(ExportPath), true);
                 const bool bSaved = FFileHelper::SaveStringToFile(Payload, *ExportPath, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
                 UE_LOG(LogTemp, Display, TEXT("DC_WATERFALL_PROFILE saved=%d path=%s feed=%d samples=%d length=%.1fm hash=%s"),
-                    bSaved, *ExportPath, FeedIndex, Lower.Num(), PathLength * .01f, *Hash.ToString());
+                    bSaved, *ExportPath, Feed.SourceIndex, Lower.Num(), PathLength * .01f, *Hash.ToString());
             }
         }
         if (!bRenderFalls) { return; }
@@ -220,14 +226,14 @@ void ADCMaelstrom::UpdateProceduralFalls()
             // geometry there. Generic ballistic data requires its own flag.
             const bool bGenericPrototype = FParse::Param(FCommandLine::Get(), TEXT("DCGenericWaterfallPrototype"));
             const FString Root = bGenericPrototype ? TEXT("/Game/DC/Maelstrom/ProceduralWaterfalls/")
-                : FString::Printf(TEXT("/Game/DC/Maelstrom/ProceduralWaterfalls/Feed%02d/"), FeedIndex);
+                : FString::Printf(TEXT("/Game/DC/Maelstrom/ProceduralWaterfalls/Feed%02d/"), Feed.SourceIndex);
             const FString VolumePath = Root + Name + TEXT(".") + Name;
             const FString MaterialPath = Root + TEXT("M_") + Name + TEXT(".M_") + Name;
             USparseVolumeTexture* Volume = LoadObject<USparseVolumeTexture>(nullptr, *VolumePath, nullptr, LOAD_NoWarn | LOAD_Quiet);
             UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, *MaterialPath, nullptr, LOAD_NoWarn | LOAD_Quiet);
             if (!Volume || !Base)
             {
-                UE_LOG(LogTemp, Warning, TEXT("DC_PROCEDURAL_FALL %s feed=%d missing at %s; no cross-feed fitted fallback"), Name, FeedIndex, *Root);
+                UE_LOG(LogTemp, Warning, TEXT("DC_PROCEDURAL_FALL %s feed=%d missing at %s; no cross-feed fitted fallback"), Name, Feed.SourceIndex, *Root);
                 continue;
             }
             FActorSpawnParameters Params;
@@ -253,7 +259,7 @@ void ADCMaelstrom::UpdateProceduralFalls()
             C->SetEndFrame(FMath::Max(0, Volume->GetNumFrames() - 1));
             ProceduralFalls.Add({Actor, FMath::Max(1, Volume->GetNumFrames())});
             UE_LOG(LogTemp, Display, TEXT("DC_PROCEDURAL_FALL %s feed=%d frames=%d resolution=%s foot=%s lip=%s originWorld=%s"),
-                Name, FeedIndex, Volume->GetNumFrames(), *Volume->GetVolumeResolution().ToString(),
+                Name, Feed.SourceIndex, Volume->GetNumFrames(), *Volume->GetVolumeResolution().ToString(),
                 *Feed.Foot.ToCompactString(), *Feed.Lip.ToCompactString(), *Actor->GetActorLocation().ToCompactString());
         }
         if (ProceduralFalls.Num() && FParse::Param(FCommandLine::Get(), TEXT("DCFallCamera")))
