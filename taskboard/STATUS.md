@@ -2,6 +2,13 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 03:01 Claude: one storm front on the open sea, not two
+
+- Frames at 20 to 50 s still showed what the owner first complained of: the sky pack's radial storm as a flat-topped slab with streaked sides, standing behind and above the new wall of cloud volumes, each cutting across the other.
+- When the wall exists (`Director->bCloudWall`, set by the fog front), the pack's storm now has no strength until 50 s and comes to full by 61 s (`-DCStormLateFrom= -DCStormLateTo=`), so on the open sea there is only the wall: a thin pale bank on the horizon from about 26 s that grows into the wall by 54 s. The pack's storm then comes in over the ship with the wall as the dark overhead and the rain. Without the pack installed the old behaviour is kept.
+- The cloud volumes are now marched out to 10 km (were 6), so the bank is seen earlier. 74 to 101 fps at 1280x720 from 20 to 70 s.
+- `review/57-one-front`. Not in the seventeenth build.
+
 ## 14 Nov 02:56 Claude: clean 4K pictures for the store page and dev log
 
 - `-DCNoHUD` draws no HUD (the crew's name tags, which are in the world, still show).

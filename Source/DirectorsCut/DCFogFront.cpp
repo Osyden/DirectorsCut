@@ -256,7 +256,7 @@ void ADCFogFront::BuildTunnel()
 	H->StartFrame = 0.f; H->EndFrame = 200.f; H->FrameRate = Rate; H->bPlaying = true; H->bLooping = true;
 	H->bIssueBlockingRequests = true;   // without it the far wall streams in at a coarse level and goes soft (tried 14 Nov)
 	// The engine stops marching these volumes a few hundred metres from the eye; the tunnel has to be seen coming.
-	if (IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(TEXT("r.HeterogeneousVolumes.MaxTraceDistance"))) { V->Set(600000.f, ECVF_SetByCode); }
+	if (IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(TEXT("r.HeterogeneousVolumes.MaxTraceDistance"))) { V->Set(1000000.f, ECVF_SetByCode); }   // 10 km: the wall is seen from about 20 s
 	UE_LOG(LogDC, Log, TEXT("FogFront: cloud tunnel %d, scale %.0f"), Index, TunnelScale);
 	FParse::Value(FCommandLine::Get(), TEXT("DCFrontTunnelLight="), TunnelLight);
 	for (int32 i = 0; i < 2 && TunnelLight > 0.f; ++i)
@@ -312,6 +312,7 @@ void ADCFogFront::BuildTunnel()
 		W.Offset = FVector(HalfThrough * P.Size - 6000.f + P.Back, P.Side * (WallGap + HalfLong * P.Size), P.Lift - WallSink * P.Size);
 		Wall.Add(W);
 		WallMIDs.Add(M);
+		Director->bCloudWall = true;
 	}
 }
 

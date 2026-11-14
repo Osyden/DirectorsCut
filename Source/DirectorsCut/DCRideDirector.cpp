@@ -1043,7 +1043,13 @@ void ADCRideDirector::TickUDS()
 		StormGrowth = G;
 		const float Radius = StormRadius * FMath::Lerp(0.12f, 1.f, G);
 		SkyNum(UDSStorm, TEXT("Outer Radius"), Radius);
-		SkyNum(UDSStorm, TEXT("Storm Alpha"), FMath::Clamp(G * 1.6f, 0.f, 1.f));
+		// With the wall of cloud volumes standing in front of it, the pack's storm is two fronts in one sky: a
+		// flat-topped slab with streaked sides behind and above the wall (the owner's "stencilling"). It is then
+		// kept out until the wall is nearly on the ship, and comes in over her as the dark overhead and the rain.
+		static float LateFrom = 50.f, LateTo = 61.f; static bool bLateRead = false;   // test hooks: -DCStormLateFrom= -DCStormLateTo=
+		if (!bLateRead) { bLateRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCStormLateFrom="), LateFrom); FParse::Value(FCommandLine::Get(), TEXT("DCStormLateTo="), LateTo); }
+		const float Alpha = bCloudWall ? FMath::SmoothStep(LateFrom, LateTo, RideTime) : FMath::Clamp(G * 1.6f, 0.f, 1.f);
+		SkyNum(UDSStorm, TEXT("Storm Alpha"), Alpha);
 		SkyCall(UDSStorm, TEXT("Set Storm Location"), FVector(Face + Radius, 0.f, SeaLevelZ));
 	}
 }

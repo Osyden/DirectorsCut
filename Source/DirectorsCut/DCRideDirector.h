@@ -131,6 +131,8 @@ public:
 	FLinearColor FogGlow = FLinearColor::Black;
 	/** The extra light lightning puts into the fog banks while it lasts (the wisps round the ship take little of it: a flash must not white the whole view out). */
 	FLinearColor FogFlare = FLinearColor::Black;
+	/** Set by the fog front when it has built its wall of cloud volumes: the sky pack's storm then stays out of sight until the wall is on the ship. */
+	bool bCloudWall = false;
 	/** 0..3: how bright the lightning is this instant (the sky pack's flash light). */
 	float LightningNow = 0.f;
 	/** Seconds until the director next calls a bolt down. */
