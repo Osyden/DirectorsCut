@@ -2,6 +2,10 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 03:24 Claude: dark level bar right of the portal: one guess tried, not it
+
+- At 54 to 57 s a dark, level band shows in the wall to the right of the portal. Guess: the right-hand wall piece being set 90 m back let the cut underside of the piece over the mouth show. Setting it back only 15 m did not remove the band; reverted. Still there. The next thing to try is the over-mouth piece's floor (raise it or soften it further), or leaving that piece out.
+
 ## 14 Nov 03:22 Claude: nineteenth build packaged and run: `2026-11-14_0315_e71ea99_rolling-top`
 
 - `Builds/2026-11-14_0315_e71ea99_rolling-top/Windows/DirectorsCut.exe`. Run from the exe at 1600x900 without sound: the bank at 44 s, wall and portal at 56, a flash in the tunnel at 63.5, the city at 120 (94 to 114 fps), no material failed to compile; the whole maelstrom at 3x with the bot captain from 262 s: both spawnlings sunk, 8 arms broken, beaten on the clock at 160.0 s, exit at 450.03, ending card.
