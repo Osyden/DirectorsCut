@@ -2,14 +2,14 @@
 
 User authorized recurring visual improvement and parallel workers. The Codex app heartbeat `directorscut-crater-visual-iterations` is active every 30 minutes in the existing maelstrom chat. This is implementation work with actual render review, not status polling. Latest user feedback takes precedence.
 
-Latest completed continuation: [supported shoreline, first waterfall contact, lit cascade shading and corrected original VDB](CRATER-WATER-CONTACT-14NOV.md). The false 6.6–16.4 m submerged side entry and upward terminal curl are corrected; actual captures still reject the ledge-following stripe. [Previous inlet/inner-flow corrections](CRATER-SEAMS-FITTED-FALLS-14NOV.md) remain intact. The scene is still far from the reference.
+Latest continuation: [vertical cliff geology, removal of false masonry shading, corrected native spray units and fresh fitted cache](CRATER-GEOLOGY-AND-SPRAY-14NOV.md). The giant shelves and material's rectangular blanket are removed; actual captures still reject the smooth wall, attached whitewater strip and dusty impact. The [supported shoreline and first water contact](CRATER-WATER-CONTACT-14NOV.md) and [inlet/inner-flow corrections](CRATER-SEAMS-FITTED-FALLS-14NOV.md) remain intact. The scene is still far from the reference.
 
 ## Ownership and priorities
 
 - Integration checkout: `E:/Projects/DirectorsCut/Maelstrom-Saturday`, branch `codex/maelstrom-saturday`. Start checkpoint `e7d7f8b`.
-- Cliff/temple worker: `Crater-Workers/Cliffs`, `codex/crater-cliffs-pass2`. Owns cliff generator, terrain, geometric tests and rock material generator. Sends any `BuildLandmarks` changes to the integrator.
-- Water/foam worker: `Crater-Workers/Foam`, `codex/crater-foam-pass2`. Owns water shaders, water material generator and `DCMaelstromBreakers.cpp`.
-- Waterfall worker: `Crater-Workers/Waterfalls`, `codex/crater-vdb-prototype`. Owns offline VDB generator and its documented output contract.
+- Latest cliff/temple worker: `Crater-Workers/Cliff-Contact`, `codex/crater-geology-pass4`. Owns cliff generator and geometric probes/tests. Sends any terrain/landmark integration to the integrator.
+- Latest water/rock-material worker: `Crater-Workers/Flow-Seams`, `codex/crater-bank-review4`. Owns material generator candidates; root regenerates assets and renders.
+- Latest waterfall worker: `Crater-Workers/Fitted-Waterfall`, `codex/crater-volume-visibility4`. Owns offline VDB generation, runtime/importer candidates and cache contract.
 - Integrator owns shared `DCMaelstrom.cpp/.h`, runtime waterfall integration, import/material tooling, route review, builds and captures. Workers do not run Unreal or modify this checkout.
 
 Preserve the 3.2 km crater, 900 m depth, descending spiral and ship-centric transform. Boss mechanics remain deferred. Cloud/sky/light composition and early-game files remain with their respective chats. Keep public Git free of vendor assets and large generated volume caches.
@@ -67,7 +67,7 @@ Pass B entry/descent/exit captures completed and cleared both prototype volume a
 
 ## Next scheduled passes
 
-1. Use the latest water-contact handoff, not the older C defect list. Preserve the corrected inlet seam, finite inner flow and supported receiving-water join. Resolve the close cliff's oversized blocky ledges: compare vertical fracture/erosion shapes at actual metre scales in both a wide ship view and close view. Do not hide defects under more fog.
-2. First covered contact and dip/curl are now corrected and measured. Introduce one hero feed with short genuinely detached falling reaches; share the authoritative path/cross-sections between its mesh and VDB export, and remove the bypassed attached triangles. The latest handoff specifies collision/landing checks. Re-export after any cliff change. Validate native volume visibility/placement separately from the existing atmosphere and core before multiplying weak mist across the crater.
-3. Resolve remaining smooth, large white foam patches and the broad hydraulic-bank geometry. The outer shoulder is about 24 m tall/65 m half-width; material tuning alone cannot remove that silhouette. Compare displacement and pixel-normal amplitudes before globally weakening wave detail.
+1. Use the pass-4 geology/spray handoff, not the older C defect list. Giant geometric shelves and the 22 m masonry normal/AO field are now removed. The remaining cliff reads too smooth: inspect actual installed cliff texture sets for tiling suitability, then improve localized real fractured faces and narrow wet runoff without reinstating uniform cell patterns. Preserve the corrected inlet, shore, far-rim scale and temple skyline. Do not hide defects under more fog.
+2. Native VDB visibility is now established; the missing voxel-unit conversion is fixed. The fresh Geology4 cache fits the current face, but the combined effect still resembles an attached white strip and dusty plume. Introduce short genuinely detached falling reaches shared by mesh and export; remove bypassed attached triangles and make breakup, droplets, splash and foam spatially concentrated. Re-export after geometry changes. Keep opt-in until visually convincing.
+3. The basin normal chain rule and surface metric are corrected. Resolve broad pale patches using matched foam/normal views, then add spatially indexed broken wave packets outside the steering corridor. The outer channel-to-bowl recovery at ride 420 rises about 98.5 m over 132.4 m with 50.6 degree maximum grade; its shape is not explained by the smaller 24 m bank shoulder alone. Preserve mean height, route and shore clearance.
 4. Review continuous deck-camera motion, steering and entry/exit. Measure performance in a dedicated run without another chat using the GPU; current sparse samples are not a benchmark.

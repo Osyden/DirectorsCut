@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov Codex scheduled continuation: cliff structure, material isolation and native spray
+
+- Replaced giant cliff shelves with shallower vertical geology; matched shader isolation then identified and removed the 22 m masonry-pattern normal/AO layer. Replacement detail uses shallow physical erosion and sparse cracks. Crater size, route, corrected shoreline, temples and sky retained. [Actual renders, reproducible cache and remaining failures](CRATER-GEOLOGY-AND-SPRAY-14NOV.md).
+- Fixed the native VDB coefficient units, regenerated the source-8 waterfall against the revised face and proved scene-lit volume visibility with zero emission. It remains opt-in: the close effect still looks attached and the landing mist too dusty. This is a technical checkpoint, not visual finalization. Basin wave normals now account for the flow map and actual tilted surface; broad bank geometry still needs work.
+- Final Editor/Game builds and four maelstrom engine tests pass. CPU geometry/contact and full generated-cache checks pass. A backward-seek visibility bug was found, fixed and exercised through active/inactive restoration. Actual offscreen views still reject the scene as reference quality; see the handoff for NullRHI and performance limitations. Own branch only; no main merge/package.
+
 ## 14 Nov Codex scheduled continuation: waterfall contact and supported shoreline
 
 - Found that the cliff toe let waterfalls enter the finite basin 6.6–16.4 m underwater. Corrected the actual low rock/water join and trimmed each branch at first covered contact; removed the terminal upward curl. All nine production geometry/core contacts now pass, with a reproducible source-extracting probe. [Evidence, captures and remaining visual failures](CRATER-WATER-CONTACT-14NOV.md).

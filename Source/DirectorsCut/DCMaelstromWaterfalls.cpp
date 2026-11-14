@@ -432,6 +432,8 @@ void ADCMaelstrom::ClearProceduralFalls()
             // These components follow encounter activity, not Basin's -7s reveal.
             // An active backward seek must restore them before diagnostics release ownership.
             Component->SetVisibility(Entry.bWasVisible && bActive);
+            UE_LOG(LogTemp, Display, TEXT("DC_FALL_DIAGNOSTIC restore component=%s saved=%d active=%d elapsed=%.2f visible=%d"),
+                *Component->GetName(), Entry.bWasVisible ? 1 : 0, bActive ? 1 : 0, Elapsed, Component->IsVisible() ? 1 : 0);
         }
     }
     if (FallHiddenComponents.Num()) { UE_LOG(LogTemp, Display, TEXT("DC_FALL_DIAGNOSTIC restored %d component visibility states"), FallHiddenComponents.Num()); }
