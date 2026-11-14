@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 06:44 Claude: the end of the voyage checked at normal speed
+
+- From 425 s to the card at normal speed, without a window: the plume and the creature at 438 s, the stage left at 450, a clean sunlit sea with no storm wall or cloud volume left over, and the card ("SHE CAME THROUGH", hull, damage taken, arms broken, score, orders) at 458 to 468 s. 50 to 64 fps while the plume stands, 99 to 123 after.
+- One oddity: in the ending a crew line said "that storm wall blocks our way". The crew's lines are made by the language model from what it is told of the scene; I have not looked at what it is told there.
+
 ## 14 Nov 06:42 Claude: looked for objects popping in ahead; the city from the bow
 
 - Eight frames a second apart from over the bow at 130 to 137 s (`review/65-city-from-the-bow`): rocks, columns and a statue come up out of the mist ahead and pass; none appears from nothing between one frame and the next. With things now laid 650 m ahead and the sea mist over the water, I could not catch a pop in stills. It needs an eye in motion to be sure.
