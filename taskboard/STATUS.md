@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 06:39 Claude: twenty-third build packaged and run: `2026-11-14_0631_15f5585_spray-helm-carcass`
+
+- `Builds/2026-11-14_0631_15f5585_spray-helm-carcass/Windows/DirectorsCut.exe`. Run from the exe without a window at 1600x900: front, tunnel and the whole city at normal speed with the bot captain (88 to 116 fps): four giants killed, three rocks on deck, five grinding blows on stone and none on the stem, hull 83 at the slide; the maelstrom at 3x to the ending card, both spawnlings sunk, beaten on the clock at 160.0 s.
+- This is the build to play. It has everything logged so far.
+
 ## 14 Nov 06:31 Claude: the creature is seen once, as it is beaten
 
 - `DCMaelstrom::UpdatePlume`: when the clock beats it, the creature's body (the Claw Kaiju at 18 times, in the arms' dark hide, playing its defeated animation at half speed) heaves two thirds out of the water at the heart of the crater inside the plume, more than a kilometre off, holds, and is under again by 19 s. `-DCNoCarcass`, `-DCCarcassScale=`.
