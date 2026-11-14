@@ -208,14 +208,37 @@ float routeT=arc/.018-8.0;
 float u0=saturate((routeT+8.0)/16.0),u1=saturate((routeT-8.0)/157.0),u2=saturate((routeT-165.0)/15.0);
 float r=RadiusM*(.985-.035*smoothstep(-8.0,8.0,routeT)-.700*smoothstep(8.0,165.0,routeT)-.130*smoothstep(165.0,180.0,routeT));
 float dr=-RadiusM*(.035*6*u0*(1-u0)/16.0+.700*6*u1*(1-u1)/157.0+.130*6*u2*(1-u2)/15.0);
-float2 basinFlow=normalize(radial*dr+tangential*max(r*.018,1.0))*18.0;
+float2 basinVector=radial*dr+tangential*max(r*.018,1.0);
+float2 basinFlow=basinVector/max(length(basinVector),.001)*18.0;
 // Tunnel UV.x runs forward along its axis. Water rushes aft with slight side drift.
 float2 flow=lerp(basinFlow,float2(-18.0,2.0),saturate(Tunnel))*Flow;
 float phase=frac(T*0.07);
 float phase2=frac(phase+0.5);
 float blend=abs(phase*2.0-1.0);
-float2 q=UV*100.0-flow*(phase/0.07);
-float2 q2=UV*100.0-flow*(phase2/0.07);
+float age=phase/0.07,age2=phase2/0.07;
+// A Cartesian Euler backtrace of the rotating 18m/s current left a roughly
+// 250m hole in source space at the pole. Adjacent inner vertices then sampled
+// distant opposing wave phases, producing the observed star-shaped pinch.
+// Backtrace angle/radius instead. A finite rotating core regularizes the pole
+// and removes the route's arbitrary terminal angle from the lowest water.
+float radius=length(delta);
+// Protect the complete distance travelled in one advection cycle (257m),
+// rather than selecting a tiny smoothing radius that still pinches the throat.
+float coreRadius=18.0/0.07;
+float core=1-smoothstep(coreRadius,coreRadius*2.0,radius);
+float radialSpeed=lerp(dot(flow,radial),-4.0*Flow,core);
+float angularSpeed=lerp((radial.x*flow.y-radial.y*flow.x)/max(radius,coreRadius),
+    Handedness*(18.0/(coreRadius*2.0))*Flow,core);
+float angle0=-angularSpeed*age,angle1=-angularSpeed*age2;
+float scale0=max(.25,1-radialSpeed*age/max(radius,coreRadius));
+float scale1=max(.25,1-radialSpeed*age2/max(radius,coreRadius));
+float2 basinQ=float2(cos(angle0)*delta.x-sin(angle0)*delta.y,
+    sin(angle0)*delta.x+cos(angle0)*delta.y)*scale0;
+float2 basinQ2=float2(cos(angle1)*delta.x-sin(angle1)*delta.y,
+    sin(angle1)*delta.x+cos(angle1)*delta.y)*scale1;
+// Keep the independent straight entrance/tunnel mapping exactly as before.
+float2 q=lerp(basinQ,delta-flow*age,saturate(Tunnel));
+float2 q2=lerp(basinQ2,delta-flow*age2,saturate(Tunnel));
 """
 
 water = make_material("M_MaelstromWater")

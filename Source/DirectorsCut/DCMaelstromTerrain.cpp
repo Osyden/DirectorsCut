@@ -37,7 +37,19 @@ float ADCMaelstrom::WaterEdgeRadius(float Angle) const
     // Keep the incoming river and full steering envelope. The rest of the
     // shoreline lies hundreds of metres inside the rock rim.
     const float Inlet=1.f-FMath::SmoothStep(20.f,45.f,T);
-    return FMath::Min(GetRimRadius(Angle)*(1.f+Inlet*.08f),FMath::Max(Lower,Channel));
+    const float Shore=FMath::Min(GetRimRadius(Angle)*(1.f+Inlet*.08f),FMath::Max(Lower,Channel));
+    // SecondsAtAngle deliberately wraps at the inlet. It is a route coordinate,
+    // not a periodic shoreline: using it directly jumped the coast by 658m
+    // between adjacent sectors and pulled a 427m triangular wall across water.
+    // Return smoothly to the inlet on its UNUSED backward side. The complete
+    // playable river/spiral and its existing full-steer clearance stay unchanged.
+    const float BackAngle=FMath::UnwindRadians(Angle-UE_PI);
+    if(BackAngle>0.f && BackAngle<.55f)
+    {
+        const float Entry=FMath::Min(GetRimRadius(Angle)*1.08f,Radius*.985f+16000.f);
+        return FMath::Lerp(Entry,Shore,FMath::SmoothStep(0.f,.55f,BackAngle));
+    }
+    return Shore;
 }
 
 FVector ADCMaelstrom::CliffSurfacePoint(float Angle,float V) const
