@@ -89,6 +89,17 @@ private:
 		float ScatteringDistribution = 0.2f;
 		float ViewDistance = 0.f;
 	};
+	struct FSkyFillState
+	{
+		TWeakObjectPtr<class USkyLightComponent> Component;
+		float Scattering = 1.f;
+		bool bCloudAO = false;
+		float Strength = 1.f;
+		float Extent = 150.f;
+		float Resolution = 1.f;
+		float Aperture = 1.f;
+	};
+	FSkyFillState SavedSkyFill;
 	void BuildLayout(ADCMaelstrom* Stage);
 	void BuildSpray();
 	void AddFogLobe(const FFogLobe& Lobe);
@@ -122,6 +133,7 @@ private:
 	bool bPreviousShafts = true;
 	int32 PreviousCloudRenderMode = -1;
 	float PreviousCloudSampleDistance = -1.f;
+	float PreviousLightShaftDistance = -1.f;
 
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Spray;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> SprayMID;

@@ -1,4 +1,5 @@
 #include "DCMaelstromAtmosphere.h"
+#include "Components/SkyLightComponent.h"
 #include "DCMaelstrom.h"
 #include "DCTypes.h"
 #include "Components/DirectionalLightComponent.h"
@@ -234,6 +235,16 @@ UDirectionalLightComponent* ADCMaelstromAtmosphere::FindSun() const
 
 void ADCMaelstromAtmosphere::CaptureSun()
 {
+	if (StageSky.IsValid() && SkyCloudMID && !SavedSkyFill.Component.IsValid())
+	{
+		if (USkyLightComponent* Fill=StageSky->FindComponentByClass<USkyLightComponent>())
+		{
+			SavedSkyFill={Fill,Fill->VolumetricScatteringIntensity,bool(Fill->bCloudAmbientOcclusion),
+				Fill->CloudAmbientOcclusionStrength,Fill->CloudAmbientOcclusionExtent,
+				Fill->CloudAmbientOcclusionMapResolutionScale,Fill->CloudAmbientOcclusionApertureScale};
+			UE_LOG(LogDC,Log,TEXT("MAEL_SKY skylight captured scatter=%.2f cloudAO=%d"),SavedSkyFill.Scattering,SavedSkyFill.bCloudAO);
+		}
+	}
 	if (!bTuneSunCloudShadows) { return; }
 	if (UDirectionalLightComponent* Sun = FindSun())
 	{
@@ -264,9 +275,27 @@ void ADCMaelstromAtmosphere::UpdateSun()
 {
 	if (!bTuneSunCloudShadows) { RestoreSun(); return; }
 	if (!SavedSun.Component.IsValid()) { CaptureSun(); }
+	if (USkyLightComponent* Fill=SavedSkyFill.Component.Get())
+	{
+		float FogFill=0.15f;
+		FParse::Value(FCommandLine::Get(),TEXT("DCMaelFogFill="),FogFill);
+		Fill->SetVolumetricScatteringIntensity(FMath::Max(0.f,FogFill));
+		const bool bCloudAO = !FParse::Param(FCommandLine::Get(), TEXT("DCMaelNoCloudAO"));
+		if (Fill->bCloudAmbientOcclusion != bCloudAO || Fill->CloudAmbientOcclusionStrength!=1.f
+			|| Fill->CloudAmbientOcclusionExtent!=4.f || Fill->CloudAmbientOcclusionMapResolutionScale!=1.f
+			|| Fill->CloudAmbientOcclusionApertureScale!=0.4f)
+		{
+			Fill->bCloudAmbientOcclusion=bCloudAO;
+			Fill->CloudAmbientOcclusionStrength=1.f;
+			Fill->CloudAmbientOcclusionExtent=4.f;
+			Fill->CloudAmbientOcclusionMapResolutionScale=1.f;
+			Fill->CloudAmbientOcclusionApertureScale=0.4f;
+			Fill->MarkRenderStateDirty();
+		}
+	}
 	if (UDirectionalLightComponent* Sun = SavedSun.Component.Get())
 	{
-		float SunScatter=3.f;
+		float SunScatter=5.f;
 		FParse::Value(FCommandLine::Get(),TEXT("DCMaelSunScatter="),SunScatter);
 		Sun->SetVolumetricScatteringIntensity(FMath::Max(SavedSun.Scattering, SkyCloudMID ? SunScatter : 1.15f));
 		Sun->SetCastVolumetricShadow(true);
@@ -277,14 +306,14 @@ void ADCMaelstromAtmosphere::UpdateSun()
 		{
 			// Cloud-rim highlights produce directional rays around the visible sun;
 			// native volume shadows continue to carry their depth through the bowl.
-			float RayBloom = 0.18f;
-			float RayThreshold = 0.85f;
+			float RayBloom = 0.4f;
+			float RayThreshold = 1.3f;
 			FParse::Value(FCommandLine::Get(), TEXT("DCMaelRayBloom="), RayBloom);
 			FParse::Value(FCommandLine::Get(), TEXT("DCMaelRayThreshold="), RayThreshold);
 			Sun->SetEnableLightShaftBloom(RayBloom > 0.f);
 			Sun->SetBloomScale(RayBloom);
 			Sun->SetBloomThreshold(RayThreshold);
-			Sun->SetBloomMaxBrightness(2.f);
+			Sun->SetBloomMaxBrightness(1.2f);
 			Sun->SetBloomTint(FColor(255,244,226));
 			Sun->SetEnableLightShaftOcclusion(true);
 			Sun->SetOcclusionMaskDarkness(0.65f);
@@ -313,6 +342,18 @@ void ADCMaelstromAtmosphere::UpdateSun()
 
 void ADCMaelstromAtmosphere::RestoreSun()
 {
+	if (USkyLightComponent* Fill=SavedSkyFill.Component.Get())
+	{
+		Fill->SetVolumetricScatteringIntensity(SavedSkyFill.Scattering);
+		Fill->bCloudAmbientOcclusion=SavedSkyFill.bCloudAO;
+		Fill->CloudAmbientOcclusionStrength=SavedSkyFill.Strength;
+		Fill->CloudAmbientOcclusionExtent=SavedSkyFill.Extent;
+		Fill->CloudAmbientOcclusionMapResolutionScale=SavedSkyFill.Resolution;
+		Fill->CloudAmbientOcclusionApertureScale=SavedSkyFill.Aperture;
+		Fill->MarkRenderStateDirty();
+		UE_LOG(LogDC,Log,TEXT("MAEL_SKY skylight restored scatter=%.2f cloudAO=%d"),Fill->VolumetricScatteringIntensity,Fill->bCloudAmbientOcclusion);
+	}
+	SavedSkyFill.Component.Reset();
 	if (UDirectionalLightComponent* Sun = SavedSun.Component.Get())
 	{
 		Sun->SetVolumetricScatteringIntensity(SavedSun.Scattering);

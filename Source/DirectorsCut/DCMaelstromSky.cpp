@@ -58,9 +58,9 @@ void ADCMaelstromAtmosphere::ConfigureSkyCues()
 			// Light direction points away from the source: 135 puts the sun at
 			// -45 degrees, in the upper-right of the port-facing reveal camera.
 			Phase.Env.SunYaw = 135.f;
-			Phase.Env.SkyIntensity = 1.7f;
-			Phase.Env.SunIntensity = 6.5f;
-			Phase.Env.Exposure = 0.05f;
+			Phase.Env.SkyIntensity = 1.3f;
+			Phase.Env.SunIntensity = 7.5f;
+			Phase.Env.Exposure = -0.15f;
 			FParse::Value(FCommandLine::Get(), TEXT("DCMaelSkyFill="), Phase.Env.SkyIntensity);
 			FParse::Value(FCommandLine::Get(), TEXT("DCMaelSunEnergy="), Phase.Env.SunIntensity);
 			FParse::Value(FCommandLine::Get(), TEXT("DCMaelSkyExposure="), Phase.Env.Exposure);
@@ -145,14 +145,14 @@ void ADCMaelstromAtmosphere::CaptureSky()
 	SetSkyNumber(TEXT("Multiscattering Light Occlusion"), 0.65);
 	SetSkyNumber(TEXT("View Sample Scale (Day)"), 4.0);
 	SetSkyNumber(TEXT("Shadow Sample Scale"), 3.0);
-	SetSkyNumber(TEXT("Shadow Tracing Distance"), 2.0);
+	SetSkyNumber(TEXT("Shadow Tracing Distance"), 4.0);
 	SetSkyNumber(TEXT("Macro Variation"), 0.35);
 	SetSkyNumber(TEXT("Macro Scale"), 0.8);
 	SetSkyNumber(TEXT("Cloud Speed"), 0.12);
 	SetSkyNumber(TEXT("Formation Change Speed"), 0.08);
 	SetSkyNumber(TEXT("Cloud Wisps Opacity (Clear)"), 0.04);
 	SetSkyNumber(TEXT("Cloud Wisps Opacity (Cloudy)"), 0.08);
-	SetSkyColor(TEXT("Sun Light Color"), FLinearColor::White);
+	SetSkyColor(TEXT("Sun Light Color"), FLinearColor(1.f, 0.94f, 0.84f));
 	SetSkyNumber(TEXT("Mie Scattering Scale Multiplier"), 0.7);
 	SetSkyNumber(TEXT("Enable Volumetric Cloud Light Rays"), 0);
 	// Numeric test overrides support repeatable look development without a build.
@@ -203,7 +203,15 @@ void ADCMaelstromAtmosphere::CaptureSky()
 					Distance->SetWithCurrentPriority(FMath::Clamp(SampleDistance, 1.f, 20.f));
 				}
 				SkyCloudMID = UMaterialInstanceDynamic::Create(Material, this);
-				float Density = 0.025f, Erosion = 0.24f, Opening = 0.23f;
+				// Extend selected bright openings into a restrained radial shaft pass.
+				// This supplements native cloud-shadowed fog and restores on exit.
+				if (IConsoleVariable* ShaftDistance = IConsoleManager::Get().FindConsoleVariable(TEXT("r.LightShaftFirstPassDistance")))
+				{
+					PreviousLightShaftDistance = ShaftDistance->GetFloat();
+					ShaftDistance->Set(0.2f, ECVF_SetByTemp, TEXT("DCMaelstromSky"));
+					UE_LOG(LogDC, Log, TEXT("MAEL_SKY shaft blur active=%.2f previous=%.2f"), ShaftDistance->GetFloat(), PreviousLightShaftDistance);
+				}
+				float Density = 0.035f, Erosion = 0.28f, Opening = 0.23f;
 				FParse::Value(FCommandLine::Get(), TEXT("DCMaelCloudDensity="), Density);
 				FParse::Value(FCommandLine::Get(), TEXT("DCMaelCloudErosion="), Erosion);
 				FParse::Value(FCommandLine::Get(), TEXT("DCMaelCloudOpening="), Opening);
@@ -284,6 +292,15 @@ void ADCMaelstromAtmosphere::RestoreSky()
 	}
 	SavedSkyProperties.Empty();
 	StageSky.Reset();
+	if (PreviousLightShaftDistance >= 0.f)
+	{
+		if (IConsoleVariable* ShaftDistance = IConsoleManager::Get().FindConsoleVariable(TEXT("r.LightShaftFirstPassDistance")))
+		{
+			ShaftDistance->Unset(ECVF_SetByTemp, TEXT("DCMaelstromSky"));
+			UE_LOG(LogDC, Log, TEXT("MAEL_SKY shaft blur restored=%.2f expected=%.2f"), ShaftDistance->GetFloat(), PreviousLightShaftDistance);
+		}
+		PreviousLightShaftDistance = -1.f;
+	}
 	if (PreviousCloudSampleDistance >= 0.f)
 	{
 		if (IConsoleVariable* Distance = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricCloud.DistanceToSampleMaxCount")))
