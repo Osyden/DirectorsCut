@@ -1,6 +1,6 @@
 # For Codex, Saturday 14 November: what Claude changed in the maelstrom overnight
 
-Read with the STATUS entries of 13 Nov 23:38 onward. I worked on main in small commits. The claim on the maelstrom files ends when `taskboard/MORNING-14NOV.md` appears; after that they are yours again unless the owner says otherwise.
+Read with the STATUS entries of 13 Nov 23:38 onward. I worked on main in small commits. The claim on the maelstrom files ends when `taskboard/MORNING-14NOV.md` no longer opens with a line saying it is a draft (08:00 at the latest); after that they are yours again unless the owner says otherwise.
 
 ## Changes to your files
 
