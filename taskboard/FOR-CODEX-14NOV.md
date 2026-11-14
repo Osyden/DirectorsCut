@@ -19,6 +19,10 @@ Read with the STATUS entries of 13 Nov 23:38 onward. I worked on main in small c
 
 `FBoulder`, `UpdateBoulders` in `DCMaelstrom`: five scheduled stones thrown from the abyss in a 5 s arc, dodged with the helm exactly as the spouts are, starting a deck fire through `ADCTroubles::StartFire` when they strike. `-DCNoBoulders`, `-DCBoulderAt=`. Plain glowing spheres; they want smoke, a splash and sound.
 
+## The end (added 00:52)
+
+`UpdatePlume` in `DCMaelstrom`: from `FinaleAt` for 19 s a kilometre-high column of the same volume stands on the crater's centre (`Arena` location on `SampleSurfaceWorld`), and `Director->Trauma` is kicked once. It is the only visible mark of the defeat besides the arms withdrawing; your plan's collapse of the current and opening of the path is not done.
+
 ## How the spouts work, and what they lack
 
 - Kept in ship space: `Ahead` and `Abeam` in cm on a line 20 degrees to starboard of the bow (where the helm view looks). The foot is put on `SampleSurfaceWorld`. `Abeam -= HelmTurn * 1100 * dt`, so the same helm value that turns your bearing slides the spout aside. This is an abstraction, not a route: your plan's spiral channel with a shared path description would replace it.

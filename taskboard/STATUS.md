@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 00:52 Claude: eleventh build; spouts keep their detail at 4K; a plume marks the creature's end
+
+- **Build** `Builds/2026-11-14_0041_fbabe67_spouts-stones-wisps/Windows/DirectorsCut.exe` (7.7 GB), run from the exe at 1600x900: wall and portal at 56 s, tunnel at 62, city at 120 (98 to 112 fps); spout, a burning stone striking and the second spout from 296 s (69 to 73 fps). It has the stones, the lightning fix, the deck wisps and the quicker descent. **Its spouts are soft at 4K** (see next line); the fix is after it.
+- **Spout at 4K**: with non-blocking streaming the spout was a smooth grey slab with straight sides at 3840x2160. Now blocking again but played at 14 frames a second (the column's own spin carries the motion): detailed and turbulent, 66 to 74 fps at 4K while a cook was running in the background.
+- **The end** (`DCMaelstrom::UpdatePlume`): when the clock beats the creature, a column of water a kilometre high goes up from the heart of the crater in three seconds, stands, and falls back over the next sixteen while the arms let go; the deck jumps. Seen at the right edge of the helm view at 411 to 420 s with `-DCBossDiesAt=140`. `-DCNoPlume`. No sound of its own beyond the creature's cry.
+
 ## 14 Nov 00:42 Claude: 4K speed with the night's work
 
 True 3840x2160 (`-RenderOffscreen -ForceRes`, DLSS at 67 percent, no frame generation), from the editor build: open sea with the wall coming 82 to 88 fps, entering the tunnel 74, inside it 85 to 89, city with cards and wisps 97, maelstrom with a spout up 68 to 72 (55 in the frame the spout is raised). Tried and not kept: turning the fog off for the cloud volumes makes the far wall dark and detailed but it then reads as a cliff pasted on the horizon with its ends showing; with the fog it is a pale bank, which is what a far storm looks like.

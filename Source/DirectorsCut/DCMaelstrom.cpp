@@ -582,7 +582,7 @@ void ADCMaelstrom::Tick(float DeltaSeconds)
 		}
 	}
 	if (Boss) { Boss->UpdateEncounter(Elapsed, GetArenaTransform(), Radius, Depth, bActive); }
-	if (bActive) { UpdateTwisters(DeltaSeconds); UpdateBoulders(DeltaSeconds); } else if (Twisters.Num() || TwistersRaised || Boulders.Num() || BouldersThrown) { ClearTwisters(); }
+	if (bActive) { UpdateTwisters(DeltaSeconds); UpdateBoulders(DeltaSeconds); UpdatePlume(); } else if (Twisters.Num() || TwistersRaised || Boulders.Num() || BouldersThrown) { ClearTwisters(); }
 	if (Atmosphere) { Atmosphere->UpdateAtmosphere(this, Elapsed, bActive); }
 	WaterBridge.Update(GetWorld(), WaterMID, bActive);
 	if (bActive && Boss && Boss->ShouldExitEncounter(Elapsed))
@@ -760,6 +760,8 @@ void ADCMaelstrom::ClearTwisters()
 	Twisters.Reset();
 	TwisterMIDs.Reset();
 	TwistersRaised = 0;
+	if (AActor* P = Plume.Get()) { P->Destroy(); }
+	Plume.Reset(); PlumeMID = nullptr; bPlumeShaken = false;
 	for (FBoulder& B : Boulders) { if (AActor* A = B.Actor.Get()) { A->Destroy(); } }
 	Boulders.Reset();
 	BouldersThrown = 0;
@@ -911,6 +913,58 @@ void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
 			Twisters.RemoveAt(i);
 		}
 	}
+}
+
+void ADCMaelstrom::UpdatePlume()
+{
+	const float Since = Elapsed - (Boss ? Boss->FinaleAt : 160.f);
+	static const bool bOff = FParse::Param(FCommandLine::Get(), TEXT("DCNoPlume"));
+	if (bOff || Since < 0.f || Since > 19.f)
+	{
+		if (AActor* P = Plume.Get()) { P->SetActorHiddenInGame(true); }
+		if (Since < 0.f) { bPlumeShaken = false; }
+		return;
+	}
+	if (!bPlumeShaken)
+	{
+		bPlumeShaken = true;
+		Director->Trauma = FMath::Min(1.f, Director->Trauma + 0.7f);   // the deck jumps as it goes
+	}
+	if (!Plume.IsValid())
+	{
+		UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_VdbCloud.M_VdbCloud"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+		USparseVolumeTexture* Volume = LoadObject<USparseVolumeTexture>(nullptr, TEXT("/Game/Clouds_Tunnel_Loop/Effects/CT_Clouds_Tunnel_Vdb_01.CT_Clouds_Tunnel_Vdb_01"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		AHeterogeneousVolume* A = Base && Volume ? GetWorld()->SpawnActor<AHeterogeneousVolume>(AHeterogeneousVolume::StaticClass(), FTransform::Identity, Params) : nullptr;
+		UHeterogeneousVolumeComponent* C = A ? A->FindComponentByClass<UHeterogeneousVolumeComponent>() : nullptr;
+		if (!C) { return; }
+		C->SetMobility(EComponentMobility::Movable);
+		PlumeMID = UMaterialInstanceDynamic::Create(Base, this);
+		PlumeMID->SetSparseVolumeTextureParameterValue(TEXT("SparseVolumeTexture"), Volume);
+		PlumeMID->SetVectorParameterValue(TEXT("Tint"), FLinearColor(0.93f, 0.96f, 1.f));
+		PlumeMID->SetVectorParameterValue(TEXT("Flare"), FLinearColor(0.13f, 0.15f, 0.17f));
+		C->SetMaterial(0, PlumeMID);
+		C->StartFrame = 0.f; C->EndFrame = 200.f; C->FrameRate = 14.f; C->Frame = 150.f; C->bPlaying = true; C->bLooping = true;
+		C->bIssueBlockingRequests = true;
+		if (IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(TEXT("r.HeterogeneousVolumes.MaxTraceDistance"))) { if (V->GetFloat() < 600000.f) { V->Set(600000.f, ECVF_SetByCode); } }
+		Plume = A;
+		UE_LOG(LogDC, Log, TEXT("Maelstrom: the creature's end, a plume from the heart of the crater"));
+	}
+	AHeterogeneousVolume* A = Plume.Get();
+	UHeterogeneousVolumeComponent* C = A ? A->FindComponentByClass<UHeterogeneousVolumeComponent>() : nullptr;
+	if (!C || !PlumeMID) { return; }
+	// It goes up in three seconds to a kilometre, stands, and falls back as the arms let go.
+	const float Up = FMath::SmoothStep(0.f, 3.f, Since), Down = FMath::SmoothStep(9.f, 19.f, Since);
+	FVector Foot = Arena->GetComponentLocation();
+	Foot.Z = SampleSurfaceWorld(Foot);
+	const float Height = 100000.f * FMath::Lerp(0.15f, 1.f, Up) * FMath::Lerp(1.f, 0.6f, Down);
+	const float Scale = Height / 282.f;
+	A->SetActorHiddenInGame(false);
+	A->SetActorTransform(FTransform(FRotator(0.f, Director->RideTime * 25.f, 90.f), Foot, FVector(Scale * 1.6f, Scale, Scale * 1.6f)));
+	const FBoxSphereBounds B = C->Bounds;
+	A->AddActorWorldOffset(FVector(Foot.X - B.Origin.X, Foot.Y - B.Origin.Y, Foot.Z - 2000.f - (B.Origin.Z - B.BoxExtent.Z)));
+	PlumeMID->SetScalarParameterValue(TEXT("Density"), 0.5f * Up * (1.f - Down));
 }
 
 void ADCMaelstrom::UpdateBoulders(float DeltaSeconds)

@@ -122,6 +122,11 @@ private:
 	TArray<FBoulder> Boulders;
 	int32 BouldersThrown = 0;
 	void UpdateBoulders(float DeltaSeconds);
+	/** The creature's end: a column of water and spray thrown up from the heart of the crater when the clock beats it. */
+	TWeakObjectPtr<class AHeterogeneousVolume> Plume;
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> PlumeMID;
+	bool bPlumeShaken = false;
+	void UpdatePlume();
 	TArray<FTwister> Twisters;
 	UPROPERTY() TArray<TObjectPtr<UMaterialInstanceDynamic>> TwisterMIDs;
 	int32 TwistersRaised = 0;
