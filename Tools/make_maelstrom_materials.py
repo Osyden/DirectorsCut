@@ -808,6 +808,7 @@ feed=make_material("M_MaelstromWhitewater")
 feed.set_editor_property("blend_mode",unreal.BlendMode.BLEND_TRANSLUCENT)
 feed.set_editor_property("shading_model",unreal.MaterialShadingModel.MSM_DEFAULT_LIT)
 feed.set_editor_property("translucency_lighting_mode",unreal.TranslucencyLightingMode.TLM_SURFACE_PER_PIXEL_LIGHTING)
+feed.set_editor_property("tangent_space_normal",False)
 feed.set_editor_property("has_pixel_animation",True)
 fuv=expression(feed,unreal.MaterialExpressionTextureCoordinate)
 fvc=expression(feed,unreal.MaterialExpressionVertexColor)
@@ -815,25 +816,70 @@ ft=scalar(feed,"Clock",0)
 fp=expression(feed,unreal.MaterialExpressionWorldPosition)
 fi={"UV":fuv,"VC":fvc,"T":ft,"P":fp}
 fcode=NOISE+r"""
-float width=max(VC.r*200.0,4.0);
-float2 p=float2((UV.x-.5)*width,UV.y-T*(18.0+VC.b*12.0));
-float2 warp=float2(wn.noise(p*.13+VC.g*83),wn.noise(p*.09+13.7))-.5;
-float body=wn.fbm((p+warp*5)*float2(.32,.11)+VC.g*83.0);
-float fine=wn.fbm(p*float2(1.3,.65)+19.0);
-float edge=smoothstep(0,.28,UV.x)*smoothstep(0,.28,1-UV.x);
-float torn=smoothstep(.24,.60,body+fine*.12);
-float foot=1-smoothstep(.985,1.0,VC.b);
-float patches=smoothstep(.40,.62,wn.fbm(p*float2(.12,.045)+VC.g*31.0));
-// Aerated reaches are interrupted by darker water between short drops. The
-// fixed mask stops temporal averaging from rebuilding one continuous ribbon.
-float reach=smoothstep(.32,.62,wn.noise(float2(UV.y*.047,VC.g*73.0)));
+// VC.r stores the ACTUAL half-width/100m. A former 4m minimum expanded detail
+// on the narrowest branches. UV.y is true downstream arc length in metres.
+float width=max(VC.r*200.0,.5);
+float2 metric=float2((UV.x-.5)*width,UV.y);
+// A constant speed per branch preserves feature size at every timestamp.
+// Multiplying Clock by a VC.b-varying speed compressed/reversed coordinates
+// as the show progressed. Geometry/volume provide the large-scale acceleration.
+float2 p=metric-float2(0,T*(22.0+6.0*VC.g));
+float seed=VC.g*83.0;
+float pixelMeters=max(length(ddx(metric)),length(ddy(metric)));
+float fineResolved=1-smoothstep(.20,.85,pixelMeters);
+float packetResolved=1-smoothstep(1.5,8.0,pixelMeters);
+// 0.4m x 0.9m aerated fragments carried in 3m x 9m packets. Two-dimensional
+// coverage replaces the stationary, whole-width 21m dark reach bands.
+float pockets=wn.fbm(p*float2(.37,.11)+seed);
+float fine=wn.noise(p*float2(2.4,1.15)+seed+19.0);
+float bubbles=lerp(.55,smoothstep(.16,.62,fine),fineResolved);
+float aeration=lerp(.38,smoothstep(.27,.64,pockets)*bubbles,packetResolved);
+// Fraying is measured in metres, not a percentage of the full stream width.
+// Do not remove fine distant falls with an unresolved binary alpha test.
+float fringeNoise=wn.noise(p*float2(1.6,.65)+seed+8.3)-.5;
+float edgeDistance=width*.5-abs(metric.x)-fringeNoise*.55*fineResolved;
+float edgeWidth=clamp(width*.12,.18,.60);
+float edgeAA=max(edgeWidth,.75*max(abs(ddx(metric.x)),abs(ddy(metric.x))));
+float edge=smoothstep(0,edgeAA,edgeDistance);
+float sheet=lerp(.82,smoothstep(.17,.52,wn.fbm(p*float2(.9,.20)+seed+37.0)),packetResolved);
+float ends=smoothstep(0,.025,VC.b)*(1-smoothstep(.985,1.0,VC.b));
 float hull=smoothstep(1200.0,3500.0,length(P.xy*float2(.5,2)));
-return saturate(edge*torn*(.60+fine*.40)*(.30+.70*patches)*(.20+.80*reach)*foot*hull*1.6*smoothstep(0,.025,VC.b));
+float opacity=edge*sheet*lerp(.28,.86,aeration)*ends*hull;
+// Small physical ripples perturb the actual current-aligned surface frame.
+// They are normal detail only: 3.5cm broad folds and 8mm fine disturbances.
+float3 folds=wn.noise_gradient(p*float2(1.4,.27)+seed+4.1);
+float3 ripples=wn.noise_gradient(p*float2(5.0,1.1)+seed+22.7);
+float2 slope=folds.yz*float2(1.4,.27)*.035*packetResolved
+    +ripples.yz*float2(5.0,1.1)*.008*fineResolved;
+slope*=lerp(1.0,.35,aeration);
+return float4(saturate(aeration),saturate(opacity),slope);
 """
-output(custom(feed,fcode,FLOAT,fi),unreal.MaterialProperty.MP_OPACITY)
-output(vector(feed,"FoamColor",(.66,.76,.79,1)),unreal.MaterialProperty.MP_BASE_COLOR)
-output(scalar(feed,"Roughness",.75),unreal.MaterialProperty.MP_ROUGHNESS)
-output(scalar(feed,"Specular",.12),unreal.MaterialProperty.MP_SPECULAR)
+fstate=custom(feed,fcode,FLOAT4,fi)
+output(custom(feed,"return State.g;",FLOAT,{"State":fstate}),unreal.MaterialProperty.MP_OPACITY)
+output(custom(feed,"return lerp(Liquid,Foam,saturate(State.r));",FLOAT3,
+    {"State":fstate,"Liquid":vector(feed,"LiquidColor",(.025,.095,.105,1)),
+     "Foam":vector(feed,"FoamColor",(.60,.69,.70,1))}),unreal.MaterialProperty.MP_BASE_COLOR)
+output(custom(feed,"return sqrt(lerp(.18*.18,.72*.72,saturate(State.r)));",FLOAT,
+    {"State":fstate}),unreal.MaterialProperty.MP_ROUGHNESS)
+output(scalar(feed,"Specular",.25),unreal.MaterialProperty.MP_SPECULAR)
+fn=expression(feed,unreal.MaterialExpressionVertexNormalWS)
+output(custom(feed,r"""
+float3 n=normalize(N);
+float2 metric=float2((UV.x-.5)*max(VC.r*200.0,.5),UV.y);
+float2 ux=ddx(metric),uy=ddy(metric);
+float det=ux.x*uy.y-ux.y*uy.x;
+if(abs(det)<1.e-8) { return n; }
+float3 px=ddx(P),py=ddy(P);
+// Derive the basis from the real metric UVs. The supplied mesh tangent points
+// across the fall, but its bitangent need not point down every folded triangle.
+float3 across=(px*uy.y-py*ux.y)/det;
+across-=n*dot(n,across);
+across/=max(length(across),1.e-5);
+float3 down=(-px*uy.x+py*ux.x)/det;
+down-=n*dot(n,down)+across*dot(across,down);
+down/=max(length(down),1.e-5);
+return normalize(n-across*State.b-down*State.a);
+""",FLOAT3,{"State":fstate,"UV":fuv,"VC":fvc,"P":fp,"N":fn}),unreal.MaterialProperty.MP_NORMAL)
 MEL.recompile_material(feed)
 unreal.EditorAssetLibrary.save_loaded_asset(feed,only_if_is_dirty=False)
 unreal.log_warning("DC_RESULT M_MaelstromWhitewater saved")
