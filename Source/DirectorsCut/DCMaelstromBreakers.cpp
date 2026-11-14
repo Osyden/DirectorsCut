@@ -14,10 +14,11 @@ void ADCMaelstrom::BuildBreakers()
     for(int32 Wave=0;Wave<112;++Wave)
     {
         const bool InChannel=Wave>=12 && Wave<32;
-        const float A=Wave<12 ? UE_PI-.07f-Wave*.055f : (InChannel
-            ? UE_PI-.05f-(Wave-12)*.07f : Random.FRandRange(-UE_PI,UE_PI));
+        const float A=Wave<12 ? DCMaelstromRoute::Angle(5.f+Wave*13.f) : (InChannel
+            ? DCMaelstromRoute::Angle(4.f+(Wave-12)*8.f) : Random.FRandRange(-UE_PI,UE_PI));
         const float RouteR=Radius*DCMaelstromRoute::RadialFraction(DCMaelstromRoute::SecondsAtAngle(A));
-        const float R=Wave<12 ? RouteR+(Wave%2 ? 11500.f : -13000.f) : (InChannel
+        const float Width=DCMaelstromRoute::WidthScale(DCMaelstromRoute::SecondsAtAngle(A));
+        const float R=Wave<12 ? RouteR+(Wave%2 ? 14500.f : -8500.f)*Width : (InChannel
             ? RouteR+Random.FRandRange(-5000.f,5000.f) : Radius*Random.FRandRange(.22f,.91f));
         if(!InChannel && FMath::Abs(R-RouteR)<8500.f) { continue; }
         const FVector2D Across(FMath::Cos(A),FMath::Sin(A));
@@ -65,7 +66,7 @@ void ADCMaelstrom::BuildBreakers()
     if(UMaterialInterface* M=LoadObject<UMaterialInterface>(nullptr,TEXT("/Game/DC/Maelstrom/M_MaelstromPlume.M_MaelstromPlume")))
     {
         CrestSprayMID=UMaterialInstanceDynamic::Create(M,this);
-        CrestSprayMID->SetScalarParameterValue(TEXT("Density"),1.15f);
+        CrestSprayMID->SetScalarParameterValue(TEXT("Density"),.35f);
         CrestSprayMID->SetScalarParameterValue(TEXT("DepthFadeDistance"),80.f);
         CrestSprayMID->SetScalarParameterValue(TEXT("CrestSpray"),1.f);
         CrestSpray->SetMaterial(0,CrestSprayMID);

@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov Codex: descending spiral prototype ready for review
+
+- User authorized a bespoke banked spiral and ship-centred movement, retaining the crater scale. [Prototype and ownership](MAELSTROM-SPIRAL-PROTOTYPE-14NOV.md).
+- Coordinated directly with **Improve Maelstrom sky visuals**. Water/route and sky/lighting remain separate; shared DCMaelstrom.cpp edits require function-level merging.
+- Build and extended route tests pass. Full normal-speed scene review and held-port narrowing test reached open sea; a final short run verified the fix for a folded bank near the centre. Actual captures and remaining visual gaps are linked in the prototype note. This is geometry/movement work, not a finished water, boss or underwater-exit pass. Isolated branch only; no main merge or packaged build.
+
 ## 14 Nov Codex: concept critique, finer water scale and a leftward feeding current
 
 - Generated three explicitly labelled paintovers of the game frame. A/B fail the owner's far-wave scale requirement; C is the useful starting direction, not a final approval. [Concepts, exact prompts, critique and implementation plan](MAELSTROM-WATER-DIRECTION-14NOV.md).

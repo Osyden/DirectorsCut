@@ -9,7 +9,7 @@ bool FDCMaelstromRouteTest::RunTest(const FString& Parameters)
 {
     using namespace DCMaelstromRoute;
     // Continuous route through the drop, acceleration and phase boundaries.
-    for (float T : {0.f,8.f,12.f,22.f,34.f,40.f,85.f,158.f,160.f})
+    for (float T : {0.f,8.f,12.f,22.f,34.f,40.f,85.f,158.f,160.f,165.f,180.f})
     {
         const float Distance = (Point(T+.01f,160000.f)-Point(T-.01f,160000.f)).Size();
         TestTrue(TEXT("No teleport at route boundary"),Distance<70.f);
@@ -26,10 +26,20 @@ bool FDCMaelstromRouteTest::RunTest(const FString& Parameters)
             FVector2D::DotProduct(Tangent(T-.05f,160000.f),Tangent(T+.05f,160000.f))>.999f);
     }
     TestTrue(TEXT("Route descends inside the overflow face before the final orbit"),RadialFraction(100.f)<.77f);
-    for (float T : {25.f,40.f,90.f,158.f})
+    for (float T : {25.f,40.f,90.f,158.f,175.f,180.f})
     {
         const float Wrapped=FMath::UnwindRadians(Angle(T));
         TestTrue(TEXT("Banks follow the same route across the atan seam"),FMath::Abs(SecondsAtAngle(Wrapped)-T)<.005f);
+    }
+    TestTrue(TEXT("Final approach reaches the inner throat"),RadialFraction(180.f)<.13f);
+    for(float T=0.f;T<180.f;T+=1.f)
+    {
+        TestTrue(TEXT("The spiral consistently tightens inward"),RadialFraction(T+1.f)<=RadialFraction(T));
+        const float W=WidthScale(T);
+        TestTrue(TEXT("Outer hydraulic bank is higher than the inner spill"),
+            BankedHeight(14500.f*W,T)>BankedHeight(-12500.f*W,T)+1000.f*W);
+        TestTrue(TEXT("Route centre stays on the defined surface"),FMath::Abs(BankedHeight(0.f,T))<.01f);
+        TestTrue(TEXT("Bank width narrows continuously"),FMath::Abs(WidthScale(T+1.f)-W)<.02f);
     }
     float Final30=0.f,Final120=0.f;
     for (int32 FPS : {30,120})
