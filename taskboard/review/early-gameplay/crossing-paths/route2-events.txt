@@ -1,0 +1,34 @@
+[2026.11.14-22.04.33:524][ 97]LogDC: Navigation plan: 0 -> 0 urgent=0 clearance=-1 at 74.5
+[2026.11.14-22.04.35:972][381]LogDC: Navigation plan: 0 -> 1000 urgent=0 clearance=8533 at 76.9
+[2026.11.14-22.04.53:762][297]LogDC: Navigation plan: 1000 -> 500 urgent=0 clearance=-1 at 94.7
+[2026.11.14-22.05.03:777][391]LogDC: Navigation plan: 500 -> -2250 urgent=0 clearance=15009 at 104.7
+[2026.11.14-22.05.04:960][522]LogDC: Display: Encounter defeated: creature at 105.9
+[2026.11.14-22.05.12:669][341]LogDC: Display: Encounter impact: fireball deck=V(X=409.37, Y=60.00, Z=509.73) fires=0->1 at 113.6
+[2026.11.14-22.05.14:211][489]LogDC: Display: Encounter defeated: creature at 115.2
+[2026.11.14-22.05.18:812][957]LogDC: Navigation plan: -2250 -> -2500 urgent=0 clearance=-1 at 119.8
+[2026.11.14-22.05.27:330][843]LogDC: Display: Encounter defeated: sentinel at 128.3
+[2026.11.14-22.05.35:939][698]LogDC: Navigation plan: -2500 -> -3500 urgent=0 clearance=14953 at 136.9
+[2026.11.14-22.05.43:603][494]LogDC: Display: Encounter defeated: creature at 144.5
+[2026.11.14-22.05.48:037][955]LogDC: Navigation plan: -3500 -> 500 urgent=1 clearance=-1 at 149.0
+[2026.11.14-22.05.50:504][214]LogDC: Navigation plan: 500 -> 3250 urgent=0 clearance=9390 at 151.4
+[2026.11.14-22.05.53:131][494]LogDC: Display: Encounter impact: fireball deck=V(X=-1257.75, Y=-170.00, Z=627.13) fires=0->1 at 154.1
+[2026.11.14-22.05.58:114][ 40]LogDC: Display: Encounter defeated: creature at 159.1
+[2026.11.14-22.06.14:111][816]LogDC: Display: Encounter defeated: sentinel at 175.1
+[2026.11.14-22.06.29:846][557]LogDC: Display: Encounter defeated: creature at 190.8
+[2026.11.14-22.06.36:510][343]LogDC: Navigation plan: 3250 -> -1750 urgent=0 clearance=13881 at 197.5
+[2026.11.14-22.06.38:825][633]LogDC: Display: Encounter defeated: creature at 199.8
+[2026.11.14-22.06.38:966][650]LogDC: Navigation plan: -1750 -> -250 urgent=0 clearance=-1 at 199.9
+[2026.11.14-22.06.40:730][858]LogDC: Display: Encounter impact: fireball deck=V(X=-1257.75, Y=-170.00, Z=627.13) fires=0->1 at 201.7
+[2026.11.14-22.06.48:425][745]LogDC: Display: Encounter defeated: creature at 209.4
+[2026.11.14-22.06.49:065][820]LogDC: Capture state: hull=89.3 score=900 fires=1 rigging=0 at 210.0
+[2026.11.14-22.07.01:154][191]LogDC: Navigation plan: -250 -> 0 urgent=0 clearance=15933 at 222.1
+[2026.11.14-22.07.03:031][416]LogDC: Display: Encounter defeated: sentinel at 223.9
+[2026.11.14-22.07.04:110][554]LogDC: Capture state: hull=88.1 score=1000 fires=1 rigging=0 at 225.0
+[2026.11.14-22.07.06:668][863]LogDC: Navigation plan: 0 -> 250 urgent=0 clearance=7846 at 227.6
+[2026.11.14-22.07.08:709][122]LogDC: Navigation plan: 250 -> 1250 urgent=1 clearance=4973 at 229.6
+[2026.11.14-22.07.09:114][174]LogDC: Capture state: hull=87.7 score=1000 fires=1 rigging=0 at 230.0
+[2026.11.14-22.07.13:114][661]LogDC: Capture state: hull=87.4 score=1000 fires=1 rigging=0 at 234.0
+[2026.11.14-22.07.15:116][898]LogDC: Capture state: hull=87.3 score=1000 fires=1 rigging=0 at 236.0
+[2026.11.14-22.07.18:111][259]LogDC: Capture state: hull=87.0 score=1000 fires=1 rigging=0 at 239.0
+[2026.11.14-22.07.21:113][603]LogDC: Capture state: hull=86.8 score=1000 fires=0 rigging=0 at 242.0
+[2026.11.14-22.07.25:113][ 89]LogDC: Capture state: hull=86.8 score=1000 fires=0 rigging=0 at 246.0

@@ -205,6 +205,15 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 
 	const FDCEnvState& Env = Director->GetEnv();
 	const float Speed = Env.ShipSpeed * Director->TimeScale;
+	#if !UE_BUILD_SHIPPING
+	static bool bNavigationVerified = false;
+	if (!bNavigationVerified && Director->RideTime > 1.f && FParse::Param(FCommandLine::Get(), TEXT("DCNavigationVerify")))
+	{
+		bNavigationVerified = true;
+		VerifyNavigation();
+		return;
+	}
+	#endif
 
 	// Test hook: -DCSteer=1 holds the helm hard over (starboard) for the whole run.
 	static float ForcedSteer = 0.f;
@@ -597,7 +606,73 @@ float ADCTreadmill::ScoreLane(float Candidate, float Lookahead) const
 	}
 	const int32 Lane = FMath::RoundToInt32((Candidate + LaneLimit) / 250.f);
 	if (StoneAhead.IsValidIndex(Lane) && StoneAhead[Lane] >= 0.f) { Cost += 10.f * (1.f + 8000.f / (StoneAhead[Lane] + 2500.f)); }
+	if (LanePathImpact.IsValidIndex(Lane) && LanePathImpact[Lane] >= 0.f)
+	{
+		Cost += 140.f + 90.f / (.5f + LanePathImpact[Lane]);
+	}
 	return Cost;
+}
+
+float ADCTreadmill::ForecastLaneImpact(float Candidate) const
+{
+	if (!Director || !GetWorld()) { return -1.f; }
+	// A clear destination does not make the crossing safe. Forecast the crew's
+	// actual helm response, momentum and bank pull, then sweep the hull through
+	// the scenery in its current pose (equivalent to the scenery moving aft).
+	const float Speed = Director->GetEnv().ShipSpeed * Director->TimeScale;
+	const float Horizon = FMath::Clamp(16000.f / FMath::Max(Speed, 1.f), 3.f, 6.f);
+	const float HelmSpeed = LaneSpeed * SteerAuthority * (Director->TroughRise > 1.f ? 1.5f : 1.f);
+	const float Edge = Director->TroughRise > 1.f ? Director->TroughHalfWidth : LaneLimit;
+	const float Rise = Director->SeaRise(LaneOffset);
+	float Lane = LaneOffset, Velocity = LaneVelocity, Time = 0.f;
+	FVector From(0.f, 0.f, Director->SeaLevelZ + 140.f);
+	const FCollisionShape Hull = FCollisionShape::MakeBox(FVector(ShipHalfLength + 150.f, ShipHalfWidth + 80.f, 60.f));
+	FCollisionQueryParams Query(TEXT("DCLanePath"), true);
+	const FCollisionObjectQueryParams Stone(ECC_Destructible);
+	while (Time < Horizon - .01f)
+	{
+		const float StartTime = Time;
+		for (int32 Step = 0; Step < 4 && Time < Horizon - .01f; ++Step)
+		{
+			const float Dt = FMath::Min(.1f, Horizon - Time);
+			const float Drift = CurrentDrift * FMath::Exp(-2.2f * Time);
+			const float Helm = FMath::Clamp((Candidate - Lane - (Velocity + Drift) * .7f) / 700.f, -1.f, 1.f);
+			Velocity = FMath::FInterpTo(Velocity, Helm * HelmSpeed, Dt, 1.65f);
+			const float Out = FMath::Abs(Lane) / FMath::Max(Director->TroughHalfWidth, 1.f);
+			const float Pull = Director->SeaRiseSlope(Lane) * 4400.f
+				+ (Director->TroughRise > 1.f ? FMath::Sign(Lane) * FMath::Max(0.f, Out - .45f) * 2600.f : 0.f);
+			Velocity -= Pull * Dt;
+			Lane = FMath::Clamp(Lane + (Velocity + Drift) * Dt, -Edge, Edge);
+			Time += Dt;
+		}
+		const FVector To(Speed * Time, Lane - LaneOffset, Director->SeaLevelZ + 140.f + Director->SeaRise(Lane) - Rise);
+		FHitResult Hit;
+		if (GetWorld()->SweepSingleByObjectType(Hit, From, To, FQuat::Identity, Stone, Hull, Query))
+		{
+			return FMath::Lerp(StartTime, Time, Hit.Time);
+		}
+		From = To;
+	}
+	return -1.f;
+}
+
+void ADCTreadmill::UpdateLanePaths()
+{
+	LanePathImpact.Reset();
+	LanePathMilliseconds = 0.f;
+	if (!Director || Director->GetPhase() > EDCPhase::Fog
+		|| FParse::Param(FCommandLine::Get(), TEXT("DCLegacyAvoidance"))
+		|| FParse::Param(FCommandLine::Get(), TEXT("DCLegacyLanePaths"))) { return; }
+	const double Started = FPlatformTime::Seconds();
+	const int32 Lanes = FMath::RoundToInt32(2.f * LaneLimit / 250.f) + 1;
+	LanePathImpact.Init(-1.f, Lanes);
+	const float Reach = Director->TroughRise > 1.f ? LaneLimit * .7f : LaneLimit;
+	for (int32 i = 0; i < Lanes; ++i)
+	{
+		const float Candidate = -LaneLimit + i * 250.f;
+		if (FMath::Abs(Candidate) <= Reach) { LanePathImpact[i] = ForecastLaneImpact(Candidate); }
+	}
+	LanePathMilliseconds = float((FPlatformTime::Seconds() - Started) * 1000.0);
 }
 
 void ADCTreadmill::LaunchAt(const FVector& From)
@@ -914,7 +989,7 @@ void ADCTreadmill::TickStrikes(float DeltaSeconds)
 	if (!Director || FParse::Param(FCommandLine::Get(), TEXT("DCNoStrikes"))) { return; }
 	bool bAny = false;
 	for (const FDCWorldObject& Obj : Objects) { if (Obj.bFeelable) { bAny = true; break; } }
-	if (!bAny) { StoneAhead.Reset(); bHasAvoidance = false; AvoidanceHold = AvoidanceCandidateTime = 0.f; CurrentDrift = FMath::FInterpTo(CurrentDrift, 0.f, DeltaSeconds, 2.f); return; }
+	if (!bAny) { StoneAhead.Reset(); LanePathImpact.Reset(); bHasAvoidance = false; AvoidanceHold = AvoidanceCandidateTime = 0.f; CurrentDrift = FMath::FInterpTo(CurrentDrift, 0.f, DeltaSeconds, 2.f); return; }
 
 	// The helmsman's look ahead: for each lane he might take, three lines run forward from the bow
 	// (keel and both sides) and the nearest stone on any of them is remembered.
@@ -941,6 +1016,7 @@ void ADCTreadmill::TickStrikes(float DeltaSeconds)
 				}
 			}
 		}
+		UpdateLanePaths();
 	}
 
 	// The helmsman and the mild current share a committed passing lane. A separate
@@ -964,7 +1040,8 @@ void ADCTreadmill::TickStrikes(float DeltaSeconds)
 			AvoidanceCandidateTime += .2f;
 			const int32 TargetIndex = FMath::RoundToInt((AvoidanceLane + LaneLimit) / 250.f);
 			const float TargetStone = StoneAhead.IsValidIndex(TargetIndex) ? StoneAhead[TargetIndex] : -1.f;
-			const bool bUrgent = TargetStone >= 0.f && TargetStone < 4500.f;
+			const float TargetPath = LanePathImpact.IsValidIndex(TargetIndex) ? LanePathImpact[TargetIndex] : -1.f;
+			const bool bUrgent = (TargetStone >= 0.f && TargetStone < 4500.f) || (TargetPath >= 0.f && TargetPath < 1.8f);
 			const bool bBetter = ScoreLane(Candidate, 17000.f) + .6f < ScoreLane(AvoidanceLane, 17000.f);
 			const bool bDifferent = FMath::Abs(Candidate - AvoidanceLane) > 125.f;
 			if (!bHasAvoidance || (bDifferent && bBetter && (bUrgent || (AvoidanceHold <= 0.f && AvoidanceCandidateTime >= .8f))))
@@ -1021,8 +1098,9 @@ void ADCTreadmill::TickStrikes(float DeltaSeconds)
 		const float Target = FindClearLane(Sight);
 		const int32 TargetIndex = FMath::RoundToInt((Target + LaneLimit) / 250.f);
 		const float TargetStone = StoneAhead.IsValidIndex(TargetIndex) ? StoneAhead[TargetIndex] : -1.f;
-		UE_LOG(LogDC, Log, TEXT("Navigation: obstacle=%.0f target=%.0f lane=%.0f velocity=%.0f assist=%.0f helm=%.2f manual=%d t=%.1f committed=%d hold=%.1f targetStone=%.0f"),
-			StoneDistance, Target, LaneOffset, GetLateralVelocity(), CurrentDrift, Steer, bPlayerHelm || bSteerForced, Director->RideTime, bHasAvoidance, AvoidanceHold, TargetStone);
+		const float TargetPath = LanePathImpact.IsValidIndex(TargetIndex) ? LanePathImpact[TargetIndex] : -1.f;
+		UE_LOG(LogDC, Log, TEXT("Navigation: obstacle=%.0f target=%.0f lane=%.0f velocity=%.0f assist=%.0f helm=%.2f manual=%d t=%.1f committed=%d hold=%.1f targetStone=%.0f pathHit=%.2f pathMs=%.3f"),
+			StoneDistance, Target, LaneOffset, GetLateralVelocity(), CurrentDrift, Steer, bPlayerHelm || bSteerForced, Director->RideTime, bHasAvoidance, AvoidanceHold, TargetStone, TargetPath, LanePathMilliseconds);
 	}
 
 	// Feelers at the waterline, in the ship's resting place (she lies at the origin, bow to +X): out
@@ -1065,8 +1143,8 @@ void ADCTreadmill::TickStrikes(float DeltaSeconds)
 	// She cannot sail through it: shoulder her off the stone (the sea is moved, not the ship) and kill her swing toward it.
 	if (StrikeAway == 0.f || LastStrikeActor.Get() != ContactActor)
 	{
-		StrikeAway = !bPlayerHelm && !bSteerForced && bHasAvoidance && FMath::Abs(AvoidanceLane - LaneOffset) > 200.f
-			? FMath::Sign(AvoidanceLane - LaneOffset) : (PushY >= 0.f ? 1.f : -1.f);
+		// A destination across the stone must never push the hull deeper into it.
+		StrikeAway = PushY >= 0.f ? 1.f : -1.f;
 	}
 	const float Away = StrikeAway;
 	const bool bFirst = SinceContact > 1.5f || LastStrikeActor.Get() != ContactActor;

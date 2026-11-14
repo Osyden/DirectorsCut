@@ -133,6 +133,14 @@ protected:
 	bool bPlayerHelm = false;
 	float ChooseClearLane(float Lookahead) const;
 	float ScoreLane(float Candidate, float Lookahead) const;
+	float ForecastLaneImpact(float Candidate) const;
+	void UpdateLanePaths();
+	/** Seconds until the predicted hull crosses stone; negative means clear. */
+	TArray<float> LanePathImpact;
+	float LanePathMilliseconds = 0.f;
+#if !UE_BUILD_SHIPPING
+	void VerifyNavigation();
+#endif
 	TWeakObjectPtr<AActor> LastStrikeActor;
 	/** For the hand at the helm: how far ahead (cm) the first stone lies on each lane he might choose
 	 *  (lane i is at -LaneLimit + i * 250), or a negative number where the way is clear. Looked for a few times a second. */

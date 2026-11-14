@@ -34,12 +34,18 @@ for sample in samples:
         target_changes.append(sample['t'])
     previous = sample
 double_reversals = [(a, b) for a, b in zip(reversals, reversals[1:]) if b - a <= 4]
+path_ms = sorted(s['pathMs'] for s in samples if s.get('pathMs', 0) > 0)
 print(json.dumps({
     'window': [args.start, args.end], 'samples': len(samples),
     'stone_contacts': contacts,
     'strong_helm_reversals': reversals,
     'successive_reversals_within_4s': double_reversals,
     'large_target_changes': target_changes,
+    'sampled_path_probe_ms': ({
+        'samples': len(path_ms), 'mean': round(sum(path_ms) / len(path_ms), 3),
+        'p95': path_ms[int((len(path_ms) - 1) * .95)], 'max': path_ms[-1],
+        'scope': 'Most recent complete probe at each navigation log sample, not a frame-time benchmark.'
+    } if path_ms else None),
     'capture_states': captures,
     'interpretation': 'Different random obstacle layouts are not a controlled A/B. Inspect reversals and captures; legitimate avoidance also reverses helm.'
 }, indent=2))

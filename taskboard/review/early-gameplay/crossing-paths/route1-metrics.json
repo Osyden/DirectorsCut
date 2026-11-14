@@ -1,0 +1,42 @@
+{
+  "window": [
+    60,
+    240
+  ],
+  "samples": 327,
+  "stone_contacts": [],
+  "strong_helm_reversals": [
+    165.2,
+    226.6
+  ],
+  "successive_reversals_within_4s": [],
+  "large_target_changes": [
+    77.0,
+    94.9,
+    104.5,
+    171.2,
+    200.0,
+    207.0,
+    224.6,
+    226.6,
+    232.2
+  ],
+  "sampled_path_probe_ms": {
+    "samples": 327,
+    "mean": 0.98,
+    "p95": 1.351,
+    "max": 2.017,
+    "scope": "Most recent complete probe at each navigation log sample, not a frame-time benchmark."
+  },
+  "capture_states": [
+    "Capture state: hull=87.7 score=900 fires=2 rigging=0 at 210.0",
+    "Capture state: hull=85.3 score=1000 fires=2 rigging=0 at 225.0",
+    "Capture state: hull=84.5 score=1000 fires=2 rigging=0 at 230.0",
+    "Capture state: hull=83.9 score=1000 fires=2 rigging=0 at 234.0",
+    "Capture state: hull=83.6 score=1000 fires=2 rigging=0 at 236.0",
+    "Capture state: hull=83.1 score=1000 fires=2 rigging=0 at 239.0",
+    "Capture state: hull=82.7 score=1000 fires=1 rigging=0 at 242.0",
+    "Capture state: hull=82.4 score=1000 fires=0 rigging=0 at 246.0"
+  ],
+  "interpretation": "Different random obstacle layouts are not a controlled A/B. Inspect reversals and captures; legitimate avoidance also reverses helm."
+}

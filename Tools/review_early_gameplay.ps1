@@ -1,7 +1,7 @@
 # Uses a separately built runtime project; never saves or changes content assets.
 param(
     [Parameter(Mandatory=$true)][string]$ProjectPath,
-    [ValidateSet('rag','cannons','encounters','statue','city','crew','default','exit','bow','bowclose','manual')][string]$Case = 'encounters',
+    [ValidateSet('rag','cannons','encounters','statue','city','crew','default','exit','navigation','bow','bowclose','manual')][string]$Case = 'encounters',
     [string]$EngineRoot = 'E:\Utilities\UE_5.8',
     [string]$OutputPath = ''
 )
@@ -22,6 +22,7 @@ $options = switch ($Case) {
     'crew' { '-DCBot -DCRunThrough -DCAutoShots=100,125,175,235 -DCLaneLog -DCCurrentLog -DCGunLog' }
     'default' { '-DCRunThrough -DCAutoShots=100,110,125,175,235 -DCLaneLog -DCCurrentLog -DCGunLog' }
     'exit' { '-DCRunThrough -DCAutoShots=210,225,230,234,236,239,242,246 -DCLaneLog -DCCurrentLog' }
+    'navigation' { '-DCNavigationVerify -DCRunThrough' }
     'bow' { '-DCStartAt=20 -DCRunThrough -DCShipView -DCOrbit=145,5 -DCAutoShots=23,25,28,32' }
     'bowclose' { '-DCStartAt=20 -DCRunThrough -DCAutoShots=23,25,28,32 -DCShotCam=3200,-1000,650,-18,132' }
     'manual' { '-DCStartAt=90 -DCRunThrough -DCStation=helm -DCHelmSequence -DCAutoShots=94,98,102,106 -DCLaneLog -DCCurrentLog' }
@@ -40,5 +41,5 @@ Get-ChildItem -LiteralPath $shots -Filter 'shot_*.png' | Where-Object { $_.LastW
 $lines = Get-Content -LiteralPath $log
 $lines | Select-String 'LogDC:.*(VERIFY|VERIFICATION|Encounter |Sentinel |Hull struck|Navigation:|Navigation plan:|Auto shot|Capture state:)' | ForEach-Object { $_.Line } | Set-Content -LiteralPath (Join-Path $output 'results.txt')
 if ($run.ExitCode -ne 0 -or $lines -match 'VERIFICATION FAILED|VERIFY FAIL') { throw "Review failed; inspect $log." }
-if ($Case -in @('rag','cannons','encounters') -and !($lines -match 'VERIFICATION PASSED')) { throw 'The verification did not reach its success marker.' }
+if ($Case -in @('rag','cannons','encounters','navigation') -and !($lines -match 'VERIFICATION PASSED')) { throw 'The verification did not reach its success marker.' }
 Write-Output "Review completed: $output. Inspect the screenshots before accepting visual quality."
