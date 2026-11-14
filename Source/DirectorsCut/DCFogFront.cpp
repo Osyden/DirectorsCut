@@ -249,7 +249,7 @@ void ADCFogFront::BuildTunnel()
 	TunnelMID->SetVectorParameterValue(TEXT("Glow"), FLinearColor(0.45f, 0.6f, 1.f) * Temp);
 	H->SetMaterial(0, TunnelMID);
 	H->StartFrame = 0.f; H->EndFrame = 200.f; H->FrameRate = Rate; H->bPlaying = true; H->bLooping = true;
-	H->bIssueBlockingRequests = true;
+	H->bIssueBlockingRequests = true;   // without it the far wall streams in at a coarse level and goes soft (tried 14 Nov)
 	// The engine stops marching these volumes a few hundred metres from the eye; the tunnel has to be seen coming.
 	if (IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(TEXT("r.HeterogeneousVolumes.MaxTraceDistance"))) { V->Set(600000.f, ECVF_SetByCode); }
 	UE_LOG(LogDC, Log, TEXT("FogFront: cloud tunnel %d, scale %.0f"), Index, TunnelScale);

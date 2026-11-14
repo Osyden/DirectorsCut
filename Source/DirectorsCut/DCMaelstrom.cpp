@@ -592,7 +592,12 @@ void ADCMaelstrom::Tick(float DeltaSeconds)
 
 void ADCMaelstrom::UpdateStage(float DeltaSeconds)
 {
-	const float Descent = FMath::SmoothStep(18.f, EndingStart - BreachStart - 15.f, Elapsed);
+	// Over the lip and down: a little under half of the whole descent is made in the twenty seconds after
+	// the ship clears the tunnel, so the rim climbs away overhead and the bowl opens below her; the rest is the
+	// slow sinking spiral of the fight. (It was one even glide over the whole fight, which did not read as a drop.)
+	static float Plunge = 0.42f; static bool bPlungeRead = false;   // test hook: -DCPlunge=0..1
+	if (!bPlungeRead) { bPlungeRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCPlunge="), Plunge); }
+	const float Descent = Plunge * FMath::SmoothStep(9.f, 29.f, Elapsed) + (1.f - Plunge) * FMath::SmoothStep(29.f, EndingStart - BreachStart - 15.f, Elapsed);
 	ShipRadius = Radius * FMath::Lerp(0.985f, 0.78f, Descent);
 	const ADCTreadmill* Treadmill = ADCTreadmill::Get(this);
 	const float HelmTarget = Treadmill ? Treadmill->GetSteer() * Treadmill->SteerAuthority : 0.f;
@@ -717,8 +722,8 @@ void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
 	const float Finale = Boss ? Boss->FinaleAt : 160.f;
 	const float Tell = 5.f, Run = 3600.f, Start = 42000.f;   // 5 s standing, then 36 m a second up the slope from 420 m off
 	static const bool bOff = FParse::Param(FCommandLine::Get(), TEXT("DCNoTwisters"));
-	static float TwisterDensity = 0.7f; static bool bDensityRead = false;   // test hook: -DCTwisterDensity=
-	if (!bDensityRead) { bDensityRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCTwisterDensity="), TwisterDensity); }
+	static float TwisterDensity = 0.7f, TwisterRate = 30.f; static bool bDensityRead = false, bTwisterBlocking = false;   // test hooks: -DCTwisterDensity= -DCTwisterRate= -DCTwisterBlocking
+	if (!bDensityRead) { bDensityRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCTwisterDensity="), TwisterDensity); FParse::Value(FCommandLine::Get(), TEXT("DCTwisterRate="), TwisterRate); bTwisterBlocking = FParse::Param(FCommandLine::Get(), TEXT("DCTwisterBlocking")); }
 	while (!bOff && TwistersRaised < UE_ARRAY_COUNT(RaiseAt) && Elapsed >= RaiseAt[TwistersRaised])
 	{
 		const int32 Index = TwistersRaised++;
@@ -745,8 +750,8 @@ void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
 				// Spray scatters light all through itself; the volume's single shadowed bounce leaves it sooty. A little light of its own stands in for that.
 				M->SetVectorParameterValue(TEXT("Flare"), FLinearColor(0.13f, 0.15f, 0.17f));
 				C->SetMaterial(0, M);
-				C->StartFrame = 0.f; C->EndFrame = 200.f; C->FrameRate = 45.f; C->Frame = Index * 37.f; C->bPlaying = true; C->bLooping = true;
-				C->bIssueBlockingRequests = true;
+				C->StartFrame = 0.f; C->EndFrame = 200.f; C->FrameRate = TwisterRate; C->Frame = Index * 37.f; C->bPlaying = true; C->bLooping = true;
+				C->bIssueBlockingRequests = bTwisterBlocking;
 				if (IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(TEXT("r.HeterogeneousVolumes.MaxTraceDistance"))) { if (V->GetFloat() < 600000.f) { V->Set(600000.f, ECVF_SetByCode); } }
 				T.Actor = A; T.MID = M;
 				TwisterMIDs.Add(M);
