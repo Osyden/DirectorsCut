@@ -157,6 +157,29 @@ protected:
 	TArray<FDeckWisp> DeckWisps;
 	UPROPERTY() TArray<TObjectPtr<class UMaterialInstanceDynamic>> DeckWispMIDs;
 	void TickDeckWisps(float DeltaSeconds);
+	/** Stone giants that wade up to the banks of the channel in the drowned city and hurl burning rock at the ship
+	 *  (the Rampage character in his stone skin, if that pack is installed). The batteries can kill them. */
+	struct FGiant
+	{
+		TWeakObjectPtr<class ASkeletalMeshActor> Actor;
+		TWeakObjectPtr<AActor> Mark;       // what the guns aim at and destroy; unseen
+		float X = 0.f, Y = 0.f;            // sea space: cm ahead of the ship, cm from the middle of the channel
+		float Side = 1.f;                  // +1 the starboard bank
+		int32 State = 0;                   // 0 wading in, 1 ripping up a rock, 2 throwing, 3 waiting, 4 dying
+		float StateTime = 0.f;
+		bool bThrown = false;
+		bool bCalled = false;
+	};
+	TArray<FGiant> Giants;
+	struct FFireball
+	{
+		TWeakObjectPtr<AActor> Actor;
+		FVector From = FVector::ZeroVector, To = FVector::ZeroVector;
+		float Age = 0.f;
+	};
+	TArray<FFireball> Fireballs;
+	int32 GiantsSent = 0;
+	void TickGiants(float DeltaSeconds);
 	/** Trial: the bought cloud tunnel (-DCVdbTunnel=). */
 	UPROPERTY() TObjectPtr<class UHeterogeneousVolumeComponent> VdbTrial;
 };

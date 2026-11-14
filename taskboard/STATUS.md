@@ -2,6 +2,13 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 05:42 Claude: stone giants on the banks of the city, throwing fire (owner's 05:20 request)
+
+- `DCTreadmill::TickGiants`: six through the city (96, 118, 141, 164, 187, 208 s), port and starboard by turns. Each is Paragon's Rampage in the stone (Elemental) skin with its glowing cracks, 16 times life size (about 45 m), wading. He starts 460 m ahead and out beyond the bank, wades in to stand 82 m from the middle of the channel facing the ship, and the crew call him and name the battery. Once the ship is within 150 m he tears up a rock (the tell, 1.6 s), throws it burning in a three-second arc at the deck (2 damage and a deck fire, which someone must put out), and does it again every six seconds until she is past. He has 4 health and is an urgent target for that side's battery; killed, he plays his death and sinks, 200 points. Without the pack none are sent. `-DCNoGiants`, `-DCGiantAt=<ride time>`, `-DCGiantScale= -DCGiantSunk= -DCGiantYaw=`.
+- Seen: `review/62-giants`. He reads well: dark stone, red-lit cracks, shards of rock round him, in the mist under the ruins.
+- Run at 2x with the bot captain's guns manned: four of the six were killed (at about 145 m ahead), eight rocks landed on deck. With rocks in the lane as well the hull was 64 at the slide. The first throw now waits until the ship is within 150 m (was 210) so a manned battery usually gets him first. The balance wants a hand on it.
+- Marchosias and the giant demons are not used: one creature, as asked.
+
 ## 14 Nov 05:27 Claude: the 04:45 and 05:00 fixes are built and run (editor closed at about 05:40)
 
 - Built clean. One run at 3x with the bot captain to 220 s and one at normal speed to 120 s, both without a window (`-RenderOffscreen`, so the test no longer takes the owner's keyboard).

@@ -12,6 +12,12 @@
 #include "DCCloudFace.h"
 #include "DCPortal.h"
 #include "DCRuins.h"
+#include "DCAudio.h"
+#include "Animation/SkeletalMeshActor.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Animation/AnimSequence.h"
+#include "Components/PointLightComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Engine/StaticMeshActor.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
@@ -245,6 +251,7 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 	}
 	TickStrikes(DeltaSeconds);
 	TickDeckWisps(DeltaSeconds);
+	TickGiants(DeltaSeconds);
 
 	// Ruins on the open sea before the fog are off (owner, 13 Nov): the city is first seen in the murk. -DCOutliers brings them back.
 	if (!bOutliersBuilt)
@@ -640,6 +647,219 @@ void ADCTreadmill::TickIncoming(float DeltaSeconds)
 		FVector P = FMath::Lerp(In.From, In.To, In.T);
 		P.Z += FMath::Sin(In.T * UE_PI) * 1400.f;
 		Shot->SetActorLocation(P);
+	}
+}
+
+namespace
+{
+	UAnimSequence* GiantAnim(const TCHAR* Name)
+	{
+		return LoadObject<UAnimSequence>(nullptr, *FString::Printf(TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/%s.%s"), Name, Name), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	}
+}
+
+void ADCTreadmill::TickGiants(float DeltaSeconds)
+{
+	if (!Director) { return; }
+	static const bool bOff = FParse::Param(FCommandLine::Get(), TEXT("DCNoGiants"));
+	// Test hooks: -DCGiantScale= (he is about 3 m tall at 1), -DCGiantYaw= (which way the mesh faces), -DCGiantSunk= (cm of him under water),
+	// -DCGiantAt=<ride time> sends an extra one to starboard.
+	static float Scale = 16.f, MeshYaw = -90.f, Sunk = 550.f, Extra = -1.f; static bool bRead = false;
+	if (!bRead)
+	{
+		bRead = true;
+		FParse::Value(FCommandLine::Get(), TEXT("DCGiantScale="), Scale);
+		FParse::Value(FCommandLine::Get(), TEXT("DCGiantYaw="), MeshYaw);
+		FParse::Value(FCommandLine::Get(), TEXT("DCGiantSunk="), Sunk);
+		FParse::Value(FCommandLine::Get(), TEXT("DCGiantAt="), Extra);
+	}
+	const FDCEnvState& Env = Director->GetEnv();
+	const float Speed = Env.ShipSpeed * Director->TimeScale;
+	const float T = Director->RideTime;
+	UWorld* World = GetWorld();
+	UDCCrewSubsystem* Crew = World->GetSubsystem<UDCCrewSubsystem>();
+	const bool bCity = Director->GetPhase() == EDCPhase::Fog && Env.Mist > 0.55f;
+
+	// When they come: every twenty-odd seconds through the city, port and starboard by turns.
+	static const float SendAt[] = { 96.f, 118.f, 141.f, 164.f, 187.f, 208.f };
+	bool bSend = false;
+	float Side = 1.f;
+	if (T < SendAt[0] - 5.f) { GiantsSent = 0; }   // the voyage was begun again
+	while (!bOff && GiantsSent < UE_ARRAY_COUNT(SendAt) && T >= SendAt[GiantsSent])
+	{
+		Side = GiantsSent % 2 == 0 ? -1.f : 1.f;
+		if (T <= SendAt[GiantsSent] + 2.f && bCity) { bSend = true; }
+		++GiantsSent;
+	}
+	if (Extra >= 0.f && T >= Extra && T < Extra + 1.f) { Extra = -1.f; bSend = true; Side = 1.f; }
+	if (bSend)
+	{
+		USkeletalMesh* Mesh = LoadObject<USkeletalMesh>(nullptr, TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Skins/Tier2/Elemental/Meshes/Rampage_Elemental.Rampage_Elemental"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		ASkeletalMeshActor* A = Mesh ? World->SpawnActor<ASkeletalMeshActor>(FVector::ZeroVector, FRotator::ZeroRotator, Params) : nullptr;
+		if (A)
+		{
+			USkeletalMeshComponent* C = A->GetSkeletalMeshComponent();
+			C->SetMobility(EComponentMobility::Movable);
+			C->SetSkeletalMesh(Mesh);
+			C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			A->SetActorScale3D(FVector(Scale));
+			if (UAnimSequence* Jog = GiantAnim(TEXT("Jog_Biped_Fwd"))) { C->PlayAnimation(Jog, true); }
+			FGiant G;
+			G.Actor = A;
+			G.Side = Side;
+			G.X = 46000.f;                 // 460 m ahead: out of sight in the mist
+			G.Y = Side * 15500.f;          // out beyond the bank; he wades in to it
+			if (AActor* Mark = World->SpawnActor<AActor>(AActor::StaticClass(), FTransform::Identity, Params))
+			{
+				USceneComponent* Root = NewObject<USceneComponent>(Mark);
+				Root->SetMobility(EComponentMobility::Movable);
+				Mark->SetRootComponent(Root);
+				Root->RegisterComponent();
+				AddExternalHostile(Mark, 2200.f, 4.f, true);
+				G.Mark = Mark;
+			}
+			Giants.Add(G);
+			UE_LOG(LogDC, Log, TEXT("Giant sent at %.1f s to the %s bank"), T, Side < 0.f ? TEXT("port") : TEXT("starboard"));
+		}
+		else { UE_LOG(LogDC, Log, TEXT("Giant: the stone Rampage mesh was not found (pack not installed); none sent")); }
+	}
+
+	const FTransform Rock = Director->GetWorldRock();
+	for (int32 i = Giants.Num() - 1; i >= 0; --i)
+	{
+		FGiant& G = Giants[i];
+		ASkeletalMeshActor* A = G.Actor.Get();
+		if (!A) { if (AActor* M = G.Mark.Get()) { M->Destroy(); } Giants.RemoveAt(i); continue; }
+		USkeletalMeshComponent* C = A->GetSkeletalMeshComponent();
+		G.X -= Speed * DeltaSeconds;
+		G.StateTime += DeltaSeconds;
+		// The guns have killed him: he goes down where he stands.
+		if (G.State != 4 && !G.Mark.IsValid())
+		{
+			G.State = 4; G.StateTime = 0.f;
+			if (UAnimSequence* Death = GiantAnim(TEXT("Death_A"))) { C->PlayAnimation(Death, false); }
+			Director->Score += 200;
+			if (Crew) { Crew->Report(TEXT("The giant is down! Good shooting!"), true); }
+			UE_LOG(LogDC, Log, TEXT("Giant killed at %.1f s, %.0f m ahead"), T, G.X / 100.f);
+		}
+		const float Bank = 8200.f;   // he stands 82 m from the middle of the channel
+		float Down = Sunk;
+		switch (G.State)
+		{
+		case 0:
+			G.Y = G.Side * FMath::Max(Bank, FMath::Abs(G.Y) - 420.f * DeltaSeconds);
+			if (!G.bCalled && G.X < 30000.f)
+			{
+				G.bCalled = true;
+				if (Crew) { Crew->Report(G.Side < 0.f ? TEXT("Giant wading in on the port bank! Port battery, bring it down!") : TEXT("Giant wading in on the starboard bank! Starboard battery, bring it down!"), true); }
+			}
+			if (FMath::Abs(G.Y) <= Bank + 1.f && G.X < 15000.f && G.X > -6000.f)
+			{
+				G.State = 1; G.StateTime = 0.f;
+				if (UAnimSequence* Rip = GiantAnim(TEXT("Ability_RipNToss_Rip"))) { C->PlayAnimation(Rip, false); }
+			}
+			break;
+		case 1:
+			// The tell: he tears a rock out of the sea bed.
+			if (G.StateTime > 1.6f)
+			{
+				G.State = 2; G.StateTime = 0.f; G.bThrown = false;
+				if (UAnimSequence* Toss = GiantAnim(TEXT("Ability_RipNToss_Toss"))) { C->PlayAnimation(Toss, false); }
+			}
+			break;
+		case 2:
+			if (!G.bThrown && G.StateTime > 0.45f)
+			{
+				G.bThrown = true;
+				FFireball F;
+				F.From = A->GetActorLocation() + FVector(0.f, 0.f, 330.f * Scale);
+				// At the deck, somewhere along her length.
+				F.To = FVector(FMath::FRandRange(-1300.f, 1400.f), FMath::FRandRange(-200.f, 200.f), Director->SeaLevelZ + 620.f);
+				FActorSpawnParameters Params;
+				Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+				if (AStaticMeshActor* B = World->SpawnActor<AStaticMeshActor>(F.From, FRotator::ZeroRotator, Params))
+				{
+					UStaticMeshComponent* M = B->GetStaticMeshComponent();
+					M->SetMobility(EComponentMobility::Movable);
+					UStaticMesh* Held = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/ParagonRampage/FX/Meshes/Debris/SM_Rock_To_Hold.SM_Rock_To_Hold"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+					M->SetStaticMesh(Held ? Held : LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere")));
+					M->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+					M->SetCastShadow(false);
+					if (UMaterialInterface* Glow = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Glow.M_Glow")))
+					{
+						UMaterialInstanceDynamic* Hot = UMaterialInstanceDynamic::Create(Glow, B);
+						Hot->SetVectorParameterValue(TEXT("Color"), FLinearColor(11.f, 2.6f, 0.3f));
+						for (int32 Slot = 0; Slot < M->GetNumMaterials(); ++Slot) { M->SetMaterial(Slot, Hot); }
+					}
+					const float Through = FMath::Max(M->GetStaticMesh() ? M->GetStaticMesh()->GetBoundingBox().GetSize().GetMax() : 100.f, 1.f);
+					B->SetActorScale3D(FVector(260.f / Through));
+					UPointLightComponent* Light = NewObject<UPointLightComponent>(B);
+					Light->SetMobility(EComponentMobility::Movable);
+					Light->SetupAttachment(M);
+					Light->SetIntensity(120000.f);
+					Light->SetAttenuationRadius(4500.f);
+					Light->SetLightColor(FLinearColor(1.f, 0.45f, 0.12f));
+					Light->SetCastShadows(false);
+					Light->RegisterComponent();
+					F.Actor = B;
+				}
+				Fireballs.Add(F);
+				if (Crew) { Crew->Report(TEXT("Fire incoming!"), true); }
+			}
+			if (G.StateTime > 1.5f)
+			{
+				G.State = 3; G.StateTime = 0.f;
+				if (UAnimSequence* Idle = GiantAnim(TEXT("Idle"))) { C->PlayAnimation(Idle, true); }
+			}
+			break;
+		case 3:
+			// He throws again every six seconds while the ship is in his reach.
+			if (G.StateTime > 4.f && G.X > -6000.f)
+			{
+				G.State = 1; G.StateTime = 0.f;
+				if (UAnimSequence* Rip = GiantAnim(TEXT("Ability_RipNToss_Rip"))) { C->PlayAnimation(Rip, false); }
+			}
+			break;
+		default:
+			Down = Sunk + FMath::Max(0.f, G.StateTime - 2.f) * 500.f;
+			break;
+		}
+		FVector Local(G.X, G.Y - LaneOffset, Director->SeaLevelZ + Director->SeaRise(G.Y) - Director->SeaRise(LaneOffset) - Down);
+		// He faces the ship.
+		const float Facing = FMath::RadiansToDegrees(FMath::Atan2(-Local.Y, -Local.X));
+		A->SetActorLocationAndRotation(Rock.TransformPosition(Local), FRotator(0.f, Facing + MeshYaw, 0.f));
+		if (AActor* M = G.Mark.Get()) { M->SetActorLocation(A->GetActorLocation() + FVector(0.f, 0.f, 220.f * Scale)); }
+		if (G.X < -16000.f || (G.State == 4 && G.StateTime > 6.f) || Director->GetPhase() != EDCPhase::Fog)
+		{
+			if (AActor* M = G.Mark.Get()) { M->Destroy(); }
+			A->Destroy();
+			Giants.RemoveAt(i);
+		}
+	}
+
+	// What they throw: three seconds in a high arc, then fire where it lands.
+	for (int32 i = Fireballs.Num() - 1; i >= 0; --i)
+	{
+		FFireball& F = Fireballs[i];
+		F.Age += DeltaSeconds;
+		const float U = FMath::Clamp(F.Age / 3.f, 0.f, 1.f);
+		const FVector Where = FMath::Lerp(F.From, F.To, U) + FVector(0.f, 0.f, 4.f * 4500.f * U * (1.f - U));
+		if (AActor* B = F.Actor.Get()) { B->SetActorLocation(Where); B->SetActorRotation(FRotator(F.Age * 260.f, F.Age * 170.f, 0.f)); }
+		if (U < 1.f) { continue; }
+		Director->DamageShip(2.f);
+		ADCTroubles* Troubles = ADCTroubles::Get(this);
+		if (Troubles && Troubles->DeckPoints.Num() && Troubles->NumFires() < Troubles->MaxFires)
+		{
+			FVector Best = Troubles->DeckPoints[0];
+			for (const FVector& P : Troubles->DeckPoints) { if (FVector::DistSquared2D(P, F.To) < FVector::DistSquared2D(Best, F.To)) { Best = P; } }
+			Troubles->StartFire(Best);
+		}
+		if (ADCAudio* Sound = Cast<ADCAudio>(UGameplayStatics::GetActorOfClass(World, ADCAudio::StaticClass()))) { Sound->Boom(0.7f); }
+		UE_LOG(LogDC, Log, TEXT("Giant fire struck the deck at %.1f s"), T);
+		if (AActor* B = F.Actor.Get()) { B->Destroy(); }
+		Fireballs.RemoveAt(i);
 	}
 }
 
