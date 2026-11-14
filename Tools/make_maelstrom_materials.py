@@ -144,15 +144,23 @@ struct WaterNoise {
         return float3(h+.18*(h*h-.5),grad*(1+.36*h));
     }
     float4 breaking_field(float2 p,float time) {
-        float2 k=float2(.13,.10);
-        float phase=dot(p,k)-time*1.35;
-        float3 packet=noise_gradient(p*.035+float2(-time*.04,8.7));
-        float envelope=.30+.70*packet.x;
-        float shape=sin(phase)+.25*sin(2*phase);
-        float h=shape*2.4*envelope;
-        float2 gradient=(cos(phase)+.5*cos(2*phase))*k*2.4*envelope
-            +shape*2.4*.70*.035*packet.yz;
-        float lip=smoothstep(.94,.995,sin(phase))*smoothstep(.40,.65,packet.x);
+        // Several short, irregular packets rather than a single planar sine.
+        // A coherent sine becomes a tiled comb of white caps across a 3km view.
+        float h=0,lip=0; float2 gradient=0;
+        const float2 k[3]={float2(.16,.08),float2(-.11,.25),float2(.29,.19)};
+        const float amp[3]={1.90,1.00,.55};
+        [unroll] for(int i=0;i<3;i++) {
+            float3 warp=noise_gradient(p*.037+float2(i*21.7,9.3));
+            float phase=dot(p,k[i])-time*(1.6+i*.37)+warp.x*7.0+i*3.7;
+            float2 phaseGradient=k[i]+warp.yz*.259;
+            float3 packet=noise_gradient(p*.047+float2(i*13.8-time*.035,8.7));
+            float envelope=.25+.75*packet.x;
+            float shape=sin(phase)+.20*sin(2*phase);
+            h+=shape*amp[i]*envelope;
+            gradient+=(cos(phase)+.40*cos(2*phase))*phaseGradient*amp[i]*envelope
+                +shape*amp[i]*.75*.047*packet.yz;
+            lip=max(lip,smoothstep(.975,.999,sin(phase))*smoothstep(.46,.72,packet.x));
+        }
         return float4(h,gradient,lip);
     }
     float waves(float2 p, float time) { return wave_field(p,time).x; }
@@ -310,7 +318,7 @@ return fft.Surface(Derivatives,DerivativesSampler,Displacement,DisplacementSampl
 foam_texture = unreal.load_asset("/DynamicRealWater/Textures/T_DRW_OceanFoam_BaseColor")
 foam_normal_texture = unreal.load_asset("/DynamicRealWater/Textures/T_DRW_OceanFoam_Normal")
 normal_texture = unreal.load_asset("/DynamicRealWater/Textures/T_DRW_Ocean_DetailNormal")
-foam_inputs = dict(base_inputs, Coverage=foam_coverage, Flatten=hull_flatten, Cam=camera, Enabled=use_live_fft, Count=live_count,
+foam_inputs = dict(base_inputs, VN=vertex_normal, Coverage=foam_coverage, Flatten=hull_flatten, Cam=camera, Enabled=use_live_fft, Count=live_count,
                    Overflow=overflow_foam, Supply=(vc,"A"))
 # Runtime binds a crest field generated from the actual bowl. Portal/tunnel
 # leave Available=0. Advection moves foam off the ridge into a trailing wake.
@@ -362,15 +370,27 @@ float torn=lerp(wn.fbm(q*float2(.17,.23)),wn.fbm(q2*float2(.17,.23)),blend);
 float breakup=smoothstep(.43,.64,torn);
 float impact=max(ImpactSource.g*.85,lerp(Source0.g,Source1.g,blend)*ageFade)*saturate(SourceAvailable);
 float movingLip=lerp(wn.breaking_field(q,T).w,wn.breaking_field(q2,T).w,blend)
-    *(1-smoothstep(35000.0,130000.0,length(P-Cam)))*(1-saturate(Tunnel));
+    *(1-smoothstep(160000.0,400000.0,length(P-Cam)))*(1-saturate(Tunnel));
+// Small aerated streaks on the fast banks, present at their real metre scale
+// across the crater. Independent noisy packets avoid contour-line foam.
+float steep=smoothstep(.08,.40,1-normalize(VN).z)*(1-saturate(Tunnel));
+float2 warp0=float2(wn.noise(q*.031),wn.noise(q*.027+41.7))-.5;
+float2 warp1=float2(wn.noise(q2*.031),wn.noise(q2*.027+41.7))-.5;
+float rush=lerp(wn.streak(q+warp0*16.0,direction),wn.streak(q2+warp1*16.0,direction),blend);
+float patch=lerp(wn.fbm((q+warp0*32)*.043+5.1),wn.fbm((q2+warp1*32)*.043+5.1),blend);
+// Subpixel bubbles must average into coverage, not sparkle as a checkerboard
+// on the far bank. This is screen-footprint filtering, not larger far waves.
+float pixelMeters=max(length(ddx(delta)),length(ddy(delta)));
+float resolvedFoam=1-smoothstep(.8,3.5,pixelMeters);
+float aeration=lerp(.22,smoothstep(.43,.59,rush),resolvedFoam)*smoothstep(.36,.62,patch)*steep;
 float body=crest*breakup+cap*.75*thread+supply*.10*thread
-    +impact*breakup*(.12+.88*thread)+movingLip*.65*(.25+.75*breakup);
+    +impact*(.08+.92*breakup)*(.08+.92*thread)+movingLip*.50*breakup+aeration*.80;
 float veil=thread*.08*smoothstep(.4,.7,fine)*smoothstep(.35,.7,torn)*max(crest,cap);
 float lace=smoothstep(.35,.70,fine);
 """
 if foam_texture:
     foam_code += "float cells=lerp(Cells0.r,Cells1.r,blend); lace=smoothstep(.025,.24,cells);\n"
-foam_code += "return saturate((body*lace*1.35+veil)*Coverage*(1-shelf*.8));"
+foam_code += "float bubbles=lerp(wn.noise(q*.73),wn.noise(q2*.73),blend); lace*=smoothstep(.30,.64,bubbles); lace=lerp(.32,lace,resolvedFoam); return saturate((body*lace*1.35+veil)*Coverage*(1-shelf*.8));"
 foam = custom(water, foam_code, FLOAT, foam_inputs)
 source_foam=foam
 if fft_foam:
@@ -390,7 +410,7 @@ float3 foamColor=lerp(float3(0.74,0.81,0.80),float3(0.64,0.73,0.79),saturate(VC.
 return lerp(body,foamColor,Foam);
 """, FLOAT3, {"VC":vc,"Foam":foam}, 100)
 output(color, unreal.MaterialProperty.MP_BASE_COLOR)
-roughness = custom(water, "return lerp(0.22,0.78,sqrt(saturate(Foam)));", FLOAT, {"Foam":foam}, 200)
+roughness = custom(water, "return lerp(0.30,0.78,sqrt(saturate(Foam)));", FLOAT, {"Foam":foam}, 200)
 if fft_surface:
     roughness=custom(water,r"""
 float distanceM=length(P-Cam)*0.01;
@@ -418,14 +438,16 @@ float distanceM=length(P-Cam)*0.01;
 float2 slope=-lerp(wn.wave_field(q,T).yz,wn.wave_field(q2,T).yz,blend)*(min(max(Amp,0.0),650.0)*0.01);
 float2 breakingSlope=lerp(wn.breaking_field(q,T).yz,wn.breaking_field(q2,T).yz,blend);
 slope-=breakingSlope*(1-saturate(Tunnel));
-slope*=lerp(0.0,1.0,nearHull)*lerp(1.0,.18,smoothstep(180.0,1000.0,distanceM));
+slope*=lerp(0.0,1.0,nearHull)*lerp(1.0,.70,smoothstep(500.0,3000.0,distanceM));
 // Intermediate wind waves connect the large swells to the close surface detail.
 // Fade unresolved frequencies with true camera distance, including crater depth.
 float2 chop0=cos(dot(q,float2(0.55,0.28))-T*2.45)*float2(0.55,0.28)*0.18
-            +cos(dot(q,float2(-0.91,0.43))-T*3.14)*float2(-0.91,0.43)*0.08;
+            +cos(dot(q,float2(-0.91,0.43))-T*3.14)*float2(-0.91,0.43)*0.14
+            +cos(dot(q,float2(1.7,-1.1))-T*4.45)*float2(1.7,-1.1)*0.045;
 float2 chop1=cos(dot(q2,float2(0.55,0.28))-T*2.45)*float2(0.55,0.28)*0.18
-            +cos(dot(q2,float2(-0.91,0.43))-T*3.14)*float2(-0.91,0.43)*0.08;
-slope-=lerp(chop0,chop1,blend)*(1.0-smoothstep(450.0,1500.0,distanceM))*(1.0-Foam*0.65);
+            +cos(dot(q2,float2(-0.91,0.43))-T*3.14)*float2(-0.91,0.43)*0.14
+            +cos(dot(q2,float2(1.7,-1.1))-T*4.45)*float2(1.7,-1.1)*0.045;
+slope-=lerp(chop0,chop1,blend)*1.65*(1.0-smoothstep(450.0,1500.0,distanceM))*(1.0-Foam*0.65);
 """
 if normal_texture:
     normal_code += "float detailAmount=lerp(0.20,0.012,smoothstep(50.0,400.0,distanceM));\n"
@@ -486,7 +508,7 @@ float h=lerp(wn.waves(q,T),wn.waves(q2,T),blend);
 float nearHull=smoothstep(1200.0,4000.0,length(P.xy*float2(.5,2)));
 float flatten=saturate(Flatten)*(1.0-smoothstep(1200.0,3500.0,length(P.xy*float2(0.5,2.0))));
 float3 waveNormal=normalize(lerp(VN,float3(0,0,1),flatten));
-float resolved=1-smoothstep(35000.0,120000.0,length(P-Cam));
+float resolved=1-smoothstep(120000.0,350000.0,length(P-Cam));
 float3 wave=waveNormal*h*min(max(Amp,0),650.0)*nearHull*resolved;
 """
 wpo_inputs=dict(base_inputs,VN=vertex_normal,Amp=wave_height,Flatten=hull_flatten,Level=sea_level,Cam=camera)
@@ -695,14 +717,18 @@ fi={"UV":fuv,"VC":fvc,"T":ft,"P":fp}
 fcode=NOISE+r"""
 float width=max(VC.r*200.0,4.0);
 float2 p=float2((UV.x-.5)*width,UV.y-T*(18.0+VC.b*12.0));
-float body=wn.fbm(p*float2(.26,.055)+VC.g*83.0);
-float fine=wn.fbm(p*float2(.95,.3)+19.0);
-float edge=smoothstep(0,.18,UV.x)*smoothstep(0,.18,1-UV.x);
-float torn=smoothstep(.30,.64,body+fine*.15);
-float foot=1-smoothstep(.76,1.0,VC.b);
-float patches=smoothstep(.20,.50,wn.fbm(p*float2(.055,.018)+VC.g*31.0));
+float2 warp=float2(wn.noise(p*.13+VC.g*83),wn.noise(p*.09+13.7))-.5;
+float body=wn.fbm((p+warp*5)*float2(.32,.11)+VC.g*83.0);
+float fine=wn.fbm(p*float2(1.3,.65)+19.0);
+float edge=smoothstep(0,.28,UV.x)*smoothstep(0,.28,1-UV.x);
+float torn=smoothstep(.37,.66,body+fine*.12);
+float foot=1-smoothstep(.90,1.0,VC.b);
+float patches=smoothstep(.40,.62,wn.fbm(p*float2(.12,.045)+VC.g*31.0));
+// Aerated reaches are interrupted by darker water between short drops. The
+// fixed mask stops temporal averaging from rebuilding one continuous ribbon.
+float reach=smoothstep(.32,.62,wn.noise(float2(UV.y*.047,VC.g*73.0)));
 float hull=smoothstep(1200.0,3500.0,length(P.xy*float2(.5,2)));
-return saturate(edge*torn*(.30+fine*.70)*patches*foot*hull);
+return saturate(edge*torn*(.22+fine*.78)*patches*reach*foot*hull*.9);
 """
 output(custom(feed,fcode,FLOAT,fi),unreal.MaterialProperty.MP_OPACITY)
 output(vector(feed,"FoamColor",(.66,.76,.79,1)),unreal.MaterialProperty.MP_BASE_COLOR)
@@ -721,12 +747,14 @@ mu=expression(mist,unreal.MaterialExpressionTextureCoordinate)
 mv=expression(mist,unreal.MaterialExpressionVertexColor)
 mt=expression(mist,unreal.MaterialExpressionTime)
 ma=custom(mist,NOISE+r"""
-float2 p=float2(UV.x*12.0+VC.g*13.0,UV.y*7.0-T*.9);
-float n=wn.fbm(p)+wn.noise(p*2.7)*.12;
+float2 p=float2(UV.x*17.0+VC.g*13.0,UV.y*9.0-T*1.6);
+float2 warp=float2(wn.noise(p*.8),wn.noise(p*.6+8.7))-.5;
+float n=wn.fbm(p+warp*2.3)+wn.noise(p*3.7)*.12;
 float2 d=(UV-.5)*2.0;
 float edge=pow(saturate(1-dot(d,d)),2.0);
-float torn=smoothstep(.37,.69,n);
-return edge*torn*Alpha*Density*Reveal;
+float torn=smoothstep(.46,.72,n);
+float flecks=smoothstep(.32,.74,wn.noise(p*7.3));
+return edge*torn*(.25+.75*flecks)*Alpha*Density*Reveal;
 """,FLOAT,{"UV":mu,"VC":mv,"Alpha":(mv,"A"),"T":mt,"Density":scalar(mist,"Density",.55),"Reveal":scalar(mist,"Reveal",1.0)})
 md=expression(mist,unreal.MaterialExpressionDepthFade)
 MEL.connect_material_expressions(ma,"",md,"Opacity")

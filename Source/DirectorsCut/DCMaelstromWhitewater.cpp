@@ -41,32 +41,44 @@ void ADCMaelstrom::BuildWhitewater()
             Source.Trail.Add(Drift);
             Drift+=CurrentAt(Drift,Radius)*1.2f;
         }
-        const int32 First=V.Num();
-        constexpr int32 Rows=100,Cols=12;
-        float Distance=0.f;
-        FVector Previous(Start,HeightAt(Start));
-        for(int32 Row=0;Row<=Rows;++Row)
+        // Split the supply into separate, unequal runs. A single uninterrupted
+        // sheet spanning hundreds of metres reads as a painted ribbon.
+        for(int32 Branch=0;Branch<4;++Branch)
         {
-            const float U=static_cast<float>(Row)/Rows;
-            const float Bend=FMath::Sin(U*UE_PI)*W*FMath::Sin(U*5.f+Seed*10.f)*.8f;
-            const FVector2D Centre=FMath::Lerp(Start,End,U)+Across*Bend;
-            const FVector Center3(Centre,HeightAt(Centre)+45.f);
-            Distance+=(Center3-Previous).Size(); Previous=Center3;
-            const float Width=W*(.55f+1.05f*U)*(1.f+.40f*FMath::PerlinNoise1D(U*19.f+Seed*41.f));
-            for(int32 Col=0;Col<=Cols;++Col)
+            const float BranchSeed=FMath::Frac(Seed+Branch*.217f);
+            const float BranchOffset=(Branch-1.5f)*W*.50f;
+            const float BranchWidth=W*Random.FRandRange(.22f,.40f);
+            const int32 First=V.Num();
+            constexpr int32 Rows=144,Cols=8;
+            float Distance=0.f;
+            FVector Previous(Start,HeightAt(Start));
+            for(int32 Row=0;Row<=Rows;++Row)
             {
-                const float X=static_cast<float>(Col)/Cols;
-                const FVector2D P=Centre+Across*((X-.5f)*Width*2.f);
-                // A falling sheet separates from the wall, then reconnects
-                // at the real contact. Surface-only overlays read as paint.
-                const float FallZ=FMath::Lerp(LipZ,Source.Foot.Z,U*U);
-                const float SurfaceZ=HeightAt(P);
-                const float Lift=400.f*(1.f-FMath::SmoothStep(.65f,1.f,U))+25.f;
-                V.Add(FVector(P,FMath::Max(SurfaceZ,FallZ)+Lift));
-                UV.Add(FVector2D(X,Distance*.01f));
-                C.Add(FLinearColor(Width/10000.f,Seed,U,1.f).ToFColor(false));
-                if(Row<Rows && Col<Cols)
-                { const int32 A=First+Row*(Cols+1)+Col,B=A+Cols+1; I.Append({A,B,A+1,A+1,B,B+1}); }
+                const float U=static_cast<float>(Row)/Rows;
+                const float Bend=BranchOffset*(.4f+.6f*U)+FMath::Sin(U*UE_PI)*W*
+                    FMath::PerlinNoise1D(U*9.f+BranchSeed*57.f)*.65f;
+                const FVector2D Centre=FMath::Lerp(Start,End,U)+Across*Bend;
+                const FVector Center3(Centre,HeightAt(Centre)+45.f);
+                Distance+=(Center3-Previous).Size(); Previous=Center3;
+                const float Width=BranchWidth*(.6f+.9f*U)*(1.f+.65f*FMath::PerlinNoise1D(U*27.f+BranchSeed*41.f));
+                for(int32 Col=0;Col<=Cols;++Col)
+                {
+                    const float X=static_cast<float>(Col)/Cols;
+                    const FVector2D P=Centre+Across*((X-.5f)*Width*2.f);
+                    // A falling sheet separates from the wall, then reconnects
+                    // at the real contact. Surface-only overlays read as paint.
+                    const float FallZ=FMath::Lerp(LipZ,Source.Foot.Z,U*U);
+                    const float SurfaceZ=HeightAt(P);
+                    // Repeated short free-falling sections, not one diagonal jet
+                    // suspended above the entire bank. Rejoin the receiving water.
+                    const float Burst=FMath::Square(FMath::Max(0.f,FMath::PerlinNoise1D(U*21.f+BranchSeed*83.f)));
+                    const float Lift=(180.f+1700.f*Burst)*(1.f-FMath::SmoothStep(.82f,1.f,U))+25.f;
+                    V.Add(FVector(P,FMath::Min(FMath::Max(SurfaceZ,FallZ),SurfaceZ+Lift)+25.f));
+                    UV.Add(FVector2D(X,Distance*.01f));
+                    C.Add(FLinearColor(Width/10000.f,BranchSeed,U,1.f).ToFColor(false));
+                    if(Row<Rows && Col<Cols)
+                    { const int32 A=First+Row*(Cols+1)+Col,B=A+Cols+1; I.Append({A,B,A+1,A+1,B,B+1}); }
+                }
             }
         }
     }
@@ -82,11 +94,11 @@ void ADCMaelstrom::BuildWhitewater()
     {
         const FVector2D Direction=CurrentAt(FVector2D(Feed.Foot),Radius).GetSafeNormal();
         const FVector2D Across(-Direction.Y,Direction.X);
-        for(int32 Fan=0;Fan<11;++Fan)
+        for(int32 Fan=0;Fan<17;++Fan)
         {
             // Stagger small spray lobes across the contact. Three full-width
             // parallel sheets read as horizontal shelves from the deck.
-            const float H=Random.FRandRange(280.f,850.f),Width=Random.FRandRange(350.f,950.f);
+            const float H=Random.FRandRange(250.f,750.f),Width=Random.FRandRange(200.f,650.f);
             const FVector2D Offset=Across*Random.FRandRange(-Feed.Width*.8f,Feed.Width*.8f)
                 +Direction*Random.FRandRange(-350.f,900.f);
             const int32 First=V.Num();
@@ -98,7 +110,7 @@ void ADCMaelstrom::BuildWhitewater()
                     +Direction*(T*H*1.4f);
                 const float Crown=.45f+.55f*FMath::Sin(U*UE_PI);
                 V.Add(FVector(P,HeightAt(P)+40.f+FMath::Sin(T*UE_PI)*H*Crown));
-                UV.Add(FVector2D(U,T)); C.Add(FLinearColor(1.f,FMath::Frac(Feed.Seed+Fan*.173f),0.f,.65f).ToFColor(false));
+                UV.Add(FVector2D(U,T)); C.Add(FLinearColor(1.f,FMath::Frac(Feed.Seed+Fan*.173f),0.f,.48f).ToFColor(false));
                 if(Y<Rows && X<Cols) { const int32 A=First+Y*(Cols+1)+X,B=A+Cols+1; I.Append({A,B,A+1,A+1,B,B+1}); }
             }
         }
@@ -123,14 +135,14 @@ void ADCMaelstrom::UpdateWhitewater()
         const FVector2D Velocity=CurrentAt(FVector2D(Feed.Foot),Radius);
         // Fine droplets and a few heavier fragments leave the actual contact,
         // follow the current, then fall. No explosion spheres or smoke cards.
-        for(int32 Drop=0;Drop<18 && ContactParticles.Num()<1600;++Drop)
+        for(int32 Drop=0;Drop<28 && ContactParticles.Num()<1600;++Drop)
         {
             const float A=FMath::FRand()*UE_TWO_PI;
             const float R=FMath::FRandRange(0.f,Feed.Width*.75f);
             const FVector2D P=FVector2D(Feed.Foot)+FVector2D(FMath::Cos(A),FMath::Sin(A))*R;
             ContactParticles.Add({FVector(P,HeightAt(P)+80.f),
                 FVector(Velocity*.45f+FVector2D(FMath::FRandRange(-400.f,400.f),FMath::FRandRange(-400.f,400.f)),FMath::FRandRange(650.f,1550.f)),
-                0.f,FMath::FRandRange(1.f,2.8f),FMath::FRandRange(8.f,30.f)});
+                0.f,FMath::FRandRange(1.f,2.5f),FMath::FRandRange(3.f,16.f)});
         }
     }
 }

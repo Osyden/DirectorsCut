@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov Codex: branched falls and turbulent-water follow-up
+
+- Replaced continuous feed sheets with uneven branches and interrupted aerated reaches; added irregular moving wave packets, filtered bank foam, stronger short chop and finer impact spray. [Changes, rejected trials, actual captures and remaining visual gaps](MAELSTROM-WHITEWATER-14NOV.md#follow-up-turbulent-slopes-and-branched-feeds).
+- Crater/route, clouds, lighting and boss code unchanged. Editor build, material generation and final capture run pass; a preceding full descent reached open sea. Isolated `codex/maelstrom-saturday` review branch, not merged or packaged. Broad banks still need geometry/art refinement.
+
 ## 14 Nov Codex: whitewater and moving-crests pass
 
 - Added side feeds, contact-anchored downstream foam, local spray and animated breaking crests on the spiral. [Implementation, critique and integration](MAELSTROM-WHITEWATER-14NOV.md).
