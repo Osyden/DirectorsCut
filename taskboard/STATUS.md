@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 03:47 Claude: foam disc not found again; dev log notes written
+
+- The solid disc of foam round shallow broken columns (seen from the air on 13 Nov) did not show in four aerial frames over the city at 104 to 176 s, and it cannot be seen from the deck. Fixing it means re-patching the water plugin's material; not done for a fault the player does not see.
+- The helmsman striking rocks in the city with nobody giving orders is left as it is: hull about 83 by the slide, and steering is the captain's job.
+- `taskboard/DEVLOG-NOTES-NIGHT-13-14NOV.md`: the night's builds against what each added and where its pictures are, with the things worth telling, for the owner's dev log.
+
 ## 14 Nov 03:42 Claude: a plain column stands in for the waterspout where the cloud pack is not installed
 
 - Without `Content/Clouds_Tunnel_Loop` a spout was unseen but still struck. It is now a pale translucent column (the engine cylinder with `M_Cloud`) with the same white water at its foot if Easy Fog is there. Seen with `-DCNoCloudPack` (which makes the spouts behave as if the pack were absent): a faint grey-white pillar, readable against the bowl, poor against the sky. The plume and the front have no stand-in.
