@@ -206,14 +206,16 @@ float ADCMaelstrom::GetOverflowAmount(float Angle) const
 float ADCMaelstrom::GetRimDrop(float Angle) const
 {
 	const float JoinR=GetRimRadius(Angle)*GetRimJoin(Angle);
-	const float JoinHeight=-Depth+Depth*.78f*FMath::Pow(JoinR/(Radius*.92f),1.55f);
+	const float JoinHeight=-Depth+Depth*FMath::Pow(JoinR/Radius,1.6f);
 	return FMath::Max(1000.f,RimElevation(Angle)-JoinHeight);
 }
 
 float ADCMaelstrom::GetRimJoin(float Angle) const
 {
-	const float Approach = FMath::Pow(FMath::Max(0.f, -FMath::Cos(Angle)), 8.f);
-	return FMath::Lerp(0.90f - 0.12f * Approach, 0.84f + 0.11f * GetOverflowAmount(Angle), RimVariation(Angle));
+	const float Join=FMath::Lerp(.90f,.84f+.11f*GetOverflowAmount(Angle),RimVariation(Angle));
+	// The lower bowl must stay below every lip, including outward rim bays.
+	// Otherwise a clamped fall height creates a discontinuity at the join.
+	return FMath::Min(Join,.91f*Radius/GetRimRadius(Angle));
 }
 
 float ADCMaelstrom::RimElevation(float Angle) const
@@ -231,16 +233,16 @@ float ADCMaelstrom::BaseHeightAt(const FVector2D& Point) const
 	const float Approach = FMath::Pow(FMath::Max(0.f, -FMath::Cos(A)), 8.f);
 	const float Join = GetRimJoin(A);
 	const float LipHeight = RimElevation(A);
-	constexpr float Power = 1.55f;
+	constexpr float Power = 1.6f;
 	const float JoinR=Join*LocalRadius;
-	const float JoinHeight=-Depth+Depth*.78f*FMath::Pow(JoinR/(Radius*.92f),Power);
+	const float JoinHeight=-Depth+Depth*FMath::Pow(JoinR/Radius,Power);
 	const float LipDrop=FMath::Max(1000.f,LipHeight-JoinHeight);
 	float Height;
 	if (U <= Join)
 	{
 		// A single bowl below the overflow. Interpolating between different
 		// angular bowl profiles made large buttresses and warped shiny terrain.
-		Height=-Depth+Depth*.78f*FMath::Pow(R/(Radius*.92f),Power);
+		Height=-Depth+Depth*FMath::Pow(R/Radius,Power);
 	}
 	else
 	{
@@ -265,26 +267,25 @@ float ADCMaelstrom::HeightAt(const FVector2D& Point, bool bWaves) const
     const float RouteT = DCMaelstromRoute::SecondsAtAngle(A);
     const float RouteR = Radius * DCMaelstromRoute::RadialFraction(RouteT);
     const float Across = R - RouteR;
-    const float Lane = FMath::SmoothStep(0.f, .08f, Arc) * (1.f - FMath::SmoothStep(1.8f,2.1f,Arc));
-    // A broad current channel on the crater slope, not a ship balanced on a
-    // vertical overflow face. Blend it back into the bowl beyond the banks.
-    const float CenterHeight = BaseHeightAt(FVector2D(FMath::Cos(A),FMath::Sin(A))*RouteR);
-    const float Channel = 1.f-FMath::SmoothStep(6500.f,16500.f,FMath::Abs(Across));
-    // Retain a downhill face towards the abyss. A nearly level shelf here
-    // hid the drop behind a swimming-pool horizon from an eight-metre eye.
-    const float ChannelHeight = CenterHeight + Across*.28f + FMath::Square(Across/10500.f)*(Across>0.f ? 850.f : 250.f);
+    // Let the banks dissolve into the central plunge. Keeping a full-width
+    // spiral shelf at a 200m radius folds its cross-section into a tall wall.
+    const float Lane = FMath::SmoothStep(.025f,.16f,Arc)*(1.f-FMath::SmoothStep(145.f,178.f,RouteT));
+    const float Width=DCMaelstromRoute::WidthScale(RouteT);
+    // One connected spiral ribbon sculpted into the basin. A broad merge at
+    // either side avoids a separate overlapping mesh or a hard terrace edge.
+    const float CenterHeight=BaseHeightAt(FVector2D(FMath::Cos(A),FMath::Sin(A))*RouteR);
+    const float Channel=Across>=0.f
+        ? 1.f-FMath::SmoothStep(17000.f*Width,33000.f*Width,Across)
+        : 1.f-FMath::SmoothStep(10000.f*Width,24000.f*Width,-Across);
+    const float ChannelHeight=CenterHeight+DCMaelstromRoute::BankedHeight(Across,RouteT);
     Height=FMath::Lerp(Height,ChannelHeight,Lane*Channel);
-    const float ShoulderVariation = .75f + .25f * FMath::PerlinNoise1D(Arc*8.f);
-    const float Outer = FMath::Exp(-FMath::Square((Across-10500.f)/4500.f));
-    const float Inner = FMath::Exp(-FMath::Square((Across+10500.f)/3500.f));
-    Height += Lane * ShoulderVariation * (Outer*650.f + Inner*140.f);
     if (!bWaves) { return Height; }
     // Low relief carries the flowing banks. The former 16m crossing sine waves
     // read as mountains from across the crater; ordinary wave scale must stay
     // small in physical units, not be enlarged to remain legible kilometres away.
     const float Wave = 160.f*FMath::PerlinNoise2D(Point/5500.f)
         + 65.f*FMath::PerlinNoise2D(Point/2300.f+FVector2D(9,17));
-    const float CalmLane = 1.f - .90f*Lane*FMath::Exp(-FMath::Square(Across/6500.f));
+    const float CalmLane = 1.f - .45f*Lane*FMath::Exp(-FMath::Square(Across/(6500.f*Width)));
     return Height + BreakerHeight(Point) + Wave*CalmLane*(1.f-FMath::SmoothStep(.88f,1.03f,U)*.8f)*FMath::SmoothStep(.08f,.22f,U);
 }
 
@@ -307,11 +308,7 @@ void ADCMaelstrom::BuildBasin()
 	{
 		for (int32 Side = 0; Side <= Sectors; ++Side)
 		{
-			// Concentrate samples along the travelled arc. A uniform 768-sector
-			// mesh had 13m edges at the inlet: too coarse for ordinary wind waves.
-			const float A = Side<=256 ? 1.05f*Side/256.f : (Side<=1280
-				? FMath::Lerp(1.05f,3.3f,(Side-256)/1024.f)
-				: FMath::Lerp(3.3f,UE_TWO_PI,(Side-1280)/256.f));
+            const float A=UE_TWO_PI*static_cast<float>(Side)/Sectors;
 			const float R = FMath::Lerp(120.f, GetRimRadius(A) * 1.24f, static_cast<float>(Ring) / Rings);
 			const FVector2D P(FMath::Cos(A) * R, FMath::Sin(A) * R);
 			const float Z = HeightAt(P);
@@ -771,7 +768,13 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
     const float DT = FMath::Min(DeltaSeconds*Director->TimeScale,.1f);
     const float Riding = FMath::SmoothStep(-4.f,12.f,Elapsed);
     // Smooth hydraulic restoring force at the visible banks. Centre stays free to steer.
+    // Integrate in normalized lane coordinates so visible banks and helm
+    // containment narrow together without a late hard offset clamp.
+    const float Width=DCMaelstromRoute::WidthScale(Elapsed);
+    const float PreviousWidth=DCMaelstromRoute::WidthScale(Elapsed-DT);
+    RouteOffset/=PreviousWidth; RouteVelocity/=PreviousWidth;
     DCMaelstromRoute::AdvanceSteering(Input,DT,Riding,HelmTurn,RouteOffset,RouteVelocity);
+    RouteOffset*=Width; RouteVelocity*=Width;
     const FVector2D P = DCMaelstromRoute::Point(Elapsed,Radius,RouteOffset);
     ShipRadius=P.Size();
     const float Angle=DCMaelstromRoute::Angle(Elapsed);
@@ -782,12 +785,9 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
     const FVector2D Behind=DCMaelstromRoute::Point(Elapsed-.10f,Radius,RouteOffset);
     const float PathSlope=FMath::RadiansToDegrees(FMath::Atan2(HeightAt(Ahead,false)-HeightAt(Behind,false),
         FMath::Max(1.f,static_cast<float>((Ahead-Behind).Size()))));
-    // Inverse pitch of the trajectory: the ship is fixed in world space, so
-    // raise the arena ahead as the ship tips down. Arbitrary opposite pitch
-    // left a tall water wall across the bow during the descending transition.
-    // Keep the sky horizon stable in this ship-fixed architecture. Full
-    // inverse slope would rotate the crater tens of degrees against its sky.
-    const float Pitch=-FMath::Clamp(PathSlope,-6.f,4.f);
+    // Keep the shared sky and rim horizon level. Full inverse pitch tilts
+    // the whole crater against its sky; vertical route travel supplies descent.
+    const float Pitch=0.f; // Keep the shared sky/rim horizon level; the route itself supplies the drop.
     const float BankRoll=FMath::Clamp(RouteVelocity*.0014f+RouteOffset*.00018f,-3.5f,3.5f)*Riding;
     const FQuat Over=FRotator(Pitch+.35f*FMath::Sin(Elapsed*.65f)*Riding,0.f,BankRoll).Quaternion();
     const FQuat Pose=Over*Rotation.Quaternion();
@@ -797,7 +797,7 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
     if(Elapsed>NextRouteLog && FParse::Param(FCommandLine::Get(),TEXT("DCMaelstromRouteLog")))
     {
         NextRouteLog=Elapsed+5.f;
-        UE_LOG(LogDC,Log,TEXT("MAEL_ROUTE t=%.1f arc=%.1f radius=%.1fm offset=%.1fm velocity=%.1fm/s grade=%.1f"),Elapsed,FMath::RadiansToDegrees(Angle-UE_PI),ShipRadius*.01f,RouteOffset*.01f,RouteVelocity*.01f,PathSlope);
+        UE_LOG(LogDC,Log,TEXT("MAEL_ROUTE t=%.1f arc=%.1f radius=%.1fm offset=%.1fm velocity=%.1fm/s grade=%.1f depth=%.1fm travel=%.1fm/s"),Elapsed,FMath::RadiansToDegrees(Angle-UE_PI),ShipRadius*.01f,RouteOffset*.01f,RouteVelocity*.01f,PathSlope,-HeightAt(P,false)*.01f,(Ahead-Behind).Size()*.05f);
     }
 	const float ExitX = FMath::Clamp(26000.f - Elapsed * 4000.f, -15000.f, 145000.f);
 	const float Entry = FMath::SmoothStep(SlideStart, SlideStart + 7.f, Director->RideTime);
@@ -1555,10 +1555,14 @@ void ADCMaelstrom::UpdateView(float DeltaSeconds)
 		Camera->SetWorldLocation(DesiredWorld);
 		// Compose towards the crater, accounting for the ship's downhill pitch.
 		// A fixed -16 degree eye rotation stared into nearby water on the drop.
-		const FVector Focus=GetArenaTransform().TransformPosition(FVector(0.f,0.f,-Depth*.55f));
+		const FVector2D Ahead=DCMaelstromRoute::Point(FMath::Min(180.f,Elapsed+16.f),Radius);
+        // Look along the next bank, with the abyss still visible to port.
+        // Staring sideways at the centre hid the path under a pool-like horizon.
+        const FVector RouteFocus(Ahead,HeightAt(Ahead,false));
+        const FVector Focus=GetArenaTransform().TransformPosition(RouteFocus*.82f+FVector(0.f,0.f,-Depth*.75f)*.18f);
 		const FRotator IntoCrater=(Focus-DesiredWorld).Rotation();
-		Camera->AddAdditiveOffset(FTransform(FRotator(FMath::Clamp(IntoCrater.Pitch,-24.f,0.f)*Look,
-			FMath::Clamp(IntoCrater.Yaw,-90.f,0.f)*Look,0.f)),0.f);
+		Camera->AddAdditiveOffset(FTransform(FRotator(FMath::Clamp(IntoCrater.Pitch,-12.f,3.f)*Look,
+			FMath::Clamp(IntoCrater.Yaw,-65.f,0.f)*Look,0.f)),0.f);
 	}
 	// Over the lip: the view opens out as she starts down and closes again as she settles into the spiral.
 	const float Over = FMath::SmoothStep(11.f, 16.f, Elapsed) * (1.f - FMath::SmoothStep(20.f, 32.f, Elapsed));
