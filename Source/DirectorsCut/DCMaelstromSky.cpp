@@ -10,10 +10,41 @@
 #include "HAL/IConsoleManager.h"
 #include "Materials/Material.h"
 #include "Engine/VolumeTexture.h"
+#include "Engine/Texture2D.h"
+#include "Engine/StaticMesh.h"
+#include "Components/StaticMeshComponent.h"
+#include "Math/Float16Color.h"
 #if WITH_EDITOR
 #include "ShaderCompiler.h"
 #include "MaterialShared.h"
 #endif
+
+FVector ADCMaelstromAtmosphere::InspectSkyPlate(UTexture2D* Texture)
+{
+#if WITH_EDITOR
+	if (!Texture) { return FVector::ZeroVector; }
+	TArray64<uint8> Data;
+	if (!Texture->Source.GetMipData(Data,0)) { return FVector::ZeroVector; }
+	const int32 Width=Texture->Source.GetSizeX(), Height=Texture->Source.GetSizeY();
+	const ETextureSourceFormat Format=Texture->Source.GetFormat();
+	float Peak=0.f; int32 PeakX=0,PeakY=0;
+	for (int32 Y=1; Y<Height/2; Y+=2)
+	for (int32 X=0; X<Width; X+=2)
+	{
+		const int64 Index=int64(Y)*Width+X;
+		FLinearColor Color;
+		if (Format==TSF_RGBA16F) { Color=reinterpret_cast<const FFloat16Color*>(Data.GetData())[Index].GetFloats(); }
+		else if (Format==TSF_RGBA32F) { Color=reinterpret_cast<const FLinearColor*>(Data.GetData())[Index]; }
+		else { UE_LOG(LogDC, Error, TEXT("Unsupported sky plate source format %d"),int32(Format)); return FVector::ZeroVector; }
+		const float Luma=Color.R*0.2126f+Color.G*0.7152f+Color.B*0.0722f;
+		if (Luma>Peak) { Peak=Luma; PeakX=X; PeakY=Y; }
+	}
+	UE_LOG(LogDC,Log,TEXT("MAEL_PLATE source %dx%d sunUV=(%.6f,%.6f) peak=%.3f"),Width,Height,(PeakX+0.5f)/Width,(PeakY+0.5f)/Height,Peak);
+	return FVector((PeakX+0.5f)/Width,(PeakY+0.5f)/Height,Peak);
+#else
+	return FVector::ZeroVector;
+#endif
+}
 
 bool ADCMaelstromAtmosphere::BuildSkyNoise(UVolumeTexture* Texture)
 {
@@ -91,7 +122,10 @@ void ADCMaelstromAtmosphere::ConfigureSkyCues()
 	if (FParse::Param(FCommandLine::Get(), TEXT("DCOriginalMaelstromSky"))) { return; }
 	// Load during startup, before the tunnel reveal. In editor-game reviews a new
 	// material can otherwise still be compiling when its first capture is taken.
-	SkyCloudTemplate = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Maelstrom/Sky/M_MaelstromCumulus.M_MaelstromCumulus"));
+	const bool bProcedural=FParse::Param(FCommandLine::Get(), TEXT("DCMaelProceduralClouds"));
+	SkyCloudTemplate = LoadObject<UMaterialInterface>(nullptr, bProcedural
+		? TEXT("/Game/DC/Maelstrom/Sky/M_MaelstromCumulus.M_MaelstromCumulus")
+		: TEXT("/Game/DC/Maelstrom/Sky/M_MaelstromSkyPlate.M_MaelstromSkyPlate"));
 #if WITH_EDITOR
 	if (SkyCloudTemplate)
 	{
@@ -109,7 +143,7 @@ void ADCMaelstromAtmosphere::ConfigureSkyCues()
 		{
 			if (Phase.Phase != EDCPhase::Breach && Phase.Phase != EDCPhase::Maelstrom) { continue; }
 			Phase.Env.CloudCover = 0.20f;
-			Phase.Env.SunPitch = -18.f;
+			Phase.Env.SunPitch = -20.f;
 			// Light direction points away from the source: 135 puts the sun at
 			// -45 degrees, in the upper-right of the port-facing reveal camera.
 			Phase.Env.SunYaw = 135.f;
@@ -222,7 +256,7 @@ void ADCMaelstromAtmosphere::CaptureSky()
 		}
 	}
 	RefreshSky();
-	if (!FParse::Param(FCommandLine::Get(), TEXT("DCMaelStockClouds")))
+	if (FParse::Param(FCommandLine::Get(), TEXT("DCMaelProceduralClouds")) || FParse::Param(FCommandLine::Get(), TEXT("DCMaelEngineClouds")))
 	{
 		const TCHAR* MaterialPath = FParse::Param(FCommandLine::Get(), TEXT("DCMaelEngineClouds"))
 			? TEXT("/Engine/EngineSky/VolumetricClouds/m_SimpleVolumetricCloud_Inst.m_SimpleVolumetricCloud_Inst")
@@ -277,11 +311,13 @@ void ADCMaelstromAtmosphere::CaptureSky()
 			}
 		}
 	}
+	if (!SkyCloudMID && !FParse::Param(FCommandLine::Get(),TEXT("DCMaelStockClouds"))) { CaptureSkyPlate(); }
 	UE_LOG(LogDC, Log, TEXT("MAEL_SKY captured and composed %d properties on %s"), SavedSkyProperties.Num(), *StageSky->GetName());
 }
 
 void ADCMaelstromAtmosphere::UpdateSkyVolume()
 {
+	if (SkyPlateMID) { UpdateSkyPlate(); return; }
 	if (SkyCloudMID && StageCloud.IsValid())
 	{
 		if (FParse::Param(FCommandLine::Get(), TEXT("DCMaelSkyDiagnostics")) && GFrameCounter % 120 == 0)
@@ -313,6 +349,7 @@ void ADCMaelstromAtmosphere::UpdateSkyVolume()
 
 void ADCMaelstromAtmosphere::RestoreSky()
 {
+	RestoreSkyPlate();
 	if (StageCloud.IsValid() && SkyCloudMID)
 	{
 		StageCloud->SetMaterial(PreviousCloudMaterial);
