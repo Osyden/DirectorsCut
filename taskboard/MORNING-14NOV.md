@@ -4,7 +4,7 @@
 
 ## Play this
 
-`E:\projects\directorscut\Builds\2026-11-14_0128_f26af10_helm-order-dodge\Windows\DirectorsCut.exe`. It has been run from its exe at 1600x900 through the front, the tunnel and the city (81 to 104 fps) and through the whole maelstrom to the ending card at triple speed, and it holds everything in the table below.
+`E:\projects\directorscut\Builds\2026-11-14_0143_b4a71b8_spout-sound-cut\Windows\DirectorsCut.exe`. It has been run from its exe at 1600x900 through the front, the tunnel and the city (82 to 103 fps) and through the whole maelstrom to the ending card at triple speed, and it holds everything in the table below.
 
 Every earlier build is still in `Builds\` for the dev log.
 
@@ -16,21 +16,21 @@ Every earlier build is still in `Builds\` for the dev log.
 | 59 to 75 s | The ship sails through the cloud tunnel. The air inside is clear, so its walls and the light at the far end show; four bolts on cue light the walls blue-white from within. | `review/47`, `review/54` |
 | City, 76 to 240 s | The white self-lit banks are gone. Easy Fog cards lie on the water and hang over the channel's shoulders; six rags of mist run aft across the deck. Lightning lights the fog behind the ruins instead of whiting the stone out. | `review/48`, `review/51`, `review/53` |
 | Guns | Shots are iron balls with a thin grey streak; the lower-deck guns fire from outside the hull. | `review/49` |
-| Maelstrom, from 270 s | The ship drops into the bowl in the first 20 s. Six waterspouts and five burning stones come on a schedule; each has a tell and a crew call, and the helm carries the ship clear. The creature is beaten on the clock at 160 s after the breach, with a kilometre-high plume from the crater's heart. The results card shows damage taken and arms broken. | `review/50`, `review/52` |
+| Maelstrom, from 270 s | The ship drops into the bowl in the first 20 s. Six waterspouts and five burning stones come on a schedule; each has a tell and a crew call, and the helm carries the ship clear. The creature is beaten on the clock at 160 s after the breach, with a kilometre-high plume from the crater's heart. The results card shows damage taken and arms broken. The wind rises with a spout and the stones and the plume have a boom. | `review/50`, `review/52` |
 
 ## Not verified by anyone
 
 - Nothing has been seen in motion or heard. Every judgement above is from still frames.
 - Whether the cloud wall at 18 pictures a second, the tunnel at 24 and the spouts at 24 show as a flicker.
 - The deck wisps, the spout's foot and the plume in motion.
-- Steering round a spout or a stone by hand or by an order to the helmsman. Only the test switch that holds the helm over has been tried.
+- Steering round a spout or a stone by hand. One order to the helmsman ("Finch, hard to port") did clear a spout by 32 m in a test; nothing else has been tried through the real controls.
 - The port guns; the lower guns' flashes from outside.
-- Sound: spouts, stones and the plume have none of their own.
+- The new sound (wind rising with a spout, the boom of a stone and of the plume) has not been heard by anyone.
 
 ## Known faults
 
 - The maelstrom's water is still striped and its foam is in contour lines; the reveal has no lip or crest. These are in Codex's plan (`MAELSTROM-NEXT-PASS-PLAN.md`) and untouched.
-- The spout is the tunnel volume stood on end: its top is darker than its foot and it has little white water round its base.
+- The spout is the tunnel volume stood on end: its top is darker than its foot.
 - The burning stone is a plain glowing ball with a tail of balls.
 - From far off (40 to 50 s) the wall is a pale bank with a fairly level top.
 - The helmsman still strikes rocks in the city (hull about 81 by the slide with nobody steering).
@@ -39,7 +39,7 @@ Every earlier build is still in `Builds\` for the dev log.
 
 ## Speed
 
-True 4K, DLSS at 67 percent, no frame generation, editor build: open sea with the wall 82 to 88 fps before the playback rates were raised (about 70 to 80 expected after), tunnel 85 to 89, city 97, maelstrom with a spout 60 to 68.
+True 4K, DLSS at 67 percent, no frame generation, editor build: open sea with the wall close 68 to 75 fps, entering the tunnel 57, inside it 74 to 75, city 96, maelstrom with a spout 60 to 68.
 
 ## For Codex
 
