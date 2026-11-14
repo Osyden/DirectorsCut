@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 07:16 Claude: rock strikes measured at normal speed
+
+- Two whole cities at normal speed with the bot captain, no window: 2 and 3 contacts with stone (8 and 11 blows in all), one contact on the stem, hull 71 and 73 at the slide; 3 and 5 giants killed, 6 and 3 of their rocks on deck.
+- The double-speed whole-voyage runs overstate rock damage: a blow's strength is reckoned from the ship's speed times the test's time scale, so at 2x most first blows are at the maximum.
+- Still open: she can be put on a rock head on. Next thing to try: start the current's set earlier (the keel's line is 90 m; at 15 m a second that is six seconds) and let it act on stone found by either bow line when the gap that side is less than her beam.
+
 ## 14 Nov 07:07 Claude: twenty-fifth build packaged and run: `2026-11-14_0701_ef7691f_morning`
 
 - `Builds/2026-11-14_0701_ef7691f_morning/Windows/DirectorsCut.exe`. The whole voyage from the exe, no window, 1600x900, 2x with the bot captain: no errors, all six giants killed (one rock landed), both spawnlings sunk, beaten on the clock at 160.0 s, ending card.

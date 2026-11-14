@@ -28,7 +28,7 @@ It was run from its exe without a window at 1600x900, the whole voyage from star
 | The ship clips through things | Lane rocks were not solid at all; they are now. Scenery was already solid. |
 | Lightning is flashes, not streaks | Each bolt is now drawn as a forked streak. Thin, a third of a second. |
 | Rock on the right showing through the fog tunnel | Stone hidden until the tunnel passes it; none seen in frames since. |
-| Big objects: a current so she scrapes and cannot hit head on | In, and the helmsman fixed, but not reliable. Four whole-city runs with the bot: three had five grinding blows and none on the stem; the fourth (the last, at double speed) had sixteen blows, one of them on the stem. It needs more work. |
+| Big objects: a current so she scrapes and cannot hit head on | In, and the helmsman fixed, but not reliable. At normal speed with the bot, two whole-city runs gave two and three contacts with stone (8 and 11 blows), one of them on the stem, and hull 71 and 73 at the slide. Double-speed test runs are worse because the blows are reckoned harder. She can still be put on a rock head on; it needs more work. |
 | Creatures on the banks throwing fire | Stone giants (Rampage, stone skin, lit cracks), six of them. Marchosias and the giant demons unused. |
 | Bow splashes | Reworked as sheets of white water. Judged from above the bow only. |
 | Do not neglect the later game and the boss | Spawnlings, the guns' reach, the lip, the creature's one appearance and the ending were all worked on after that note. |
@@ -40,7 +40,7 @@ It was run from its exe without a window at 1600x900, the whole voyage from star
 - Steering round a spout, a stone or a rock by hand. One order to the helmsman ("Finch, hard to port") did clear a spout by 32 m in a test.
 - Putting out a fire by hand or by order while giants are throwing.
 - The port guns' muzzles; all new sound (wind rising with a spout, booms).
-- The balance. With nobody steering or giving an order the hull was 23 at the ending card in one whole run and 10 in the next: too hard on a passive player, and it varies a lot with how the rocks fall.
+- The balance. With nobody steering or giving an order the hull is about 72 at the slide at normal speed, and was 23 and 10 at the ending card in two double-speed whole runs (which overstate the damage from rocks).
 
 ## Known faults
 
