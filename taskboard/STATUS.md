@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 06:42 Claude: looked for objects popping in ahead; the city from the bow
+
+- Eight frames a second apart from over the bow at 130 to 137 s (`review/65-city-from-the-bow`): rocks, columns and a statue come up out of the mist ahead and pass; none appears from nothing between one frame and the next. With things now laid 650 m ahead and the sea mist over the water, I could not catch a pop in stills. It needs an eye in motion to be sure.
+- The same frames are the nearest yet to `References/fog-city-reveal.jpg`: pale mist on the water, ruins in layers behind it, the statue under a dusk sky.
+
 ## 14 Nov 06:39 Claude: twenty-third build packaged and run: `2026-11-14_0631_15f5585_spray-helm-carcass`
 
 - `Builds/2026-11-14_0631_15f5585_spray-helm-carcass/Windows/DirectorsCut.exe`. Run from the exe without a window at 1600x900: front, tunnel and the whole city at normal speed with the bot captain (88 to 116 fps): four giants killed, three rocks on deck, five grinding blows on stone and none on the stem, hull 83 at the slide; the maelstrom at 3x to the ending card, both spawnlings sunk, beaten on the clock at 160.0 s.

@@ -35,6 +35,15 @@ In the maelstrom the hidden `BP_DynamicRealWater` sheet at sea level still block
 
 `UpdatePlume` also raises the Claw Kaiju body (`Carcass`, scale 18, `M_Kraken` on every slot, Defeated at half rate) at the crater's centre for the 19 s of the plume. Your `ADCLeviathan::Body` stays hidden as you left it; this is a separate actor.
 
+## Outside the maelstrom, after 04:45 (the owner's notes in INBOX)
+
+- `DCTreadmill`: stone giants on the city's banks (`TickGiants`, Paragon Rampage's stone skin; `-DCNoGiants`); lane rocks are felt by the hull's feelers instead of being a circle that took 3 hull and vanished; a set of the current off stone dead ahead (`CurrentDrift`, `-DCNoCurrent`, `-DCCurrentLog`); `SpawnDistance` 650 m; stone hidden until the cloud tunnel has passed it; a thin layer of sea smoke over the city (`-DCSeaSmoke=`).
+- `DCCrew.cpp` `TickHelm`: the helmsman steers for where she will be in a second and eases the wheel (he was swinging her on to the rocks); `TickCannons` opens fire at 200 m.
+- `DCRideDirector.cpp`: a drawn bolt with every lightning call (`M_Bolt`, `-DCNoBolts`).
+- `DCWeatherFX`: bow spray as two sheets of white water.
+- `Tools/patch_drw_shorefoam.py` changed (wind-torn foam): **re-run both steps of the patch after pulling**, or the sea in the city has no white on it.
+- New packs on this machine, all git-ignored: `Content/ParagonRampage`, `Content/Ancient_Marchosias` (unused). Without ParagonRampage no giants are sent.
+
 ## The end (added 00:52)
 
 `UpdatePlume` in `DCMaelstrom`: from `FinaleAt` for 19 s a kilometre-high column of the same volume stands on the crater's centre (`Arena` location on `SampleSurfaceWorld`), and `Director->Trauma` is kicked once. It is the only visible mark of the defeat besides the arms withdrawing; your plan's collapse of the current and opening of the path is not done.

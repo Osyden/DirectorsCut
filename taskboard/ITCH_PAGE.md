@@ -68,7 +68,8 @@ The page above describes Thursday's build. Against the build of 14 Nov, `2026-11
 
   > The voyage is an eight-minute ride. Open sea at sunset. A wall of storm that grows out of nothing, with lightning in its belly and one way through. Drowned Atlantis in the fog: colossal statues, broken temples, a sea that climbs away on either hand. The water rolling up into a tunnel and dropping from under the keel. And at the end a maelstrom two miles wide, with something very large in the middle of it that throws waterspouts, fire and its own young at you until the storm takes it back.
 
+- **Since this section was written (05:45):** stone giants now wade up to the banks in the drowned city and throw burning rock at the deck, and the batteries can kill them. Worth a line in the voyage paragraph, for example after the statues: "stone giants wading out of the mist to hurl fire at you".
 - **Quick orders.** Worth saying that in the maelstrom "hard to port" and "hard to starboard" are how you dodge: one order to the helmsman clears a waterspout.
 - **Disk space.** The build is now 7.7 GB, not about 6.
-- **Made with.** Add: Ultra Dynamic Sky, Dynamic Real Water, Clouds Tunnel Vdb Effects Pack Loop (one.studio2), Easy Fog, Ancient Ruins, Claw Kaiju, Sonniss GDC audio bundle. Check each licence's wording for store pages before publishing; I have not.
+- **Made with.** Add: Paragon: Rampage (Epic Games), Ultra Dynamic Sky, Dynamic Real Water, Clouds Tunnel Vdb Effects Pack Loop (one.studio2), Easy Fog, Ancient Ruins, Claw Kaiju, Sonniss GDC audio bundle. Check each licence's wording for store pages before publishing; I have not.
 - **Pictures.** Thirteen clean 4K frames without the HUD are in `E:\projects\directorscut\StoreShots\2026-11-14` (outside the repository); a contact sheet is in `taskboard/review/56-store-shots`.
