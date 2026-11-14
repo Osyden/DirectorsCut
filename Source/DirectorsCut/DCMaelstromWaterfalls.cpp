@@ -12,7 +12,6 @@
 #include "ProceduralMeshComponent.h"
 #include "DCMaelstromRoute.h"
 #include "DCCliffGenerator.h"
-#include "ProceduralMeshComponent.h"
 #include "Dom/JsonObject.h"
 #include "Serialization/JsonSerializer.h"
 #include "Serialization/JsonWriter.h"
@@ -80,23 +79,10 @@ void ADCMaelstrom::UpdateProceduralFalls()
             // the same yaw-only, physical-centimetre frame as the runtime SVT.
             const FTransform LocalFrame(FRotator(0.f, Yaw, 0.f), Origin);
             const float Angle = FMath::Atan2(Feed.Lip.Y, Feed.Lip.X);
-            const FProcMeshSection* CliffSection = Cliffs ? Cliffs->GetProcMeshSection(0) : nullptr;
-            if (!CliffSection || CliffSection->ProcVertexBuffer.Num() != (DCCliffGenerator::MeshSectors + 1) * (DCCliffGenerator::MeshRows + 1))
-            {
-                UE_LOG(LogTemp, Warning, TEXT("DC_WATERFALL_PROFILE rendered cliff section unavailable"));
-                return;
-            }
-            auto VertexAt = [CliffSection](int32 Side, int32 Row)
-            { return CliffSection->ProcVertexBuffer[Row * (DCCliffGenerator::MeshSectors + 1) + Side].Position; };
             auto CorePoint = [&](float U, float Across)
             {
-                const float V = .84f * (1.f - U);
-                const FVector Center = DCCliffGenerator::SampleRenderedSurface(Angle, V, VertexAt);
-                const float SampleAngle = Angle + Across / FMath::Max(Center.Size2D(), 1.0);
-                FVector P = DCCliffGenerator::SampleRenderedSurface(SampleAngle, V, VertexAt)
-                    + DCCliffGenerator::WaterContactOffset(SampleAngle, V);
-                return FMath::Lerp(P, Feed.Foot + LocalFrame.TransformVectorNoScale(FVector(Across, 0, 40)),
-                    FMath::SmoothStep(.94f, 1.f, U));
+                const float V = FMath::Lerp(.84f, Feed.ContactV, U);
+                return SampleWaterfallCorePoint(Angle, V, Across);
             };
             TArray<FVector> Complete;
             constexpr int32 Samples = 512;
@@ -129,6 +115,8 @@ void ADCMaelstrom::UpdateProceduralFalls()
                 Profile->SetStringField(TEXT("units"), TEXT("centimeters"));
                 Profile->SetNumberField(TEXT("feed_index"), Feed.SourceIndex);
                 Profile->SetNumberField(TEXT("feed_array_index"), FeedIndex);
+                Profile->SetNumberField(TEXT("contact_v"), Feed.ContactV);
+                Profile->SetArrayField(TEXT("contact_core_local_cm"), FallVectorJson(LocalFrame.InverseTransformPosition(Feed.ContactPoint)));
                 Profile->SetNumberField(TEXT("source_half_width_cm"), Feed.Width);
                 Profile->SetArrayField(TEXT("local_origin_arena_cm"), FallVectorJson(Origin));
                 Profile->SetNumberField(TEXT("local_yaw_degrees"), Yaw);
@@ -167,27 +155,36 @@ void ADCMaelstrom::UpdateProceduralFalls()
                 }
                 Profile->SetArrayField(TEXT("cross_offsets_cm"), Offsets);
                 Profile->SetArrayField(TEXT("cross_sections_local_cm"), CrossSections);
-                Profile->SetStringField(TEXT("surface_contract"), TEXT("rendered cliff triangles; inward180cm; talus-only vertical clearance via WaterContactOffset; last6percent contact blend"));
+                Profile->SetStringField(TEXT("surface_contract"), TEXT("shared rendered-triangle core sampler; ends at first valid receiving-water ContactV; no upward contact blend"));
                 // Surface samples, not a horizontal impact plane: the local
                 // receiving water slopes into the spiral and changes across it.
-                constexpr int32 GridCount = 25;
-                constexpr float GridStep = 400.f;
+                constexpr int32 GridCount = 49;
+                constexpr float GridStep = 200.f;
                 TSharedRef<FJsonObject> Water = MakeShared<FJsonObject>();
                 const FVector FootLocal = LocalFrame.InverseTransformPosition(Feed.Foot);
-                const FVector GridOrigin = FootLocal - FVector(GridStep * 12, GridStep * 12, 0);
+                const FVector GridOrigin = FootLocal - FVector(GridStep * 24, GridStep * 24, 0);
                 Water->SetNumberField(TEXT("count"), GridCount);
                 Water->SetNumberField(TEXT("step_cm"), GridStep);
                 Water->SetArrayField(TEXT("origin_local_cm"), FallVectorJson(GridOrigin));
-                TArray<TSharedPtr<FJsonValue>> Heights;
+                TArray<TSharedPtr<FJsonValue>> Heights, Coverage, ShoreClearance;
                 for (int32 Y = 0; Y < GridCount; ++Y)
                 {
                     for (int32 X = 0; X < GridCount; ++X)
                     {
                         const FVector P = LocalFrame.TransformPosition(GridOrigin + FVector(X * GridStep, Y * GridStep, 0));
-                        Heights.Add(MakeShared<FJsonValueNumber>(HeightAt(FVector2D(P)) - Origin.Z));
+                        float MeanHeight = HeightAt(FVector2D(P), false);
+                        const bool bWater = SampleReceivingWater(FVector2D(P), MeanHeight);
+                        Heights.Add(MakeShared<FJsonValueNumber>(MeanHeight - Origin.Z));
+                        Coverage.Add(MakeShared<FJsonValueBoolean>(bWater));
+                        const float R = P.Size2D();
+                        const float A = FMath::Atan2(P.Y, P.X);
+                        ShoreClearance.Add(MakeShared<FJsonValueNumber>(FMath::Min(R - 120.f, WaterEdgeRadius(A) - R)));
                     }
                 }
                 Water->SetArrayField(TEXT("heights_local_cm_y_major"), Heights);
+                Water->SetArrayField(TEXT("coverage_y_major"), Coverage);
+                Water->SetArrayField(TEXT("shore_clearance_cm_y_major"), ShoreClearance);
+                Water->SetBoolField(TEXT("mean_surface"), true);
                 Profile->SetObjectField(TEXT("receiving_water"), Water);
                 FString Payload;
                 FJsonSerializer::Serialize(Profile, TJsonWriterFactory<>::Create(&Payload));
