@@ -51,6 +51,8 @@ def source_info(seed):
     kind = metadata.get("source_kind", provenance.get("source_kind", "measured_uppermost_xy"))
     clean = kind == "clean_macro_landform"
     reference = provenance.get("geometry_reference") or provenance.get("source_head", "unspecified")[:8]
+    if clean:
+        reference=f"boundary {reference}; clean seed {metadata.get('settings', {}).get('seed', 'unspecified')}"
     return dict(kind=kind, clean=clean, reference=reference,
                 title="CLEAN MACRO LANDFORM" if clean else "MEASURED CLIFF HEIGHTFIELD",
                 limitation=("Authored heightfield; no overhangs. Physical 1:1 scale; no surface-detail shader." if clean else
