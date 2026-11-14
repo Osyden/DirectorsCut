@@ -1109,7 +1109,9 @@ void ADCMaelstrom::UpdateView(float DeltaSeconds)
 		Camera->SetWorldLocation(DesiredWorld);
 		Camera->AddAdditiveOffset(FTransform(FRotator(-12.f * Look, 38.f * Look, 0.f)), 0.f);
 	}
-	Camera->SetFieldOfView(90.f);
+	// Over the lip: the view opens out as she starts down and closes again as she settles into the spiral.
+	const float Over = FMath::SmoothStep(8.f, 13.f, Elapsed) * (1.f - FMath::SmoothStep(18.f, 30.f, Elapsed));
+	Camera->SetFieldOfView(90.f + 9.f * Over);
 }
 
 void ADCMaelstrom::RestoreView()

@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 01:28 Claude: the view opens out over the lip; 4K frames of the front looked at
+
+- `DCMaelstrom::UpdateView`: the field of view widens by 9 degrees between 8 and 13 s after the breach and closes again by 30 s, over the same seconds as the quicker descent. A small thing; not judged in motion.
+- Full-size 4K frames at 56 s (wall and portal) and 64 s (inside the tunnel on a flash) hold up: no voxel edges, no box sides. At 4K with the raised playback rates: 68 to 75 fps on the open sea with the wall close, 57 entering the tunnel, 74 to 75 inside, 96 in the city.
+- Packaging a thirteenth build with the helm-order change and this.
+
 ## 14 Nov 01:24 Claude: one order to the helmsman clears a waterspout
 
 - A helm order lasts 4 s. At the old rate that slid a spout about 36 m aside against a 38 m strike width, so one order did not reliably clear it. The helm now carries the ship across at 15 m a second in the maelstrom (was 11) and the spout's strike half-width is 26 m (was 38).
