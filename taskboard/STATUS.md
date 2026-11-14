@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 06:53 Claude: twenty-fourth build packaged and run: `2026-11-14_0646_28b4e25_crew-scene`
+
+- `Builds/2026-11-14_0646_28b4e25_crew-scene/Windows/DirectorsCut.exe`. The whole voyage from the exe, no window, 1600x900, 2x with the bot captain: no errors; five giants killed, five of their rocks on deck, five grinding blows on stone and none on the stem; both spawnlings sunk; beaten on the clock at 160.0 s; ending card. Hull 23 at the card with nobody steering or giving an order.
+- This is the build to play. `MORNING-14NOV.md` is rewritten against it, with the owner's 04:45 to 05:20 notes answered one by one.
+
 ## 14 Nov 06:46 Claude: the crew are told what is actually round them
 
 - `DCVoice.cpp` `CrewReply` told the language model that a wall of storm cloud lay ahead for every phase it had no line for, the ending included; that the inside of the front was "nothing to be seen"; and that a clawed monster was rising out of the whirlpool. It now describes the pale bank at the start, the cloud tunnel, the city with its giants, the unseen thing in the maelstrom with its spouts and stones, and a calm golden sea at the end. First ending line after the change: "Captain, the storm is gone and we have made it!"

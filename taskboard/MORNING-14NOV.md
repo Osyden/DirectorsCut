@@ -1,51 +1,71 @@
 # Morning hand-over, Saturday 14 November
 
-**Draft written at 01:20. Claude is still working until 08:00 and still holds the claim on the maelstrom files until this line is removed.**
+**Draft, last brought up to date at 06:55. Claude is still working until 08:00 and still holds the claim on the maelstrom files until this line is removed.**
 
 ## Play this
 
-`E:\projects\directorscut\Builds\2026-11-14_0631_15f5585_spray-helm-carcass\Windows\DirectorsCut.exe`. It has been run from its exe at 1600x900 through the front, the tunnel and the city (88 to 116 fps) and through the whole maelstrom to the ending card at triple speed, and it holds everything in the table below.
+`E:\projects\directorscut\Builds\2026-11-14_0646_28b4e25_crew-scene\Windows\DirectorsCut.exe`
 
-Every earlier build is still in `Builds\` for the dev log.
+It was run from its exe without a window at 1600x900, the whole voyage from start to ending card at double speed with the bot captain: no errors, twelve frames taken on the way. It holds everything in the table below. Every earlier build (26 in all) is still in `Builds\` for the dev log; `taskboard/DEVLOG-NOTES-NIGHT-13-14NOV.md` says what each added.
 
 ## What changed overnight, in the order you meet it
 
 | Where | Change | Seen in |
 | --- | --- | --- |
-| Open sea, 26 to 58 s | One storm front: a thin pale bank on the horizon that grows into a wall of the bought cloud volume, about 4 km long and 900 m high, with the tunnel as a lit opening through it at sea level. Sheet lightning flares in it four times as it closes. The sky pack's flat-topped storm slab no longer stands behind it; that storm comes in over the ship with the wall. | `review/47`, `review/54`, `review/57` |
-| 59 to 75 s | The ship sails through the cloud tunnel. The air inside is clear, so its walls and the light at the far end show; four bolts on cue light the walls blue-white from within. | `review/47`, `review/54` |
-| City, 76 to 240 s | The white self-lit banks are gone. Easy Fog cards lie on the water and hang over the channel's shoulders; six rags of mist run aft across the deck. Lightning lights the fog behind the ruins instead of whiting the stone out. The sea is grey and wind-torn under a thin layer of mist. Lightning falls as visible forked bolts. Six stone giants wade up to the banks by turns and throw burning rock at the deck; the batteries can kill them. Rocks in the lane are solid: she grinds along them instead of passing through. | `review/48`, `review/51`, `review/53`, `review/59` to `review/62` |
+| Open sea, 26 to 58 s | One storm front: a pale bank on the horizon with a rolling top that grows into a wall of the bought cloud volume, about 4 km long and 900 m high, standing on the water, with the tunnel as a lit opening through it. Sheet lightning flares in it four times as it closes. The sky pack's flat-topped storm slab no longer stands behind it. | `review/47`, `review/54`, `review/57` |
+| 59 to 75 s | The ship sails through the cloud tunnel. The air inside is clear, so its walls and the light at the far end show; four bolts on cue light the walls from within. Stone is kept out of sight until the tunnel has passed it. | `review/47`, `review/54` |
+| City, 76 to 240 s | The white self-lit banks are gone. A thin layer of mist lies over the water everywhere, with fog cards on it and over the channel's shoulders, and rags of mist run aft across the deck. The sea is grey and wind-torn. Lightning falls as visible forked bolts and lights the fog behind the ruins. Six stone giants wade up to the banks by turns and throw burning rock at the deck, which starts fires; the batteries can kill them. Rocks in the lane are solid: she grinds along them, and a set of the current carries her off stone dead ahead. The bow throws sheets of white water. | `review/48`, `review/51`, `review/53`, `review/59` to `review/63`, `review/65` |
 | Guns | Shots are iron balls with a thin grey streak; the lower-deck guns fire from outside the hull. In the maelstrom, shots fired below the ship's level no longer burst on the hidden open sea beside her. | `review/49` |
-| Maelstrom, from 270 s | The ship hangs on the lip for three seconds, then the bow drops and she goes down into the bowl over the next 18. Six waterspouts and five burning stones come on a schedule; each has a tell and a crew call, and the helm carries the ship clear. Two of the creature's young swim in on the beam, to be sunk by that side's guns before they reach the hull. The creature is beaten on the clock at 160 s after the breach, with a kilometre-high plume from the crater's heart, in which its body heaves up once and goes under. The results card shows damage taken and arms broken. The wind rises with a spout and the stones and the plume have a boom. | `review/50`, `review/52`, `review/55`, `review/58` |
+| Maelstrom, from 270 s | The ship hangs on the lip for three seconds, then the bow drops and she goes down into the bowl. Six waterspouts and five burning stones come on a schedule, each with a tell and a crew call; the helm carries the ship clear. Two of the creature's young swim in on the beam, to be sunk by that side's guns. The creature is beaten on the clock at 160 s after the breach: a kilometre-high plume from the crater's heart, in which its body heaves up once and goes under. The results card shows damage taken and arms broken. | `review/50`, `review/52`, `review/55`, `review/58`, `review/64` |
+| Crew | They are told what is actually round them in each part, so their lines fit (no "storm wall ahead" at the ending). The helmsman no longer swings her on to the rocks. | |
+
+## Your notes of 04:45 to 05:20, one by one
+
+| Note | State |
+| --- | --- |
+| Gap between the sea and the foot of the storm front | Fixed: the cloud's floor was up to 12 m over the water; it is at the water. |
+| Objects popping in ahead | Laid 650 m ahead instead of 300 m. No pop found in stills; needs your eye in motion. |
+| The ship clips through things | Lane rocks were not solid at all; they are now. Scenery was already solid. |
+| Lightning is flashes, not streaks | Each bolt is now drawn as a forked streak. Thin, a third of a second. |
+| Rock on the right showing through the fog tunnel | Stone hidden until the tunnel passes it; none seen in frames since. |
+| Big objects: a current so she scrapes and cannot hit head on | In, and the helmsman fixed. In the last three whole-city runs with the bot: no blow on the stem, five grinding blows each. Not proof it can never happen. |
+| Creatures on the banks throwing fire | Stone giants (Rampage, stone skin, lit cracks), six of them. Marchosias and the giant demons unused. |
+| Bow splashes | Reworked as sheets of white water. Judged from above the bow only. |
+| Do not neglect the later game and the boss | Spawnlings, the guns' reach, the lip, the creature's one appearance and the ending were all worked on after that note. |
 
 ## Not verified by anyone
 
-- Nothing has been seen in motion or heard. Every judgement above is from still frames.
+- Nothing has been seen in motion or heard by a person. Every judgement above is from still frames and logs.
 - Whether the cloud wall at 18 pictures a second, the tunnel at 24 and the spouts at 24 show as a flicker.
-- The deck wisps, the spout's foot and the plume in motion.
-- Steering round a spout or a stone by hand. One order to the helmsman ("Finch, hard to port") did clear a spout by 32 m in a test; nothing else has been tried through the real controls.
-- The port guns; the lower guns' flashes from outside.
-- The new sound (wind rising with a spout, the boom of a stone and of the plume) has not been heard by anyone.
+- Steering round a spout, a stone or a rock by hand. One order to the helmsman ("Finch, hard to port") did clear a spout by 32 m in a test.
+- Putting out a fire by hand or by order while giants are throwing.
+- The port guns' muzzles; all new sound (wind rising with a spout, booms).
+- The balance. With nobody steering or giving an order the hull is about 83 at the slide and 23 at the ending card.
 
 ## Known faults
 
-- The maelstrom's water is still striped and its foam is in contour lines; the reveal has no near crest hiding the drop. These are in Codex's plan (`MAELSTROM-NEXT-PASS-PLAN.md`) and untouched.
+- The maelstrom's water is still striped and its foam is in contour lines; the reveal has no near crest hiding the drop. These are the first items in Codex's plan (`MAELSTROM-NEXT-PASS-PLAN.md`) and untouched.
+- The creature at the end reads as a pale broken mass in the plume, not a clear animal.
 - The spout is the tunnel volume stood on end: its top is darker than its foot.
-- The burning stone is a rock with a tail of plain glowing balls.
+- The burning stones are a rock with a tail of plain glowing balls; the giants' rocks are plain glowing rocks.
 - The creature's young have no wake and do not come on deck.
-- From far off (30 to 50 s) the wall is a pale bank; its top now rolls, but it is still one bank of one kind of cloud.
-- The helmsman still strikes rocks in the city (hull about 81 by the slide with nobody steering).
-- With nobody steering or giving an order in the maelstrom every spout and stone strikes and the hull ends between 28 and 46 from 100. There is no sinking.
-- Without the bought packs installed the front has no tunnel or wall, the city has no cards and the spouts are unseen.
+- From far off the wall is one pale bank of one kind of cloud; a dark flat band shows right of the portal at about 56 s.
+- The sea's white is in drifting patches, not on the wave crests.
+- Without the bought packs installed the front has no tunnel or wall, the city has no cards, mist sheets or giants, and the spouts are a faint plain column.
 
 ## Speed
 
-True 4K, DLSS at 67 percent, no frame generation, editor build: open sea with the wall close 68 to 75 fps, entering the tunnel 57, inside it 74 to 75, city 96, maelstrom with a spout 60 to 68.
+Packaged build at 1600x900, normal speed: open sea about 96 fps, wall and tunnel 88 to 100, city 98 to 116, slide about 100, maelstrom 65 to 73, ending 123. True 4K was last measured at 03:00, before the giants and the sea smoke: open sea with the wall close 68 to 75, entering the tunnel 57, inside it 74 to 75, city 96, maelstrom with a spout 60 to 68.
 
 ## For Codex
 
-`taskboard/FOR-CODEX-14NOV.md` lists every change to the maelstrom files and what is not started.
+`taskboard/FOR-CODEX-14NOV.md` lists every change to the maelstrom files, the changes outside them since 04:45, and what is not started. After pulling, re-run both steps of `Tools/patch_drw_shorefoam.py`.
 
 ## Packs
 
-Clouds Tunnel Loop and Easy Fog are both in use and both git-ignored. FogArea is not used. On the evidence of the tunnel volume, the author's Clouds Storm and Water Tornado packs would replace the two things I built from the tunnel (the wall and the spouts) with shapes made for the job; nothing was bought.
+In use, all git-ignored: Clouds Tunnel Loop (volume 01 only), Easy Fog, Paragon Rampage (stone skin, animations, one rock). Not used: FogArea, Ancient Marchosias. Nothing was bought. On the evidence of the tunnel volume, the same author's Clouds Storm and Water Tornado packs would replace the two things built from the tunnel (the wall and the spouts) with shapes made for the job.
+
+## Also written for you
+
+- `taskboard/ITCH_PAGE.md`: suggested changes, since the page text still describes Thursday's build.
+- `E:\projects\directorscut\StoreShots\2026-11-14`: thirteen clean 4K frames without the HUD (taken at 02:50, before the giants and the sea smoke).
