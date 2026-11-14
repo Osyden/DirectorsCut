@@ -1,15 +1,7 @@
-"""Original finale cloud volume and periodic cellular erosion; no vendor copies."""
+"""Original finale cloud volume; references stock engine noise, no vendor copies."""
 import unreal
 
 mel = unreal.MaterialEditingLibrary
-noise_path = '/Game/DC/Maelstrom/Sky/T_MaelstromErosion'
-noise = unreal.load_asset(noise_path)
-if not noise:
-    noise = unreal.AssetToolsHelpers.get_asset_tools().create_asset(
-        'T_MaelstromErosion', '/Game/DC/Maelstrom/Sky', unreal.VolumeTexture, unreal.VolumeTextureFactory())
-if not unreal.DCMaelstromAtmosphere.build_sky_noise(noise):
-    raise RuntimeError('Could not bake cloud erosion volume')
-unreal.EditorAssetLibrary.save_loaded_asset(noise,False)
 path = '/Game/DC/Maelstrom/Sky/M_MaelstromCumulus'
 mat = unreal.load_asset(path)
 if mat:
@@ -36,7 +28,7 @@ def vector(name, value):
     return n
 
 code = r'''
-#define NOISE(q) Texture3DSampleLevel(Shape,ShapeSampler,(q),0)
+#define NZ(q) saturate((Texture3DSampleLevel(Shape,ShapeSampler,(q),0).r-0.835)/0.125)
 float3 p=P*0.00001;
 float3 worldKm=p;
 p.z-=RimHeight;
@@ -44,9 +36,6 @@ if(Debug>0.5) return Density;
 if(p.z<0.55 || p.z>5.05) return 0;
 // Slow advection, a coherent shape across every render and encounter seek.
 float3 q=p-float3(T*0.0009,T*0.00025,0);
-float4 billows=NOISE(q*0.80+0.27);
-// Bend the larger masses before carving them, breaking the ellipsoid profiles.
-float3 warped=q+(billows.rgb-0.5)*0.22;
 float2 cell=floor(q.xy/1.6);
 float field=-10;
 // Overlapping cumulus towers with independent widths, heights and offsets.
@@ -58,39 +47,42 @@ float field=-10;
   float2 center=(id+0.5+(rnd.xy-0.5)*0.8)*1.6;
   float width=0.40+rnd.z*0.60;
   float top=1.1+rnd.x*1.0;
-  float3 d=(warped-float3(center,0.95+top*0.30))/float3(width,width*(0.8+rnd.y*0.4),top*0.55);
+  float3 d=(q-float3(center,0.95+top*0.30))/float3(width,width*(0.8+rnd.y*0.4),top*0.55);
   float body=1-length(d);
-  float3 head=(warped-float3(center+float2(0.20,-0.15)*width,1.0+top*0.65))/float3(width*0.75,width*0.72,top*0.48);
+  float3 head=(q-float3(center+float2(0.20,-0.15)*width,1.0+top*0.65))/float3(width*0.75,width*0.72,top*0.48);
   body=max(body,(1-length(head))*0.85);
   field=max(field,body);
  }
 }
-if(field < -1.0) return 0;
-float n=billows.r, detail=billows.g;
-// Distinct 310/155/78 m folds and a narrow density ramp retain the rims.
-// The finest cells only bite into the silhouette instead of adding wispy opacity.
-float sculpt=field+(n-0.50)*0.95+(detail-0.5)*0.45+(billows.b-0.5)*0.20;
-sculpt-=0.03+(1-billows.a)*Erosion*0.22;
+if(field < -0.5) return 0;
+float n=NZ(q*0.14+0.27);
+float detail=NZ(q*0.42+0.61);
+float fine=NZ(q*1.2+0.13);
+// Large billows carry smaller rounded lobes; high frequencies only erode edges.
+// Retain the accepted bank layout; increase medium contour variation and tighten
+// only the density boundary. Broad smooth unions flattened the accepted silhouette.
+float sculpt=field+(n-0.45)*0.42+(detail-0.5)*0.30;
+float d=saturate(sculpt*4.5);
+d=saturate(d-(1-fine)*Erosion*(1-d));
 // An irregular angular window follows the actual sun, framed by thick shoulders.
 float3 ray=normalize(worldKm-float3(0,0,0.02));
 float3 right=normalize(cross(ToSun,float3(0,0,1)));
 float3 up=normalize(cross(right,ToSun));
 float2 window=float2(dot(ray,right)+0.035,dot(ray,up)-0.03);
 float angle=length(window*float2(0.7,1.3));
-float aperture=smoothstep(Opening*0.15,Opening,angle+(n-0.5)*0.08+(detail-0.5)*0.04);
-// Carve the distance field BEFORE the opacity ramp. Carving an already clamped
-// density left a translucent luminous shell around the entire opening.
-sculpt-=(1-aperture)*1.30;
-return saturate(sculpt*12.0)*Density;
+float aperture=smoothstep(Opening*0.35,Opening+0.10,angle+(n-0.5)*0.28+(detail-0.5)*0.08);
+// Erode the shape rather than multiplying a cylindrical hole through a solid bank.
+d=saturate(d-(1-aperture)*1.2);
+return d*Density;
 '''
 node = expr(unreal.MaterialExpressionCustom)
 node.set_editor_property('code', code)
 node.set_editor_property('output_type', unreal.CustomMaterialOutputType.CMOT_FLOAT1)
 shape = expr(unreal.MaterialExpressionTextureObject)
-shape.set_editor_property('texture', noise)
-shape.set_editor_property('sampler_type', unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
+shape.set_editor_property('texture', unreal.load_asset('/Engine/EngineSky/VolumetricClouds/T_VolumeNoiseShape128'))
+shape.set_editor_property('sampler_type', unreal.MaterialSamplerType.SAMPLERTYPE_MASKS)
 nodes = {'P':expr(unreal.MaterialExpressionWorldPosition), 'T':scalar('Clock',300), 'RimHeight':scalar('RimHeight',0), 'Shape':shape,
-         'Density':scalar('Density',0.035), 'Debug':scalar('Debug',0), 'Erosion':scalar('Erosion',0.35), 'Opening':scalar('Opening',0.14),
+         'Density':scalar('Density',0.025), 'Debug':scalar('Debug',0), 'Erosion':scalar('Erosion',0.24), 'Opening':scalar('Opening',0.23),
          'ToSun':vector('ToSun',(0.4,-0.85,0.4,1))}
 inputs=[]
 for name in nodes:
@@ -101,8 +93,8 @@ for name,n in nodes.items():
 mel.connect_material_property(node,'',unreal.MaterialProperty.MP_SUBSURFACE_COLOR)
 mel.connect_material_property(vector('Albedo',(0.87,0.94,1,1)),'',unreal.MaterialProperty.MP_BASE_COLOR)
 adv=expr(unreal.MaterialExpressionVolumetricAdvancedMaterialOutput)
-for name,value in [('const_phase_g',0.55),('const_phase_g2',-0.2),('const_phase_blend',0.2),
-                   ('const_multi_scattering_contribution',0.3),('const_multi_scattering_occlusion',0.4),
+for name,value in [('const_phase_g',0.45),('const_phase_g2',-0.2),('const_phase_blend',0.25),
+                   ('const_multi_scattering_contribution',0.4),('const_multi_scattering_occlusion',0.55),
                    ('const_multi_scattering_eccentricity',0.5),('multi_scattering_approximation_octave_count',2),
                    ('ground_contribution',True),('gray_scale_material',False),('ray_march_volume_shadow',True)]:
     adv.set_editor_property(name,value)

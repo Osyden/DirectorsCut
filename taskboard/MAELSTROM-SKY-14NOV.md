@@ -1,47 +1,48 @@
-# Maelstrom cloud-shape correction — 14 November
+# Maelstrom volumetric clouds — 14 November
 
-The user rejected the cellular shapes in 76ff2cb as foam-like. The default finale now uses an 8K photographic storm sky with connected cloud banks, fine natural contours, and a composed warm opening. The old procedural material remains an explicit diagnostic option, not the default or approved direction.
+The user explicitly selected the first volumetric pass (c8eca71, `sky-after.png`) as the baseline and rejected the photographic skybox. This revision restores actual ray-marched volumetric clouds, removes the photographic runtime path/assets/tools, and removes the cellular erosion texture/baker that produced the foam-like regression.
 
-Work is isolated in `E:/Projects/DirectorsCut/Maelstrom-Sky`, branch `codex/maelstrom-sky`. Parent sky commits are c8eca71 and 76ff2cb; the water baseline is 73300a6, cherry-picked locally as 558d457. No shared-main integration, push or packaged build is included. Water checkpoint 182f543 is not in these captures.
+The accepted bank layout, layered engine volume noise, slow wind and irregular sun opening are retained. Medium-scale contour variation increases from 0.26 to 0.30, the density boundary tightens from 4 to 4.5, and fine edge erosion increases from 0.18 to 0.24. Larger smooth-union banks and a narrow sun aperture were evaluated and discarded because they flattened the silhouette or looked carved. This is a restrained refinement of the chosen version, not another replacement of its composition.
 
-## Rendering and boundaries
+## Lighting and quality
 
-`DCMaelstromSkyPlate.cpp` creates a 20 km, unlit sky sphere for Breach/Maelstrom and hides the native UDS sky meshes/cloud component during those phases. The HDR photograph is sampled by world view direction, with terrain excluded below 12 degrees and elevation remapped around a selected cloud opening. It stays fixed in the sky rather than rotating with the arena.
+Clouds self-shadow through native volume ray marching and cast native shadow maps into the atmosphere, fog and scene. Cloud shadow strength on surfaces/fog is now 1.0 instead of 0.7. The cloud shadow map retains its 4 km extent, resolution scale 2 and ray-sample scale 2.
 
-The background is photographic and static: it has no evolving volumetric cloud silhouettes or cloud parallax. The native directional sun, fog, surface shadows, photograph-derived light-function mask, directional shaft bloom and depth occlusion remain real time. The old spotlight shafts remain disabled. This is a deliberate change of technique to remove the repeating foam shapes within the jam schedule, not a claim that reference-level AAA lighting has been achieved. The broad light opening and atmospheric shafts still fall short of the reference's sharply separated beams.
+The default weather sometimes gives volumetric fog only a 700 m view distance after a seek. During the finale, the view distance is now at least 4 km so cloud shadows can be visible through the crater. Extinction is 0.55, scattering distribution 0.15, and sun volumetric scattering is at least 3. The original fog distance, extinction, scattering and enabled state restore on exit/backward seek; restoration values are logged.
 
-The existing waterfall mist, spray, route, water geometry/materials, creatures, shared director and vendor assets are untouched. Phase-specific sun cues are applied from the atmosphere actor. The automatic helm camera crops most of the sky during deep descent; the cloud-detail capture uses a separate review camera.
+Directional shaft bloom/depth occlusion supplements the native volume shadows. Bloom is 0.18 with threshold 0.85, maximum brightness 2 and the existing warm tint. It is screen-space and depends on the visible sun; do not describe the entire visible fan as volumetric scattering. A bloom-disabled control render was used to inspect cloud shape and native lighting independently. The old spotlight shafts remain disabled.
 
-All 11 native sky mesh visibility states, native cloud visibility, 29 UDS properties, sun/light-function settings and fog settings are captured and restored on exit or backward seek. Height fog stops before the sky sphere because the photograph already includes atmospheric haze; it still covers the arena. Volumetric fog remains active.
+Full-resolution cloud rendering retains view/shadow sample scales 4/3. Distance to maximum sample count is now 3 km instead of 6 km, giving denser tracing through the cloud contours. This costs GPU time; `-DCMaelCloudSampleDistance=6` is a lower-cost review option. Rendering mode/sample-distance overrides restore when leaving the stage.
 
-## Assets and reproduction
+Implementation references: [Epic's volumetric cloud shadowing documentation](https://dev.epicgames.com/documentation/en-us/unreal-engine/volumetric-cloud-component-in-unreal-engine), plus the installed UE 5.8 `VolumetricFog.usf` cloud-shadow-map sampling path. No photographic cloud backdrop or photographic shadow mask remains. The cloud shapes come from the volumetric material.
 
-The source is [Quarry Cloudy](https://polyhaven.com/a/quarry_cloudy), photographed by Dimitrios Savva and processed by Jarod Guest, released by Poly Haven under [CC0](https://polyhaven.com/license). Full provenance, checksum and source URL are in `Content/DC/Maelstrom/Sky/ASSET_LICENSES.md`.
+## Scope and integration
 
-New assets are `T_MaelstromStormPlate`, `M_MaelstromSkyPlate` and `M_MaelstromSkyShadow` under `/Game/DC/Maelstrom/Sky`. The imported 8192 x 4096 HDR source is approximately 324 MB in Git LFS. BC6H runtime texture storage is approximately 43 MiB including mips; this is a size calculation, not a target-hardware profile. Existing `/Game/DC` always-cook settings include these assets. No download is required by the game.
+Worktree: `E:/Projects/DirectorsCut/Maelstrom-Sky`, branch `codex/maelstrom-sky`. Water baseline remains 73300a6 (local cherry-pick 558d457). The water chat's newer 182f543/e09fae6 and structural cliff/basin rebuild are separate and are not represented in these renders. No DCMaelstrom.cpp/h, water, route, terrain, boss, shared director or vendor asset changes are included. No main merge, push or packaged/cooked build is performed.
 
-To regenerate, run `Tools/fetch_maelstrom_sky_plate.ps1`, then run `Tools/make_maelstrom_sky_plate.py` through UE 5.8 `UnrealEditor-Cmd.exe -run=pythonscript -script=<absolute path> -unattended -AllowCommandletRendering -RenderOffscreen -DDC=InstalledNoZenLocalFallback`. Do not use `-nullrhi`. The generator checks shader compilation and emits `DC_RESULT Maelstrom photographic sky and shadow saved`. Raw EXR and experiments stay in ignored `Saved` folders.
+This commit follows c8eca71, 76ff2cb and e7dee7a, and removes e7dee7a's photographic work. If integrating onto a branch without those commits, apply the series or transfer the final sky-owned files carefully; do not leave the photographic default active. Recheck lighting against the water owner's new terrain before packaging.
 
-Current defaults: source azimuth -45 degrees, elevation 20 degrees, sun energy 6.5, sky fill 1.7, exposure 0.05; photographic gain 0.18, anchor U 0.56 and source elevation 40 degrees. Directional bloom is 0.22 with threshold 1; sun volumetric scattering 2.4, fog extinction 0.35, scattering distribution 0.25, height-fog cutoff 15 km.
+## Reproduce
 
-Useful look-development switches: `-DCMaelPlateGain=0.18`, `-DCMaelPlateAnchorU=0.56`, `-DCMaelPlateAnchorElevation=40`, `-DCMaelRayBloom=0.22`. `-DCMaelProceduralClouds` explicitly selects the rejected cellular experiment. `-DCOriginalMaelstromSky` bypasses the custom sky composition.
+Build `DirectorsCutEditor Win64 Development` with UE 5.8. `Tools/make_maelstrom_sky.py` rebuilds `/Game/DC/Maelstrom/Sky/M_MaelstromCumulus` using `/Engine/EngineSky/VolumetricClouds/T_VolumeNoiseShape128`. Run through `UnrealEditor-Cmd.exe -run=pythonscript -script=<absolute path> -unattended -AllowCommandletRendering -RenderOffscreen -DDC=InstalledNoZenLocalFallback`; do not use `-nullrhi`. It waits for compilation and checks the material before saving. Existing `/Game/DC` always-cook settings and the material's engine-texture dependency cover the assets.
 
-Review the full descent with:
+The exact camera used by the user's chosen screenshot is `-DCShotCam=0,-3500,3500,10,-45` at actual ride time 306, not the later -65-degree look-development view:
 
 ```powershell
-./Tools/review_maelstrom_sky.ps1 -Clean -Continuous -Wait -ReviewName plate-final-game -Start 268 -Shots '269,280,300,340,380,420,449,451' -Width 1920 -Height 1080
+./Tools/review_maelstrom_sky.ps1 -EnvironmentOnly -Native -Clean -Wait -ReviewName volume-hero -Shots '300' -Width 1920 -Height 1080 -ExtraArgs '-DCShotCam=0,-3500,3500,10,-45'
+./Tools/review_maelstrom_sky.ps1 -Clean -Continuous -Wait -ReviewName volume-game -Start 268 -Shots '269,280,300,340,380,420,449,451' -Width 1920 -Height 1080
 ```
 
-Omitting `-Native` exercises the game's DLSS setup. `-Native` uses 100% internal resolution with DLSS/frame generation disabled. `-EnvironmentOnly` removes encounter actors. Continuous captures use exact ride times; discrete seek captures wait 5–6 seconds for settling, so their actual times are later than filenames.
+Current defaults: density 0.025, erosion 0.24, opening 0.23, sun source azimuth -45 degrees/elevation 18 degrees, sky fill 1.7, sun energy 6.5, exposure 0.05. Look-development switches: `-DCMaelCloudDensity`, `-DCMaelCloudErosion`, `-DCMaelCloudOpening`, `-DCMaelCloudSampleDistance`, `-DCMaelRayBloom`, `-DCMaelRayThreshold`, `-DCMaelSunScatter`. `-DCMaelRayBloom=0` isolates the native lighting. These are development controls, not player-facing UI.
 
-## Verification
+## Validation and remaining gaps
 
-- UE 5.8 Development Editor and Development Game builds pass with the final code. Both sky materials compile successfully; the generator completed and startup reports a complete shader map.
-- A continuous 1920 x 1080 gameplay run from 268 to 451 seconds completed using normal DLSS Super Resolution at 67%, frame generation off. Reveal, descent, final approach and ending were captured. The ending restored 11 sky meshes/native cloud visibility and 29 UDS properties. This full run preceded the final correction that keeps the reduced fog extinction from being overwritten each frame.
-- After that correction, a native 1920 x 1080 sky-focused render and a native gameplay seek regression 300 -> 150 -> 310 -> 451 both passed. Actual settled seek capture times were 306, 155, 315 and 456 seconds. Both exits restored the native sky, and re-entry created the photographic sky again. The earlier weather and the re-entry cloud shapes were visually inspected.
-- No Maelstrom shader compilation failure, missing plate, assertion or fatal error occurred in these final reviews. `git diff --check` passes. Other Unreal sessions were running, so sampled frame timings are not presented as a performance benchmark.
-- No packaged/cooked build, shared-main merge, target-hardware performance guarantee, water update or encounter balancing is included.
+- Final UE 5.8 Development Editor and Development Game targets pass. The material generator completes shader compilation successfully; final reviews report a complete startup shader map. `git diff --check` passes.
+- Native 1920 x 1080 hero review at actual ride time 306 uses the same camera as the user's selected c8eca71 screenshot. The saved first-pass material was also rendered as a control before retaining the smaller contour refinements.
+- Final continuous 1920 x 1080 gameplay run from 268 to 451 completed with normal DLSS Super Resolution at 67%, frame generation off, and encounter actors enabled. Reveal, helm, deep descent, final approach and ending were inspected. No Maelstrom compile failure, missing legacy-texture load, assertion or fatal error occurred.
+- Final native 1920 x 1080 seek regression 300 -> 150 -> 310 -> 451 completed. Actual settled capture times were 306, 155, 315 and 456. Re-entry restored the custom volume; both exits restored 29 UDS properties and logged the original fog view distance 70,000 cm, extinction 2.5 and scattering distribution 0.20. Active finale logs show 400,000 cm, 0.55 and 0.15 respectively.
+- Hero sampled GPU time was about 20 ms; gameplay capture samples varied with viewpoint and other concurrent Unreal sessions. These readings are not a target-hardware benchmark. No packaged/cooked build or combined-terrain review is included.
 
-Unretouched captures: [final cloud shape, native review camera at 306](review/maelstrom-sky-photographic-14nov/sky-306.png), [final native helm after re-entry at 315](review/maelstrom-sky-photographic-14nov/helm-reentry-315.png), [DLSS deep descent at 420](review/maelstrom-sky-photographic-14nov/descent-420.png), [continuous ending at 451](review/maelstrom-sky-photographic-14nov/ending-451.png), [final seek ending at 456](review/maelstrom-sky-photographic-14nov/ending-seek-456.png).
+Unretouched renders: [final sky at the matching 306-second camera](review/maelstrom-volumetric-return-14nov/sky-306.png), [DLSS helm at 300](review/maelstrom-volumetric-return-14nov/helm-300.png), [deep descent at 420](review/maelstrom-volumetric-return-14nov/descent-420.png), [native re-entry at 315](review/maelstrom-volumetric-return-14nov/helm-reentry-315.png), [restored ending at 451](review/maelstrom-volumetric-return-14nov/ending-451.png). The user's chosen first pass remains [here](review/maelstrom-sky-14nov/sky-after.png).
 
-For integration, cherry-pick this correction after c8eca71 and 76ff2cb if those commits are not already present. Retain the water owner's newer changes and check the combined scene before packaging.
+Cloud contours still have softness and some bright-edge grain; the reference has more intricate internal cloud structure and more sharply separated shafts. This pass restores and refines the requested volumetric direction without claiming AAA parity. Deep-descent helm views show little sky because the route camera looks into the crater. Target-hardware profiling and review with the new terrain remain necessary.

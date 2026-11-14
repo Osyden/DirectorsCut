@@ -25,12 +25,6 @@ public:
 	/** Authoring utility: finish shader compilation before a generated asset is saved. */
 	UFUNCTION(BlueprintCallable, Category="Maelstrom|Authoring")
 	static bool CompileSkyMaterial(UMaterialInterface* Material);
-	/** Bake periodic cellular noise at four scales for cloud density erosion. */
-	UFUNCTION(BlueprintCallable, Category="Maelstrom|Authoring")
-	static bool BuildSkyNoise(class UVolumeTexture* Texture);
-	/** Return the brightest upper-hemisphere source coordinate and luminance. */
-	UFUNCTION(BlueprintCallable, Category="Maelstrom|Authoring")
-	static FVector InspectSkyPlate(class UTexture2D* Texture);
 
 	/** Density of the soft 3D billows; sheets add only their torn spray detail. */
 	UPROPERTY(EditAnywhere) float MistDensity = 0.60f;
@@ -83,8 +77,6 @@ private:
 		FColor BloomTint = FColor::White;
 		float OcclusionDarkness = 1.f;
 		float OcclusionDistance = 100000.f;
-		float FunctionFadeDistance = 100000.f;
-		float FunctionDisabledBrightness = 0.5f;
 		bool bCloudShadows = false;
 		bool bVolumetricShadow = false;
 		TWeakObjectPtr<UMaterialInterface> LightFunction;
@@ -95,7 +87,7 @@ private:
 		bool bEnabled = false;
 		float ExtinctionScale = 1.f;
 		float ScatteringDistribution = 0.2f;
-		float FogCutoffDistance = 0.f;
+		float ViewDistance = 0.f;
 	};
 	void BuildLayout(ADCMaelstrom* Stage);
 	void BuildSpray();
@@ -113,19 +105,11 @@ private:
 	void RestoreSky();
 	void RefreshSky();
 	void UpdateSkyVolume();
-	void CaptureSkyPlate();
-	void UpdateSkyPlate();
-	void RestoreSkyPlate();
 	void SetSkyNumber(const TCHAR* Name, double Value);
 	void SetSkyColor(const TCHAR* Name, FLinearColor Value);
 	TWeakObjectPtr<AActor> StageSky;
 	TMap<FName, FString> SavedSkyProperties;
 	UPROPERTY() TObjectPtr<UMaterialInterface> SkyCloudTemplate;
-	UPROPERTY() TObjectPtr<class UStaticMeshComponent> SkyPlate;
-	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> SkyPlateMID;
-	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> SkyMaskMID;
-	TMap<TWeakObjectPtr<class UStaticMeshComponent>, bool> SavedSkyMeshVisibility;
-	bool bPreviousCloudVisible = true;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> SkyCloudMID;
 	UPROPERTY() TObjectPtr<UMaterialInterface> PreviousCloudMaterial;
 	TWeakObjectPtr<class UVolumetricCloudComponent> StageCloud;

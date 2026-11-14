@@ -9,96 +9,10 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "HAL/IConsoleManager.h"
 #include "Materials/Material.h"
-#include "Engine/VolumeTexture.h"
-#include "Engine/Texture2D.h"
-#include "Engine/StaticMesh.h"
-#include "Components/StaticMeshComponent.h"
-#include "Math/Float16Color.h"
 #if WITH_EDITOR
 #include "ShaderCompiler.h"
 #include "MaterialShared.h"
 #endif
-
-FVector ADCMaelstromAtmosphere::InspectSkyPlate(UTexture2D* Texture)
-{
-#if WITH_EDITOR
-	if (!Texture) { return FVector::ZeroVector; }
-	TArray64<uint8> Data;
-	if (!Texture->Source.GetMipData(Data,0)) { return FVector::ZeroVector; }
-	const int32 Width=Texture->Source.GetSizeX(), Height=Texture->Source.GetSizeY();
-	const ETextureSourceFormat Format=Texture->Source.GetFormat();
-	float Peak=0.f; int32 PeakX=0,PeakY=0;
-	for (int32 Y=1; Y<Height/2; Y+=2)
-	for (int32 X=0; X<Width; X+=2)
-	{
-		const int64 Index=int64(Y)*Width+X;
-		FLinearColor Color;
-		if (Format==TSF_RGBA16F) { Color=reinterpret_cast<const FFloat16Color*>(Data.GetData())[Index].GetFloats(); }
-		else if (Format==TSF_RGBA32F) { Color=reinterpret_cast<const FLinearColor*>(Data.GetData())[Index]; }
-		else { UE_LOG(LogDC, Error, TEXT("Unsupported sky plate source format %d"),int32(Format)); return FVector::ZeroVector; }
-		const float Luma=Color.R*0.2126f+Color.G*0.7152f+Color.B*0.0722f;
-		if (Luma>Peak) { Peak=Luma; PeakX=X; PeakY=Y; }
-	}
-	UE_LOG(LogDC,Log,TEXT("MAEL_PLATE source %dx%d sunUV=(%.6f,%.6f) peak=%.3f"),Width,Height,(PeakX+0.5f)/Width,(PeakY+0.5f)/Height,Peak);
-	return FVector((PeakX+0.5f)/Width,(PeakY+0.5f)/Height,Peak);
-#else
-	return FVector::ZeroVector;
-#endif
-}
-
-bool ADCMaelstromAtmosphere::BuildSkyNoise(UVolumeTexture* Texture)
-{
-#if WITH_EDITOR
-	if (!Texture) { return false; }
-	// Seeded periodic Worley F1 at 4/8/16/32 cells. Baking keeps the cost of
-	// intricate silhouettes to one filtered texture read per volume sample.
-	auto Hash = [](uint32 V) { V ^= V >> 16; V *= 0x7feb352dU; V ^= V >> 15; V *= 0x846ca68bU; return V ^ (V >> 16); };
-	TArray<FVector3f> Features[4];
-	for (int32 Level = 0; Level < 4; ++Level)
-	{
-		const int32 N = 4 << Level;
-		Features[Level].SetNumUninitialized(N*N*N);
-		for (int32 I = 0; I < N*N*N; ++I)
-		{
-			const uint32 Seed = Hash(I + 71391U + Level*6791U);
-			Features[Level][I] = FVector3f((Hash(Seed) & 65535)/65535.f,
-				(Hash(Seed+1) & 65535)/65535.f, (Hash(Seed+2) & 65535)/65535.f) * 0.8f + FVector3f(0.1f);
-		}
-	}
-	Texture->PreEditChange(nullptr); // Finish the factory's initial texture compile before changing settings.
-	Texture->SRGB = false;
-	Texture->CompressionSettings = TC_VectorDisplacementmap; // Uncompressed RGBA8: preserve density thresholds.
-	Texture->MipGenSettings = TMGS_SimpleAverage;
-	Texture->AddressMode = TA_Wrap;
-	Texture->NeverStream = true;
-	const bool bBuilt = Texture->UpdateSourceFromFunction([&Features](int32 X, int32 Y, int32 Z, void* Out)
-	{
-		uint8 Channels[4];
-		for (int32 Level = 0; Level < 4; ++Level)
-		{
-			const int32 N = 4 << Level;
-			const FVector3f P = FVector3f(X+0.5f, Y+0.5f, Z+0.5f) * (N/128.f);
-			const FIntVector Cell(FMath::FloorToInt(P.X), FMath::FloorToInt(P.Y), FMath::FloorToInt(P.Z));
-			float Nearest = 10.f;
-			for (int32 DZ = -1; DZ <= 1; ++DZ)
-			for (int32 DY = -1; DY <= 1; ++DY)
-			for (int32 DX = -1; DX <= 1; ++DX)
-			{
-				const FIntVector C = Cell + FIntVector(DX,DY,DZ);
-				const int32 Index = (C.X & (N-1)) + N*((C.Y & (N-1)) + N*(C.Z & (N-1)));
-				const FVector3f Delta = FVector3f(C) + Features[Level][Index] - P;
-				Nearest = FMath::Min(Nearest, Delta.SizeSquared());
-			}
-			Channels[Level] = FMath::RoundToInt(FMath::Clamp(1.f - FMath::Sqrt(Nearest)*0.9f, 0.f, 1.f)*255.f);
-		}
-		*static_cast<FColor*>(Out) = FColor(Channels[0],Channels[1],Channels[2],Channels[3]);
-	}, 128, 128, 128, TSF_BGRA8);
-	Texture->MarkPackageDirty();
-	return bBuilt;
-#else
-	return false;
-#endif
-}
 
 bool ADCMaelstromAtmosphere::CompileSkyMaterial(UMaterialInterface* Material)
 {
@@ -122,10 +36,7 @@ void ADCMaelstromAtmosphere::ConfigureSkyCues()
 	if (FParse::Param(FCommandLine::Get(), TEXT("DCOriginalMaelstromSky"))) { return; }
 	// Load during startup, before the tunnel reveal. In editor-game reviews a new
 	// material can otherwise still be compiling when its first capture is taken.
-	const bool bProcedural=FParse::Param(FCommandLine::Get(), TEXT("DCMaelProceduralClouds"));
-	SkyCloudTemplate = LoadObject<UMaterialInterface>(nullptr, bProcedural
-		? TEXT("/Game/DC/Maelstrom/Sky/M_MaelstromCumulus.M_MaelstromCumulus")
-		: TEXT("/Game/DC/Maelstrom/Sky/M_MaelstromSkyPlate.M_MaelstromSkyPlate"));
+	SkyCloudTemplate = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Maelstrom/Sky/M_MaelstromCumulus.M_MaelstromCumulus"));
 #if WITH_EDITOR
 	if (SkyCloudTemplate)
 	{
@@ -143,7 +54,7 @@ void ADCMaelstromAtmosphere::ConfigureSkyCues()
 		{
 			if (Phase.Phase != EDCPhase::Breach && Phase.Phase != EDCPhase::Maelstrom) { continue; }
 			Phase.Env.CloudCover = 0.20f;
-			Phase.Env.SunPitch = -20.f;
+			Phase.Env.SunPitch = -18.f;
 			// Light direction points away from the source: 135 puts the sun at
 			// -45 degrees, in the upper-right of the port-facing reveal camera.
 			Phase.Env.SunYaw = 135.f;
@@ -256,7 +167,7 @@ void ADCMaelstromAtmosphere::CaptureSky()
 		}
 	}
 	RefreshSky();
-	if (FParse::Param(FCommandLine::Get(), TEXT("DCMaelProceduralClouds")) || FParse::Param(FCommandLine::Get(), TEXT("DCMaelEngineClouds")))
+	if (!FParse::Param(FCommandLine::Get(), TEXT("DCMaelStockClouds")))
 	{
 		const TCHAR* MaterialPath = FParse::Param(FCommandLine::Get(), TEXT("DCMaelEngineClouds"))
 			? TEXT("/Engine/EngineSky/VolumetricClouds/m_SimpleVolumetricCloud_Inst.m_SimpleVolumetricCloud_Inst")
@@ -287,12 +198,12 @@ void ADCMaelstromAtmosphere::CaptureSky()
 				if (IConsoleVariable* Distance = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricCloud.DistanceToSampleMaxCount")))
 				{
 					PreviousCloudSampleDistance = Distance->GetFloat();
-					float SampleDistance = 6.f;
+					float SampleDistance = 3.f;
 					FParse::Value(FCommandLine::Get(), TEXT("DCMaelCloudSampleDistance="), SampleDistance);
 					Distance->SetWithCurrentPriority(FMath::Clamp(SampleDistance, 1.f, 20.f));
 				}
 				SkyCloudMID = UMaterialInstanceDynamic::Create(Material, this);
-				float Density = 0.035f, Erosion = 0.35f, Opening = 0.14f;
+				float Density = 0.025f, Erosion = 0.24f, Opening = 0.23f;
 				FParse::Value(FCommandLine::Get(), TEXT("DCMaelCloudDensity="), Density);
 				FParse::Value(FCommandLine::Get(), TEXT("DCMaelCloudErosion="), Erosion);
 				FParse::Value(FCommandLine::Get(), TEXT("DCMaelCloudOpening="), Opening);
@@ -311,13 +222,11 @@ void ADCMaelstromAtmosphere::CaptureSky()
 			}
 		}
 	}
-	if (!SkyCloudMID && !FParse::Param(FCommandLine::Get(),TEXT("DCMaelStockClouds"))) { CaptureSkyPlate(); }
 	UE_LOG(LogDC, Log, TEXT("MAEL_SKY captured and composed %d properties on %s"), SavedSkyProperties.Num(), *StageSky->GetName());
 }
 
 void ADCMaelstromAtmosphere::UpdateSkyVolume()
 {
-	if (SkyPlateMID) { UpdateSkyPlate(); return; }
 	if (SkyCloudMID && StageCloud.IsValid())
 	{
 		if (FParse::Param(FCommandLine::Get(), TEXT("DCMaelSkyDiagnostics")) && GFrameCounter % 120 == 0)
@@ -349,7 +258,6 @@ void ADCMaelstromAtmosphere::UpdateSkyVolume()
 
 void ADCMaelstromAtmosphere::RestoreSky()
 {
-	RestoreSkyPlate();
 	if (StageCloud.IsValid() && SkyCloudMID)
 	{
 		StageCloud->SetMaterial(PreviousCloudMaterial);
