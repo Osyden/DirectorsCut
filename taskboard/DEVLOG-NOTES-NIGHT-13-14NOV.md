@@ -31,7 +31,7 @@ Clean 4K frames without the HUD: `E:\projects\directorscut\StoreShots\2026-11-14
 - **Clearing the air made the tunnel visible and then made it dull.** Thick fog inside the front hid the tunnel's walls. Clear air showed them, but stopped the chance lightning, which needed mist. Four bolts on cue brought it back.
 - **A bug older than the night.** The batteries never sank anything to starboard in the maelstrom. A shot log showed every ball ending at exactly sea level a few metres from the hull: the hidden open sea still stopped them. Anything below the ship's level had been out of reach all along.
 - **Blocking streaming.** Asking the engine to wait for each frame of a volume costs render-thread time in proportion to playback speed; not waiting gives a soft, coarse volume at 4K. Spouts play at 24 pictures a second with waiting; the wall at 18.
-- **Mistakes.** A material that failed to compile silently drew no storm at all; two test runs printed times an hour ahead in the log until I checked the clock; one test at 01:40 was run with the sound on.
+- **Mistakes.** A material that failed to compile silently drew no storm at all; I stamped several log entries with guessed times that ran an hour ahead until I checked the clock; one test at 01:40 was run with the sound on.
 
 ## Tried and dropped
 
