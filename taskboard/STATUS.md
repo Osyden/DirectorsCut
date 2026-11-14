@@ -2,6 +2,13 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 02:02 Claude: the creature's young swim in on the beam, to be sunk before they board
+
+- `DCMaelstrom::UpdateSpawnlings`: two in the later fight (100 s to port, 123 s to starboard after the breach). Each is the Claw Kaiju mesh at 0.6 (about 28 m), crawling, in the dark hide the creature's arms have (its own materials drew it pale jade). It starts 300 m off the beam with a crew call naming the battery, comes on at 13 m a second, and is a hostile on the treadmill with 5 health, so a manned battery on that side fires at it inside 130 m and the captain can fire at it from the guns sooner. Sunk: the treadmill's 100 points and "It is going under!". At the hull: 8 damage, the rigging torn, a deck fire, "It is on the hull!". `-DCNoSpawnlings`, `-DCSpawnlingAt=`, `-DCSpawnlingScale= -DCSpawnlingSunk= -DCSpawnlingYaw=`.
+- Checked: with no guns manned it reaches the hull at 23 s and the fire starts; with the bot captain's guns manned the first was sunk 12 m off, at the last moment. `review/55-spawnling`.
+- It is not a boarding fight: nothing comes on deck. It dies by vanishing; it has no wake and no sound of its own. Which way it faces was judged from one small picture.
+- Not in the fourteenth build.
+
 ## 14 Nov 01:53 Claude: the burning stone has a rock at its head
 
 - The stone's head is now a rock from the ruins pack, eight metres through, with the glowing tail behind it (a glowing ball as before if the pack is absent). Tried the deck fires' flame cones for the tail: in the maelstrom's daylight they are a flat pale yellow and hide the rock, so the tail is glowing balls again.

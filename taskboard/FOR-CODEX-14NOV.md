@@ -19,6 +19,10 @@ Read with the STATUS entries of 13 Nov 23:38 onward. I worked on main in small c
 
 `FBoulder`, `UpdateBoulders` in `DCMaelstrom`: five scheduled stones thrown from the abyss in a 5 s arc, dodged with the helm exactly as the spouts are, starting a deck fire through `ADCTroubles::StartFire` when they strike. `-DCNoBoulders`, `-DCBoulderAt=`. Plain glowing spheres; they want smoke, a splash and sound.
 
+## The creature's young (added 02:02)
+
+`FSpawnling`, `UpdateSpawnlings` in `DCMaelstrom`: two scheduled adds on the beam, registered with `ADCTreadmill::AddExternalHostile` so the existing batteries and scoring handle them; at the hull they do damage, tear the rigging and start a fire. No boarding on deck. The mesh is the Claw Kaiju with `M_Kraken` on every slot, because `M_ClawKaiju` and its instances draw pale jade in the game (worth knowing before you show any of the boss's body).
+
 ## The end (added 00:52)
 
 `UpdatePlume` in `DCMaelstrom`: from `FinaleAt` for 19 s a kilometre-high column of the same volume stands on the crater's centre (`Arena` location on `SampleSurfaceWorld`), and `Director->Trauma` is kicked once. It is the only visible mark of the defeat besides the arms withdrawing; your plan's collapse of the current and opening of the path is not done.

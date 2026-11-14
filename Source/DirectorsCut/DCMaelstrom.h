@@ -127,6 +127,17 @@ private:
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> PlumeMID;
 	bool bPlumeShaken = false;
 	void UpdatePlume();
+	/** The creature's young: one swims in on the beam, to be sunk by that side's guns before it reaches the hull and tears into her. */
+	struct FSpawnling
+	{
+		TWeakObjectPtr<AActor> Actor;
+		float Side = 1.f;         // -1 port, +1 starboard
+		float Abeam = 0.f;        // cm off the ship's side
+		bool bWarned = false;
+	};
+	TArray<FSpawnling> Spawnlings;
+	int32 SpawnlingsSent = 0;
+	void UpdateSpawnlings(float DeltaSeconds);
 	TArray<FTwister> Twisters;
 	UPROPERTY() TArray<TObjectPtr<UMaterialInstanceDynamic>> TwisterMIDs;
 	int32 TwistersRaised = 0;

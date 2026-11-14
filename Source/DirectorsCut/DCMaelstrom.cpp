@@ -16,6 +16,9 @@
 #include "SparseVolumeTexture/SparseVolumeTexture.h"
 #include "HAL/IConsoleManager.h"
 #include "Engine/StaticMeshActor.h"
+#include "Animation/SkeletalMeshActor.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Animation/AnimSequence.h"
 #include "Components/PointLightComponent.h"
 #include "ProceduralMeshComponent.h"
 #include "Components/PostProcessComponent.h"
@@ -584,7 +587,7 @@ void ADCMaelstrom::Tick(float DeltaSeconds)
 		}
 	}
 	if (Boss) { Boss->UpdateEncounter(Elapsed, GetArenaTransform(), Radius, Depth, bActive); }
-	if (bActive) { UpdateTwisters(DeltaSeconds); UpdateBoulders(DeltaSeconds); UpdatePlume(); }
+	if (bActive) { UpdateTwisters(DeltaSeconds); UpdateBoulders(DeltaSeconds); UpdateSpawnlings(DeltaSeconds); UpdatePlume(); }
 	if (ADCAudio* Sound = Cast<ADCAudio>(UGameplayStatics::GetActorOfClass(GetWorld(), ADCAudio::StaticClass())))
 	{
 		// The wind rises as a spout comes on and while the plume stands.
@@ -767,6 +770,21 @@ void ADCMaelstrom::UpdateThroat(float ExitX)
 	ThroatMID->SetVectorParameterValue(TEXT("Floor"), FLinearColor(Sink / (Scale * 0.42f) + 2.f, 6.f, 0.f, 0.f));
 }
 
+namespace
+{
+	// Test hooks: -DCSpawnlingScale= (the mesh is 47 m long at 1), -DCSpawnlingSunk= (share of its height under water), -DCSpawnlingYaw=.
+	float SpawnlingScale = 0.6f, SpawnlingSunk = 0.1f, SpawnlingYaw = 0.f;
+	struct FSpawnlingHooks
+	{
+		FSpawnlingHooks()
+		{
+			FParse::Value(FCommandLine::Get(), TEXT("DCSpawnlingScale="), SpawnlingScale);
+			FParse::Value(FCommandLine::Get(), TEXT("DCSpawnlingSunk="), SpawnlingSunk);
+			FParse::Value(FCommandLine::Get(), TEXT("DCSpawnlingYaw="), SpawnlingYaw);
+		}
+	};
+}
+
 void ADCMaelstrom::ClearTwisters()
 {
 	for (FTwister& T : Twisters) { if (AActor* A = T.Actor.Get()) { A->Destroy(); } if (AActor* S = T.Skirt.Get()) { S->Destroy(); } }
@@ -775,6 +793,8 @@ void ADCMaelstrom::ClearTwisters()
 	TwistersRaised = 0;
 	if (AActor* P = Plume.Get()) { P->Destroy(); }
 	Plume.Reset(); PlumeMID = nullptr; bPlumeShaken = false;
+	for (FSpawnling& S : Spawnlings) { if (AActor* A = S.Actor.Get()) { A->Destroy(); } }
+	Spawnlings.Reset(); SpawnlingsSent = 0;
 	for (FBoulder& B : Boulders) { if (AActor* A = B.Actor.Get()) { A->Destroy(); } }
 	Boulders.Reset();
 	BouldersThrown = 0;
@@ -928,6 +948,98 @@ void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
 			if (AActor* S = T.Skirt.Get()) { S->Destroy(); }
 			if (AActor* A = T.Actor.Get()) { A->Destroy(); }
 			Twisters.RemoveAt(i);
+		}
+	}
+}
+
+void ADCMaelstrom::UpdateSpawnlings(float DeltaSeconds)
+{
+	// Two in the later part of the fight, one on each beam.
+	static const FSpawnlingHooks Hooks;
+	static const float SendAt[] = { 100.f, 123.f };
+	const float Finale = Boss ? Boss->FinaleAt : 160.f;
+	static const bool bOff = FParse::Param(FCommandLine::Get(), TEXT("DCNoSpawnlings"));
+	static float Extra = -1.f; static bool bRead = false;   // test hook: -DCSpawnlingAt=<seconds after the breach> sends one more, to port
+	if (!bRead) { bRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCSpawnlingAt="), Extra); }
+	bool bSend = false;
+	while (!bOff && SpawnlingsSent < UE_ARRAY_COUNT(SendAt) && Elapsed >= SendAt[SpawnlingsSent])
+	{
+		const float At = SendAt[SpawnlingsSent++];
+		if (Elapsed <= At + 2.f && At < Finale - 26.f) { bSend = true; }
+	}
+	if (Extra >= 0.f && Elapsed >= Extra && Elapsed < Extra + 1.f) { Extra = -1.f; bSend = true; }
+	UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>();
+	ADCTreadmill* Treadmill = ADCTreadmill::Get(this);
+	if (bSend && Treadmill)
+	{
+		USkeletalMesh* Mesh = LoadObject<USkeletalMesh>(nullptr, TEXT("/Game/Fab/Claw_Kaiju_Monster/ClawKaiju_allAnimation.ClawKaiju_allAnimation"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+		UAnimSequence* Crawl = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Fab/Claw_Kaiju_Monster/ClawKaiju_allAnimationClawKaiju_Crawling.ClawKaiju_allAnimationClawKaiju_Crawling"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		ASkeletalMeshActor* A = Mesh ? GetWorld()->SpawnActor<ASkeletalMeshActor>(FVector::ZeroVector, FRotator::ZeroRotator, Params) : nullptr;
+		if (A)
+		{
+			FSpawnling S;
+			S.Side = (Spawnlings.Num() + SpawnlingsSent) % 2 == 1 ? -1.f : 1.f;
+			S.Abeam = 30000.f;
+			USkeletalMeshComponent* C = A->GetSkeletalMeshComponent();
+			C->SetMobility(EComponentMobility::Movable);
+			C->SetSkeletalMesh(Mesh);
+			C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			if (Crawl) { C->PlayAnimation(Crawl, true); }
+			// The pack's own materials draw pale jade here; give it the dark wet hide the creature's arms have.
+			if (UMaterialInterface* Hide = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Kraken.M_Kraken"), nullptr, LOAD_NoWarn | LOAD_Quiet))
+			{
+				UMaterialInstanceDynamic* HideMID = UMaterialInstanceDynamic::Create(Hide, A);
+				HideMID->SetVectorParameterValue(TEXT("Skin"), FLinearColor(0.035f, 0.048f, 0.045f));
+				HideMID->SetVectorParameterValue(TEXT("Belly"), FLinearColor(0.22f, 0.11f, 0.055f));
+				for (int32 Slot = 0; Slot < C->GetNumMaterials(); ++Slot) { C->SetMaterial(Slot, HideMID); }
+			}
+			A->SetActorScale3D(FVector(SpawnlingScale));
+			S.Actor = A;
+			// Somewhere to start, so the treadmill's first reading of it is on the right side.
+			A->SetActorLocation(FVector(1500.f, S.Side * (S.Abeam + 600.f), Director->SeaLevelZ));
+			Treadmill->AddExternalHostile(A, 900.f, 5.f);
+			Spawnlings.Add(S);
+			UE_LOG(LogDC, Log, TEXT("Spawnling sent at %.1f s on the %s beam"), Elapsed, S.Side < 0.f ? TEXT("port") : TEXT("starboard"));
+		}
+	}
+	for (int32 i = Spawnlings.Num() - 1; i >= 0; --i)
+	{
+		FSpawnling& S = Spawnlings[i];
+		AActor* A = S.Actor.Get();
+		if (!A)
+		{
+			// The guns have sunk it (the treadmill destroys a hostile whose health is gone).
+			if (Crew) { Crew->Report(TEXT("It is going under! Good shooting!"), true); }
+			UE_LOG(LogDC, Log, TEXT("Spawnling sunk at %.1f s, %.0f m off"), Elapsed, S.Abeam / 100.f);
+			Spawnlings.RemoveAt(i);
+			continue;
+		}
+		if (!S.bWarned)
+		{
+			S.bWarned = true;
+			if (Crew) { Crew->Report(S.Side < 0.f ? TEXT("Something is swimming at us on the port beam! Port battery, sink it before it boards!") : TEXT("Something is swimming at us on the starboard beam! Starboard battery, sink it before it boards!"), true); }
+		}
+		S.Abeam -= 1300.f * DeltaSeconds * Director->TimeScale;
+		FVector Where(1500.f, S.Side * (S.Abeam + 600.f), 0.f);
+		// Half under: its back and claws break the surface.
+		Where.Z = SampleSurfaceWorld(Where) - 37.f * 100.f * SpawnlingScale * SpawnlingSunk;
+		// It comes on facing the ship.
+		A->SetActorLocationAndRotation(Where, FRotator(0.f, (S.Side < 0.f ? 90.f : -90.f) + SpawnlingYaw, 0.f));
+		if (S.Abeam <= 0.f || Elapsed > Finale)
+		{
+			if (S.Abeam <= 0.f)
+			{
+				Director->DamageShip(8.f);
+				ADCTroubles* Troubles = ADCTroubles::Get(this);
+				if (Troubles) { Troubles->TearRigging(); }
+				if (Troubles && Troubles->DeckPoints.Num() && Troubles->NumFires() < Troubles->MaxFires) { Troubles->StartFire(Troubles->DeckPoints[FMath::RandRange(0, Troubles->DeckPoints.Num() - 1)]); }
+				if (Crew) { Crew->Report(TEXT("It is on the hull! It is tearing at us!"), true); }
+				UE_LOG(LogDC, Log, TEXT("Spawnling reached the hull at %.1f s"), Elapsed);
+			}
+			A->Destroy();
+			Spawnlings.RemoveAt(i);
 		}
 	}
 }
