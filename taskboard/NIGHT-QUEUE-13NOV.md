@@ -19,3 +19,10 @@ Items 1, 2 and 4 are done; item 3 is part done (see STATUS and `FOR-CODEX-14NOV.
 3. Item 5's foam disc round the shallow broken columns.
 4. The helmsman striking rocks in the city with nobody giving orders (hull about 83 by the slide).
 5. Package and run a build after any of these; keep `MORNING-14NOV.md` naming the newest build that has been run.
+
+## Added by the owner between 04:45 and 05:20 on 14 Nov (see INBOX)
+
+A. [written, not compiled: the owner's editor is open] Gap under the storm front; objects popping in ahead; the ship clipping through rocks; a set of the current so she grazes big stone and cannot hit it head on; the rock showing through the cloud tunnel; lightning as visible streaks.
+B. **Creatures on the banks in the fog part.** Giants march up to the channel's banks at set places and throw oil pots or fireballs at the ship; a hit starts a deck fire the player must put out; the guns can kill them. Use one creature, the best: for Paragon Rampage, the stone (Elemental) skin with the glowing parts. Packs: `Content/ParagonRampage` (3.3 GB), `Content/Ancient_Marchosias`; Giant Demon 19 and 20 were still failing to import at 05:20. All git-ignored. Make it feel good: a tell, a readable arc, a real fire, a satisfying death.
+C. **Bow spray** still does not look good.
+D. Do not neglect the later game and the boss.

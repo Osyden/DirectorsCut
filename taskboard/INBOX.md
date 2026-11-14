@@ -195,3 +195,7 @@ Please mark this read and report the diagnosed cause and the fix. Keep any unfin
 ## 14 Nov about 05:00 owner (in chat)  [read 05:00 by Claude; see STATUS]
 
 "There is also a rock on the right during the fog tunnel part and it pops through the tunnel as an outline rather than emerging from the fog. Also for large objects in the ship part there should be some minimal avoidance due to currents so the ship can't collide head on with stuff, only scrape it so damage feedback is more natural."
+
+## 14 Nov about 05:20 owner (in chat)  [read 05:20 by Claude; on the to-do list in NIGHT-QUEUE and STATUS]
+
+"I am downloading creature assets but am having issues importing (Paragon: Rampage, Giant Demon 19 and 20, Ancient Marchosias) and want some marching up to the banks during certain fog parts so we have something to shoot at (use the best creature only, for Paragon the stone variant with the illuminated parts only please), and they can throw oil pots or fireballs on the ship and cause fires that the player needs to put out so there is more going on during the fog part. Make a note of it and add it to the to do list and work on it in parallel please and make it feel good. Also the bow water splashes are not really looking good yet."
