@@ -9,3 +9,13 @@ Set by the owner at 22:30 on 13 Nov. Work from the top; tick items off here and 
 5. Earlier leftovers: white foam disc round shallow columns, bright mid-lightning frames in the city, straight tops on cloud walls.
 
 Owner is weighing more packs from the same author (Clouds Storm, Water Tornado, Whitewater Waterfall): report with frames whether the tunnel holds up at ship scale before anything is bought.
+
+## State at 03:35 on 14 Nov, and what is left worth doing tonight
+
+Items 1, 2 and 4 are done; item 3 is part done (see STATUS and `FOR-CODEX-14NOV.md`). Newest build run from its exe: `2026-11-14_0315_e71ea99_rolling-top`. In order of worth:
+
+1. The reveal at the maelstrom's lip: a moment of slower travel and a near crest hiding the drop before the bow goes over (Codex's plan, "Tunnel exit and rollercoaster emergence"). Only the quicker descent and the wider view are in.
+2. A fallback column for the waterspouts and the plume when the cloud pack is absent (they are then unseen but still strike).
+3. Item 5's foam disc round the shallow broken columns.
+4. The helmsman striking rocks in the city with nobody giving orders (hull about 83 by the slide).
+5. Package and run a build after any of these; keep `MORNING-14NOV.md` naming the newest build that has been run.
