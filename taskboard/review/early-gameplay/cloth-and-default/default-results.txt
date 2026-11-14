@@ -1,0 +1,25 @@
+[2026.11.14-20.56.38:872][807]LogDC: Display: Encounter group 1: 2 creatures on port at 90.0
+[2026.11.14-20.56.48:488][874]LogDC: Auto shot shot_0100.png at ride time 100.0, 114 fps (game 7.2 ms, render 9.0 ms, gpu 5.7 ms)
+[2026.11.14-20.56.51:055][ 89]LogDC: Display: Encounter defeated: creature at 102.5
+[2026.11.14-20.56.52:597][261]LogDC: Hull struck stone at V(X=1460.00, Y=-539.39, Z=370.00) (in 7 cm, closing 0 cm/s, strength 0.20) at ride time 104.1
+[2026.11.14-20.56.58:534][903]LogDC: Auto shot shot_0110.png at ride time 110.0, 113 fps (game 7.2 ms, render 8.7 ms, gpu 5.7 ms)
+[2026.11.14-20.57.00:753][128]LogDC: Display: Encounter defeated: creature at 112.2
+[2026.11.14-20.57.01:320][186]LogDC: Display: Encounter impact: fireball deck=V(X=409.37, Y=60.00, Z=509.73) fires=0->1 at 112.8
+[2026.11.14-20.57.13:532][453]LogDC: Auto shot shot_0125.png at ride time 125.0, 107 fps (game 7.3 ms, render 9.4 ms, gpu 6.5 ms)
+[2026.11.14-20.57.17:679][876]LogDC: Display: Encounter defeated: sentinel at 129.2
+[2026.11.14-20.57.20:886][177]LogDC: Display: Encounter group 2: 2 creatures on starboard at 132.0
+[2026.11.14-20.57.25:951][704]LogDC: Hull struck stone at V(X=-1420.00, Y=463.58, Z=370.00) (in 16 cm, closing 870 cm/s, strength 0.72) at ride time 137.4
+[2026.11.14-20.57.37:341][887]LogDC: Display: Encounter defeated: creature at 148.8
+[2026.11.14-20.57.46:824][935]LogDC: Display: Encounter defeated: creature at 158.3
+[2026.11.14-20.57.48:920][167]LogDC: Display: Encounter impact: fireball deck=V(X=-190.63, Y=140.00, Z=471.88) fires=0->1 at 160.4
+[2026.11.14-20.58.03:536][802]LogDC: Auto shot shot_0175.png at ride time 175.0, 111 fps (game 7.1 ms, render 8.6 ms, gpu 6.0 ms)
+[2026.11.14-20.58.03:970][840]LogDC: Display: Encounter defeated: sentinel at 175.4
+[2026.11.14-20.58.06:531][125]LogDC: Display: Encounter group 3: 3 creatures on port at 178.0
+[2026.11.14-20.58.18:977][539]LogDC: Display: Encounter defeated: creature at 190.4
+[2026.11.14-20.58.27:995][586]LogDC: Display: Encounter defeated: creature at 199.5
+[2026.11.14-20.58.29:925][808]LogDC: Display: Encounter impact: fireball deck=V(X=-440.63, Y=-150.00, Z=471.88) fires=0->1 at 201.4
+[2026.11.14-20.58.37:542][685]LogDC: Display: Encounter defeated: creature at 209.0
+[2026.11.14-20.58.37:797][715]LogDC: Display: Encounter impact: fireball deck=V(X=-1257.75, Y=-170.00, Z=627.13) fires=1->2 at 209.3
+[2026.11.14-20.58.43:760][414]LogDC: Hull struck stone at V(X=980.00, Y=594.92, Z=370.00) (in 1 cm, closing 0 cm/s, strength 0.20) at ride time 215.2
+[2026.11.14-20.58.57:145][  0]LogDC: Display: Encounter defeated: sentinel at 228.6
+[2026.11.14-20.59.03:533][775]LogDC: Auto shot shot_0235.png at ride time 235.0, 124 fps (game 6.5 ms, render 9.3 ms, gpu 6.6 ms)

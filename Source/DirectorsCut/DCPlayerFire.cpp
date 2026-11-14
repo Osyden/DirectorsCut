@@ -4,6 +4,7 @@
 #include "Camera/CameraComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/Texture.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -28,7 +29,32 @@ void ADCPlayerCharacter::BuildRag()
 		if (M) { M->SetVectorParameterValue(TEXT("Color"), Color); M->SetVectorParameterValue(TEXT("Glow"), FLinearColor::Black); }
 		return M;
 	};
-	Rag->SetMaterial(0, Material(FLinearColor(.18f, .14f, .085f)));
+	// Reuse the ship pack's woven fabric on private runtime instances. The old
+	// flat stone material read as paper and plastic this close to the camera.
+	UMaterialInterface* ClothBase = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Brigantine/Material/Root/M_2.M_2"));
+	UTexture* FabricColor = LoadObject<UTexture>(nullptr, TEXT("/Game/Brigantine/Texture/Tiling/T_Fabric_1_BaseColor.T_Fabric_1_BaseColor"));
+	UTexture* FabricNormal = LoadObject<UTexture>(nullptr, TEXT("/Game/Brigantine/Texture/Tiling/T_Fabric_1_Normal.T_Fabric_1_Normal"));
+	UTexture* FabricMasks = LoadObject<UTexture>(nullptr, TEXT("/Game/Brigantine/Texture/Tiling/T_Fabric_1_OcclusionRoughnessMetallic.T_Fabric_1_OcclusionRoughnessMetallic"));
+	auto Cloth = [this, ClothBase, FabricColor, FabricNormal, FabricMasks, &Material](FLinearColor Color, float Tiling)
+	{
+		if (!ClothBase || !FabricColor || !FabricNormal || !FabricMasks) { return Material(Color); }
+		UMaterialInstanceDynamic* M = UMaterialInstanceDynamic::Create(ClothBase, this);
+		M->SetTextureParameterValue(TEXT("1_Base_Texture"), FabricColor);
+		M->SetTextureParameterValue(TEXT("2_Masks (Occ,Rough,Met)"), FabricMasks);
+		M->SetTextureParameterValue(TEXT("3_Normal"), FabricNormal);
+		M->SetVectorParameterValue(TEXT("1_Tint_base_texture"), Color);
+		M->SetScalarParameterValue(TEXT("1_Brightness"), 1.f);
+		M->SetScalarParameterValue(TEXT("Tiling"), Tiling);
+		M->SetScalarParameterValue(TEXT("Tiling-normal"), Tiling);
+		M->SetScalarParameterValue(TEXT("Roughness Min"), .8f);
+		M->SetScalarParameterValue(TEXT("Roughness Max"), 1.f);
+		M->SetScalarParameterValue(TEXT("Metallic Min"), 0.f);
+		M->SetScalarParameterValue(TEXT("Metallic Max"), 0.f);
+		M->SetScalarParameterValue(TEXT("Specular"), .1f);
+		M->SetScalarParameterValue(TEXT("3_Normal_Strengh"), .7f);
+		return M;
+	};
+	Rag->SetMaterial(0, Cloth(FLinearColor(.45f, .34f, .20f), 2.f));
 	auto Grip = [this, &Material](const TCHAR* Name, FLinearColor Color)
 	{
 		UStaticMeshComponent* Part = NewObject<UStaticMeshComponent>(this, Name);
@@ -44,15 +70,32 @@ void ADCPlayerCharacter::BuildRag()
 	};
 	RagHand = Grip(TEXT("RagGlove"), FLinearColor(.055f, .033f, .019f));
 	RagSleeve = Grip(TEXT("RagSleeve"), FLinearColor(.026f, .033f, .038f));
-	// A closed leather grip: knuckles and a curled thumb break up the silhouette.
+	UMaterialInstanceDynamic* GloveMaterial = Cloth(FLinearColor(.12f, .075f, .04f), 4.f);
+	RagHand->SetMaterial(0, GloveMaterial);
+	UMaterialInstanceDynamic* SleeveMaterial = Cloth(FLinearColor(.04f, .055f, .065f), 5.f);
+	RagSleeve->SetMaterial(0, SleeveMaterial);
+	// Subtle stitched ribs break up the smooth work-glove surface without adding
+	// an unrelated first-person rig.
+	UMaterialInstanceDynamic* StitchMaterial = Cloth(FLinearColor(.18f, .11f, .06f), 4.f);
+	for (int32 Rib = 0; Rib < 3; ++Rib)
+	{
+		UStaticMeshComponent* Seam = Grip(*FString::Printf(TEXT("RagGloveSeam%d"), Rib), FLinearColor::Black);
+		Seam->SetMaterial(0, StitchMaterial);
+		Seam->AttachToComponent(RagHand, FAttachmentTransformRules::KeepRelativeTransform);
+		Seam->SetRelativeLocation(FVector(-2.f, -18.f + Rib * 18.f, 44.f - FMath::Abs(Rib - 1) * 4.f));
+		Seam->SetRelativeScale3D(FVector(.48f, .025f, .035f));
+	}
+	// Closed fingers and a curled thumb hold the gathered end of the cloth.
 	for (int32 Finger = 0; Finger < 4; ++Finger)
 	{
 		UStaticMeshComponent* Knuckle = Grip(*FString::Printf(TEXT("RagFinger%d"), Finger), FLinearColor(.045f, .028f, .016f));
+		Knuckle->SetMaterial(0, GloveMaterial);
 		Knuckle->AttachToComponent(RagHand, FAttachmentTransformRules::KeepRelativeTransform);
 		Knuckle->SetRelativeLocation(FVector(30.f, -31.f + Finger * 20.f, 2.f));
 		Knuckle->SetRelativeScale3D(FVector(.52f, .25f, .8f));
 	}
 	UStaticMeshComponent* Thumb = Grip(TEXT("RagThumb"), FLinearColor(.05f, .03f, .017f));
+	Thumb->SetMaterial(0, GloveMaterial);
 	Thumb->AttachToComponent(RagHand, FAttachmentTransformRules::KeepRelativeTransform);
 	Thumb->SetRelativeLocation(FVector(8.f, -43.f, 5.f));
 	Thumb->SetRelativeRotation(FRotator(0.f, -35.f, 0.f));
@@ -119,7 +162,7 @@ void ADCPlayerCharacter::TickRag(float DeltaSeconds)
 	TArray<int32> Tris;
 	TArray<FColor> Colors;
 	TArray<FProcMeshTangent> Tangents;
-	constexpr int32 Across = 6, Along = 9;
+	constexpr int32 Across = 12, Along = 16;
 	for (int32 Y = 0; Y <= Along; ++Y)
 	{
 		const float V = float(Y) / Along;

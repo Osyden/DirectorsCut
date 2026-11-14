@@ -765,6 +765,10 @@ void ADCGameMode::Tick(float DeltaSeconds)
 		// -DCProfile also writes a GPU timing breakdown to the log at each shot.
 		if (FParse::Param(FCommandLine::Get(), TEXT("DCProfile")) && GEngine) { GEngine->Exec(GetWorld(), TEXT("ProfileGPU")); }
 		UE_LOG(LogDC, Log, TEXT("Auto shot %s at ride time %.1f, %.0f fps (game %.1f ms, render %.1f ms, gpu %.1f ms)"), *FPaths::GetCleanFilename(File), Director->RideTime, SmoothedFps, FPlatformTime::ToMilliseconds(GGameThreadTime), FPlatformTime::ToMilliseconds(GRenderThreadTime), FPlatformTime::ToMilliseconds(RHIGetGPUFrameCycles()));
+		const ADCTroubles* ShotTroubles = ADCTroubles::Get(this);
+		UE_LOG(LogDC, Log, TEXT("Capture state: hull=%.1f score=%d fires=%d rigging=%d at %.1f"),
+			Director->ShipHealth, Director->Score, ShotTroubles ? ShotTroubles->NumFires() : 0,
+			ShotTroubles && ShotTroubles->IsRiggingLoose(), Director->RideTime);
 		bAutoShotTaken = true;
 		AutoShotWait = bTenths ? 0.05f : 1.f;
 		return;

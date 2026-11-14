@@ -55,16 +55,24 @@ Existing unattended startup warnings remain in UDS editor utilities, Python/tool
 
 ## Next autonomous passes
 
+Scheduled pass at 20:50 UTC: replaced the flat rag/hand/sleeve shading with private instances of the existing ship-pack fabric textures, increased cloth subdivisions, and added restrained glove seams. No shared assets were saved. Read-only parameter audit: Tools/inspect_cloth_materials.py. The larger and smaller trial cuffs both read as discs in screenshots and were removed; the accepted pass keeps the simpler wrist silhouette. Cloth grain and folds now read more clearly, but the hand is still procedural and swat audio remains outstanding. [Previous cloth](review/early-gameplay/accepted/rag-swat.png), [textured cloth](review/early-gameplay/cloth-and-default/rag-textured.png), [recovery](review/early-gameplay/cloth-and-default/rag-recovery.png), [final interaction results](review/early-gameplay/cloth-and-default/rag-results.txt).
+
+Also ran the normal 0–235s route without the captain bot or scripted orders. Default assigned crew defeated all 7 creatures and 3 statues, while 4 fireballs reached the deck. At 235s: 78% hull, score 1000 and 2 active fires, compared with the earlier bot run's 84%, 1200 and no fires. There were 3 separate stone contacts, not a repeated damage trap. These are different runs, not a controlled difficulty comparison. The result supports keeping fire response as a useful captain task while the crew can help with shooting. [Default-run events](review/early-gameplay/cloth-and-default/default-results.txt), [175s](review/early-gameplay/cloth-and-default/default-175.png), [235s](review/early-gameplay/cloth-and-default/default-235.png).
+
+The final cloth build passed all 15 fire-interaction checks again. Reviewed contact and recovery screenshots after removing the trial cuffs; score remained zero through partial suppression and reached 50 once extinguished. The private play launcher uses this build. Cook settings include the reused material/texture directories; packaged-build validation remains outstanding.
+
+One navigation behavior deserves a focused followup: the selected passing lane changed from +500 to -3500 cm near 235.3s as the route approached its exit. No immediate contact occurred, but inspect this transition from the helm before accepting it as smooth. [Navigation samples](review/early-gameplay/cloth-and-default/exit-navigation.txt) are saved with the review. Capture logs now include hull, score, active fires and loose-rigging state; the review script has a repeatable default case without the captain bot.
+
 Scheduler directorscut-early-game-gameplay-iterations remains active in this chat: every 30 minutes, eight runs over four hours from 19:47 UTC. Continue concrete work from current Git state; preserve other chats and do not merge their maelstrom/ACE/submission changes. Save and push validated checkpoints on the owned branch. The latest user correction takes priority.
 
 1. Review encounters from both cannons and the walking deck, including fireball flight and impact rings. Check pacing without the automated crew-order bot.
 2. Test additional natural ruin layouts and deliberate contacts. Investigate repeated grinding or assistance opposing input; retain mild assistance rather than making a perfect autopilot.
-3. Improve rag material/hand silhouette and add suitable swat/steam audio after auditioning available assets. Preserve multi-hit feedback and crew behavior.
+3. Cloth texture polish is implemented; improve hand anatomy only if a suitable authored asset is available. Add suitable swat/steam audio after auditioning available assets. Preserve multi-hit feedback and crew behavior.
 4. Compare bow spray during storm waves and from deck height. Break up any remaining uniform foam rim without restoring edge-on sheets or changing shared water assets.
 5. Review opening, front, portal, city and exit after further changes. Preserve accepted fog layers and concealed exit. Package-test when practical, recording unrelated plugin/build blockers honestly.
 
 ## Reproduce
 
-Tools/review_early_gameplay.ps1 accepts -ProjectPath <isolated-built-uproject>, -Case rag|cannons|encounters|statue|city|crew|bow|bowclose|manual and -OutputPath <review-folder>. It captures only the selected project, checks verification success where applicable, and saves new screenshots plus relevant events. It does not compile or copy source. City/crew and current encounter cases run at normal speed.
+Tools/review_early_gameplay.ps1 accepts -ProjectPath <isolated-built-uproject>, -Case rag|cannons|encounters|statue|city|crew|default|bow|bowclose|manual and -OutputPath <review-folder>. It captures only the selected project, checks verification success where applicable, and saves new screenshots plus relevant events. It does not compile or copy source. City/crew/default and current encounter cases run at normal speed.
 
 Working captures and raw logs: E:/Projects/DirectorsCut/early-gameplay-review. Selected accepted images, baseline, intermediate iterations and concise evidence are in taskboard/review/early-gameplay; fog comparisons are in taskboard/review/fog-card-band. Keep noisy private/plugin/service logs and credentials out of the public repository.
