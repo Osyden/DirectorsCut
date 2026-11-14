@@ -30,6 +30,8 @@ struct FDCWorldObject
 	bool bFeelable = false;
 	/** Scenery only: how far its stone reaches from its centre (cm), measured when it was laid out. */
 	float Reach = 0.f;
+	/** Kept out of sight because the cloud tunnel has not yet passed it. */
+	bool bTunnelHid = false;
 	/** The lookout has already called this one. */
 	bool bCalled = false;
 	/** Seconds until a hostile alongside fires on us again. */
@@ -78,7 +80,8 @@ public:
 	int32 NumObjects() const { return Objects.Num(); }
 	int32 NumHostiles() const;
 
-	UPROPERTY(EditAnywhere) float SpawnDistance = 30000.f;
+	/** (Was 300 m, inside what can be seen in the city: rocks and statues appeared out of nothing ahead. Owner, 14 Nov.) */
+	UPROPERTY(EditAnywhere) float SpawnDistance = 65000.f;
 	UPROPERTY(EditAnywhere) float DespawnDistance = 12000.f;
 	UPROPERTY(EditAnywhere) float LaneLimit = 5000.f;
 	UPROPERTY(EditAnywhere) float LaneSpeed = 900.f;
@@ -108,6 +111,9 @@ protected:
 	/** Which way she is being shouldered off the stone (+1 starboard), kept while the contact lasts so that stone dead ahead does not toss her to and fro. */
 	float StrikeAway = 0.f;
 	float SinceContact = 100.f;
+	/** The set of the current round big stone dead ahead (cm a second across the channel, + to starboard): it carries her
+	 *  aside enough that she grazes it and cannot run her stem straight on to it. */
+	float CurrentDrift = 0.f;
 	/** For the hand at the helm: how far ahead (cm) the first stone lies on each lane he might choose
 	 *  (lane i is at -LaneLimit + i * 250), or a negative number where the way is clear. Looked for a few times a second. */
 	TArray<float> StoneAhead;

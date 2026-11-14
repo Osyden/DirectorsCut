@@ -1,4 +1,5 @@
 #include "DCRideDirector.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "Components/DirectionalLightComponent.h"
 #include "Components/SkyLightComponent.h"
 #include "Components/SkyAtmosphereComponent.h"
@@ -1002,7 +1003,56 @@ void ADCRideDirector::TickUDS()
 				NextBolt = FMath::FRandRange(3.5f, 8.f) * 10.f / FMath::Max(Env.LightningRate, 1.f);
 				const float Side = FMath::RandBool() ? 1.f : -1.f;
 				if (FParse::Param(FCommandLine::Get(), TEXT("DCLightningLog"))) { UE_LOG(LogDC, Log, TEXT("Lightning: director calls a bolt at ride time %.2f"), RideTime); }
-				SkyCall(UDSWeather, TEXT("Flash Lightning"), FVector(FMath::FRandRange(40000.f, 140000.f), Side * FMath::FRandRange(15000.f, 80000.f), SeaLevelZ));
+				const FVector Struck(FMath::FRandRange(40000.f, 140000.f), Side * FMath::FRandRange(15000.f, 80000.f), SeaLevelZ);
+				SkyCall(UDSWeather, TEXT("Flash Lightning"), Struck);
+				// The pack's flash lights the fog but shows no streak. Draw the bolt: a jagged line of white-hot
+				// segments from the cloud to the sea with two forks, there for a third of a second. It is brought
+				// nearer than the flash's own place so it is seen through the mist. -DCNoBolts leaves it out.
+				static const bool bNoBolts = FParse::Param(FCommandLine::Get(), TEXT("DCNoBolts"));
+				UStaticMesh* Rod = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
+				UMaterialInterface* Glow = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Bolt.M_Bolt"));
+				FActorSpawnParameters BoltParams;
+				BoltParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+				AActor* Streak = !bNoBolts && Rod && Glow ? GetWorld()->SpawnActor<AActor>(AActor::StaticClass(), FTransform::Identity, BoltParams) : nullptr;
+				if (Streak)
+				{
+					UInstancedStaticMeshComponent* Rods = NewObject<UInstancedStaticMeshComponent>(Streak);
+					Rods->SetMobility(EComponentMobility::Movable);
+					Streak->SetRootComponent(Rods);
+					Rods->SetStaticMesh(Rod);
+					Rods->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+					Rods->SetCastShadow(false);
+					UMaterialInstanceDynamic* Hot = UMaterialInstanceDynamic::Create(Glow, Streak);
+					Hot->SetVectorParameterValue(TEXT("Color"), FLinearColor(30.f, 38.f, 55.f));
+					Rods->SetMaterial(0, Hot);
+					Rods->RegisterComponent();
+					// Ahead of the ship and inside what the helm sees: no further to the side than half its distance ahead.
+					const float Ahead = Struck.X * 0.5f + 15000.f;
+					const FVector Foot(Ahead, FMath::Clamp(Struck.Y * 0.6f, -Ahead * 0.35f, Ahead * 0.35f), SeaLevelZ);
+					if (FParse::Param(FCommandLine::Get(), TEXT("DCLightningLog"))) { UE_LOG(LogDC, Log, TEXT("Lightning: bolt drawn to %s"), *Foot.ToCompactString()); }
+					const float Top = 75000.f;
+					auto Run = [&](FVector From, const FVector& To, int32 Steps, float Thick, float Wander)
+					{
+						for (int32 s = 1; s <= Steps; ++s)
+						{
+							FVector Next = FMath::Lerp(From, To, 1.f / (Steps - s + 1));
+							if (s < Steps) { Next += FVector(FMath::FRandRange(-Wander, Wander), FMath::FRandRange(-Wander, Wander), 0.f); }
+							const FVector Span = Next - From;
+							// The engine's cylinder is 1 m long on Z and 1 m through.
+							Rods->AddInstance(FTransform(FRotationMatrix::MakeFromZ(Span).ToQuat(), (From + Next) * 0.5f, FVector(Thick / 100.f, Thick / 100.f, Span.Size() / 100.f)), true);
+							From = Next;
+						}
+					};
+					const FVector Head = Foot + FVector(FMath::FRandRange(-9000.f, 9000.f), FMath::FRandRange(-9000.f, 9000.f), Top);
+					Run(Head, Foot, 16, 260.f, 2600.f);
+					for (int32 Fork = 0; Fork < 2; ++Fork)
+					{
+						const float U = FMath::FRandRange(0.25f, 0.6f);
+						const FVector Off = FMath::Lerp(Head, Foot, U);
+						Run(Off, Off + FVector(FMath::FRandRange(-14000.f, 14000.f), FMath::FRandRange(-14000.f, 14000.f), -Top * FMath::FRandRange(0.2f, 0.35f)), 6, 120.f, 1800.f);
+					}
+					Streak->SetLifeSpan(0.32f);
+				}
 			}
 		}
 		// The banks of fog glow with the sky's light, and flare blue-white while the pack's lightning light is on.

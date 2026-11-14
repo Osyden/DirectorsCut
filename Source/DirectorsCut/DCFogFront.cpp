@@ -339,6 +339,7 @@ void ADCFogFront::TickTunnel(float T)
 	const float Reach = ArrivalTime * (1.f - 6000.f / 1500000.f);   // when the face is at the bow
 	const float Mouth = FMath::Max(Director->StormFrontX, 6000.f - (T - Reach) * Through);
 	Tunnel->SetActorTransform(FTransform(FRotator(0.f, -90.f, 0.f), FVector(Mouth + Half, 0.f, Director->SeaLevelZ - TunnelSink), FVector(TunnelScale)));
+	Director->CloudTunnelFarX = TunnelShown > 0.01f ? Mouth + 2.f * Half - 4000.f : -1.e9f;
 	TunnelMID->SetVectorParameterValue(TEXT("Flare"), Director->FogFlare * 0.02f);
 	// Daylight down the tunnel from its far end, and a dimmer light under its crown a third of the way in. Both come up
 	// as the mouth nears and flare with the lightning.

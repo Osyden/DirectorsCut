@@ -214,7 +214,7 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 	const float Pull = Director->SeaRiseSlope(LaneOffset) * 4400.f + (Director->TroughRise > 1.f ? FMath::Sign(LaneOffset) * FMath::Max(0.f, Out - 0.45f) * 2600.f : 0.f);
 	LaneVelocity -= Pull * DeltaSeconds;
 	const float Edge = Director->TroughRise > 1.f ? Director->TroughHalfWidth : LaneLimit;
-	LaneOffset = FMath::Clamp(LaneOffset + LaneVelocity * DeltaSeconds, -Edge, Edge);
+	LaneOffset = FMath::Clamp(LaneOffset + (LaneVelocity + CurrentDrift) * DeltaSeconds, -Edge, Edge);
 	if (FMath::Abs(LaneOffset) >= Edge && LaneOffset * LaneVelocity > 0.f) { LaneVelocity = 0.f; }
 	// Test hook: -DCLaneLog writes where she is across the channel twice a second.
 	{
@@ -383,7 +383,16 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 			Local.Z += Director->SeaRise(Mid) - Director->SeaRise(LaneOffset);
 		}
 		Actor->SetActorLocationAndRotation(Rock.TransformPosition(Local), Rock.GetRotation() * FRotator(0.f, Obj.Yaw, 0.f).Quaternion());
-		if (!Obj.bHostile && !Obj.bSolid && Obj.Radius > 1.f)
+		// Stone alongside the cloud tunnel showed through its wall as a dark outline. It is kept out of sight until the
+		// tunnel's far end has gone by it, and so comes out of the cloud. (Radius over 100: stone, not the fog's own banks and cards.)
+		if (Obj.Radius > 100.f)
+		{
+			const bool bHide = Local.X < Director->CloudTunnelFarX;
+			if (bHide != Obj.bTunnelHid) { Obj.bTunnelHid = bHide; Actor->SetActorHiddenInGame(bHide); }
+		}
+		// (Rocks in the lane used to be a circle the ship ran through: three damage and the rock vanished. They are
+		// stone like the rest now: the hull's feelers find them and she is shouldered off. Owner, 14 Nov.)
+		if (!Obj.bHostile && Obj.Radius > 100.f)
 		{
 			// Scenery is solid stone. Its meshes answer the hull's feelers only while it is near the ship
 			// (moving hundreds of colliding pieces every frame for the whole city would cost too much).
@@ -420,14 +429,6 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 			}
 		}
 
-		if (!Obj.bHostile && Obj.bSolid && FMath::Abs(Local.X) < ShipHalfLength && FMath::Abs(Local.Y) < ShipHalfWidth + Obj.Radius)
-		{
-			Director->DamageShip(3.f);
-			if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>()) { Crew->Report(TEXT("We struck the rocks! Hull is breached!"), true); }
-			Actor->Destroy();
-			Objects.RemoveAtSwap(i);
-			continue;
-		}
 
 		// Scenery is big and seen from far off, so it is kept until it is well astern.
 		if (Local.X < -(DespawnDistance + ((Obj.bSolid || Obj.bHostile) ? 0.f : 90000.f)))
@@ -676,7 +677,7 @@ void ADCTreadmill::TickStrikes(float DeltaSeconds)
 	if (!Director || FParse::Param(FCommandLine::Get(), TEXT("DCNoStrikes"))) { return; }
 	bool bAny = false;
 	for (const FDCWorldObject& Obj : Objects) { if (Obj.bFeelable) { bAny = true; break; } }
-	if (!bAny) { StoneAhead.Reset(); return; }
+	if (!bAny) { StoneAhead.Reset(); CurrentDrift = FMath::FInterpTo(CurrentDrift, 0.f, DeltaSeconds, 1.5f); return; }
 
 	// The helmsman's look ahead: for each lane he might take, three lines run forward from the bow
 	// (keel and both sides) and the nearest stone on any of them is remembered.
@@ -702,6 +703,43 @@ void ADCTreadmill::TickStrikes(float DeltaSeconds)
 				}
 			}
 		}
+	}
+
+	// The current parts round big stone. Three lines run 90 m forward from the bow: along the keel and along each side.
+	// Stone on the keel's line means she would take it on the stem: the current sets her toward whichever side is
+	// clear (or clearer), harder the nearer it is, until the keel's line is free. Stone on a side's line alone is
+	// left: she grazes it. -DCNoCurrent switches this off.
+	{
+		static const bool bNoCurrent = FParse::Param(FCommandLine::Get(), TEXT("DCNoCurrent"));
+		FCollisionQueryParams Ahead(TEXT("DCCurrent"), true);
+		const FCollisionObjectQueryParams StoneAheadOf(ECC_Destructible);
+		const float LineZ = Director->SeaLevelZ + 140.f, Far = 9000.f, BowX = 1200.f;
+		float Hit[3] = { -1.f, -1.f, -1.f };
+		float FaceY = 0.f;
+		const float Offs[3] = { 0.f, -(ShipHalfWidth + 120.f), ShipHalfWidth + 120.f };
+		for (int32 k = 0; k < 3; ++k)
+		{
+			FHitResult H;
+			if (GetWorld()->LineTraceSingleByObjectType(H, FVector(BowX, Offs[k], LineZ), FVector(BowX + Far, Offs[k], LineZ), StoneAheadOf, Ahead))
+			{
+				Hit[k] = FMath::Max(0.f, H.ImpactPoint.X - BowX);
+				if (k == 0) { FaceY = H.ImpactNormal.Y; }
+			}
+		}
+		float Want = 0.f;
+		if (!bNoCurrent && Hit[0] >= 0.f)
+		{
+			float Dir;
+			if (Hit[1] < 0.f && Hit[2] >= 0.f) { Dir = -1.f; }
+			else if (Hit[2] < 0.f && Hit[1] >= 0.f) { Dir = 1.f; }
+			else if (Hit[1] >= 0.f && Hit[2] >= 0.f) { Dir = Hit[1] > Hit[2] ? -1.f : 1.f; }
+			else { Dir = FMath::Abs(FaceY) > 0.05f ? FMath::Sign(FaceY) : (CurrentDrift != 0.f ? FMath::Sign(CurrentDrift) : (LaneOffset >= 0.f ? -1.f : 1.f)); }
+			// Keep to the side already chosen while the same stone is ahead.
+			if (FMath::Abs(CurrentDrift) > 40.f) { Dir = FMath::Sign(CurrentDrift); }
+			const float Urge = 1.f - Hit[0] / Far;
+			Want = Dir * FMath::Lerp(180.f, 620.f, Urge * Urge);
+		}
+		CurrentDrift = FMath::FInterpTo(CurrentDrift, Want, DeltaSeconds, Want != 0.f ? 3.f : 1.5f);
 	}
 
 	// Feelers at the waterline, in the ship's resting place (she lies at the origin, bow to +X): out

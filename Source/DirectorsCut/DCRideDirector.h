@@ -133,6 +133,9 @@ public:
 	FLinearColor FogFlare = FLinearColor::Black;
 	/** Set by the fog front when it has built its wall of cloud volumes: the sky pack's storm then stays out of sight until the wall is on the ship. */
 	bool bCloudWall = false;
+	/** How far ahead of the ship (cm) the far end of the cloud tunnel lies while it is there; a large negative number otherwise.
+	 *  The treadmill keeps stone out of sight until the tunnel's end has passed it, so nothing shows through the cloud as an outline. */
+	float CloudTunnelFarX = -1.e9f;
 	/** 0..3: how bright the lightning is this instant (the sky pack's flash light). */
 	float LightningNow = 0.f;
 	/** Seconds until the director next calls a bolt down. */

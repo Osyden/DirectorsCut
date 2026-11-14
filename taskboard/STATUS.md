@@ -2,6 +2,13 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 05:27 Claude: the 04:45 and 05:00 fixes are built and run (editor closed at about 05:40)
+
+- Built clean. One run at 3x with the bot captain to 220 s and one at normal speed to 120 s, both without a window (`-RenderOffscreen`, so the test no longer takes the owner's keyboard).
+- **Lightning bolt**: seen: a white forked streak from the cloud to the sea, not fogged out (`review/61-bolts`). It lasts a third of a second and is thin; 33 were drawn in the 3x run. Bolts now fall within about 20 degrees of dead ahead.
+- **Rocks in the lane are stone**: at 3x the bot took three groups of strikes (115, 156 and 210 s; ten blows, hull 75), two of them on the stem. At normal speed there were none up to 120 s. The set of the current cannot clear a rock at three times speed; it needs judging at normal speed over the whole city, which I have not done yet.
+- **Spawn distance 650 m**, **stone hidden until the cloud tunnel has passed it**, **front's foot on the water**: in the build; the tunnel rock and the popping have not been looked for in frames yet.
+
 ## 14 Nov 05:18 Claude: WRITTEN, NOT COMPILED, NOT COMMITTED: popping, clipping, current, tunnel rock, bolt material
 
 The owner's Unreal editor has been open since 05:10, so nothing can be built. These edits are in the working tree only (`DCTreadmill.cpp/.h`, `DCFogFront.cpp`, `DCRideDirector.cpp/.h`). The next firing that finds the editor closed builds and tests them; until then the newest tested build is still `2026-11-14_0431_9a61a5e_torn-sea`.
