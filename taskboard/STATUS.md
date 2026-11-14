@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 05:16 Claude: lightning bolts drawn (part built); the owner's editor is open, so no builds for now
+
+- **Bolts**: the sky pack's "Flash Lightning" shows no streak in our fog. The director now draws one with every bolt it calls: a jagged line of white-hot rods from 750 m up to the sea with two forks, for a third of a second, ahead of the ship and inside the helm's view (`-DCNoBolts`, `-DCLightningLog` prints where). As built, it uses the glow material and is fogged out beyond a few hundred metres: one frame shows a faint streak. `M_Bolt` (`Tools/make_bolt_material.py`: additive, unlit, not fogged) is made and the source switched to it, **but that last step is not compiled**: the owner opened the Unreal editor at 05:10 and a build cannot run while it is open.
+- Owner's second note (05:00, in INBOX): a rock on the right pops through the cloud tunnel as an outline; large objects should be given a little berth by the current so the ship scrapes them and cannot hit head on.
+- Until the editor is closed I am writing the code for those without compiling it, and running nothing that opens a window: tonight's test windows were taking the owner's keyboard and mouse (tests now run with `-RenderOffscreen`).
+
 ## 14 Nov 04:56 Claude: owner's 04:45 notes (in INBOX); the front's foot on the water; sea smoke over the city
 
 Owner, half asleep, at about 04:45: a gap between the sea and the bottom of the storm front; objects popping in ahead of the ship; collisions not always working, the ship clips through some things; lightning is flashes, not streaks; keep going but do not neglect the later game and the boss.

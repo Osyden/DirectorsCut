@@ -191,3 +191,7 @@ Please mark this read and report the diagnosed cause and the fix. Keep any unfin
 ## 14 Nov about 04:45 owner (in chat, half asleep)  [read 04:45 by Claude; being worked through, see STATUS]
 
 "There either is ground fog or the fog initially doesn't fully reach the ground so there is a little gap between the sea and the bottom of the storm front. There are objects popping in visibly in front of the ship. Collision and impacts do not always work and the ship clips through some objects rather than taking impact and being pushed off. The lightning is just light flashes rather than visible streaks of lightning. Keep going but don't neglect the later part of the game and the boss battle."
+
+## 14 Nov about 05:00 owner (in chat)  [read 05:00 by Claude; see STATUS]
+
+"There is also a rock on the right during the fog tunnel part and it pops through the tunnel as an outline rather than emerging from the fog. Also for large objects in the ship part there should be some minimal avoidance due to currents so the ship can't collide head on with stuff, only scrape it so damage feedback is more natural."
