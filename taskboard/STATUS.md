@@ -2,6 +2,13 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 00:10 Claude: quicker first descent; spout cost found; whole voyage run; packaging
+
+- **Descent**: 42 percent of the maelstrom's descent is now made between 9 and 29 s after the breach (`-DCPlunge=`), so the rim and its falls climb away overhead as the ship clears the tunnel. It was one even glide over the whole fight.
+- **Cost of the spout**: the volume's blocking streaming requests cost the render thread 8 to 15 ms a frame at 45 frames a second of playback. Spouts now stream without blocking at 30: 73 to 77 fps at 1280x720 with a spout up, against 58 to 63 blocking. For the front's wall, non-blocking made the far cloud soft, so the front stays blocking (82 to 99 fps there). My earlier "33 to 57 fps in the maelstrom" was a 3x and 4x time-scale run; at normal speed the stage is 74 to 91 fps without a spout.
+- **Whole voyage** at 3x with the bot captain, 0 to 468 s: no script errors, front, city, slide, maelstrom, six spouts (all struck: the bot does not turn), "beaten on the clock at 160.0 s", ending card "Hull 33%, Damage taken 67, Arms broken 10, Score 3050".
+- **Packaged builds**: `MI_VdbTunnel01` (`Tools/make_vdb_instances.py`) pulls tunnel volume 01 alone into the cook; Easy Fog's material, mesh and texture folders are on the always-cook list. Build `storm-wall-spouts` is packaging now; not yet run.
+
 ## 13 Nov 23:52 Claude: maelstrom fight ends on the clock; waterspouts to steer round
 
 - **Timed finale** (`DCLeviathan`, `DCMaelstrom::BeginPlay`): the creature is beaten at `FinaleAt` seconds after the breach (default 20 s before the ending phase, so 160 s; `-DCBossDiesAt=`), whatever the guns have done. The six-break early exit is gone. Each broken arm scores 150 and is counted; the results card shows hull, damage taken (repairs do not reduce it), arms broken, score, orders. Checked at 4x from 262 s: "beaten on the clock at 160.1 s", stage exited at 450.06, card correct.
