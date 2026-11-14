@@ -792,8 +792,9 @@ void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
 	// The volume is played slowly with blocking streaming: without blocking it streams in at a coarse level and at
 	// 4K the spout is a smooth grey slab with straight sides; blocking at 30 frames a second or more costs 8 to 15 ms
 	// of render thread. At 24 it keeps its detail at 60 to 68 fps in 4K (66 to 74 at 14, but 14 pictures a second may show as a flicker in the boil).
+	static float TwisterCut = 0.1f;   // test hook: -DCTwisterCut=
 	static float TwisterDensity = 0.7f, TwisterRate = 24.f; static bool bDensityRead = false, bTwisterBlocking = true;   // test hooks: -DCTwisterDensity= -DCTwisterRate= -DCTwisterNoBlocking
-	if (!bDensityRead) { bDensityRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCTwisterDensity="), TwisterDensity); FParse::Value(FCommandLine::Get(), TEXT("DCTwisterRate="), TwisterRate); bTwisterBlocking = !FParse::Param(FCommandLine::Get(), TEXT("DCTwisterNoBlocking")); }
+	if (!bDensityRead) { bDensityRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCTwisterDensity="), TwisterDensity); FParse::Value(FCommandLine::Get(), TEXT("DCTwisterRate="), TwisterRate); FParse::Value(FCommandLine::Get(), TEXT("DCTwisterCut="), TwisterCut); bTwisterBlocking = !FParse::Param(FCommandLine::Get(), TEXT("DCTwisterNoBlocking")); }
 	while (!bOff && TwistersRaised < UE_ARRAY_COUNT(RaiseAt) && Elapsed >= RaiseAt[TwistersRaised])
 	{
 		const int32 Index = TwistersRaised++;
@@ -816,6 +817,7 @@ void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
 				UMaterialInstanceDynamic* M = UMaterialInstanceDynamic::Create(Base, this);
 				M->SetSparseVolumeTextureParameterValue(TEXT("SparseVolumeTexture"), Volume);
 				M->SetVectorParameterValue(TEXT("Tint"), FLinearColor(0.93f, 0.96f, 1.f));   // spray, not smoke: thin and white
+				M->SetScalarParameterValue(TEXT("Cut"), TwisterCut);   // without it the rising spout shows as a pale box
 				M->SetScalarParameterValue(TEXT("Density"), 0.f);
 				// Spray scatters light all through itself; the volume's single shadowed bounce leaves it sooty. A little light of its own stands in for that.
 				M->SetVectorParameterValue(TEXT("Flare"), FLinearColor(0.13f, 0.15f, 0.17f));
@@ -900,9 +902,11 @@ void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
 			const FVector Dx(600.f, 0.f, SampleSurfaceWorld(Foot + FVector(600.f, 0.f, 0.f)) - Foot.Z), Dy(0.f, 600.f, SampleSurfaceWorld(Foot + FVector(0.f, 600.f, 0.f)) - Foot.Z);
 			const FVector Up = FVector::CrossProduct(Dx, Dy).GetSafeNormal();
 			const FQuat Lie = FQuat::FindBetweenNormals(FVector::UpVector, Up) * FQuat(FVector::UpVector, FMath::DegreesToRadians(Director->RideTime * 40.f));
-			const float Across = Height * 0.7f * FMath::Lerp(0.3f, 1.f, Rise);
+			// It boils up first: the patch of white water is there in a second and a half, before the column has risen.
+			const float Boil = FMath::SmoothStep(0.f, 1.5f, Age);
+			const float Across = Height * 0.9f * FMath::Lerp(0.4f, 1.f, Boil);
 			S->SetActorTransform(FTransform(Lie, Foot + Up * 250.f, FVector(Across / 1160.f, Across / 1160.f, Across / 1160.f * 2.5f)));
-			if (UMaterialInstanceDynamic* M = T.SkirtMID.Get()) { M->SetScalarParameterValue(TEXT("Fog Density"), 2.2f * Rise * (1.f - Gone)); }
+			if (UMaterialInstanceDynamic* M = T.SkirtMID.Get()) { M->SetScalarParameterValue(TEXT("Fog Density"), 3.5f * Boil * (1.f - Gone)); }
 		}
 		// Struck: the spout's core passes over the ship.
 		if (!T.bStruck && Age > Tell && FMath::Abs(T.Ahead) < 3000.f && FMath::Abs(T.Abeam) < 2600.f)
@@ -957,6 +961,7 @@ void ADCMaelstrom::UpdatePlume()
 		PlumeMID = UMaterialInstanceDynamic::Create(Base, this);
 		PlumeMID->SetSparseVolumeTextureParameterValue(TEXT("SparseVolumeTexture"), Volume);
 		PlumeMID->SetVectorParameterValue(TEXT("Tint"), FLinearColor(0.93f, 0.96f, 1.f));
+		PlumeMID->SetScalarParameterValue(TEXT("Cut"), 0.1f);
 		PlumeMID->SetVectorParameterValue(TEXT("Flare"), FLinearColor(0.13f, 0.15f, 0.17f));
 		C->SetMaterial(0, PlumeMID);
 		C->StartFrame = 0.f; C->EndFrame = 200.f; C->FrameRate = 14.f; C->Frame = 150.f; C->bPlaying = true; C->bLooping = true;

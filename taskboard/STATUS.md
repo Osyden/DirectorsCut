@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 01:41 Claude: the rising spout no longer shows as a pale box; white water under it comes first
+
+- Seen from above in its first seconds the spout was a faint slab with straight sides: the volume has thin haze right out to the edges of its box, which shows when the cloud is thin. `M_VdbCloud` has a new `Cut` (density below it counts as empty; 0 leaves the volume as it is). Spouts and the plume use 0.1 (`-DCTwisterCut=`); the front's wall and tunnel stay at 0 and look as before (checked at 56 and 62 s).
+- The dome of white water under a spout is denser and wider and is there within a second and a half, before the column has risen.
+- Not in the thirteenth build.
+
 ## 14 Nov 01:36 Claude: sound for the spouts, the stones and the plume (written, not heard)
 
 - `DCAudio`: `SpoutRoar` (0 to 1) adds to the wind bed; `Boom(volume)` plays the recorded water impact pitched down with one of the synthesised thunders. The maelstrom sets the roar from the nearest spout (full when it is on the ship, nothing beyond 450 m) and holds it at 0.8 while the plume stands; a stone coming down and the plume going up each make a boom.
