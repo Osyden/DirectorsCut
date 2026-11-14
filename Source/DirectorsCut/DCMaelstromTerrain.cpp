@@ -153,19 +153,98 @@ void ADCMaelstrom::BuildTerrain()
         if(Row<Rows && Side<Sectors)
         { const int32 B=Row*(Sectors+1)+Side,D=B+Sectors+1; I.Append({B,B+1,D,B+1,D+1,D}); }
     }
-    // Lighting must describe the rendered triangles. Sub-cell analytic normals
-    // exposed fractures absent from this mesh, making close faces look folded.
-    for(int32 Triangle=0;Triangle<I.Num();Triangle+=3)
+    // BEGIN_CLIFF_CREASE_NORMALS (also extracted by the standalone CPU probe)
+    // Keep section zero's complete position grid: waterfall contact samples it
+    // directly. Only triangles that actually need a split normal move to the
+    // second section, with identical positions, winding and triangle diagonals.
+    const int32 GridCount=V.Num(),FaceCount=I.Num()/3;
+    const float CreaseCos=FMath::Cos(FMath::DegreesToRadians(40.f));
+    const auto Canonical=[&](int32 Vertex)
+    { return Vertex%(Sectors+1)==Sectors ? Vertex-Sectors : Vertex; };
+    struct FVertexFan { int32 Faces[6]={}; int32 Count=0; };
+    TArray<FVertexFan> Fans; Fans.SetNum(GridCount);
+    TArray<FVector> Weighted,FaceNormal; Weighted.SetNum(FaceCount); FaceNormal.SetNum(FaceCount);
+    for(int32 Face=0;Face<FaceCount;++Face)
     {
-        const int32 A=I[Triangle],B=I[Triangle+1],D=I[Triangle+2];
-        const FVector WeightedNormal=FVector::CrossProduct(V[D]-V[A],V[B]-V[A]);
-        N[A]+=WeightedNormal; N[B]+=WeightedNormal; N[D]+=WeightedNormal;
+        const int32 A=I[Face*3],B=I[Face*3+1],D=I[Face*3+2];
+        Weighted[Face]=FVector::CrossProduct(V[D]-V[A],V[B]-V[A]);
+        FaceNormal[Face]=Weighted[Face].GetSafeNormal();
+        for(int32 Corner=0;Corner<3;++Corner)
+        {
+            FVertexFan& Fan=Fans[Canonical(I[Face*3+Corner])];
+            check(Fan.Count<6);
+            Fan.Faces[Fan.Count++]=Face;
+        }
     }
+    TArray<int32> Resolved=I,ExtraOriginal;
+    TArray<FVector> ExtraNormals;
+    int32 SplitFans=0;
+    for(int32 Vertex=0;Vertex<GridCount;++Vertex)
+    {
+        const FVertexFan& Fan=Fans[Vertex];
+        if(Fan.Count==0) { continue; }
+        int32 Group[6]; for(int32 K=0;K<Fan.Count;++K) { Group[K]=K; }
+        const auto Root=[&](int32 K) { while(Group[K]!=K) { K=Group[K]; } return K; };
+        const float T=static_cast<float>(Vertex/(Sectors+1))/Rows;
+        const bool PreserveSmooth=T<=.20f || T>=.84f;
+        for(int32 A=0;A<Fan.Count;++A) for(int32 B=A+1;B<Fan.Count;++B)
+        {
+            // Smooth only through an actual shared edge. The duplicate seam
+            // vertices participate in the same fan, so they cannot open a seam.
+            int32 Shared=0;
+            for(int32 CA=0;CA<3;++CA) for(int32 CB=0;CB<3;++CB)
+            { Shared+=Canonical(I[Fan.Faces[A]*3+CA])==Canonical(I[Fan.Faces[B]*3+CB]) ? 1 : 0; }
+            if(PreserveSmooth || (Shared==2 && FVector::DotProduct(FaceNormal[Fan.Faces[A]],FaceNormal[Fan.Faces[B]])>=CreaseCos))
+            { Group[Root(B)]=Root(A); }
+        }
+        FVector Sum[6]; float Area[6]={};
+        for(int32 K=0;K<6;++K) { Sum[K]=FVector::ZeroVector; }
+        for(int32 K=0;K<Fan.Count;++K)
+        { const int32 G=Root(K); Sum[G]+=Weighted[Fan.Faces[K]]; Area[G]+=Weighted[Fan.Faces[K]].Size(); }
+        int32 Main=Root(0),Groups=0;
+        for(int32 K=0;K<Fan.Count;++K) if(Root(K)==K)
+        { ++Groups; if(Area[K]>Area[Main]) { Main=K; } Sum[K].Normalize(); }
+        SplitFans+=Groups>1 ? 1 : 0;
+        N[Vertex]=Sum[Main];
+        if(Vertex%(Sectors+1)==0) { N[Vertex+Sectors]=Sum[Main]; }
+        int32 SplitIndex[6][2];
+        for(int32 G=0;G<6;++G) { SplitIndex[G][0]=SplitIndex[G][1]=INDEX_NONE; }
+        for(int32 K=0;K<Fan.Count;++K) for(int32 Corner=0;Corner<3;++Corner)
+        {
+            const int32 Index=Fan.Faces[K]*3+Corner,Original=I[Index],G=Root(K);
+            if(Canonical(Original)!=Vertex || G==Main) { continue; }
+            const int32 SeamSide=Original==Vertex ? 0 : 1;
+            int32& Split=SplitIndex[G][SeamSide];
+            if(Split==INDEX_NONE)
+            { Split=GridCount+ExtraOriginal.Add(Original); ExtraNormals.Add(Sum[G]); }
+            Resolved[Index]=Split;
+        }
+    }
+    TArray<int32> SmoothIndices,CreaseIndices,CreaseSources,Lookup;
+    TArray<FVector> CreaseNormals;
+    Lookup.Init(INDEX_NONE,GridCount+ExtraOriginal.Num());
+    for(int32 Face=0;Face<FaceCount;++Face)
+    {
+        const int32 Base=Face*3;
+        const bool Split=Resolved[Base]>=GridCount || Resolved[Base+1]>=GridCount || Resolved[Base+2]>=GridCount;
+        for(int32 Corner=0;Corner<3;++Corner)
+        {
+            const int32 Index=Resolved[Base+Corner];
+            if(!Split) { SmoothIndices.Add(Index); continue; }
+            if(Lookup[Index]==INDEX_NONE)
+            {
+                const int32 Original=Index<GridCount ? Index : ExtraOriginal[Index-GridCount];
+                Lookup[Index]=CreaseSources.Add(Original);
+                CreaseNormals.Add(Index<GridCount ? N[Index] : ExtraNormals[Index-GridCount]);
+            }
+            CreaseIndices.Add(Lookup[Index]);
+        }
+    }
+    check(SmoothIndices.Num()+CreaseIndices.Num()==I.Num());
+    // END_CLIFF_CREASE_NORMALS
     for(int32 Row=0;Row<=Rows;++Row)
     {
-        const int32 First=Row*(Sectors+1),Last=First+Sectors;
-        const FVector SeamNormal=N[First]+N[Last];
-        N[First]=SeamNormal; N[Last]=SeamNormal;
+        const int32 First=Row*(Sectors+1);
         for(int32 Side=0;Side<=Sectors;++Side)
         {
             const int32 Index=First+Side;
@@ -174,10 +253,24 @@ void ADCMaelstrom::BuildTerrain()
             Tangents[Index]=FProcMeshTangent((Along-N[Index]*FVector::DotProduct(Along,N[Index])).GetSafeNormal(),false);
         }
     }
+    TArray<FVector> CreaseV; TArray<FVector2D> CreaseUV; TArray<FColor> CreaseC;
+    TArray<FProcMeshTangent> CreaseTangents;
+    for(int32 K=0;K<CreaseSources.Num();++K)
+    {
+        const int32 Original=CreaseSources[K],Side=Original%(Sectors+1),First=Original-Side;
+        const FVector Along=V[First+(Side+1)%Sectors]-V[First+(Side+Sectors-1)%Sectors];
+        const FVector Normal=CreaseNormals[K];
+        CreaseV.Add(V[Original]); CreaseUV.Add(UV[Original]); CreaseC.Add(C[Original]);
+        CreaseTangents.Add(FProcMeshTangent((Along-Normal*FVector::DotProduct(Along,Normal)).GetSafeNormal(),false));
+    }
     // UE clockwise winding faces into the basin and up from the plateau.
-    Cliffs->CreateMeshSection(0,V,I,N,UV,C,Tangents,false);
+    Cliffs->ClearAllMeshSections();
+    Cliffs->CreateMeshSection(0,V,SmoothIndices,N,UV,C,Tangents,false);
+    if(!CreaseIndices.IsEmpty()) { Cliffs->CreateMeshSection(1,CreaseV,CreaseIndices,CreaseNormals,CreaseUV,CreaseC,CreaseTangents,false); }
     if(UMaterialInterface* M=LoadObject<UMaterialInterface>(nullptr,TEXT("/Game/DC/Maelstrom/M_CraterRock.M_CraterRock")))
-    { Cliffs->SetMaterial(0,M); }
+    { Cliffs->SetMaterial(0,M); Cliffs->SetMaterial(1,M); }
+    UE_LOG(LogTemp,Display,TEXT("DC_CLIFF_CREASES 40deg split_fans=%d extra_groups=%d section1_vertices=%d (%.2f%% overhead) section1_triangles=%d/%d; canonical grid unchanged"),
+        SplitFans,ExtraOriginal.Num(),CreaseV.Num(),100.f*CreaseV.Num()/GridCount,CreaseIndices.Num()/3,FaceCount);
     RimLand->ClearAllMeshSections(); Falls->ClearAllMeshSections();
     float MinimumClearance=MAX_flt;
     for(int32 T=0;T<=178;++T)
