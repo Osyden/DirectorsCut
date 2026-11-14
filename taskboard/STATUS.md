@@ -2,6 +2,13 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov Codex: concept critique, finer water scale and a leftward feeding current
+
+- Generated three explicitly labelled paintovers of the game frame. A/B fail the owner's far-wave scale requirement; C is the useful starting direction, not a final approval. [Concepts, exact prompts, critique and implementation plan](MAELSTROM-WATER-DIRECTION-14NOV.md).
+- Removed the giant crossing swell field and angular bowl buttresses; narrowed foam sources, reduced ordinary crest scale, reversed the route to enter a leftward descending current before the lip, and preserved starboard controls. Built a guarded bridge to the installed water simulation's actual vertex displacement with hull/distance bounds. Added dedicated crest-spray fading and smaller current-driven droplets.
+- The user proposed a separate chat for clouds and sky lighting. This pass leaves that system unchanged; the new port-facing view requires a revised sun composition. Coordinate edits to the phase values in DCMaelstrom.cpp and the shared plume generator/material. Boss iteration remains deferred.
+- Work remains isolated on `codex/maelstrom-saturday`; no main merge, packaged build or main-editor changes. Visual quality is still in progress; read the detailed note before integration.
+
 ## 14 Nov Codex: maelstrom environment checkpoint; boss deferred
 
 - Continued on `codex/maelstrom-saturday` in the isolated project. [Changes, replay instructions, review captures and remaining quality gaps](MAELSTROM-SCENE-POLISH-14NOV.md).

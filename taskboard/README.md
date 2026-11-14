@@ -2,7 +2,7 @@
 
 | Task | Status | Owner | Done when |
 | --- | --- | --- | --- |
-| Maelstrom crater, tunnel exit and timed naval boss encounter | Environment checkpoint for review; boss iteration deferred | Codex, `codex/maelstrom-saturday` | [Environment checkpoint](MAELSTROM-SCENE-POLISH-14NOV.md): integrated crests, foam transport, spray and daylight; visual quality still in progress. [Orbit/contact handoff](MAELSTROM-14NOV-CODEX.md). [Design target](MAELSTROM-TIMED-BOSS-DESIGN.md) remains the quality bar; organic arms, water art and spout performance remain open. |
+| Maelstrom crater, tunnel exit and timed naval boss encounter | Water/left-current checkpoint; clouds split; boss deferred | Codex, `codex/maelstrom-saturday` | [Concept critique, smaller wave scale and left-inlet implementation](MAELSTROM-WATER-DIRECTION-14NOV.md). Geometry/flow/foam/crest spray remain here; separate chat can own cloud composition and lighting. Not yet reference quality. [Earlier checkpoint](MAELSTROM-SCENE-POLISH-14NOV.md); [orbit/contact handoff](MAELSTROM-14NOV-CODEX.md). |
 | Initialize Git and Git LFS | Done | Codex | Baseline is on `origin/main` at `dcf3e85`. |
 | Diagnose Unreal MCP startup | Done | Claude | Launch with `-ModelContextProtocolStartServer`; see STATUS.md. |
 | Define the first playable slice | Done | Claude | See [PLAN.md](PLAN.md). |

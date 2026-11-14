@@ -1,0 +1,69 @@
+# Maelstrom: flowing water, scale and a tangential inlet
+
+Owner: Codex, `codex/maelstrom-saturday`. Scene first; boss work remains deferred. Keep the existing 3.2 km diameter and 900 m depth. This note supersedes the previous suggestion simply to increase wave size.
+
+**Cloud split:** the user is considering a separate chat for maelstrom clouds and sky lighting. This chat retains water, inlet/route, foam and crest spray. No cloud-system changes are included in this pass. `Tools/make_maelstrom_atmosphere.py` and `M_MaelstromPlume` have a small crest-spray/depth-fade change here; coordinate before editing those shared effect assets. The cloud owner should also account for the new leftward view: simply copying the old right-facing sun angle will not reproduce the concept's light direction.
+
+## Image experiments and self-critique
+
+The three images below are **AI concept paintovers of an actual game capture, not Unreal renders or implementation evidence**. Built-in image_gen was used; [exact prompts](review/maelstrom-direction-14nov/PROMPTS.md). Actual starting frame: [reveal at 280 seconds](review/maelstrom-scene-14nov/reveal-280.png).
+
+- [A: water texture and lighting](review/maelstrom-direction-14nov/concept-a-overscaled.png): improves wet surfaces and sun/cloud separation, but the opposite-side waves are much too large. The user correctly rejected its scale. Foam also covers too much of the slope.
+- [B: broad banks](review/maelstrom-direction-14nov/concept-b-overscaled.png): darker clear water and more selective spray are useful, but the giant terraces make the crater feel smaller still. Do not implement these giant breakers.
+- [C: finer physical water scale](review/maelstrom-direction-14nov/concept-c-finer-water.png): strongest distance cue. Near waves relate to the boat; far waves become tiny streaks. This is the starting direction, not an approved final. The rim is still too uniformly vertical, the inlet is not sufficiently legible, and the water should reveal a descending spiral rather than an evenly textured bowl. The generator also changes ship details; those are not requested changes.
+
+The current render fails for structural reasons: large crossing sine waves and localized Gaussian crest mounds read as static terrain. A stronger normal map cannot fix their silhouette. Foam attached to positive height reads as snow, while curled highlights exaggerate the wrong geometry. Large, similarly detailed features on the far slope destroy scale. Adding brightness or blanket fog would conceal the problem rather than resolve it.
+
+## New direction from the owner
+
+The tunnel is a river feeding the whirlpool tangentially. Its outflow starts sending the ship **left before the lip**, preserving forward speed from the initial slope. A rounded water shoulder lets the ship slowly tip into the reveal, then the same current carries it down and around the crater. Geometry, visible foam transport, spray direction and ship heading must all agree. No pause followed by a sideways slide into an unrelated orbit.
+
+Maintain an open inner view down into the crater. A broad, relatively low inner shoulder and a more substantial outer water bank explain the steering bounds. These are irregular hydraulic banks, not a solid road or two continuous white rails. The feed should merge with the circulating flow, not end in a waterfall directly under the hull.
+
+## Implementation order and measurable checks
+
+1. **One flow and route convention.** Begin curved travel inside the final tunnel segment; retain forward velocity over the lip, align ship heading to route tangent and smoothly descend. Use the same handedness in the shader and geometry. Verify port steering still means port after mirroring the route and test entry, descent and orbit continuity. Preserve independent early-game code.
+2. **Replace the terrain silhouette.** Remove the large fixed-direction crossing sine field. Use broad smooth circulating banks with small irregular, asymmetrical crest packets and low-amplitude detail. Ordinary crests should be roughly 1–4 m high, with occasional larger local breakers; distant waves keep this physical size and therefore occupy far fewer pixels. Do not enlarge their detail to make it visible from kilometres away. Broad current banks are not individual wave crests. Keep slope depth and rim dimensions.
+3. **Make foam a consequence of breaking.** Narrow source to active lips and convergence; advect ragged filaments down-current, break and fade them. Avoid a minimum opaque-white fill inside every crest mask. Preserve dark troughs and blue aerated water; white is reserved for dense bubbles and glints. Use metre-scale textures with distance filtering, never full-slope contour stripes.
+4. **Connect water and air.** Spray originates at actual breaking points, initially follows the outgoing water velocity, then falls and drifts. Combine short droplets near the ship with thin torn sheets farther away; faint local mist at distant fall feet. No equally sized smoke puffs on every crest, no uniform screen veil, no self-lit particles. Inspect motion, not just a frame.
+5. **Compose daylight through one sky system.** Use stage-scoped changes to the installed cloud system, preserving and restoring its properties. Larger cloud masses, a controlled opening near the sun, darker cloud undersides and restrained warm edges. Cloud shadows and local spray should reveal shafts; avoid multiple competing skies or arbitrary bright cones. Keep near water contrasted and distant slopes cooler/softer. Do not modify purchased source or other phases.
+6. **Review and iterate.** Real, unretouched native captures at exit, descending lip and orbit, plus consecutive frames around breaking spray. Compare far waves to temple silhouettes and near waves to the gunwale. Confirm no seam, popping, opaque foam islands, repeated curl pattern, new hull clipping or hidden horizon. Test return to normal sea and material compilation. Preserve performance evidence separately from aesthetic judgment.
+
+## Acceptance bar
+
+- At thumbnail size, the scene reads as an immense water crater; close inspection reads as moving water rather than reflective rock.
+- The feed, left turn, tip and descending spiral form one continuous journey.
+- Far-side wave detail is dramatically finer on screen than near-ship detail. Waterfalls may be hundreds of metres tall, but their ribbons and turbulence must still have plausible widths.
+- Spray detaches from crests, foam follows the current, and substantial dark blue water remains visible.
+- Bright emergence preserves depth and cloud shape. The lighting creates drama without washing out the image.
+
+Implementation and capture results will be appended below. None of the concepts establishes that this quality has been achieved in-engine.
+
+## Implementation checkpoint
+
+- Removed the 16 m crossing sine field and the angular interpolation which propagated rim variations into large terrain-like ridges. The lower basin is now a common continuous bowl, joined to irregular overflow shoulders with a matching radial derivative. The rim-drop query uses this same geometry so spray placement does not assume the old fall height.
+- Ordinary localized crests are now 1.2–4.2 m high and curve in the descending current direction. Twenty gentler 0.6–1.4 m crest packets also occupy the sailing lane, which previously excluded all breakers. The route's larger banks are separate from these ordinary wave crests. Increased angular mesh sampling specifically along the sailing corridor; distant geometric displacement fades rather than creating oversized low-resolution waves.
+- Started leftward travel before the reveal, retained forward motion over the lip, and distributed the descent over a longer arc. Starboard steering still moves right after reversing circulation. Heading uses the route tangent. Strong inverse pitch was tested and rejected: in this fixed-ship architecture it tilted the whole crater against the sky. Final stage pitch is limited to six degrees downhill/four uphill; the automatic camera frames the crater and still respects the player's existing clear-view override.
+- Foam now has narrower crest sources, downstream fading, current-oriented streak breakup and no forced opaque-white floor in the fine texture mask. Layer-isolation captures also exposed the blanket overflow supply as a separate cause of the pale patches: it covered the inlet without an upstream waterfall. That supply is now confined to the rim and excluded from the entry sector; background veils require a breaking source. Live FFT accumulation is a subtle aeration layer, not an opaque coating. Removed nested sine-phase warps that created curly highlights. Far whitecap contribution is filtered down with distance.
+- Crest spray has its own short depth fade (0.8 m versus 12 m for distant plumes) and thin tendril treatment. Small crest droplets leave in the local current direction and fall under gravity, instead of reusing explosion-sized radial bursts. Existing distant plume settings are retained.
+- Added an optional bounded **actual FFT displacement** path through the installed DRW helper, alongside the existing live normal/foam path. The project contains only an include wrapper and bridge calls, not vendor shader code. The hull safety ellipse remains undisplaced; away from the hull, horizontal displacement is smoothly bounded to 1.5 m per axis and vertical displacement to 4 m before the distance fade. This is local wind-wave detail over an authored bowl/current, not a simulated kilometre-scale whirlpool.
+- Added `DCMaelstromShaders.cpp` and `Shaders/Maelstrom/InstalledWater.ush` to register and guard the shader include without modifying the shared game module or purchased plugin. The first dual-stage shader compile exposed duplicate vendor declarations; the wrapper addresses that. When adding the new source file to an existing checkout, regenerate the UBT makefile (`-gather`) before material generation.
+- Review tooling supports `-Clean` (hide HUD) and `-WaterReview 1` (combined foam), `2` (normals), `3` (authored foam), `4` (raw live accumulation). It rejects captures when a maelstrom material failed to compile, even if Unreal exits with code 0. Gameplay HUD code is unchanged.
+
+### Still below target
+
+The real scene remains materially below concept C. The final captures remove the blanket pale patches, but expose a too-calm sailing lane, conspicuous flat spray sheets and an overly clean bowl. The orbit capture at 325 seconds shows two bright rectangular-looking crest effects; their silhouette needs to be broken and their opacity reduced before this is considered polished. The distant waterfall ring and repeated mist lobes still need art direction, alongside the cloud/lighting composition from the separate pass. Do not describe this checkpoint as photorealistic or ready for final delivery. Boss behavior and balance have not been retuned for the changed descent timing.
+
+The CPU surface query follows the authored basin, banks and crests; it does not sample the animated GPU wind-wave displacement. The hull ellipse and authored spray sources suppress that displacement to preserve attachment, but future outboard impacts may need a wave-height approximation/readback. The sky remains world-fixed, which is why large whole-arena pitch was rejected.
+
+For the cloud/lighting chat: the old sun yaw was composed for a right-facing view. This pass faces port. Recompose sun placement from the new actual captures, rather than retaining that yaw and turning up intensity. Lighting from behind this camera casts broad ship shadows across the water and suppresses the reference's backlit spray. A sun-yaw test near 125–145 degrees is a starting experiment, not a validated setting. Leave water source/foam/displacement intact while comparing lighting.
+
+## Validation and actual captures
+
+UE 5.8 Development Editor build succeeded, and the water material generator completed. `DirectorsCut.Maelstrom.RouteAndSteering` passed, including mirrored steering, continuous inlet travel, heading and frame-rate checks. A continuous scene-only run from 268 to 451 seconds reached the ending and restored open sea; this preceded the final foam/crest refinements, which do not change phase timing.
+
+The final native 2560×1440 run (`water-channel-review`, 268–327 seconds) bound all eight live FFT cascades and completed without a maelstrom shader compilation failure. Original unretouched captures: [reveal 280](review/maelstrom-water-current-14nov/shot_0280.png), [descent 287](review/maelstrom-water-current-14nov/shot_0287.png), [orbit 325](review/maelstrom-water-current-14nov/shot_0325.png), [326](review/maelstrom-water-current-14nov/shot_0326.png), [327](review/maelstrom-water-current-14nov/shot_0327.png). These are implementation evidence, unlike the generated concepts above. Still frames and logs do not establish that movement feels good in a human playtest. Existing plugin/editor-utility warnings and errors remain in the startup logs; this is not an all-project clean bill of health.
+
+No packaged build, main-branch merge, or changes to the user's live editor were made. The cloud chat should work in its own checkout and coordinate the stage-lighting fields in `DCMaelstrom.cpp` and shared plume material with this branch. Keep one coherent sky, physically small distant detail, dark cloud undersides, a deliberate sun opening, and restrained shafts through local mist. Preserve other ride phases and restore their weather on exit.
+
+Final fallback smoke check (`water-fallback-exit`, `-NoFFT`, 435–451 seconds) also completed with the latest generated materials and no maelstrom shader failure. The stage exited at 450.01 seconds; the 451-second capture visibly returned to open sea. This does not replace a packaged test or a full boss/gameplay run.

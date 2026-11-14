@@ -9,13 +9,23 @@ bool FDCMaelstromRouteTest::RunTest(const FString& Parameters)
 {
     using namespace DCMaelstromRoute;
     // Continuous route through the drop, acceleration and phase boundaries.
-    for (float T : {12.f,22.f,34.f,40.f,158.f,160.f})
+    for (float T : {0.f,8.f,12.f,22.f,34.f,40.f,85.f,158.f,160.f})
     {
         const float Distance = (Point(T+.01f,160000.f)-Point(T-.01f,160000.f)).Size();
         TestTrue(TEXT("No teleport at route boundary"),Distance<70.f);
     }
-    TestTrue(TEXT("At least seventy degrees around the crater before the finale"),Angle(160.f)-Angle(22.f)>1.22f);
-    TestTrue(TEXT("After the lip, route stays inside the overflow face"),RadialFraction(45.f)<.75f);
+    TestTrue(TEXT("At least seventy degrees LEFT around the crater before the finale"),Angle(22.f)-Angle(160.f)>1.22f);
+    for(float T : {-4.f,0.f,8.f,20.f,40.f,90.f})
+    {
+        const FVector2D Travel=Point(T+.05f,160000.f)-Point(T-.05f,160000.f);
+        TestTrue(TEXT("Inlet and lip retain forward speed"),Travel.Size()/.1f>1000.f);
+        const FVector2D Forward=Travel.GetSafeNormal(),Right(-Forward.Y,Forward.X);
+        TestTrue(TEXT("Starboard helm remains right after left-orbit change"),
+            FVector2D::DotProduct(Point(T,160000.f,1000.f)-Point(T,160000.f),Right)>0.f);
+        TestTrue(TEXT("Heading remains continuous through the lip"),
+            FVector2D::DotProduct(Tangent(T-.05f,160000.f),Tangent(T+.05f,160000.f))>.999f);
+    }
+    TestTrue(TEXT("Route descends inside the overflow face before the final orbit"),RadialFraction(100.f)<.77f);
     for (float T : {25.f,40.f,90.f,158.f})
     {
         const float Wrapped=FMath::UnwindRadians(Angle(T));

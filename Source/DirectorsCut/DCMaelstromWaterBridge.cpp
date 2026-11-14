@@ -129,7 +129,7 @@ bool FDCMaelstromWaterBridge::Update(UWorld* World, UMaterialInstanceDynamic* Ma
 	Material->SetScalarParameterValue(TEXT("UseLiveFFT"), 1.f);
 	if (!bWasBound)
 	{
-		UE_LOG(LogTemp, Display, TEXT("DC_MAELSTROM live DRW FFT material bound: %s, %.0f cascades; geometry unchanged"), *Ocean->GetName(), Count);
+		UE_LOG(LogTemp, Display, TEXT("DC_MAELSTROM live DRW FFT material bound: %s, %.0f cascades; water material controls bounded displacement"), *Ocean->GetName(), Count);
 	}
 	bWasBound = true;
 	return true;

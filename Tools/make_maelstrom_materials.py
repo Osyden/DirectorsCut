@@ -3,7 +3,7 @@
 Run with UnrealEditor-Cmd -run=pythonscript -script=<this file>.
 Water UV0 is physical surface distance / 10000 cm. Vertex color R marks foam,
 G is radial fraction, B is depth. With OverflowFoam=1, A is upstream overflow
-supply: GetOverflowAmount(theta + (8/3.5)*log(clamp(radialFraction,.08,1))).
+supply: GetOverflowAmount(theta - (12/3.5)*log(clamp(radialFraction,.08,1))).
 Supply proper mesh tangents and normals. Tunnel/portal leave OverflowFoam=0.
 Spray uses UV0 across/along a curtain, vertex R density, B upper edge, A fade.
 HullFlatten (default 0) creates a horizontal shelf at SeaLevel (default 230 cm)
@@ -20,7 +20,8 @@ Optional DRW textures are referenced in place and never copied or modified.
 The DRW foam BaseColor was inspected as sRGB RGB (white cells over dark water);
 linear red is used as foam density, never an assumed packed alpha channel.
 UseLiveFFT defaults 0. When the optional DRW render-target arrays exist, a live
-pixel-normal/foam path references the installed plugin helper; no FFT WPO is used.
+pixel-normal/foam and bounded vertex-displacement paths reference the installed
+plugin helper. Hull displacement is suppressed; distant geometry is filtered.
 DRWInvTileA/B, DRWShortestA/B and DRWSlopeVarA/B pack cascades 0..3 / 4..7.
 Tile reciprocals are 1/cm, shortest wavelengths and foam level sizes are cm.
 """
@@ -112,6 +113,13 @@ struct WaterNoise {
     float fbm(float2 p) {
         return noise(p)*0.57+noise(p*2.03+7.2)*0.28+noise(p*4.11-3.4)*0.15;
     }
+    float streak(float2 p, float2 direction) {
+        // Filter in the local current direction without projecting absolute
+        // coordinates into their own polar basis (which collapses into rings).
+        float value=0;
+        [unroll] for(int i=-2;i<=2;i++) { value+=noise((p+direction*i*4.0)/1.8); }
+        return value*.2;
+    }
     float3 noise_gradient(float2 p) {
         float2 i=floor(p), f=frac(p), u=f*f*(3.0-2.0*f), du=6.0*f*(1.0-f);
         float a=hash(i), b=hash(i+float2(1,0)), c=hash(i+float2(0,1)), d=hash(i+1);
@@ -119,22 +127,16 @@ struct WaterNoise {
                       du.x*lerp(b-a,d-c,u.y),du.y*lerp(c-a,d-b,u.x));
     }
     float3 wave_field(float2 p, float time) {
-        // Dispersive 27-120m swells on top of the mesh's much larger breakers.
-        // Current advection and phase propagation are separate, so every scale
-        // does not move as a single noise texture sliding across the surface.
-        // Analytic derivatives avoid eight extra height evaluations per pixel.
-        float3 nx=noise_gradient(p*0.019+13.4), ny=noise_gradient(p*0.023-27.1);
-        float2 warp=float2(nx.x,ny.x)-0.5;
-        float2 gx=nx.yz*0.019, gy=ny.yz*0.023;
-        float2 q=p+warp*12.0;
-        float a=dot(q,float2(0.045,0.027))-time*0.72;
-        float2 ga=float2(0.045,0.027)+12.0*(0.045*gx+0.027*gy);
-        float b=dot(q,float2(-0.13,0.09))-time*1.25+sin(a)*0.6;
-        float2 gb=float2(-0.13,0.09)+12.0*(-0.13*gx+0.09*gy)+cos(a)*ga*0.6;
-        float c=dot(q,float2(0.21,0.10))-time*1.51+sin(b)*0.45;
-        float2 gc=float2(0.21,0.10)+12.0*(0.21*gx+0.10*gy)+cos(b)*gb*0.45;
-        float h=sin(a)*0.53+sin(b)*0.31+sin(c)*0.16;
-        float2 gradient=cos(a)*ga*0.53+cos(b)*gb*0.31+cos(c)*gc*0.16;
+        // Modest wind waves, with independent phases and dispersion. Do not
+        // nest phase warps: those produced the rubbery curls in grazing light.
+        float h=0.0; float2 gradient=0.0;
+        const float2 k[6]={float2(.13,.06),float2(.18,.13),float2(.29,-.08),
+                          float2(.36,.18),float2(.10,-.39),float2(.49,.12)};
+        const float weights[6]={.30,.23,.18,.13,.10,.06};
+        [unroll] for(int i=0;i<6;i++) {
+            float a=dot(p,k[i])-time*sqrt(9.81*length(k[i]))+i*2.37;
+            h+=sin(a)*weights[i]; gradient+=cos(a)*k[i]*weights[i];
+        }
         float3 e=noise_gradient(p*.027+float2(time*.015,19.7));
         float amp=.40+.60*e.x;
         float2 grad=gradient*amp+h*.60*.027*e.yz;
@@ -160,8 +162,10 @@ FLOW = r"""
 // UV is basin-local XY / 100 metres, so flow stays aligned when the arena rotates.
 float2 delta=UV*100.0;
 float2 radial=delta/max(length(delta),1.0);
-float2 tangential=float2(-radial.y,radial.x);
-float2 basinFlow=-radial*3.5+tangential*8.0;
+float2 tangential=float2(-radial.y,radial.x)*Handedness;
+float arc=frac((3.14159265-atan2(delta.y,delta.x))/6.2831853)*6.2831853;
+float inlet=smoothstep(0.0,.16,arc)*(1-smoothstep(.35,.60,arc));
+float2 basinFlow=-radial*(3.5+12.0*inlet)+tangential*12.0;
 // Tunnel UV.x runs forward along its axis. Water rushes aft with slight side drift.
 float2 flow=lerp(basinFlow,float2(-18.0,2.0),saturate(Tunnel))*Flow;
 float phase=frac(T*0.07);
@@ -186,6 +190,7 @@ camera = expression(water, unreal.MaterialExpressionCameraPositionWS, -1400, 600
 time = scalar(water, "Clock", 0.0)
 center = vector(water, "BowlCenter", (0, 0, 0, 1))
 flow = scalar(water, "FlowStrength", 1.0)
+flow_handedness = scalar(water, "FlowHandedness", -1.0)
 tunnel_flow = scalar(water, "TunnelFlow", 0.0)
 wave_height = scalar(water, "WaveHeight", 115.0)
 normal_strength = scalar(water, "NormalStrength", 0.95)
@@ -193,7 +198,7 @@ foam_coverage = scalar(water, "FoamCoverage", 1.1)
 overflow_foam = scalar(water, "OverflowFoam", 0.0)
 hull_flatten = scalar(water, "HullFlatten", 0.0)
 sea_level = scalar(water, "SeaLevel", 230.0)
-base_inputs = {"UV": uv, "VC": vc, "P": position, "T": time, "Center": center, "Flow": flow, "Tunnel": tunnel_flow}
+base_inputs = {"UV": uv, "VC": vc, "P": position, "T": time, "Center": center, "Flow": flow, "Tunnel": tunnel_flow, "Handedness":flow_handedness}
 
 # Runtime bridge replaces these array references with the live grid's private
 # render targets and copies its MPC values. No paid shader implementation is
@@ -207,6 +212,7 @@ live_array_assets={
 }
 fft_surface=None
 fft_foam=None
+fft_displacement=None
 if all(live_array_assets.values()):
     live_objects={}
     for name,asset in live_array_assets.items():
@@ -241,8 +247,16 @@ if all(live_array_assets.values()):
 #undef PI
 #undef Luminance
 LiveFoam=0.0;
+LiveDisplacement=float3(0,0,0);
 [branch] if (Enabled < 0.001 || Count < 0.5) { return float4(0,0,1,0.30); }
 DRWWorldCascades fft;
+#if VERTEXSHADER
+// Use the installed vertex-safe helper, not the pixel Surface function.
+// A minimum footprint respects our approximately 3–5m corridor mesh edges.
+LiveDisplacement=fft.Displacement(Displacement,DisplacementSampler,P,InvA,InvB,
+    ShortA,ShortB,Count,max(350.0,fft.VertexFootprintCm(P)));
+return float4(0,0,1,0.30);
+#else
 float unusedFoam=0.0, unusedHeight=0.0, variance=0.0;
 // Surface's Foam out parameter is unused in this plugin version. Accumulated
 // foam lives in its separate camera-centred array and must use actual world XY.
@@ -252,13 +266,18 @@ LiveFoam=saturate(fft.FarFoam(Levels,LevelsSampler,P,Sizes,ddx(P.xy),ddy(P.xy),0
 return fft.Surface(Derivatives,DerivativesSampler,Displacement,DisplacementSampler,
     P,InvA,InvB,ShortA,ShortB,VarA,VarB,Count,ddx(P.xy),ddy(P.xy),Scale,Rough,
     normalize(Wind.xy+float2(1e-7,0)),normalize(Cam-P),unusedFoam,unusedHeight,variance);
+#endif
 """,FLOAT4,surface_inputs,1200)
-    # One custom expression supplies both results: the vendor header does not
-    # have an include guard, so separate custom expressions would define it twice.
+    # A single expression exposes both stages. The project wrapper guards the
+    # installed header when Unreal emits it again in vertex/pixel permutations.
     foam_pin=unreal.CustomOutput()
     foam_pin.set_editor_property("output_name","LiveFoam")
     foam_pin.set_editor_property("output_type",FLOAT)
-    fft_surface.set_editor_property("additional_outputs",[foam_pin])
+    displacement_pin=unreal.CustomOutput()
+    displacement_pin.set_editor_property("output_name","LiveDisplacement")
+    displacement_pin.set_editor_property("output_type",FLOAT3)
+    fft_surface.set_editor_property("additional_outputs",[foam_pin,displacement_pin])
+    fft_displacement=(fft_surface,"LiveDisplacement")
     aliases=[]
     for symbol in ("PI","Luminance"):
         alias=unreal.CustomDefine()
@@ -266,14 +285,14 @@ return fft.Surface(Derivatives,DerivativesSampler,Displacement,DisplacementSampl
         alias.set_editor_property("define_value","DC_DRW_"+symbol)
         aliases.append(alias)
     fft_surface.set_editor_property("additional_defines",aliases)
-    fft_surface.set_editor_property("include_file_paths",["/Plugin/DynamicRealWater/Private/DRW_Common.usf"])
+    fft_surface.set_editor_property("include_file_paths",["/DCMaelstrom/InstalledWater.ush"])
     fft_foam=(fft_surface,"LiveFoam")
 
 # These are optional references to the user's installed pack, not imported copies.
 foam_texture = unreal.load_asset("/DynamicRealWater/Textures/T_DRW_OceanFoam_BaseColor")
 foam_normal_texture = unreal.load_asset("/DynamicRealWater/Textures/T_DRW_OceanFoam_Normal")
 normal_texture = unreal.load_asset("/DynamicRealWater/Textures/T_DRW_Ocean_DetailNormal")
-foam_inputs = dict(base_inputs, Coverage=foam_coverage, Flatten=hull_flatten,
+foam_inputs = dict(base_inputs, Coverage=foam_coverage, Flatten=hull_flatten, Cam=camera, Enabled=use_live_fft, Count=live_count,
                    Overflow=overflow_foam, Supply=(vc,"A"))
 # Runtime binds a crest field generated from the actual bowl. Portal/tunnel
 # leave Available=0. Advection moves foam off the ridge into a trailing wake.
@@ -293,7 +312,7 @@ float2 warp=float2(wn.noise(p*0.031),wn.noise(p*0.027+19.3))-0.5;
 float2 cell=float2(p.x*.8+p.y*.6,-p.x*.6+p.y*.8)+warp*13.0;
 return lerp(cell/float2(9.0,17.0),float2(p.y/18.0,p.x/65.0),saturate(Tunnel));
 """,FLOAT2,base_inputs,100+index*100)
-        cell_uv = custom(water,FLOW+"float2 p="+coordinate+"; return float2(p.x*0.8+p.y*0.6,-p.x*0.6+p.y*0.8)/4.5;",FLOAT2,base_inputs,300+index*100)
+        cell_uv = custom(water,FLOW+"float2 p="+coordinate+"; return float2(p.x*0.8+p.y*0.6,-p.x*0.6+p.y*0.8)/1.5;",FLOAT2,base_inputs,300+index*100)
         foam_fine_uvs.append(cell_uv)
         foam_inputs["Raft"+str(index)] = texture_sample(water,"FoamPattern",foam_texture,raft_uv,y=100+index*100)
         foam_inputs["Cells"+str(index)] = texture_sample(water,"FoamPattern",foam_texture,cell_uv,y=300+index*100)
@@ -301,39 +320,45 @@ return lerp(cell/float2(9.0,17.0),float2(p.y/18.0,p.x/65.0),saturate(Tunnel));
 foam_code = NOISE + FLOW + r"""
 float shelf=saturate(Flatten)*(1-smoothstep(1200,3500,length(P.xy*float2(.5,2))));
 float transported=lerp(Source0.r,Source1.r,blend);
-float source=lerp(VC.r,max(VC.r*.25,transported),saturate(SourceAvailable));
-float crest=smoothstep(.30,.70,source)*(1-shelf);
+// Fresh narrow lip plus a trailing source which loses bubbles as it travels.
+float ageFade=lerp(exp(-phase*3.0),exp(-phase2*3.0),blend);
+float source=lerp(VC.r,max(VC.r*.30,transported*ageFade),saturate(SourceAvailable));
+float crest=smoothstep(.12,.62,source)*(1-shelf);
 // Long torn filaments follow the current. A thin crest sheds a sparse wake;
 // broad positive wave heights never become filled white islands.
 // Use a FIXED planar basis for texture coordinates. Dotting absolute q
 // with its own rotating radial basis collapses BOTH axes to radius and
 // turns every noise sample into a concentric contour. Flow advection above
 // supplies the local circular movement without that coordinate singularity.
-float2 s0=float2(q.x*.8+q.y*.6,-q.x*.6+q.y*.8)/float2(3.5,38);
-float2 s1=float2(q2.x*.8+q2.y*.6,-q2.x*.6+q2.y*.8)/float2(3.5,38);
-float n=lerp(wn.fbm(s0),wn.fbm(s1),blend);
-float thread=smoothstep(.48,.68,n);
+float2 direction=normalize(flow+float2(.001,0));
+float n=lerp(wn.streak(q,direction),wn.streak(q2,direction),blend);
+float thread=smoothstep(.50,.66,n);
 float fine=lerp(wn.noise(q*.9),wn.noise(q2*.9),blend);
 float wave=lerp(wn.waves(q,T),wn.waves(q2,T),blend);
-float cap=smoothstep(.76,.93,wave);
-float supply=saturate(Overflow)*Supply*smoothstep(.55,.90,VC.g);
-float torn=lerp(wn.fbm(q*float2(.045,.065)),wn.fbm(q2*float2(.045,.065)),blend);
+float cap=smoothstep(.34,.60,wave)*(1-smoothstep(45000.0,180000.0,length(P-Cam)))
+    *(1-saturate(Enabled)*step(.5,Count));
+float supply=saturate(Overflow)*Supply*smoothstep(.92,.99,VC.g);
+float torn=lerp(wn.fbm(q*float2(.17,.23)),wn.fbm(q2*float2(.17,.23)),blend);
 float breakup=smoothstep(.43,.64,torn);
-float body=crest*breakup+cap*.30*thread+supply*.22*thread;
-float veil=thread*.18*smoothstep(.3,.65,fine)*smoothstep(.25,.65,torn);
-float lace=.55+.45*fine;
+float body=crest*breakup+cap*.75*thread+supply*.10*thread;
+float veil=thread*.08*smoothstep(.4,.7,fine)*smoothstep(.35,.7,torn)*max(crest,cap);
+float lace=smoothstep(.35,.70,fine);
 """
 if foam_texture:
-    foam_code += "float cells=lerp(Cells0.r,Cells1.r,blend); lace=.35+.65*smoothstep(.015,.18,cells);\n"
-foam_code += "return saturate((body*lace*1.65+veil)*Coverage*(1-shelf*.8));"
+    foam_code += "float cells=lerp(Cells0.r,Cells1.r,blend); lace=smoothstep(.025,.24,cells);\n"
+foam_code += "return saturate((body*lace*1.35+veil)*Coverage*(1-shelf*.8));"
 foam = custom(water, foam_code, FLOAT, foam_inputs)
+source_foam=foam
 if fft_foam:
     live_foam_inputs={"Fallback":foam,"Live":fft_foam,"Enabled":use_live_fft,"Count":live_count}
-    live_foam_code="float detail=0.75;\n"
+    live_foam_code="float detail=0.15;\n"
     if foam_texture:
         live_foam_inputs.update({"C0":foam_inputs["Cells0"],"C1":foam_inputs["Cells1"],"T":time})
-        live_foam_code="float blend=abs(frac(T*0.07)*2.0-1.0); float detail=0.40+0.60*lerp(saturate((C0.r-0.014)*2.6),saturate((C1.r-0.014)*2.6),blend);\n"
-    live_foam_code+="float liveWeight=saturate(Enabled)*step(0.5,Count); return max(Fallback,saturate(Live*.12)*detail*liveWeight);"
+        live_foam_code="float blend=abs(frac(T*0.07)*2.0-1.0); float detail=lerp(smoothstep(.08,.50,C0.r),smoothstep(.08,.50,C1.r),blend);\n"
+    # The flat-ocean accumulation field is a subtle wind-wave aeration layer,
+    # not a dense white coating over the crater. Actual breaking lips are the
+    # brighter source above; no constant floor fills the live accumulation mask.
+    live_foam_code+="float liveWeight=saturate(Enabled)*step(0.5,Count); return max(Fallback,saturate(Live)*detail*.08*liveWeight);"
     foam=custom(water,live_foam_code,FLOAT,live_foam_inputs,1350)
 color = custom(water, r"""
 float3 body=lerp(float3(0.012,0.043,0.052),float3(0.005,0.020,0.028),saturate(VC.b));
@@ -341,11 +366,11 @@ float3 foamColor=lerp(float3(0.74,0.81,0.80),float3(0.64,0.73,0.79),saturate(VC.
 return lerp(body,foamColor,Foam);
 """, FLOAT3, {"VC":vc,"Foam":foam}, 100)
 output(color, unreal.MaterialProperty.MP_BASE_COLOR)
-roughness = custom(water, "return lerp(0.38,0.78,sqrt(saturate(Foam)));", FLOAT, {"Foam":foam}, 200)
+roughness = custom(water, "return lerp(0.22,0.78,sqrt(saturate(Foam)));", FLOAT, {"Foam":foam}, 200)
 if fft_surface:
     roughness=custom(water,r"""
 float distanceM=length(P-Cam)*0.01;
-float filtered=max(Surface.a,lerp(0.38,0.48,smoothstep(250.0,1400.0,distanceM)));
+float filtered=max(Surface.a,lerp(0.22,0.48,smoothstep(250.0,1400.0,distanceM)));
 return lerp(Fallback,max(Fallback,filtered),saturate(Enabled)*step(0.5,Count));
 """,FLOAT,{"Fallback":roughness,"Surface":fft_surface,"P":position,"Cam":camera,"Enabled":use_live_fft,"Count":live_count},1400)
 output(roughness, unreal.MaterialProperty.MP_ROUGHNESS)
@@ -364,7 +389,7 @@ if foam_texture and foam_normal_texture:
         normal_inputs["FoamNormal"+str(index)] = texture_sample(water,"FoamNormal",foam_normal_texture,coordinates,normal=True,y=700+index*100)
 
 normal_code = NOISE + FLOW + r"""
-float nearHull=smoothstep(1800.0,8500.0,length(P.xy));
+float nearHull=smoothstep(1200.0,4000.0,length(P.xy*float2(.5,2)));
 float distanceM=length(P-Cam)*0.01;
 float2 slope=-lerp(wn.wave_field(q,T).yz,wn.wave_field(q2,T).yz,blend)*(min(max(Amp,0.0),650.0)*0.01);
 slope*=lerp(0.0,1.0,nearHull)*lerp(1.0,.18,smoothstep(180.0,1000.0,distanceM));
@@ -418,12 +443,11 @@ float weight=saturate(Enabled)*step(0.5,Count)*(1-smoothstep(12000,50000,length(
 [branch] if (weight < 0.001) { return Fallback; }
 float3 base=normalize(Base);
 float distanceM=length(P-Cam)*0.01;
-float strength=lerp(0.52,0.16,smoothstep(180.0,1600.0,distanceM));
+float strength=lerp(0.65,0.16,smoothstep(180.0,1600.0,distanceM));
 float3 flat=normalize(lerp(float3(0,0,1),Surface.xyz,strength));
 float3 axis=float3(-base.y,base.x,0);
 float3 curved=flat+cross(axis,flat)+cross(axis,cross(axis,flat))/max(1.0+base.z,0.01);
-// Keep a small contribution from the bounded authored displacement. No FFT
-// displacement changes the CPU hull/water height agreement in this prototype.
+// Blend the wind spectrum with the underlying current-aligned water banks.
 float3 live=normalize(curved+(Fallback-base)*0.65);
 return normalize(lerp(Fallback,live,weight));
 """,FLOAT3,{"Fallback":final_normal,"Base":shelf_base,"Surface":fft_surface,"P":position,"Cam":camera,"Enabled":use_live_fft,"Count":live_count},1500)
@@ -433,13 +457,28 @@ output(final_normal,unreal.MaterialProperty.MP_NORMAL)
 # advected lobes used by the normal. The mesh owns the much larger breaking ridges.
 wpo_code = NOISE + FLOW + r"""
 float h=lerp(wn.waves(q,T),wn.waves(q2,T),blend);
-float nearHull=smoothstep(1800.0,8500.0,length(P.xy));
+float nearHull=smoothstep(1200.0,4000.0,length(P.xy*float2(.5,2)));
 float flatten=saturate(Flatten)*(1.0-smoothstep(1200.0,3500.0,length(P.xy*float2(0.5,2.0))));
 float3 waveNormal=normalize(lerp(VN,float3(0,0,1),flatten));
-float3 wave=waveNormal*h*min(max(Amp,0),650.0)*lerp(0.0,1.0,nearHull);
-return wave+float3(0,0,(Level-P.z)*flatten);
+float resolved=1-smoothstep(35000.0,120000.0,length(P-Cam));
+float3 wave=waveNormal*h*min(max(Amp,0),650.0)*nearHull*resolved;
 """
-output(custom(water,wpo_code,FLOAT3,dict(base_inputs,VN=vertex_normal,Amp=wave_height,Flatten=hull_flatten,Level=sea_level),800),unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
+wpo_inputs=dict(base_inputs,VN=vertex_normal,Amp=wave_height,Flatten=hull_flatten,Level=sea_level,Cam=camera)
+if fft_displacement:
+    wpo_inputs.update(Live=fft_displacement,Enabled=use_live_fft,Count=live_count)
+    wpo_code+=r"""
+float3 d=Live*.65;
+// Smooth bounds prevent a malformed render target from folding the bowl or
+// pushing the water through the deck. The hull safety ellipse remains exact.
+d.xy=d.xy/(1+abs(d.xy)/150.0);
+d.z=d.z/(1+abs(d.z)/400.0);
+float3 axis=float3(-waveNormal.y,waveNormal.x,0);
+float3 curved=d+cross(axis,d)+cross(axis,cross(axis,d))/max(1+waveNormal.z,.01);
+float liveWeight=saturate(Enabled)*step(.5,Count);
+wave=lerp(wave,wave*.25+curved*nearHull*resolved,liveWeight);
+"""
+wpo_code+="wave*=1-saturate(VC.r*1.5); return wave+float3(0,0,(Level-P.z)*flatten);"
+output(custom(water,wpo_code,FLOAT3,wpo_inputs,800),unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
 
 volume = expression(water,unreal.MaterialExpressionSingleLayerWaterMaterialOutput,0,1000)
 for input_name, value, name in [
@@ -457,14 +496,16 @@ MEL.connect_material_expressions(scalar(water,"ScatterDirection",0.35),"",volume
 review=scalar(water,"WaterReview",0.0)
 output(custom(water,"return Mode<.5 ? Opacity : 1.0;",FLOAT,{"Mode":review,"Opacity":opacity}),unreal.MaterialProperty.MP_OPACITY)
 output(custom(water,"return Mode<.5 ? Spec : 0.0;",FLOAT,{"Mode":review,"Spec":specular}),unreal.MaterialProperty.MP_SPECULAR)
-review_emission=custom(water,"return Mode<.5 ? float3(0,0,0) : (Mode<1.5 ? float3(F,F,F) : N*.5+.5);",FLOAT3,{"Mode":review,"F":foam,"N":final_normal})
+review_inputs={"Mode":review,"F":foam,"N":final_normal,"Source":source_foam}
+review_inputs["Live"]=fft_foam if fft_foam else scalar(water,"NoLiveFoam",0.0)
+review_emission=custom(water,"if(Mode<.5) return float3(0,0,0); if(Mode<1.5) return F.xxx; if(Mode<2.5) return N*.5+.5; if(Mode<3.5) return Source.xxx; return Live.xxx;",FLOAT3,review_inputs)
 output(review_emission,unreal.MaterialProperty.MP_EMISSIVE_COLOR)
 review_color=custom(water,"return Mode<.5 ? C : float3(0,0,0);",FLOAT3,{"Mode":review,"C":color})
 output(review_color,unreal.MaterialProperty.MP_BASE_COLOR)
 MEL.recompile_material(water)
 unreal.EditorAssetLibrary.save_loaded_asset(water,only_if_is_dirty=False)
 unreal.log_warning("DC_RESULT M_MaelstromWater saved; DRW detail=%s foam colour=%s foam normal=%s" % (bool(normal_texture),bool(foam_texture),bool(foam_normal_texture)))
-unreal.log_warning("DC_RESULT optional live FFT graph=%s; UseLiveFFT defaults 0; no FFT WPO" % bool(fft_surface))
+unreal.log_warning("DC_RESULT optional live FFT graph=%s; bounded vertex displacement=%s; UseLiveFFT defaults 0" % (bool(fft_surface),bool(fft_displacement)))
 
 # The steep lip is a separate masked sheet. Single Layer Water's deep-volume
 # approximation is inappropriate here: this material supplies actual lit white

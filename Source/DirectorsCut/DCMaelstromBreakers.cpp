@@ -11,21 +11,26 @@ void ADCMaelstrom::BuildBreakers()
     FRandomStream Random(14011);
     // These are height-field crests in the SAME water mesh. No overlapping
     // opaque ribbons, detached edges or second water volume interfaces.
-    for(int32 Wave=0;Wave<48;++Wave)
+    for(int32 Wave=0;Wave<112;++Wave)
     {
-        const float A=Wave<4 ? UE_PI+.10f+Wave*.13f : Random.FRandRange(-UE_PI,UE_PI);
-        const float R=Radius*(Wave<4 ? .90f-Wave*.09f : Random.FRandRange(.28f,.89f));
+        const bool InChannel=Wave>=12 && Wave<32;
+        const float A=Wave<12 ? UE_PI-.07f-Wave*.055f : (InChannel
+            ? UE_PI-.05f-(Wave-12)*.07f : Random.FRandRange(-UE_PI,UE_PI));
         const float RouteR=Radius*DCMaelstromRoute::RadialFraction(DCMaelstromRoute::SecondsAtAngle(A));
-        if(FMath::Abs(R-RouteR)<10000.f) { continue; }
+        const float R=Wave<12 ? RouteR+(Wave%2 ? 11500.f : -13000.f) : (InChannel
+            ? RouteR+Random.FRandRange(-5000.f,5000.f) : Radius*Random.FRandRange(.22f,.91f));
+        if(!InChannel && FMath::Abs(R-RouteR)<8500.f) { continue; }
         const FVector2D Across(FMath::Cos(A),FMath::Sin(A));
-        const FVector2D Along(-Across.Y,Across.X);
-        BreakingWaves.Add({Across*R,Along,Across,static_cast<float>(Random.FRandRange(12000.f,26000.f)),
-            static_cast<float>(Random.FRandRange(2200.f,4200.f)),static_cast<float>(Random.FRandRange(1000.f,2300.f)),static_cast<float>(Random.FRandRange(0.f,20.f))});
+        const FVector2D Along(Across.Y,-Across.X);
+        BreakingWaves.Add({Across*R,Along,Across,static_cast<float>(Random.FRandRange(5000.f,14000.f)),
+            static_cast<float>(InChannel ? Random.FRandRange(1800.f,2800.f) : Random.FRandRange(900.f,1800.f)),
+            static_cast<float>(InChannel ? Random.FRandRange(60.f,140.f) : Random.FRandRange(120.f,420.f)),
+            static_cast<float>(Random.FRandRange(0.f,20.f))});
     }
     for(const FBreakingWave& W:BreakingWaves) for(int32 J=-2;J<=2;++J)
     {
         const float Along=J*W.Length*.12f;
-        const float Bend=Along*.22f+FMath::Sin(Along/W.Length*9.f+W.Seed)*650.f;
+        const float Bend=Along*.29f+Along*Along/(2.f*W.Center.Size())+FMath::Sin(Along/W.Length*9.f+W.Seed)*100.f;
         const FVector2D P=W.Center+W.Along*Along-W.Across*Bend;
         BreakerSprayPoints.Add(FVector(P,HeightAt(P)+150.f));
     }
@@ -38,16 +43,18 @@ void ADCMaelstrom::BuildBreakers()
         // sheets carry the detail; no solid white cone or full foam ring.
         for(int32 Sheet=0;Sheet<2;++Sheet)
         {
-            const FVector2D P=W.Center+W.Along*((Sheet-.5f)*W.Length*.3f);
-            const FVector Foot(P,HeightAt(P)-250.f);
-            const float H=W.Height*(1.f+Sheet*.35f),Width=W.Length*.18f;
+            const float Along=(Sheet-.5f)*W.Length*.3f;
+            const float Bend=Along*.29f+Along*Along/(2.f*W.Center.Size())+FMath::Sin(Along/W.Length*9.f+W.Seed)*100.f;
+            const FVector2D P=W.Center+W.Along*Along-W.Across*Bend;
+            const FVector Foot(P,HeightAt(P)-40.f);
+            const float H=FMath::Max(280.f,W.Height*1.6f),Width=W.Length*.12f;
             const int32 First=V.Num();
             constexpr int32 Rows=6,Cols=8;
             for(int32 Y=0;Y<=Rows;++Y) for(int32 X=0;X<=Cols;++X)
             {
                 const float U=static_cast<float>(X)/Cols,T=static_cast<float>(Y)/Rows;
-                const FVector2D Shift=W.Along*((U-.5f)*Width+T*H*.25f)-W.Across*T*T*H*.5f;
-                V.Add(Foot+FVector(Shift,T*H)); UV.Add(FVector2D(U,T));
+                const FVector2D Shift=W.Along*((U-.5f)*Width+T*H*.95f)-W.Across*T*H*.35f;
+                V.Add(Foot+FVector(Shift,FMath::Sin(T*UE_PI*.85f)*H)); UV.Add(FVector2D(U,T));
                 C.Add(FLinearColor(.65f,FMath::Frac(W.Seed),Sheet*.5f,.6f).ToFColor(false));
                 if(Y<Rows && X<Cols) { const int32 A=First+Y*(Cols+1)+X,B=A+Cols+1; I.Append({A,B,A+1,A+1,B,B+1}); }
             }
@@ -58,7 +65,9 @@ void ADCMaelstrom::BuildBreakers()
     if(UMaterialInterface* M=LoadObject<UMaterialInterface>(nullptr,TEXT("/Game/DC/Maelstrom/M_MaelstromPlume.M_MaelstromPlume")))
     {
         CrestSprayMID=UMaterialInstanceDynamic::Create(M,this);
-        CrestSprayMID->SetScalarParameterValue(TEXT("Density"),.75f);
+        CrestSprayMID->SetScalarParameterValue(TEXT("Density"),1.15f);
+        CrestSprayMID->SetScalarParameterValue(TEXT("DepthFadeDistance"),80.f);
+        CrestSprayMID->SetScalarParameterValue(TEXT("CrestSpray"),1.f);
         CrestSpray->SetMaterial(0,CrestSprayMID);
     }
 }
@@ -71,17 +80,18 @@ float ADCMaelstrom::BreakerHeight(const FVector2D& Point,float* Foam) const
         const FVector2D Delta=Point-W.Center;
         const float Along=FVector2D::DotProduct(Delta,W.Along);
         if(FMath::Abs(Along)>W.Length*.5f) { continue; }
-        const float Across=FVector2D::DotProduct(Delta,W.Across)+Along*.22f
-            +FMath::Sin(Along/W.Length*9.f+W.Seed)*650.f;
-        // Steep leading face and broad trailing shoulder, smoothly joined.
-        const float Width=W.Width*FMath::Lerp(.62f,1.35f,FMath::SmoothStep(-W.Width*.3f,W.Width*.3f,Across));
+        const float Across=FVector2D::DotProduct(Delta,W.Across)+Along*.29f
+            +Along*Along/(2.f*W.Center.Size())+FMath::Sin(Along/W.Length*9.f+W.Seed)*100.f;
+        // Long water face and short spilling edge; ordinary crests only 1–4m
+        // high. Packet curvature follows the descending leftward current.
+        const float Width=W.Width*(Across<0.f ? .60f : 2.0f);
         const float X=FMath::Abs(Across)/Width;
-        if(X>2.5f) { continue; }
+        if(X>1.f) { continue; }
         const float Edge=1-FMath::SmoothStep(.25f,.5f,FMath::Abs(Along)/W.Length);
-        const float Profile=FMath::Exp(-X*X*2.f);
-        const float Broken=.7f+.3f*FMath::PerlinNoise2D(Point/6500.f+FVector2D(W.Seed,0));
+        const float Profile=1.f-FMath::SmoothStep(0.f,1.f,X);
+        const float Broken=.75f+.25f*FMath::PerlinNoise2D(Point/1500.f+FVector2D(W.Seed,0));
         Height=FMath::Max(Height,W.Height*Profile*Edge*Broken);
-        Cap=FMath::Max(Cap,FMath::SmoothStep(.62f,.94f,Profile)*Edge);
+        Cap=FMath::Max(Cap,(1.f-FMath::SmoothStep(65.f,340.f,FMath::Abs(Across)))*Edge*Broken);
     }
     if(Foam) { *Foam=Cap; }
     return Height;
@@ -95,12 +105,26 @@ void ADCMaelstrom::UpdateBreakers()
         CrestSprayMID->SetScalarParameterValue(TEXT("Reveal"),FMath::SmoothStep(0.f,8.f,Elapsed));
     }
     if(Elapsed<5.f || Elapsed<NextBreakerSpray || BreakerSprayPoints.IsEmpty()) { return; }
-    NextBreakerSpray=Elapsed+.10f;
+    NextBreakerSpray=Elapsed+.08f;
     const FTransform Frame=GetArenaTransform();
     for(int32 K=0;K<12;++K)
     {
         const FVector P=Frame.TransformPosition(BreakerSprayPoints[FMath::RandHelper(BreakerSprayPoints.Num())]);
-        if(P.Size2D()>7000.f && P.Size2D()<85000.f) { EmitWaterContact(P,.95f,false); break; }
+        if(P.Size2D()>4500.f && P.Size2D()<40000.f)
+        {
+            // Separate crest droplets from explosion-like contact splashes.
+            // Follow the current, then fall under gravity in the basin frame.
+            const FVector Local=Frame.InverseTransformPosition(P);
+            const FVector2D Radial=FVector2D(Local).GetSafeNormal();
+            const FVector Current(Radial.Y*800.f-Radial.X*250.f,-Radial.X*800.f-Radial.Y*250.f,0.f);
+            for(int32 Drop=0;Drop<22 && ContactParticles.Num()<900;++Drop)
+            {
+                const FVector Jitter=FVector(FMath::FRandRange(-180.f,180.f),FMath::FRandRange(-180.f,180.f),0.f);
+                const FVector Launch=Current+FVector(FMath::FRandRange(-160.f,160.f),FMath::FRandRange(-160.f,160.f),FMath::FRandRange(300.f,850.f));
+                ContactParticles.Add({Local+Jitter,Launch,0.f,FMath::FRandRange(.7f,1.7f),FMath::FRandRange(4.f,20.f)});
+            }
+            break;
+        }
     }
 }
 
@@ -120,9 +144,7 @@ void ADCMaelstrom::BuildFoamSource()
         float Crest=0.f;
         if(P.Size()<GetRimRadius(FMath::Atan2(P.Y,P.X)))
         {
-            const float Breaking=BreakerHeight(P,&Crest);
-            const float Swell=HeightAt(P)-HeightAt(P,false)-Breaking;
-            Crest=FMath::Max(Crest,FMath::Clamp(Swell/2200.f,0.f,1.f)*.9f);
+            BreakerHeight(P,&Crest);
         }
         Colors[Y*Size+X]=FLinearColor(Crest,Crest,Crest,1.f).ToFColorSRGB();
     }

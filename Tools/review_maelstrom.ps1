@@ -4,6 +4,8 @@ param(
     [switch]$Tenths,
     [switch]$Wait,
     [switch]$Native,
+    [switch]$Clean,
+    [ValidateRange(0,4)][int]$WaterReview = 0,
     [ValidateRange(640,7680)][int]$Width = 1600,
     [ValidateRange(360,4320)][int]$Height = 900,
     [ValidatePattern('^[a-zA-Z0-9_-]+$')][string]$ReviewName = 'MaelstromReview',
@@ -36,6 +38,8 @@ if ($Native) {
 $arguments += ('-ExecCmds="{0}"' -f $commands)
 if ($Orders -and !$EnvironmentOnly) { $arguments += ('-DCOrders={0}' -f $Orders) }
 if ($EnvironmentOnly) { $arguments += '-DCSceneReview' }
+if ($Clean) { $arguments += '-DCNoHUD' }
+if ($WaterReview -gt 0) { $arguments += ('-DCWaterReview={0}' -f $WaterReview) }
 if ($Tenths) { $arguments += '-DCTenths' }
 if ($Continuous) { $arguments += @('-DCRunThrough', ('-DCMaelstromStart={0}' -f $Start)) }
 if ([Math]::Abs($Steer) -le 1) { $arguments += ('-DCMaelstromSteer={0}' -f $Steer) }
@@ -47,6 +51,9 @@ Write-Output ('Review process {0}. Screenshots: {1}/Saved/Screenshots/Auto; log:
 if ($Wait) {
     $reviewProcess.WaitForExit()
     if ($reviewProcess.ExitCode -ne 0) { throw "Review failed; inspect $logFile" }
+    if (Select-String -LiteralPath $logFile -Pattern 'Failed to compile Material /Game/DC/Maelstrom/' -Quiet) {
+        throw "Maelstrom shader compilation failed; captures would show a fallback material. Inspect $logFile"
+    }
     $destination = Join-Path $projectRoot ("Saved/SceneReview/$ReviewName")
     New-Item -ItemType Directory -Path $destination -Force | Out-Null
     foreach ($shot in $Shots.Split(',')) {
