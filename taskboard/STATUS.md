@@ -2,6 +2,13 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 00:38 Claude: burning stones from the deep, with deck fires
+
+- `DCMaelstrom::UpdateBoulders`: five on a schedule (86, 104, 110, 126, 141 s after the breach, between the spouts). Each leaves the water 520 m off the starboard bow with a crew call ("Fire from the deep! ... Turn her, Captain!"), comes over in a 160 m arc for 5 s as a glowing stone with a tail of fire and a light, and falls where the ship was. The helm carries her out from under it at the same rate as for the spouts. Struck: 5 damage and a fire at the nearest deck point (the existing fire trouble, so the crew or the captain must put it out). Clear: 100 points and a burst on the water. `-DCNoBoulders`, `-DCBoulderAt=<s>` throws an extra one.
+- Checked: helm amidships it strikes and "FIRE ON DECK" shows with flames by the wheel; `-DCSteer=-1` it falls 56 m clear. Spout damage lowered from 6 to 5.
+- With the bot captain, who never turns, from 262 s: all six spouts and all five stones strike, 10 arms broken, hull 100 to 27 over the maelstrom. There is no sinking: the hull stops at 0 and the card says "BARELY AFLOAT".
+- Look: the stone is a plain glowing ball with a tail of smaller balls; no smoke, no splash column, no sound of its own. `review/52-fire-from-the-deep`.
+
 ## 14 Nov 00:20 Claude: lightning no longer whites out the city; storm growth measured smooth
 
 - **Lightning**: the sky pack's flash light at its own strength turned near stone and the deck pure white for about half a second (frames at 100.1 to 100.6 s with `-DCLightningAt=100`). `Lightning Flash Light Intensity` is now 4: the fog behind the ruins lights up and they stand as shapes against it. One of yesterday's three leftovers.

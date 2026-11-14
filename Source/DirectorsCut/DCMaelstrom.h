@@ -107,6 +107,19 @@ private:
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> ThroatMID;
 	bool bThroatTried = false;
 	void UpdateThroat(float ExitX);
+	/** Burning stones the creature hurls from the deep. Each is seen leaving the water and coming over in a high
+	 *  arc for five seconds; the helm carries the ship out from under it, or it strikes and sets the deck alight. */
+	struct FBoulder
+	{
+		TWeakObjectPtr<AActor> Actor;
+		float ThrownAt = 0.f;     // seconds after the breach
+		FVector From = FVector::ZeroVector;
+		FVector Fall = FVector::ZeroVector;   // where it comes down, in the ship's space
+		TArray<TWeakObjectPtr<class UStaticMeshComponent>> Tail;
+	};
+	TArray<FBoulder> Boulders;
+	int32 BouldersThrown = 0;
+	void UpdateBoulders(float DeltaSeconds);
 	TArray<FTwister> Twisters;
 	UPROPERTY() TArray<TObjectPtr<UMaterialInstanceDynamic>> TwisterMIDs;
 	int32 TwistersRaised = 0;

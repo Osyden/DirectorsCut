@@ -13,6 +13,8 @@
 #include "Components/HeterogeneousVolumeComponent.h"
 #include "SparseVolumeTexture/SparseVolumeTexture.h"
 #include "HAL/IConsoleManager.h"
+#include "Engine/StaticMeshActor.h"
+#include "Components/PointLightComponent.h"
 #include "ProceduralMeshComponent.h"
 #include "Components/PostProcessComponent.h"
 #include "Components/ExponentialHeightFogComponent.h"
@@ -580,7 +582,7 @@ void ADCMaelstrom::Tick(float DeltaSeconds)
 		}
 	}
 	if (Boss) { Boss->UpdateEncounter(Elapsed, GetArenaTransform(), Radius, Depth, bActive); }
-	if (bActive) { UpdateTwisters(DeltaSeconds); } else if (Twisters.Num() || TwistersRaised) { ClearTwisters(); }
+	if (bActive) { UpdateTwisters(DeltaSeconds); UpdateBoulders(DeltaSeconds); } else if (Twisters.Num() || TwistersRaised || Boulders.Num() || BouldersThrown) { ClearTwisters(); }
 	if (Atmosphere) { Atmosphere->UpdateAtmosphere(this, Elapsed, bActive); }
 	WaterBridge.Update(GetWorld(), WaterMID, bActive);
 	if (bActive && Boss && Boss->ShouldExitEncounter(Elapsed))
@@ -758,6 +760,9 @@ void ADCMaelstrom::ClearTwisters()
 	Twisters.Reset();
 	TwisterMIDs.Reset();
 	TwistersRaised = 0;
+	for (FBoulder& B : Boulders) { if (AActor* A = B.Actor.Get()) { A->Destroy(); } }
+	Boulders.Reset();
+	BouldersThrown = 0;
 }
 
 void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
@@ -850,7 +855,7 @@ void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
 		if (!T.bStruck && Age > Tell && FMath::Abs(T.Ahead) < 3000.f && FMath::Abs(T.Abeam) < 3800.f)
 		{
 			T.bStruck = true;
-			Director->DamageShip(6.f);
+			Director->DamageShip(5.f);
 			if (ADCTroubles* Troubles = ADCTroubles::Get(this)) { Troubles->TearRigging(); }
 			if (Crew) { Crew->Report(TEXT("The spout has us! Rigging's torn away!"), true); }
 			UE_LOG(LogDC, Log, TEXT("Twister struck the ship at %.1f s (%.0f m abeam)"), Elapsed, T.Abeam / 100.f);
@@ -866,6 +871,122 @@ void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
 			if (AActor* A = T.Actor.Get()) { A->Destroy(); }
 			Twisters.RemoveAt(i);
 		}
+	}
+}
+
+void ADCMaelstrom::UpdateBoulders(float DeltaSeconds)
+{
+	// In the later part of the fight, between the spouts (which rise at 78, 96, 118 and 134 s).
+	static const float ThrowAt[] = { 86.f, 104.f, 110.f, 126.f, 141.f };
+	const float Finale = Boss ? Boss->FinaleAt : 160.f;
+	const float Flight = 5.f, Apex = 16000.f;
+	static const bool bOff = FParse::Param(FCommandLine::Get(), TEXT("DCNoBoulders"));
+	static float First = -1.f; static bool bRead = false;   // test hook: -DCBoulderAt=<seconds after the breach> throws an extra one then
+	if (!bRead) { bRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCBoulderAt="), First); }
+	bool bThrow = false;
+	while (!bOff && BouldersThrown < UE_ARRAY_COUNT(ThrowAt) && Elapsed >= ThrowAt[BouldersThrown])
+	{
+		const float At = ThrowAt[BouldersThrown++];
+		if (Elapsed <= At + 2.f && At < Finale - 12.f) { bThrow = true; }
+	}
+	if (First >= 0.f && Elapsed >= First && Elapsed < First + 1.f) { First = -1.f; bThrow = true; }
+	UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>();
+	if (bThrow)
+	{
+		FBoulder B;
+		B.ThrownAt = Elapsed;
+		// Out of the abyss, off the starboard bow where the crater's heart is.
+		B.From = FRotator(0.f, 40.f + FMath::FRandRange(-12.f, 12.f), 0.f).RotateVector(FVector(52000.f, 0.f, 0.f));
+		B.From.Z = SampleSurfaceWorld(B.From);
+		B.Fall = FVector(FMath::FRandRange(-900.f, 900.f), FMath::FRandRange(-250.f, 250.f), Director->SeaLevelZ + 620.f);
+		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		if (AStaticMeshActor* A = GetWorld()->SpawnActor<AStaticMeshActor>(B.From, FRotator::ZeroRotator, Params))
+		{
+			UStaticMeshComponent* C = A->GetStaticMeshComponent();
+			C->SetMobility(EComponentMobility::Movable);
+			C->SetStaticMesh(LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere")));
+			C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			C->SetCastShadow(false);
+			if (UMaterialInterface* Glow = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Glow.M_Glow")))
+			{
+				UMaterialInstanceDynamic* M = UMaterialInstanceDynamic::Create(Glow, A);
+				M->SetVectorParameterValue(TEXT("Color"), FLinearColor(9.f, 2.2f, 0.25f));
+				C->SetMaterial(0, M);
+			}
+			A->SetActorScale3D(FVector(8.f));   // a burning stone eight metres through: it has to be seen half a kilometre off
+			// A tail of fire behind it, so the eye finds it and reads which way it is going.
+			for (int32 k = 0; k < 9; ++k)
+			{
+				UStaticMeshComponent* T = NewObject<UStaticMeshComponent>(A);
+				T->SetMobility(EComponentMobility::Movable);
+				T->SetStaticMesh(C->GetStaticMesh());
+				T->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+				T->SetCastShadow(false);
+				T->SetMaterial(0, C->GetMaterial(0));
+				T->SetUsingAbsoluteLocation(true); T->SetUsingAbsoluteRotation(true); T->SetUsingAbsoluteScale(true);
+				T->SetupAttachment(C);
+				T->SetWorldScale3D(FVector(6.5f * (1.f - k / 10.f)));
+				T->RegisterComponent();
+				B.Tail.Add(T);
+			}
+			UPointLightComponent* Light = NewObject<UPointLightComponent>(A);
+			Light->SetMobility(EComponentMobility::Movable);
+			Light->SetupAttachment(C);
+			Light->SetIntensity(400000.f);
+			Light->SetAttenuationRadius(6000.f);
+			Light->SetLightColor(FLinearColor(1.f, 0.45f, 0.12f));
+			Light->SetCastShadows(false);
+			Light->RegisterComponent();
+			B.Actor = A;
+		}
+		Boulders.Add(B);
+		if (Crew) { Crew->Report(TEXT("Fire from the deep! It is coming down on us! Turn her, Captain!"), true); }
+		UE_LOG(LogDC, Log, TEXT("Boulder thrown at %.1f s from %s"), Elapsed, *B.From.ToCompactString());
+	}
+	for (int32 i = Boulders.Num() - 1; i >= 0; --i)
+	{
+		FBoulder& B = Boulders[i];
+		// The helm carries the ship out from under it.
+		B.Fall.Y -= HelmTurn * 1100.f * DeltaSeconds * Director->TimeScale;
+		const float U = (Elapsed - B.ThrownAt) / Flight;
+		const FVector Where = FMath::Lerp(B.From, B.Fall, FMath::Clamp(U, 0.f, 1.f)) + FVector(0.f, 0.f, 4.f * Apex * U * (1.f - U));
+		if (AActor* A = B.Actor.Get()) { A->SetActorLocation(Where); A->SetActorRotation(FRotator(Elapsed * 200.f, Elapsed * 130.f, 0.f)); }
+		for (int32 k = 0; k < B.Tail.Num(); ++k)
+		{
+			if (UStaticMeshComponent* T = B.Tail[k].Get())
+			{
+				const float V = FMath::Clamp(U - (k + 1) * 0.012f, 0.f, 1.f);
+				T->SetWorldLocation(FMath::Lerp(B.From, B.Fall, V) + FVector(0.f, 0.f, 4.f * Apex * V * (1.f - V)));
+			}
+		}
+		if (U < 1.f) { continue; }
+		const bool bHit = FMath::Abs(B.Fall.Y) < 1100.f && FMath::Abs(B.Fall.X) < 2600.f;
+		if (bHit)
+		{
+			Director->DamageShip(5.f);
+			ADCTroubles* Troubles = ADCTroubles::Get(this);
+			if (Troubles && Troubles->DeckPoints.Num() && Troubles->NumFires() < Troubles->MaxFires)
+			{
+				// The fire starts at the place on deck nearest to where it struck.
+				FVector Best = Troubles->DeckPoints[0];
+				for (const FVector& P : Troubles->DeckPoints) { if (FVector::DistSquared2D(P, B.Fall) < FVector::DistSquared2D(Best, B.Fall)) { Best = P; } }
+				Troubles->StartFire(Best);
+			}
+			if (Crew) { Crew->Report(TEXT("We are struck! Fire on deck!"), true); }
+		}
+		else { Director->Score += 100; }
+		if (UClass* Burst = LoadClass<AActor>(nullptr, TEXT("/Game/Brigantine/BP/Cannon/BP_EffectExplosionEnd.BP_EffectExplosionEnd_C"), nullptr, LOAD_NoWarn | LOAD_Quiet))
+		{
+			FActorSpawnParameters Params;
+			Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			FVector At = B.Fall;
+			if (!bHit) { At.Z = SampleSurfaceWorld(At); }
+			if (AActor* Fx = GetWorld()->SpawnActor<AActor>(Burst, At, FRotator::ZeroRotator, Params)) { Fx->SetActorScale3D(FVector(bHit ? 2.f : 4.f)); Fx->SetLifeSpan(4.f); }
+		}
+		UE_LOG(LogDC, Log, TEXT("Boulder %s at %.1f s (%.0f m abeam)"), bHit ? TEXT("struck the ship") : TEXT("fell clear"), Elapsed, B.Fall.Y / 100.f);
+		if (AActor* A = B.Actor.Get()) { A->Destroy(); }
+		Boulders.RemoveAt(i);
 	}
 }
 
