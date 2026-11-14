@@ -100,6 +100,8 @@ struct RockErosion {
    du.x*lerp(b-a,d-c,u.y),du.y*lerp(c-a,d-b,u.x));
  }
  float3 evaluate(float2 p,float footprint) {
+  // Every band, including the largest mineral relief, is fully filtered here.
+  [branch] if(footprint>=2.4) { return float3(0,0,0); }
   // Maximum height ranges: 12cm of wind/water erosion across .8m by4m;
   // 10cm mineral relief at3.2m; 1.6cm fine chips at32cm. These are derivatives
   // of shallow height fields, not separately tilted metre-high cell fronts.
@@ -115,6 +117,9 @@ struct RockErosion {
   float2 chipGradient=chips.yz*(.016/.32);
   gradient+=float2(chipGradient.x*.8-chipGradient.y*.6,chipGradient.x*.6+chipGradient.y*.8)
    *(1-smoothstep(.08,.30,footprint));
+  // The widest crack has22cm half-width and resolves to zero by33cm/pixel.
+  // Skip all placement hashes and curved-segment trigonometry beyond that.
+  [branch] if(footprint>=.33) { return float3(gradient,0); }
   // The lattice places sparse independent crack segments; its cells have no
   // faces, colour, AO or height. Random position, length and lean prevent a
   // closed brick grid. Each crack is1.8--5m long,16--44cm wide,2.5--7cm deep.
