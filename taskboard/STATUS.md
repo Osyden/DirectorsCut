@@ -4,7 +4,7 @@ Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claud
 
 ## 14 Nov 07:30 Claude: the current looks 150 m ahead; no clear gain
 
-- The keel's line now runs 150 m ahead (was 90) and the set is a little stronger close in. Three whole cities at normal speed with the bot: 6, 7 and  blows on stone, with one on the stem in each of the first two, hull 83 and 70 at the slide. Against 8 and 11 blows before, that is fewer blows but she is still put on a rock head on about once a voyage. Kept, as no worse; the head-on case is not fixed.
+- The keel's line now runs 150 m ahead (was 90) and the set is a little stronger close in. Three whole cities at normal speed with the bot: 6, 7 and 8 blows on stone, with one on the stem every time, hull 83, 70 and 71 at the slide. Against 8 and 11 blows before, that is fewer blows but she is still put on a rock head on about once a voyage. Kept, as no worse; the head-on case is not fixed.
 - Not in the twenty-fifth build.
 
 ## 14 Nov 07:16 Claude: rock strikes measured at normal speed
