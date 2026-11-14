@@ -159,8 +159,163 @@ class Waterfall:
         return np.concatenate(positions), np.concatenate(masses)
 
 
+class FittedWaterfall(Waterfall):
+    """Advect particles on the exported physical path; never stretch a cache."""
+    def __init__(self, args, profile):
+        self.profile = profile
+        super().__init__(args)
+        points = np.asarray(profile["samples_local_cm"], dtype=float) / 100
+        length = np.linalg.norm(np.diff(points, axis=0), axis=1)
+        keep = np.concatenate(([True], length > .001))
+        points = points[keep]
+        lengths = np.linalg.norm(np.diff(points, axis=0), axis=1)
+        if len(points) < 2 or lengths.sum() <= 1:
+            raise ValueError("Profile needs a nondegenerate physical centreline")
+        original_s = np.concatenate(([0.0], np.cumsum(lengths)))
+        # One-metre path stations preserve fractures and reduce speed-integration
+        # dependence on the number of cliff rows used by the exporter.
+        self.path_s = np.linspace(0, original_s[-1], math.ceil(original_s[-1]) + 1)
+        self.path = np.column_stack([np.interp(self.path_s, original_s, points[:, axis]) for axis in range(3)])
+        self.cross_offsets = None
+        if "cross_sections_local_cm" in profile:
+            sections = np.asarray(profile["cross_sections_local_cm"], dtype=float)[keep] / 100
+            self.cross_offsets = np.asarray(profile["cross_offsets_cm"], dtype=float) / 100
+            if sections.shape != (len(points), len(self.cross_offsets), 3):
+                raise ValueError("Cross-section sample shape does not match the centreline")
+            self.cross_tracks = np.empty((len(self.path_s), len(self.cross_offsets), 3))
+            for track in range(len(self.cross_offsets)):
+                for axis in range(3):
+                    self.cross_tracks[:, track, axis] = np.interp(self.path_s, original_s, sections[:, track, axis])
+        delta = np.diff(self.path, axis=0)
+        ds = np.linalg.norm(delta, axis=1)
+        tangent = delta / np.maximum(ds[:, None], 1e-6)
+        speed = np.empty(len(self.path_s))
+        speed[0] = 12.0  # this is a lower reach already fed by the upstream fall
+        times = np.zeros(len(self.path_s))
+        for i, step in enumerate(ds):
+            acceleration = 9.81 * (-tangent[i, 2] - speed[i] ** 2 / 32 ** 2)
+            speed[i + 1] = math.sqrt(max(3 ** 2, speed[i] ** 2 + 2 * acceleration * step))
+            times[i + 1] = times[i] + step / max((speed[i] + speed[i + 1]) * .5, 1)
+        self.path_time = times
+        self.path_speed = speed
+        self.path_tangent = np.vstack((tangent, tangent[-1]))
+        normals = np.column_stack((np.zeros(len(tangent)), -tangent[:, 2], tangent[:, 1]))
+        normals /= np.maximum(np.linalg.norm(normals, axis=1, keepdims=True), 1e-6)
+        normals[normals[:, 1] < 0] *= -1
+        self.path_normal = np.vstack((normals, normals[-1]))
+        self.speed_scale = .85 + .30 * (self.terminal - 26) / 9
+        self.flight = times[-1] / self.speed_scale
+        self.impact_birth = np.mod(self.birth + self.flight, args.duration)
+        self.profile_ready = True
+        self.foot = self.fall_positions(self.flight)
+        self.foot[:, 2] = self.water_height(self.foot[:, :2]) + .15
+        current = np.asarray(profile["current_local_cm_s"], dtype=float) / 100
+        current[2] = 0
+        self.current = current
+        self.along = current / max(np.linalg.norm(current), 1e-6)
+        self.across = np.array((self.along[1], -self.along[0], 0))
+        # A separate subset leaves the core as short ballistic fragments. The
+        # density remains close to the source rather than becoming rising smoke.
+        self.spray_indices = np.arange(0, len(self.birth), 5)
+        self.spray_launch_time = times[-1] * (.12 + .72 * (self.phase[:, 2] / (2 * np.pi)))
+        self.spray_birth = np.mod(self.birth + self.spray_launch_time / self.speed_scale, args.duration)
+
+    def sample_path(self, time_s):
+        return np.column_stack([np.interp(time_s, self.path_time, self.path[:, axis]) for axis in range(3)])
+
+    def sample_normal(self, time_s):
+        normal = np.column_stack([np.interp(time_s, self.path_time, self.path_normal[:, axis]) for axis in range(3)])
+        return normal / np.maximum(np.linalg.norm(normal, axis=1, keepdims=True), 1e-6)
+
+    def sample_width(self, time_s, across):
+        if self.cross_offsets is None:
+            p = self.sample_path(time_s)
+            p[:, 0] += across
+            return p
+        i = np.clip(np.searchsorted(self.path_time, time_s, side="right")-1, 0, len(self.path_time)-2)
+        j = np.clip(np.searchsorted(self.cross_offsets, across, side="right")-1, 0, len(self.cross_offsets)-2)
+        t = np.clip((time_s-self.path_time[i])/(self.path_time[i+1]-self.path_time[i]), 0, 1)[:, None]
+        x = np.clip((across-self.cross_offsets[j])/(self.cross_offsets[j+1]-self.cross_offsets[j]), 0, 1)[:, None]
+        a = self.cross_tracks[i, j] * (1-x) + self.cross_tracks[i, j+1] * x
+        b = self.cross_tracks[i+1, j] * (1-x) + self.cross_tracks[i+1, j+1] * x
+        return a*(1-t) + b*t
+
+    def water_height(self, xy):
+        water = self.profile["receiving_water"]
+        n = int(water["count"])
+        height = np.asarray(water["heights_local_cm_y_major"], dtype=float).reshape(n, n) / 100
+        origin = np.asarray(water["origin_local_cm"][:2], dtype=float) / 100
+        index = (xy - origin) / (float(water["step_cm"]) / 100)
+        index = np.clip(index, 0, n - 1.000001)
+        cell = np.floor(index).astype(int)
+        f = index - cell
+        x, y = cell[:, 0], cell[:, 1]
+        return ((height[y, x] * (1-f[:, 0]) + height[y, x+1] * f[:, 0]) * (1-f[:, 1])
+                + (height[y+1, x] * (1-f[:, 0]) + height[y+1, x+1] * f[:, 0]) * f[:, 1])
+
+    def fall_positions(self, age):
+        if not getattr(self, "profile_ready", False):
+            return super().fall_positions(age)
+        clock = np.minimum(age * self.speed_scale, self.path_time[-1])
+        p = self.sample_width(clock, self.x + .25 * np.sin(age * 2.3 + self.phase[:, 0]))
+        outward = .20 + np.abs(self.y) * .6 + .18 * np.sin(age * 3.1 + self.phase[:, 1])
+        # Pure radial clearance matches the core's contact-safe offset. Raising
+        # a sample in Z can put it inside a downward-facing rock ledge.
+        p[:, 1] += outward
+        # Blend into the actual contact surface across the source width.
+        join = smoothstep(self.flight - .15, self.flight, age)
+        p[:, 2] += (self.water_height(p[:, :2]) + .15 - p[:, 2]) * join
+        return p
+
+    def particles(self, time_s, component):
+        if component == "Falling":
+            p, mass = super().particles(time_s, component)
+            indices = self.spray_indices
+            age = np.mod(round(time_s % self.a.duration, 12) - self.spray_birth[indices], self.a.duration)
+            active = age < .85
+            indices, age = indices[active], age[active]
+            launch = self.spray_launch_time[indices]
+            normal = np.tile((0.0, 1.0, 0.0), (len(indices), 1))
+            start = self.sample_width(launch, self.x[indices])
+            tangent = np.column_stack([np.interp(launch, self.path_time, self.path_tangent[:, axis]) for axis in range(3)])
+            speed = np.interp(launch, self.path_time, self.path_speed) * self.speed_scale[indices]
+            travel = .6 * (1 - np.exp(-age / .6))
+            spray = start + tangent * (speed * travel)[:, None] + normal * (1.5 + 3 * travel)[:, None]
+            spray[:, 2] -= .5 * 9.81 * age ** 2
+            expected = self.sample_width(np.minimum(launch + age * self.speed_scale[indices], self.path_time[-1]), self.x[indices])
+            clearance = spray[:, 1] - expected[:, 1]
+            fade = smoothstep(0, .08, age) * (1-smoothstep(.55, .85, age)) * smoothstep(0, .4, clearance)
+            spray_mass = self.mass * self.strength[indices] * fade * .35
+            return np.concatenate((p, spray)), np.concatenate((mass, spray_mass))
+        positions, masses = [], []
+        base_age = np.mod(round(time_s % self.a.duration, 12) - self.impact_birth, self.a.duration)
+        for cycle in range(math.ceil(float(self.impact_life.max()) / self.a.duration) + 1):
+            age = base_age + cycle * self.a.duration
+            drag = self.impact_drag
+            travel = drag * (1 - np.exp(-age / drag))
+            p = self.foot.copy()
+            p += self.across * (self.impact_vx * travel)[:, None]
+            p += self.along * (self.impact_vy * travel)[:, None] + self.current * (age * .25)[:, None]
+            p[:, 2] += ((self.impact_vz + self.impact_g * drag) * travel - self.impact_g * drag * age)
+            clearance = p[:, 2] - self.water_height(p[:, :2])
+            fade = smoothstep(0, .07, age) * (1-smoothstep(self.impact_life-.35, self.impact_life, age))
+            fade *= smoothstep(-.15, .25, clearance)
+            mass = self.mass * self.strength * fade * self.impact_mass
+            active = (age < self.impact_life) & (clearance > -.15)
+            positions.append(p[active]); masses.append(mass[active])
+        return np.concatenate(positions), np.concatenate(masses)
+
+    def bounds(self, component):
+        low, high = np.full(3, np.inf), np.full(3, -np.inf)
+        for t in np.linspace(0, self.a.duration, 16, endpoint=False):
+            p, mass = self.particles(float(t), component)
+            p = p[mass > 1e-8]
+            low = np.minimum(low, p.min(axis=0)); high = np.maximum(high, p.max(axis=0))
+        return low - 4, high + 4
+
+
 class Raster:
-    def __init__(self, args, component):
+    def __init__(self, args, component, model=None):
         self.a = args
         self.component = component
         dx = args.width_m / 2
@@ -172,6 +327,8 @@ class Raster:
             low = (-dx - 14, args.downstream_m - args.depth_m * .35, -1)
             high = (dx + 14, args.downstream_m + args.depth_m * 1.5, 12)
             self.blur = (.65, .65, .60)
+        if isinstance(model, FittedWaterfall):
+            low, high = model.bounds(component)
         self.lo = np.floor(np.array(low) / args.voxel_m).astype(int)
         self.hi = np.ceil(np.array(high) / args.voxel_m).astype(int)
         self.shape = tuple((self.hi - self.lo + 1).tolist())
@@ -250,6 +407,7 @@ def main():
     parser.add_argument("--emission-rate", type=float, default=3500.0)
     parser.add_argument("--seed", type=int, default=54117)
     parser.add_argument("--threshold", type=float, default=.00005)
+    parser.add_argument("--profile", type=Path, help="actual lower water-core profile exported with -DCExportWaterfallProfile")
     args = parser.parse_args()
     positive = (args.width_m, args.height_m, args.depth_m, args.voxel_m,
                 args.fps, args.duration, args.emission_rate)
@@ -272,7 +430,15 @@ def main():
         if any(folder.iterdir()):
             parser.error(f"Output sequence folder is nonempty: {folder}. Choose a new --output.")
     started = time.perf_counter()
-    model = Waterfall(args)
+    profile = None
+    if args.profile:
+        profile = json.loads(args.profile.read_text(encoding="utf-8-sig"))
+        if profile.get("schema") != "directorscut.waterfall_profile.v1" or profile.get("units") != "centimeters":
+            parser.error("Unsupported waterfall profile schema or units")
+        args.width_m = min(args.width_m, float(profile["source_half_width_cm"]) * .02)
+        model = FittedWaterfall(args, profile)
+    else:
+        model = Waterfall(args)
     manifest = {
         "schema": "directorscut.waterfall_vdb.v1",
         "generator": "Tools/generate_waterfall_vdb.py",
@@ -290,9 +456,18 @@ def main():
                     "model": "periodic ballistic particles with drag; separate secondary droplets and drifting mist"},
         "sequences": {},
     }
+    if profile:
+        manifest["fitted_profile"] = {"file": str(args.profile.resolve()), "file_sha256": digest(args.profile),
+                                      "profile_sha1": profile["profile_sha1"], "feed_index": profile["feed_index"],
+                                      "local_origin_arena_cm": profile["local_origin_arena_cm"],
+                                      "local_yaw_degrees": profile["local_yaw_degrees"],
+                                      "path_length_cm": profile["path_length_cm"]}
+        manifest["coordinates"]["lip_cm"] = profile["source_local_cm"]
+        manifest["coordinates"]["nominal_foot_cm"] = profile["foot_local_cm"]
+        manifest["physics"]["model"] = "gravity/drag path advection on actual core profile, short outward ballistic spray, current-aligned impact on sampled receiving water"
     for component in ("Falling", "Impact"):
-        raster = Raster(args, component)
-        metrics, changes, projections = [], [], []
+        raster = Raster(args, component, model)
+        metrics, changes, projections, side_projections = [], [], [], []
         first = previous = None
         peak, clipped = 0.0, 0.0
         for frame in range(frames):
@@ -318,6 +493,8 @@ def main():
                             "density_sum": float(density.sum()), "clipped_particle_mass_fraction": lost})
             if frame in {0, frames // 4, frames // 2, 3 * frames // 4}:
                 projections.append(np.flip(density.max(axis=1).T, axis=0))
+                if profile:
+                    side_projections.append(np.flip(density.max(axis=0).T, axis=0))
             if frame % max(1, frames // 8) == 0:
                 print(f"{component}: {frame + 1}/{frames}, {time.perf_counter() - started:.1f}s", flush=True)
         repeat, _ = raster.make(model, args.duration)
@@ -339,6 +516,10 @@ def main():
         image = np.uint8(np.clip((1 - np.exp(-image * 6)) * 255, 0, 255))
         image = np.repeat(np.repeat(image, 3, axis=0), 3, axis=1)
         png_gray(args.output / f"{component}_density_projection.png", image)
+        if side_projections:
+            side = np.concatenate(side_projections, axis=1)
+            side = np.uint8(np.clip((1-np.exp(-side*6))*255, 0, 255))
+            png_gray(args.output / f"{component}_side_density_projection.png", np.repeat(np.repeat(side, 2, axis=0), 2, axis=1))
         manifest["sequences"][component] = {
             "pattern": f"{component}/{component}_%04d.vdb", "voxel_size_cm": args.voxel_m * 100,
             "resolution_xyz": list(raster.shape), "index_bounds_inclusive": [raster.lo.tolist(), raster.hi.tolist()],
