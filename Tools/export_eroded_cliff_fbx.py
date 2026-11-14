@@ -107,10 +107,20 @@ def main():
         imported_color=check.data.color_attributes.active_color
         if imported_color is None:raise RuntimeError("FBX lost vertex color masks")
         actual_color=np.array([entry.color for entry in imported_color.data],dtype=float)
-        color_error=float(np.max(np.abs(np.sort(actual_color,axis=0)-np.sort(colors[corners],axis=0))))
+        imported_corners=np.array([loop.vertex_index for loop in check.data.loops],dtype=np.int64)
+        if actual_color.shape!=colors[corners].shape:
+            raise RuntimeError("FBX changed per-corner mask count/domain")
+        # Compare masks at their physical vertex positions, not merely their
+        # histograms: a reordered/reversed field can preserve every histogram.
+        expected_xyz=vertices[corners];actual_xyz=xyz[imported_corners]
+        expected_order=np.lexsort(tuple(np.round(expected_xyz[:,axis],4) for axis in (2,1,0)))
+        actual_order=np.lexsort(tuple(np.round(actual_xyz[:,axis],4) for axis in (2,1,0)))
+        corner_error=float(np.max(np.abs(expected_xyz[expected_order]-actual_xyz[actual_order])))
+        color_error=float(np.max(np.abs(actual_color[actual_order]-colors[corners][expected_order])))
         report["blender_roundtrip"]={"bounds_max_error_m":bounds_error,"vertices":len(check.data.vertices),
-                                     "triangles":len(check.data.polygons),"color_max_error":color_error}
-        if bounds_error>.001 or color_error>1.e-5 or len(check.data.polygons)!=len(faces):
+                                     "triangles":len(check.data.polygons),"color_max_error":color_error,
+                                     "corner_position_max_error_m":corner_error}
+        if bounds_error>.001 or corner_error>.001 or color_error>1.e-5 or len(check.data.polygons)!=len(faces):
             raise RuntimeError("FBX roundtrip changed dimensions, masks or triangle count")
     output.with_suffix(".json").write_text(json.dumps(report,indent=2)+"\n",encoding="utf-8")
     print(json.dumps(report,indent=2))
