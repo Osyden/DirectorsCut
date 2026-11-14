@@ -136,23 +136,53 @@ void ADCMaelstrom::BuildFoamSource()
     // No imported textures are modified or copied into this map.
     constexpr int32 Size=768;
     const float Span=Radius*2.48f;
-    TArray<uint8> Pixels; Pixels.SetNumUninitialized(Size*Size*4);
+    TArray<uint8> Pixels; Pixels.SetNumZeroed(Size*Size*4);
     FColor* Colors=reinterpret_cast<FColor*>(Pixels.GetData());
-    for(int32 Y=0;Y<Size;++Y) for(int32 X=0;X<Size;++X)
+    TArray<float> Fresh,Wake;
+    Fresh.Init(0.f,Size*Size); Wake.Init(0.f,Size*Size);
+    const float Pixel=Span/Size;
+    // Rasterize filtered source footprints instead of point-sampling a 1m
+    // lip in a roughly 5m texel: that discarded most breaking fronts entirely.
+    auto Stamp=[&](TArray<float>& Field,const FVector2D& P,float Width,float Strength)
     {
-        const FVector2D P(((X+.5f)/Size-.5f)*Span,((Y+.5f)/Size-.5f)*Span);
-        float Crest=0.f;
-        if(P.Size()<GetRimRadius(FMath::Atan2(P.Y,P.X)))
+        const float Filtered=FMath::Sqrt(Width*Width+Pixel*Pixel*.25f);
+        const float Energy=Strength*Width/Filtered;
+        const int32 CX=FMath::FloorToInt((P.X/Span+.5f)*Size),CY=FMath::FloorToInt((P.Y/Span+.5f)*Size);
+        const int32 Reach=FMath::CeilToInt(Filtered*2.4f/Pixel);
+        for(int32 Y=FMath::Max(0,CY-Reach);Y<=FMath::Min(Size-1,CY+Reach);++Y)
+        for(int32 X=FMath::Max(0,CX-Reach);X<=FMath::Min(Size-1,CX+Reach);++X)
         {
-            BreakerHeight(P,&Crest);
+            const FVector2D At(((X+.5f)/Size-.5f)*Span,((Y+.5f)/Size-.5f)*Span);
+            const float D=(At-P).SizeSquared()/(Filtered*Filtered);
+            Field[Y*Size+X]=FMath::Max(Field[Y*Size+X],Energy*FMath::Exp(-D*1.6f));
         }
-        Colors[Y*Size+X]=FLinearColor(Crest,Crest,Crest,1.f).ToFColorSRGB();
+    };
+    for(const FBreakingWave& W:BreakingWaves)
+    {
+        const int32 Samples=FMath::Max(8,FMath::CeilToInt(W.Length/Pixel*2.f));
+        for(int32 Sample=0;Sample<=Samples;++Sample)
+        {
+            const float Along=(static_cast<float>(Sample)/Samples-.5f)*W.Length;
+            const float Edge=1.f-FMath::SmoothStep(.25f,.50f,FMath::Abs(Along)/W.Length);
+            if(Edge<.01f) { continue; }
+            const float Bend=Along*.29f+Along*Along/(2.f*W.Center.Size())+FMath::Sin(Along/W.Length*9.f+W.Seed)*100.f;
+            FVector2D P=W.Center+W.Along*Along-W.Across*Bend;
+            Stamp(Fresh,P,240.f,Edge);
+            // A twenty-second foam wake spreads behind the breaking front,
+            // taking the same current direction as the waterfall impact trails.
+            for(int32 Step=0;Step<21;++Step)
+            {
+                const float Age=static_cast<float>(Step);
+                Stamp(Wake,P,600.f+Age*90.f,Edge*.90f*FMath::Exp(-Age/15.f));
+                const float T=DCMaelstromRoute::SecondsAtAngle(FMath::Atan2(P.Y,P.X));
+                P+=DCMaelstromRoute::Tangent(FMath::Clamp(T,-7.f,179.f),Radius)*1800.f;
+            }
+        }
     }
     // Green is a separate whitewater source, stamped along the actual current.
     // Advected material samples carry bubbles downstream; the stationary sample
     // keeps each impact attached to its tributary rather than moving the source.
     TArray<float> Impact; Impact.Init(0.f,Size*Size);
-    const float Pixel=Span/Size;
     for(const FWaterFeed& Feed:WaterFeeds) for(int32 Step=0;Step<Feed.Trail.Num();++Step)
     {
         const FVector2D P=Feed.Trail[Step];
@@ -170,8 +200,7 @@ void ADCMaelstrom::BuildFoamSource()
     }
     for(int32 Index=0;Index<Size*Size;++Index)
     {
-        FLinearColor Value=FLinearColor::FromSRGBColor(Colors[Index]);
-        Value.G=Impact[Index]; Colors[Index]=Value.ToFColorSRGB();
+        Colors[Index]=FLinearColor(Fresh[Index],Impact[Index],Wake[Index],1.f).ToFColorSRGB();
     }
     FoamSourceTexture=UTexture2D::CreateTransient(Size,Size,PF_B8G8R8A8,NAME_None,
         TConstArrayView64<uint8>(Pixels.GetData(),Pixels.Num()));

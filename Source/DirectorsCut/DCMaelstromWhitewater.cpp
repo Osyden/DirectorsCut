@@ -24,6 +24,7 @@ void ADCMaelstrom::BuildWhitewater()
     {
         const float Angle=WaterfallAngle(Feed);
         const float W=WaterfallWidth(Feed);
+        if(W<=0.f) { continue; }
         const float Edge=WaterEdgeRadius(Angle);
         if(Edge>GetRimRadius(Angle)*.97f) { continue; }
         const FVector2D End=FVector2D(FMath::Cos(Angle),FMath::Sin(Angle))*(Edge-900.f);
@@ -43,11 +44,11 @@ void ADCMaelstrom::BuildWhitewater()
         }
         // Split the supply into separate, unequal runs. A single uninterrupted
         // sheet spanning hundreds of metres reads as a painted ribbon.
-        for(int32 Branch=0;Branch<4;++Branch)
+        for(int32 Branch=0;Branch<3;++Branch)
         {
             const float BranchSeed=FMath::Frac(Seed+Branch*.217f);
-            const float BranchOffset=(Branch-1.5f)*W*.50f;
-            const float BranchWidth=W*Random.FRandRange(.22f,.40f);
+            const float BranchOffset=(Branch-1.f)*W*.57f;
+            const float BranchWidth=W*Random.FRandRange(.20f,.34f);
             const int32 First=V.Num();
             constexpr int32 Rows=144,Cols=8;
             float Distance=0.f;
@@ -55,13 +56,18 @@ void ADCMaelstrom::BuildWhitewater()
             for(int32 Row=0;Row<=Rows;++Row)
             {
                 const float U=static_cast<float>(Row)/Rows;
-                const float Bend=BranchOffset*(.4f+.6f*U)+FMath::Sin(U*UE_PI)*W*
-                    FMath::PerlinNoise1D(U*9.f+BranchSeed*57.f)*.65f;
+                // Gravity accelerates the stream downwards. Keep its centreline
+                // coherent; large sine bends made narrow falls look like ropes.
+                const float Bend=BranchOffset*(.7f+.3f*U)+FMath::Sin(U*UE_PI)*W*
+                    FMath::PerlinNoise1D(U*4.f+BranchSeed*57.f)*.12f;
                 const FVector2D Centre=FMath::Lerp(Start,End,U)+Across*Bend;
                 const float CentreEdge=WaterEdgeRadius(FMath::Atan2(Centre.Y,Centre.X));
-                const FVector Center3(Centre,(Centre.Size()>CentreEdge ? CliffHeightAt(Centre) : HeightAt(Centre))+45.f);
+                const float CentreSurface=Centre.Size()>CentreEdge ? CliffHeightAt(Centre) : HeightAt(Centre);
+                const FVector Center3(Centre,FMath::Max(CentreSurface,FMath::Lerp(LipZ,Source.Foot.Z,U*U))+45.f);
                 Distance+=(Center3-Previous).Size(); Previous=Center3;
-                const float Width=BranchWidth*(.6f+.9f*U)*(1.f+.65f*FMath::PerlinNoise1D(U*27.f+BranchSeed*41.f));
+                // A thin core loses cohesion gradually into aerated water at its
+                // foot. Width breakup is small-scale, not a repeating zigzag.
+                const float Width=BranchWidth*(.8f+.45f*U)*(1.f+.22f*FMath::PerlinNoise1D(U*37.f+BranchSeed*41.f));
                 for(int32 Col=0;Col<=Cols;++Col)
                 {
                     const float X=static_cast<float>(Col)/Cols;

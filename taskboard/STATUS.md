@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov Codex: sky integrated, foam transport and scale overhaul
+
+- Merged sky branch through `e32cd85` into `codex/maelstrom-saturday` (`ee156ec`), keeping current terrain/water. [Combined implementation, captures, asset decision and remaining failures](MAELSTROM-INTEGRATED-14NOV.md).
+- Fixed foam sources disappearing below texture resolution and added persistent downstream wakes. Narrower irregular falls, smaller clustered rocks, fractured benches and cliff self-shadowing improve scale. Actual fall contacts now place the receiving-water mist. Narrowed the inner bank shoulder after rejecting a camera-only attempt to expose crater depth.
+- Editor/Game builds and material generation pass; combined continuous descent restores open sea, direct backward seek restores sky/fog correctly. The note distinguishes captures before/after the final inner-bank change. Still not reference quality: broad smooth banks, thin falling streams, rock material and shoreline contact remain priorities. No main merge or packaged build.
+
 ## 14 Nov Codex: exposed rock crater and lower turbulent basin
 
 - Rebuilt the land/water boundary: water ends at an irregular lower shoreline, connected procedural cliffs fill the space to the rim, and discrete falls use shared carved channels. Preserved the 3.2km crater, 900m depth and descending route; added shorter breakers and bounded moving-crest compression. [Plan, implementation, actual captures and remaining visual failures](MAELSTROM-ROCK-BASIN-PLAN.md).

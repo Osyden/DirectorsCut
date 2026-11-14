@@ -67,7 +67,7 @@ ADCMaelstrom::ADCMaelstrom()
 	Cliffs->SetupAttachment(Arena);
 	Cliffs->SetMobility(EComponentMobility::Movable);
 	Cliffs->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	Cliffs->SetCastShadow(false);
+	Cliffs->SetCastShadow(true);
 	Tunnel = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("ExitTunnel"));
 	Tunnel->SetupAttachment(RootComponent);
 	for (UProceduralMeshComponent* Mesh : {Basin.Get(), Falls.Get(), Tunnel.Get(), RimLand.Get()})
@@ -290,7 +290,7 @@ float ADCMaelstrom::HeightAt(const FVector2D& Point, bool bWaves) const
     const float CenterHeight=BaseHeightAt(FVector2D(FMath::Cos(A),FMath::Sin(A))*RouteR);
     const float Channel=Across>=0.f
         ? 1.f-FMath::SmoothStep(17000.f*Width,33000.f*Width,Across)
-        : 1.f-FMath::SmoothStep(10000.f*Width,24000.f*Width,-Across);
+        : 1.f-FMath::SmoothStep(3500.f*Width,13000.f*Width,-Across);
     const float ChannelHeight=CenterHeight+DCMaelstromRoute::BankedHeight(Across,RouteT);
     Height=FMath::Lerp(Height,ChannelHeight,Lane*Channel);
     if (!bWaves) { return Height; }
@@ -307,6 +307,13 @@ float ADCMaelstrom::RimGroundHeight(float R, float Angle) const
 {
 	const float Ridge = 3000.f + 1800.f * FMath::Sin(Angle * 9.f) + 900.f * FMath::Sin(Angle * 23.f + R * 0.0001f);
 	return RimElevation(Angle) + FMath::Lerp(-1800.f, Ridge, FMath::SmoothStep(1.008f, 1.055f, R / GetRimRadius(Angle)));
+}
+
+TArray<ADCMaelstrom::FWaterfallContact> ADCMaelstrom::GetWaterfallContacts() const
+{
+	TArray<FWaterfallContact> Contacts;
+	for (const FWaterFeed& Feed : WaterFeeds) { Contacts.Add({Feed.Foot, Feed.Width}); }
+	return Contacts;
 }
 
 void ADCMaelstrom::BuildBasin()
@@ -849,7 +856,8 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
 				static float StageFog=.0045f;
                 static const bool HasStageFog=FParse::Value(FCommandLine::Get(),TEXT("DCStageFog="),StageFog);
                 Fog->SetFogDensity(FMath::Lerp(Fog->FogDensity, StageFog, Clear));
-				Fog->SetVolumetricFogDistance(FMath::Lerp(Saved.Distance, 400000.f, Clear));
+				// Atmosphere owns volumetric distance and restores its entry value.
+				// Do not change it before that actor captures a direct-seek entry.
 				if (!bReportedFog && Clear >= 1.f)
 				{
 					UE_LOG(LogDC, Log, TEXT("Maelstrom fog %s: density %.6f, second %.6f, falloff %.3f, baseZ %.0f"),
@@ -1522,8 +1530,7 @@ void ADCMaelstrom::UpdateView(float DeltaSeconds)
 		// Compose towards the crater, accounting for the ship's downhill pitch.
 		// A fixed -16 degree eye rotation stared into nearby water on the drop.
 		const FVector2D Ahead=DCMaelstromRoute::Point(FMath::Min(180.f,Elapsed+16.f),Radius);
-        // Look along the next bank, with the abyss still visible to port.
-        // Staring sideways at the centre hid the path under a pool-like horizon.
+        // Follow the bank with the lower basin visible beyond its inner edge.
         const FVector RouteFocus(Ahead,HeightAt(Ahead,false));
         const FVector Focus=GetArenaTransform().TransformPosition(RouteFocus*.82f+FVector(0.f,0.f,-Depth*.75f)*.18f);
 		const FRotator IntoCrater=(Focus-DesiredWorld).Rotation();
@@ -1562,7 +1569,7 @@ void ADCMaelstrom::RestoreAtmosphere()
 			Fog->SetWorldLocation(Saved.Location);
 			Fog->SetFogHeightFalloff(Saved.Falloff);
 			Fog->SetFogDensity(Saved.Density);
-			Fog->SetVolumetricFogDistance(Saved.Distance);
+			// Volumetric distance is restored by ADCMaelstromAtmosphere.
 		}
 	}
 	bAtmosphereAdjusted = false;

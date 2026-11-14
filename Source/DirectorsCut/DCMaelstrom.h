@@ -35,6 +35,9 @@ public:
 	float GetOverflowAmount(float Angle) const;
 	/** Actual lower shoreline in basin coordinates, for water-contact atmosphere. */
 	FVector GetShorelinePoint(float Angle) const;
+	struct FWaterfallContact { FVector Position; float Width; };
+	/** Generated waterfall feet in basin coordinates; atmosphere shares this layout. */
+	TArray<FWaterfallContact> GetWaterfallContacts() const;
 
 	UPROPERTY(EditAnywhere) float Radius = 160000.f;
 	UPROPERTY(EditAnywhere) float Depth = 90000.f;

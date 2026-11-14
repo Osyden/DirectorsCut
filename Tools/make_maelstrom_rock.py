@@ -60,7 +60,7 @@ float macro=sn.value(p*.018)*.65+sn.value(p*.071)*.35;
 float layers=sn.value(float3(p.xy*.012,p.z*.09+sn.value(p*.025)*4));
 float strata=.70+.30*smoothstep(.15,.65,layers);
 float3 stone=lerp(float3(.12,.14,.16),float3(.25,.265,.27),macro);
-return lerp(stone,(tx*w.x+ty*w.y+tz*w.z)*.65,.25)*strata*lerp(1,.48,Wet);
+return lerp(stone,(tx*w.x+ty*w.y+tz*w.z)*.65,.40)*strata*lerp(1,.48,Wet);
 ''',unreal.CustomMaterialOutputType.CMOT_FLOAT3,inputs)
 output(color,unreal.MaterialProperty.MP_BASE_COLOR)
 detail=custom(noise+r'''
@@ -68,7 +68,12 @@ float2 x=Texture2DSample(RockNormal,RockNormalSampler,p.yz/5).xy*2-1;
 float2 y=Texture2DSample(RockNormal,RockNormalSampler,p.xz/5).xy*2-1;
 float2 z=Texture2DSample(RockNormal,RockNormalSampler,p.xy/5).xy*2-1;
 float3 g=float3(0,x.x,x.y)*w.x+float3(y.x,0,y.y)*w.y+float3(z.x,z.y,0)*w.z;
-float3 n=normalize(N); return normalize(n+(g-n*dot(g,n))*.65);
+float2 mx=Texture2DSample(RockNormal,RockNormalSampler,p.yz/18).xy*2-1;
+float2 my=Texture2DSample(RockNormal,RockNormalSampler,p.xz/18).xy*2-1;
+float2 mz=Texture2DSample(RockNormal,RockNormalSampler,p.xy/18).xy*2-1;
+float3 medium=float3(0,mx.x,mx.y)*w.x+float3(my.x,0,my.y)*w.y+float3(mz.x,mz.y,0)*w.z;
+g=g*.65+medium*.35;
+float3 n=normalize(N); return normalize(n+g-n*dot(g,n));
 ''',unreal.CustomMaterialOutputType.CMOT_FLOAT3,inputs)
 to_world=node(unreal.MaterialExpressionTransform)
 to_world.set_editor_property('transform_source_type',unreal.MaterialVectorCoordTransformSource.TRANSFORMSOURCE_LOCAL)

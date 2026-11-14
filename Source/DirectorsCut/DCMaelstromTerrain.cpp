@@ -13,12 +13,18 @@ FVector ADCMaelstrom::GetShorelinePoint(float Angle) const
 
 float ADCMaelstrom::WaterfallAngle(int32 Index) const
 {
-    return -UE_PI+(Index+.5f)*UE_TWO_PI/WaterfallCount+.025f*FMath::Sin(Index*2.73f);
+    // Nine drainage notches with unequal spacing: three groups separated by
+    // hundreds of metres of exposed rock. Periodic falls make a vast crater
+    // read as a garden fountain, whatever its world-space dimensions.
+    static const float Angles[]={-2.77f,-2.63f,-1.81f,-.93f,-.82f,.12f,1.09f,1.24f,2.35f};
+    return Index<UE_ARRAY_COUNT(Angles) ? Angles[Index] : 0.f;
 }
 
 float ADCMaelstrom::WaterfallWidth(int32 Index) const
 {
-    return Index%5==0 ? 5000.f : 1400.f+2400.f*(.5f+.5f*FMath::Sin(Index*73.1f));
+    // Half-width in cm; distant falls must be fine features against a 3.2km rim.
+    static const float Widths[]={1700.f,600.f,1100.f,2200.f,700.f,950.f,1600.f,550.f,1250.f};
+    return Index<UE_ARRAY_COUNT(Widths) ? Widths[Index] : 0.f;
 }
 
 float ADCMaelstrom::WaterEdgeRadius(float Angle) const
@@ -42,33 +48,41 @@ float ADCMaelstrom::CliffHeightAt(const FVector2D& P) const
     const FVector2D D=P/FMath::Max(R,1.f);
     const float WaterZ=HeightAt(D*Toe,false)-650.f;
     const float Ridge=RimGroundHeight(Rim,A);
-    // A steep, connected escarpment with buttresses, incised gullies and
-    // fractured ledges. It is land, not a displaced water sheet.
-    const float Buttress=FMath::PerlinNoise2D(P/12500.f+FVector2D(11,3));
-    const float Profile=FMath::Pow(U,FMath::Clamp(.70f+Buttress*.22f,.48f,.92f));
-    const float Band=FMath::SmoothStep(0.f,.045f,U)*(1.f-FMath::SmoothStep(.80f,1.f,U));
-    const FVector2D Warp=P+FVector2D(
-        FMath::PerlinNoise2D(P/17000.f),FMath::PerlinNoise2D(P/19000.f+FVector2D(31,7)))*4500.f;
-    const float Fracture=7500.f*FMath::PerlinNoise2D(Warp/12500.f)
-        +1200.f*FMath::PerlinNoise2D(Warp/3700.f+FVector2D(13,27))
-        +250.f*FMath::PerlinNoise2D(Warp/1200.f+FVector2D(5,9));
-    float Cliff=FMath::Lerp(WaterZ,Ridge,Profile)+Fracture*Band;
-    // Shared waterfall notches: carve receiving gullies below the airborne
-    // water, instead of laying white material over every rock protrusion.
-    const int32 Near=FMath::FloorToInt((A+UE_PI)*WaterfallCount/UE_TWO_PI);
-    for(int32 J=-1;J<=1;++J)
+    // Broken geological benches rather than full-height inflated flutes.
+    // Each formation has a different shoulder and width, with an unbroken
+    // low talus connecting the face to its submerged toe.
+    const float Fault=FMath::PerlinNoise2D(D*5.f+FVector2D(2,13));
+    const float LocalFault=FMath::PerlinNoise2D(D*13.f+FVector2D(U*3.f,7));
+    const float Shift=Fault*.065f+LocalFault*.025f;
+    const float Profile=.28f*U
+        +.21f*FMath::SmoothStep(.12f+Shift,.29f+Shift,U)
+        +.26f*FMath::SmoothStep(.34f-Shift,.54f-Shift,U)
+        +.25f*FMath::SmoothStep(.63f+Shift,.87f+Shift,U);
+    const float Band=FMath::SmoothStep(0.f,.09f,U)*(1.f-FMath::SmoothStep(.84f,1.f,U));
+    const FVector2D Warp=P+D*(FMath::PerlinNoise2D(P/26000.f)*2400.f);
+    const float Fracture=2400.f*FMath::PerlinNoise2D(Warp/14500.f+FVector2D(3,17))
+        +1500.f*FMath::PerlinNoise2D(Warp/5200.f+FVector2D(13,27))
+        +450.f*FMath::PerlinNoise2D(Warp/1700.f+FVector2D(5,9));
+    const float BenchPosition=.35f+.22f*FMath::PerlinNoise2D(D*8.f+FVector2D(11,3));
+    const float Bench=1500.f*FMath::SmoothStep(BenchPosition-.06f,BenchPosition,U)
+        *(1.f-FMath::SmoothStep(BenchPosition+.05f,BenchPosition+.14f,U));
+    float Cliff=FMath::Lerp(WaterZ,Ridge,Profile)+(Fracture+Bench)*Band;
+    // Carve only actual drainage channels; inactive entries do not cut gullies.
+    // Locations are irregular now, so a nearest periodic-cell lookup is invalid.
+    for(int32 Index=0;Index<WaterfallCount;++Index)
     {
-        const int32 Index=(Near+J+WaterfallCount)%WaterfallCount;
+        const float Width=WaterfallWidth(Index);
+        if(Width<=0.f) { continue; }
         const float Along=FMath::Abs(FMath::UnwindRadians(A-WaterfallAngle(Index)))*R;
-        const float Gully=1.f-FMath::SmoothStep(WaterfallWidth(Index)*1.2f,WaterfallWidth(Index)*2.4f,Along);
+        const float Gully=1.f-FMath::SmoothStep(Width*1.5f,Width*3.5f,Along);
         const float FallBed=FMath::Lerp(WaterZ+650.f,Ridge,2.f*U-U*U)-3500.f;
         Cliff=FMath::Lerp(Cliff,FMath::Min(Cliff,FallBed),Gully*FMath::SmoothStep(0.f,.06f,U));
     }
     if(R<=Rim) { return Cliff; }
     const float Outer=FMath::Clamp((R-Rim)/(Radius*.24f),0.f,1.f);
-    const float Spines=1.f-FMath::Abs(FMath::PerlinNoise2D(P/21000.f+FVector2D(3,21)));
+    const float Spines=FMath::Abs(FMath::PerlinNoise2D(D*9.f+FVector2D(Outer*.6f,21.f)));
     return RimGroundHeight(R,A)+FMath::SmoothStep(.20f,.60f,Outer)
-        *(3500.f+12500.f*Spines*Spines+2800.f*FMath::PerlinNoise2D(P/6500.f));
+        *(4500.f+18500.f*Spines+1200.f*FMath::PerlinNoise2D(P/9000.f));
 }
 
 void ADCMaelstrom::BuildTerrain()
@@ -108,6 +122,8 @@ void ADCMaelstrom::BuildTerrain()
         UInstancedStaticMeshComponent* Rocks=NewObject<UInstancedStaticMeshComponent>(this);
         Rocks->SetMobility(EComponentMobility::Movable);
         Rocks->SetupAttachment(Arena); Rocks->SetStaticMesh(Mesh);
+        // Preserve authored rock materials; substrate vertex wetness and local
+        // texture coordinates are not valid for scaled static-mesh instances.
         Rocks->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         Rocks->SetCastShadow(false); Rocks->RegisterComponent(); CliffRocks.Add(Rocks);
         UInstancedStaticMeshComponent* Shadows=NewObject<UInstancedStaticMeshComponent>(this);
@@ -117,18 +133,23 @@ void ADCMaelstrom::BuildTerrain()
         Shadows->SetCastShadow(true); Shadows->RegisterComponent(); CliffShadowRocks.Add(Shadows);
         const FBox Box=Mesh->GetBoundingBox();
         const float Extent=FMath::Max3(Box.GetSize().X,Box.GetSize().Y,Box.GetSize().Z);
-        for(int32 Rock=0;Rock<45;++Rock)
+        for(int32 Rock=0;Rock<96;++Rock)
         {
-            const float A=Random.FRandRange(-UE_PI,UE_PI);
+            // Small, deeply embedded clusters follow a common fracture plane.
+            // No isolated 160m boulders perched on otherwise featureless slopes.
+            const int32 Cluster=Rock/6;
+            const float ClusterA=-UE_PI+UE_TWO_PI*FMath::Frac(Cluster*.61803399f+.17f);
+            const float A=ClusterA+Random.FRandRange(-.012f,.012f);
             const float Edge=WaterEdgeRadius(A),Rim=GetRimRadius(A);
             if(Edge>Rim*.94f) { continue; } // keep the incoming river clear
-            const float R=FMath::Lerp(Edge+3500.f,Rim*1.03f,FMath::Pow(Random.FRand(),1.5f));
+            const float ClusterU=.18f+.66f*FMath::Frac(Cluster*.381966f+.23f);
+            const float R=FMath::Lerp(Edge+3500.f,Rim*1.03f,FMath::Clamp(ClusterU+Random.FRandRange(-.08f,.08f),.08f,.95f));
             const FVector2D P(FMath::Cos(A)*R,FMath::Sin(A)*R);
-            const float Size=Random.FRandRange(5000.f,16000.f),Scale=Size/FMath::Max(Extent,1.f);
+            const float Size=Random.FRandRange(800.f,4500.f),Scale=Size/FMath::Max(Extent,1.f);
             bool InWaterfall=false;
             for(int32 Fall=0;Fall<WaterfallCount;++Fall)
             {
-                if(FMath::Abs(FMath::UnwindRadians(A-WaterfallAngle(Fall)))*R<WaterfallWidth(Fall)*1.6f+Size*.5f)
+                if(WaterfallWidth(Fall)>0.f && FMath::Abs(FMath::UnwindRadians(A-WaterfallAngle(Fall)))*R<WaterfallWidth(Fall)*2.f+Size*.65f)
                 { InWaterfall=true; break; }
             }
             if(InWaterfall) { continue; }
@@ -136,8 +157,8 @@ void ADCMaelstrom::BuildTerrain()
             const float ProtectedRadius=Radius*DCMaelstromRoute::RadialFraction(RouteT)
                 +13000.f*DCMaelstromRoute::WidthScale(RouteT);
             if(RouteT<180.f && R-Size*.9f<ProtectedRadius) { continue; }
-            const FRotator Rotation(Random.FRandRange(-20.f,20.f),FMath::RadiansToDegrees(A)+Random.FRandRange(-70.f,70.f),Random.FRandRange(-25.f,25.f));
-            const FVector Foot(Box.GetCenter().X,Box.GetCenter().Y,Box.Min.Z+Box.GetSize().Z*.35f);
+            const FRotator Rotation(Random.FRandRange(-12.f,12.f),FMath::RadiansToDegrees(ClusterA)+Random.FRandRange(-12.f,12.f),Random.FRandRange(-10.f,10.f));
+            const FVector Foot(Box.GetCenter().X,Box.GetCenter().Y,Box.Min.Z+Box.GetSize().Z*.68f);
             const FVector Location=FVector(P,CliffHeightAt(P))-Rotation.RotateVector(Foot*Scale);
             Rocks->AddInstance(FTransform(Rotation,Location,FVector(Scale)));
         }

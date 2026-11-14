@@ -101,37 +101,18 @@ void ADCMaelstromAtmosphere::BuildLayout(ADCMaelstrom* Stage)
 {
 	FRandomStream Random(71391);
 	const FTransform Arena = Stage->GetArenaTransform();
-	// Sample potential channels densely, then choose separated strong falls.
-	struct FCandidate { float Angle; float Strength; };
-	TArray<FCandidate> Candidates;
-	for (int32 Index = 0; Index < 96; ++Index)
+	// Mist is generated from the same actual contacts as the cliff falls. The
+	// former rim overflow mask no longer describes the exposed-rock coastline.
+	for (const ADCMaelstrom::FWaterfallContact& Contact : Stage->GetWaterfallContacts())
 	{
-		const float Angle = UE_TWO_PI * (Index + 0.37f) / 96.f;
-		if (FMath::Abs(FMath::UnwindRadians(Angle - UE_PI)) < 0.9f) { continue; }
-		const float Overflow = Stage->GetOverflowAmount(Angle);
-		if (Overflow > 0.25f) { Candidates.Add({Angle, Overflow * FMath::Sqrt(Stage->GetRimDrop(Angle))}); }
-	}
-	Candidates.Sort([](const FCandidate& A, const FCandidate& B) { return A.Strength > B.Strength; });
-	for (const FCandidate& Candidate : Candidates)
-	{
-		bool bNearOther = false;
-		for (const FPlume& Other : Plumes)
-		{
-			if (FMath::Abs(FMath::UnwindRadians(Other.Angle - Candidate.Angle)) < 0.26f) { bNearOther = true; break; }
-		}
-		if (bNearOther) { continue; }
 		FPlume Plume;
-		Plume.Angle = Candidate.Angle;
-		const float FootR = Stage->GetRimRadius(Plume.Angle) * (Stage->GetRimJoin(Plume.Angle) - 0.02f);
-		FVector FootWorld = Arena.TransformPosition(FVector(FMath::Cos(Plume.Angle) * FootR, FMath::Sin(Plume.Angle) * FootR, 0.f));
-		FootWorld.Z = Stage->SampleSurfaceWorld(FootWorld);
-		Plume.Foot = Arena.InverseTransformPosition(FootWorld);
-		Plume.Height = FMath::Clamp(Stage->GetRimDrop(Plume.Angle) * Random.FRandRange(0.60f, 0.82f), 9000.f, 22000.f);
-		Plume.Width = Plume.Height * Random.FRandRange(0.90f, 1.25f);
+		Plume.Angle = FMath::Atan2(Contact.Position.Y, Contact.Position.X);
+		Plume.Foot = Contact.Position;
+		Plume.Height = FMath::Clamp(Contact.Width * Random.FRandRange(1.8f, 2.8f), 1500.f, 5500.f);
+		Plume.Width = Plume.Height * Random.FRandRange(.65f, .95f);
 		Plume.Seed = Random.FRand();
-		Plume.Density = FMath::Lerp(0.65f, 1.f, Stage->GetOverflowAmount(Plume.Angle));
+		Plume.Density = Random.FRandRange(.30f,.55f);
 		Plumes.Add(Plume);
-		if (Plumes.Num() >= 14) { break; }
 	}
 	for (int32 Index = 0; Index < Plumes.Num(); ++Index)
 	{
@@ -160,9 +141,9 @@ void ADCMaelstromAtmosphere::BuildLayout(ADCMaelstrom* Stage)
 		{
 			const FVector LowOffset = Inward * P.Height * 1.75f + Tangent * P.Height * (P.Seed - 0.5f);
 			FVector LowWorld = Arena.TransformPosition(P.Foot + LowOffset);
-			LowWorld.Z = Stage->SampleSurfaceWorld(LowWorld) + 2800.f;
+			LowWorld.Z = Stage->SampleSurfaceWorld(LowWorld) + P.Height * .18f;
 			AddFogLobe({Index, Arena.InverseTransformPosition(LowWorld) - P.Foot,
-				FMath::Clamp(P.Height * 1.1f, 15000.f, 25000.f), P.Density * 0.18f, true});
+				FMath::Clamp(P.Height * 1.1f, 3500.f, 7500.f), P.Density * 0.18f, true});
 		}
 	}
 	BuildSpray();

@@ -350,9 +350,15 @@ foam_code = NOISE + FLOW + r"""
 float shelf=saturate(Flatten)*(1-smoothstep(1200,3500,length(P.xy*float2(.5,2))));
 float transported=lerp(Source0.r,Source1.r,blend);
 // Fresh narrow lip plus a trailing source which loses bubbles as it travels.
-float ageFade=lerp(exp(-phase*3.0),exp(-phase2*3.0),blend);
-float source=lerp(VC.r,max(VC.r*.30,transported*ageFade),saturate(SourceAvailable));
-float crest=smoothstep(.12,.62,source)*(1-shelf);
+float ageFade=lerp(exp(-phase*1.5),exp(-phase2*1.5),blend);
+float fresh=max(VC.r,ImpactSource.r*.85);
+float source=lerp(VC.r,max(fresh,transported*ageFade),saturate(SourceAvailable));
+float crest=smoothstep(.055,.48,source)*(1-shelf*.65);
+// Blue stores foam left behind breaking fronts. The source is produced by
+// following the same spiral current as the shader, independently of height.
+// Bubbles survive after a crest collapses rather than disappearing with it.
+float wake=max(ImpactSource.b*.60,lerp(Source0.b,Source1.b,blend)*ageFade)
+    *saturate(SourceAvailable)*(1-saturate(Tunnel));
 // Long torn filaments follow the current. A thin crest sheds a sparse wake;
 // broad positive wave heights never become filled white islands.
 // Use a FIXED planar basis for texture coordinates. Dotting absolute q
@@ -361,7 +367,7 @@ float crest=smoothstep(.12,.62,source)*(1-shelf);
 // supplies the local circular movement without that coordinate singularity.
 float2 direction=normalize(flow+float2(.001,0));
 float n=lerp(wn.streak(q,direction),wn.streak(q2,direction),blend);
-float thread=smoothstep(.50,.66,n);
+float thread=smoothstep(.40,.61,n);
 float fine=lerp(wn.noise(q*.9),wn.noise(q2*.9),blend);
 float wave=lerp(wn.waves(q,T),wn.waves(q2,T),blend);
 float cap=smoothstep(.34,.60,wave)*(1-smoothstep(45000.0,180000.0,length(P-Cam)))
@@ -369,7 +375,7 @@ float cap=smoothstep(.34,.60,wave)*(1-smoothstep(45000.0,180000.0,length(P-Cam))
 float supply=saturate(Overflow)*Supply*smoothstep(.92,.99,VC.g);
 float torn=lerp(wn.fbm(q*float2(.17,.23)),wn.fbm(q2*float2(.17,.23)),blend);
 float breakup=smoothstep(.43,.64,torn);
-float impact=max(ImpactSource.g*.85,lerp(Source0.g,Source1.g,blend)*ageFade)*saturate(SourceAvailable);
+float impact=max(ImpactSource.g,lerp(Source0.g,Source1.g,blend)*ageFade)*saturate(SourceAvailable);
 float movingLip=lerp(wn.breaking_field(q,T).w,wn.breaking_field(q2,T).w,blend)
     *(1-smoothstep(160000.0,400000.0,length(P-Cam)))*(1-saturate(Tunnel));
 // Small aerated streaks on the fast banks, present at their real metre scale
@@ -383,15 +389,20 @@ float patch=lerp(wn.fbm((q+warp0*32)*.043+5.1),wn.fbm((q2+warp1*32)*.043+5.1),bl
 // on the far bank. This is screen-footprint filtering, not larger far waves.
 float pixelMeters=max(length(ddx(delta)),length(ddy(delta)));
 float resolvedFoam=1-smoothstep(.8,3.5,pixelMeters);
-float aeration=lerp(.22,smoothstep(.43,.59,rush),resolvedFoam)*smoothstep(.36,.62,patch)*steep;
-float body=crest*breakup+cap*.75*thread+supply*.10*thread
-    +impact*(.08+.92*breakup)*(.08+.92*thread)+movingLip*.50*breakup+aeration*.80;
-float veil=thread*.08*smoothstep(.4,.7,fine)*smoothstep(.35,.7,torn)*max(crest,cap);
+float aeration=lerp(.32,smoothstep(.40,.56,rush),resolvedFoam)*smoothstep(.29,.58,patch)*steep;
+// Keep dark holes inside coherent rafts. Multiplying five independent masks
+// previously erased almost all coverage and left isolated painted crescents.
+float raft=smoothstep(.32,.62,torn);
+float filaments=lerp(.42,thread,resolvedFoam);
+float loose=(wake*.85+impact*.95)*lerp(.22,1.0,raft)*(.35+.65*filaments);
+float front=crest*(.30+.70*breakup)+movingLip*.65*(.35+.65*breakup);
+float body=1-exp(-(front+loose+cap*.50*thread+aeration*.70+supply*.10*thread)*1.6);
+float veil=filaments*.08*smoothstep(.35,.65,torn)*max(wake,impact);
 float lace=smoothstep(.35,.70,fine);
 """
 if foam_texture:
     foam_code += "float cells=lerp(Cells0.r,Cells1.r,blend); lace=smoothstep(.025,.24,cells);\n"
-foam_code += "float bubbles=lerp(wn.noise(q*.73),wn.noise(q2*.73),blend); lace*=smoothstep(.30,.64,bubbles); lace=lerp(.32,lace,resolvedFoam); return saturate((body*lace*1.35+veil)*Coverage*(1-shelf*.8));"
+foam_code += "float bubbles=lerp(wn.noise(q*.73),wn.noise(q2*.73),blend); lace*=smoothstep(.22,.58,bubbles); lace=lerp(.62,.35+.65*lace,resolvedFoam); return saturate((body*lace+veil)*Coverage*(1-shelf*.35));"
 foam = custom(water, foam_code, FLOAT, foam_inputs)
 source_foam=foam
 if fft_foam:
