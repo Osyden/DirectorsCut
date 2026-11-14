@@ -2,7 +2,7 @@
 
 User authorized recurring visual improvement and parallel workers. The Codex app heartbeat `directorscut-crater-visual-iterations` is active every 30 minutes in the existing maelstrom chat. This is implementation work with actual render review, not status polling. Latest user feedback takes precedence.
 
-Latest completed continuation: [inlet seam, inner-flow regularity, rendered cliff contact and fitted waterfall review](CRATER-SEAMS-FITTED-FALLS-14NOV.md). The giant triangle and inner star pinch described in the older C review below have been corrected; waterfall quality and the broad banks remain unfinished.
+Latest completed continuation: [supported shoreline, first waterfall contact, lit cascade shading and corrected original VDB](CRATER-WATER-CONTACT-14NOV.md). The false 6.6–16.4 m submerged side entry and upward terminal curl are corrected; actual captures still reject the ledge-following stripe. [Previous inlet/inner-flow corrections](CRATER-SEAMS-FITTED-FALLS-14NOV.md) remain intact. The scene is still far from the reference.
 
 ## Ownership and priorities
 
@@ -67,7 +67,7 @@ Pass B entry/descent/exit captures completed and cleared both prototype volume a
 
 ## Next scheduled passes
 
-1. Use the latest seam/fitted-falls handoff, not the older C defect list. Preserve the now-corrected inlet seam and finite inner flow. Resolve the close cliff's blocky planes and physically implausible water wrapping around ledges. Do not hide defects under more fog.
-2. The volume now follows an exported cliff segment, but the receiving-water dip/curl and weak mist-like appearance are not accepted. Trim at the first valid water contact, align impact and foam there, and introduce short detached falling reaches. Only then consider multiple independently phased falls.
+1. Use the latest water-contact handoff, not the older C defect list. Preserve the corrected inlet seam, finite inner flow and supported receiving-water join. Resolve the close cliff's oversized blocky ledges: compare vertical fracture/erosion shapes at actual metre scales in both a wide ship view and close view. Do not hide defects under more fog.
+2. First covered contact and dip/curl are now corrected and measured. Introduce one hero feed with short genuinely detached falling reaches; share the authoritative path/cross-sections between its mesh and VDB export, and remove the bypassed attached triangles. The latest handoff specifies collision/landing checks. Re-export after any cliff change. Validate native volume visibility/placement separately from the existing atmosphere and core before multiplying weak mist across the crater.
 3. Resolve remaining smooth, large white foam patches and the broad hydraulic-bank geometry. The outer shoulder is about 24 m tall/65 m half-width; material tuning alone cannot remove that silhouette. Compare displacement and pixel-normal amplitudes before globally weakening wave detail.
 4. Review continuous deck-camera motion, steering and entry/exit. Measure performance in a dedicated run without another chat using the GPU; current sparse samples are not a benchmark.

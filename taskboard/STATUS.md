@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov Codex scheduled continuation: waterfall contact and supported shoreline
+
+- Found that the cliff toe let waterfalls enter the finite basin 6.6–16.4 m underwater. Corrected the actual low rock/water join and trimmed each branch at first covered contact; removed the terminal upward curl. All nine production geometry/core contacts now pass, with a reproducible source-extracting probe. [Evidence, captures and remaining visual failures](CRATER-WATER-CONTACT-14NOV.md).
+- Waterfall shading now has lit liquid/aerated variation, stable downstream motion and small normal detail. Fitted VDB generation respects water coverage and first contact, and a corrected source-8 cache imports successfully. It remains opt-in: the actual close render still exposes a waterfall glued to oversized shelves and weak volume detail. Shared detached/freefall paths and better cliff shapes are next; this is not visual sign-off.
+- Editor/Game builds, four engine tests, both CPU probes, generated-cache checks and actual wide/close reviews pass. Crater dimensions, route, temples and sky/cloud/light code retained. Existing VSM marking overflow remains. Own branch only; no main merge/package.
+
 ## 14 Nov Codex scheduled continuation: inlet and water-flow artifacts corrected
 
 - Fixed the angular shoreline discontinuity behind the inlet: the largest sampled neighboring mesh edge drops from 785 m to 12.5 m, retaining 35 m steering clearance. Replaced the singular inner texture backtrace; matched beauty/normal renders confirm the giant stretched triangle and star pinch are gone. [Evidence, captures and next work](CRATER-SEAMS-FITTED-FALLS-14NOV.md).
