@@ -10,6 +10,8 @@
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/Pawn.h"
 #include "DCMaelstromRoute.h"
+#include "DCCliffGenerator.h"
+#include "ProceduralMeshComponent.h"
 #include "Dom/JsonObject.h"
 #include "Serialization/JsonSerializer.h"
 #include "Serialization/JsonWriter.h"
@@ -72,20 +74,36 @@ void ADCMaelstrom::UpdateProceduralFalls()
             // the same yaw-only, physical-centimetre frame as the runtime SVT.
             const FTransform LocalFrame(FRotator(0.f, Yaw, 0.f), Origin);
             const float Angle = FMath::Atan2(Feed.Lip.Y, Feed.Lip.X);
+            const FProcMeshSection* CliffSection = Cliffs ? Cliffs->GetProcMeshSection(0) : nullptr;
+            if (!CliffSection || CliffSection->ProcVertexBuffer.Num() != (DCCliffGenerator::MeshSectors + 1) * (DCCliffGenerator::MeshRows + 1))
+            {
+                UE_LOG(LogTemp, Warning, TEXT("DC_WATERFALL_PROFILE rendered cliff section unavailable"));
+                return;
+            }
+            auto VertexAt = [CliffSection](int32 Side, int32 Row)
+            { return CliffSection->ProcVertexBuffer[Row * (DCCliffGenerator::MeshSectors + 1) + Side].Position; };
+            auto CorePoint = [&](float U, float Across)
+            {
+                const float V = .84f * (1.f - U);
+                const FVector Center = DCCliffGenerator::SampleRenderedSurface(Angle, V, VertexAt);
+                const float SampleAngle = Angle + Across / FMath::Max(Center.Size2D(), 1.0);
+                FVector P = DCCliffGenerator::SampleRenderedSurface(SampleAngle, V, VertexAt)
+                    + DCCliffGenerator::WaterContactOffset(SampleAngle);
+                return FMath::Lerp(P, Feed.Foot + LocalFrame.TransformVectorNoScale(FVector(Across, 0, 40)),
+                    FMath::SmoothStep(.94f, 1.f, U));
+            };
             TArray<FVector> Complete;
             constexpr int32 Samples = 512;
             for (int32 I = 0; I <= Samples; ++I)
             {
                 const float U = static_cast<float>(I) / Samples;
-                FVector P = CliffSurfacePoint(Angle, .84f * (1.f - U));
-                P += Inward * 180.f + FVector(0.f, 0.f, 60.f);
-                P = FMath::Lerp(P, Feed.Foot + FVector(0.f, 0.f, 40.f), FMath::SmoothStep(.94f, 1.f, U));
-                Complete.Add(P);
+                Complete.Add(CorePoint(U, 0));
             }
             float LowerHeight = 8000.f;
             FParse::Value(FCommandLine::Get(), TEXT("DCWaterfallProfileHeight="), LowerHeight);
             const float CutZ = Feed.Foot.Z + FMath::Max(100.f, LowerHeight);
             TArray<FVector> Lower;
+            TArray<float> LowerU;
             for (int32 I = 0; I < Complete.Num(); ++I)
             {
                 if (Lower.IsEmpty() && Complete[I].Z > CutZ) { continue; }
@@ -93,8 +111,10 @@ void ADCMaelstrom::UpdateProceduralFalls()
                 {
                     const float Blend = (Complete[I - 1].Z - CutZ) / FMath::Max(.01, Complete[I - 1].Z - Complete[I].Z);
                     Lower.Add(FMath::Lerp(Complete[I - 1], Complete[I], Blend));
+                    LowerU.Add((I - 1.f + Blend) / Samples);
                 }
                 Lower.Add(Complete[I]);
+                LowerU.Add(static_cast<float>(I) / Samples);
             }
             if (Lower.Num() >= 2)
             {
@@ -122,6 +142,25 @@ void ADCMaelstrom::UpdateProceduralFalls()
                 }
                 Profile->SetArrayField(TEXT("samples_local_cm"), Points);
                 Profile->SetNumberField(TEXT("path_length_cm"), PathLength);
+                // Nine lateral tracks preserve local ledges and creases across
+                // the source width instead of extruding one centreline through
+                // adjacent rock. They use the identical rendered-triangle query.
+                TArray<TSharedPtr<FJsonValue>> Offsets, CrossSections;
+                for (int32 X = 0; X < 9; ++X)
+                { Offsets.Add(MakeShared<FJsonValueNumber>(Feed.Width * (X / 4.f - 1.f))); }
+                for (float U : LowerU)
+                {
+                    TArray<TSharedPtr<FJsonValue>> Section;
+                    for (int32 X = 0; X < 9; ++X)
+                    {
+                        Section.Add(MakeShared<FJsonValueArray>(FallVectorJson(LocalFrame.InverseTransformPosition(
+                            CorePoint(U, Feed.Width * (X / 4.f - 1.f))))));
+                    }
+                    CrossSections.Add(MakeShared<FJsonValueArray>(Section));
+                }
+                Profile->SetArrayField(TEXT("cross_offsets_cm"), Offsets);
+                Profile->SetArrayField(TEXT("cross_sections_local_cm"), CrossSections);
+                Profile->SetStringField(TEXT("surface_contract"), TEXT("rendered cliff triangles; inward180cm; no vertical lift; last6percent contact blend"));
                 // Surface samples, not a horizontal impact plane: the local
                 // receiving water slopes into the spiral and changes across it.
                 constexpr int32 GridCount = 25;
