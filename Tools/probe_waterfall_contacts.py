@@ -145,7 +145,6 @@ def main():
     parser.add_argument("--engine", type=pathlib.Path, default=pathlib.Path("E:/Utilities/UE_5.8"))
     parser.add_argument("--vcvars", type=pathlib.Path, default=pathlib.Path("C:/Program Files/Microsoft Visual Studio/2022/Professional/VC/Auxiliary/Build/vcvars64.bat"))
     parser.add_argument("--baseline", help="Probe a 7-40 character Git commit hash instead of working source")
-    parser.add_argument("--output", type=pathlib.Path, help="Generated harness/results directory (default: Saved/GeometryProbe/WaterfallContacts)")
     args = parser.parse_args()
     if args.baseline and not re.fullmatch(r"[0-9a-fA-F]{7,40}", args.baseline):
         parser.error("--baseline must be a Git commit hash")
@@ -186,7 +185,7 @@ def main():
         code += block(whitewater, "FVector ADCMaelstrom::SampleWaterfallCorePoint")
     code += block(read("Source/DirectorsCut/DCMaelstromBreakers.cpp"), "float ADCMaelstrom::BreakerHeight")
     code += MAIN
-    out = args.output or root / "Saved/GeometryProbe/WaterfallContacts"
+    out = root / "Saved/GeometryProbe/WaterfallContacts"
     out.mkdir(parents=True, exist_ok=True)
     cpp, exe = out / "waterfall_contacts.cpp", out / "waterfall_contacts.exe"
     cpp.write_text(code, encoding="utf-8")

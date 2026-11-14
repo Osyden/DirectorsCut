@@ -127,27 +127,17 @@ namespace DCCliffGenerator
         {
             const float H0=Hash(I,J*7+13,Period),H1=Hash(I,J*7+29,Period),H2=Hash(I,J*7+43,Period);
             const float DX=X-(I+.18f+.64f*H0),DY=Y-(J+.18f+.64f*H1);
-            // Unequal extents and joint inclinations avoid a repeating course
-            // of similar blocks. These remain bounded intersecting planes.
-            const float Width=.32f+.53f*H1,Height=.34f+.66f*H2;
+            const float Width=.46f+.30f*H1,Height=.48f+.28f*H2;
             // Intersections of three oblique planes form actual rock fronts.
             // Their union is continuous but has sharp fractured arrises. No
             // bilinear or smooth-step blending rounds these into pillows.
-            const float Front=.38f+(H2-.5f)*.75f*DX+(H0-.5f)*.36f*DY;
-            const float Side=1.f-FMath::Abs(DX+(H2-.5f)*.65f*DY)/Width;
-            const float Cap=1.f-FMath::Abs(DY+(H0-.5f)*.55f*DX)/Height;
+            const float Front=.42f+(H2-.5f)*.45f*DX+(H0-.5f)*.50f*DY;
+            const float Side=1.f-FMath::Abs(DX+.16f*DY)/Width;
+            const float Cap=1.f-FMath::Abs(DY-.12f*DX)/Height;
             const float Solid=FMath::Max(0.f,FMath::Min(Front,FMath::Min(Side,Cap)));
-            Mass=FMath::Max(Mass,Solid*Amplitude*(.35f+.95f*H0));
+            Mass=FMath::Max(Mass,Solid*Amplitude*(.65f+.70f*H0));
         }
         return Mass;
-    }
-
-    inline float FractureExposure(float A,float T)
-    {
-        // Connected weathered versus freshly fractured regions, hundreds of
-        // metres wide. This controls real fracture depth, not painted noise;
-        // there is no repeated small-cell grid spanning the complete face.
-        return .12f+.88f*FMath::SmoothStep(-.30f,.25f,Facet(A+.013f,T*2.3f+1.7f,19));
     }
 
     inline FFaceRelief FaceRelief(float A,float T)
@@ -155,13 +145,9 @@ namespace DCCliffGenerator
         // The rejected 23-cell masses projected ~90m and put several hundred
         // metres of horizontal cap on each block. Tall, narrower fracture
         // volumes retain broken planes without turning the crater into shelves.
-        const float Buttresses=FractureMass(A,T,89,1.6f,1800.f);
-        // 15-60m face exposures must have several metres of true relief to
-        // survive the existing ~5-7m sampling. Submetre noise here only produced
-        // a smoothed clay slope; fine grain remains the material's job.
-        const float Exposure=FractureExposure(A,T);
-        const float Blocks=FractureMass(A+.0021f,T+.17f,227,6.3f,1900.f)*Exposure;
-        const float Chips=FractureMass(A+.0013f,T+.31f,509,19.f,700.f)*Exposure;
+        const float Buttresses=FractureMass(A,T,89,1.6f,2100.f);
+        const float Blocks=FractureMass(A+.0021f,T+.17f,227,6.3f,850.f);
+        const float Chips=FractureMass(A+.0013f,T+.31f,509,19.f,240.f);
         // Unequally spaced joints continue vertically across those volumes.
         // A V-shaped eroded cleft retreats into the rock; it is not another
         // horizontal band. Physical widths are roughly 15-25m on the far rim.
@@ -175,10 +161,7 @@ namespace DCCliffGenerator
             const float Drift=(H1-.5f)*.32f*(T-.5f)+.035f*FMath::Sin(T*5.f+H2*6.f);
             const float Distance=FMath::Abs(X-(I+.15f+.70f*H0+Drift));
             const float Cut=FMath::Max(0.f,1.f-Distance/(.08f+.10f*H2));
-            const float Start=.02f+.18f*H0,End=.58f+.42f*H2;
-            const float Reach=FMath::SmoothStep(Start,Start+.12f,T)
-                *(1.f-FMath::SmoothStep(End-.15f,End,T));
-            Erosion=FMath::Max(Erosion,Cut*(350.f+650.f*H1)*Reach);
+            Erosion=FMath::Max(Erosion,Cut*(350.f+650.f*H1));
         }
         return {-Buttresses-Blocks-Chips+Erosion,FMath::Clamp(Erosion/1000.f,0.f,1.f)};
     }
