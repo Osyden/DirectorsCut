@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 01:33 Claude: one order to the helmsman clears a waterspout
+
+- A helm order lasts 4 s. At the old rate that slid a spout about 36 m aside against a 38 m strike width, so one order did not reliably clear it. The helm now carries the ship across at 15 m a second in the maelstrom (was 11) and the spout's strike half-width is 26 m (was 38).
+- Checked through the real order path, not the test switch: "Finch, hard to port" given about 8 s after the spout rose, with the rigging loose, and the spout passed 32 m clear. (`-DCOrdersLate=Finch,_steady;Finch,_steady;Finch,_hard_to_port` from `-DCMaelstromStart=296`; the two "steady" orders are only there to delay the third.)
+- Not in the twelfth build.
+
 ## 14 Nov 01:22 Claude: twelfth build packaged and run: `2026-11-14_0116_26370c7_tunnel-lightning`
 
 - `Builds/2026-11-14_0116_26370c7_tunnel-lightning/Windows/DirectorsCut.exe`. Run from the exe at 1600x900: sheet lightning in the wall at 50.7 s, the portal at 56, flashes inside the tunnel at 60.9, 63.5 and 66.4 (the statues showing in the cloud), the city at 120 (68 to 112 fps; the 68 is the frame of a flash); from 296 s a detailed spout, the strike, the creature beaten on the clock (`-DCBossDiesAt=50` for the test) and its plume (67 to 87 fps).

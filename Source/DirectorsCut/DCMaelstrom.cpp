@@ -854,7 +854,7 @@ void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
 		}
 		if (Age > Tell) { T.Ahead -= Run * DeltaSeconds * Director->TimeScale; }
 		// The helm carries the ship across the current; seen from her deck the spout slides the other way.
-		T.Abeam -= HelmTurn * 1100.f * DeltaSeconds * Director->TimeScale;
+		T.Abeam -= HelmTurn * 1500.f * DeltaSeconds * Director->TimeScale;
 		const float Rise = FMath::SmoothStep(0.f, Tell, Age);
 		const float Gone = 1.f - FMath::SmoothStep(-26000.f, -9000.f, T.Ahead);
 		// It comes up the slope from the abyss, on a line a little to starboard of the bow, where the helm's view looks.
@@ -892,7 +892,7 @@ void ADCMaelstrom::UpdateTwisters(float DeltaSeconds)
 			if (UMaterialInstanceDynamic* M = T.SkirtMID.Get()) { M->SetScalarParameterValue(TEXT("Fog Density"), 2.2f * Rise * (1.f - Gone)); }
 		}
 		// Struck: the spout's core passes over the ship.
-		if (!T.bStruck && Age > Tell && FMath::Abs(T.Ahead) < 3000.f && FMath::Abs(T.Abeam) < 3800.f)
+		if (!T.bStruck && Age > Tell && FMath::Abs(T.Ahead) < 3000.f && FMath::Abs(T.Abeam) < 2600.f)
 		{
 			T.bStruck = true;
 			Director->DamageShip(5.f);
@@ -1041,7 +1041,7 @@ void ADCMaelstrom::UpdateBoulders(float DeltaSeconds)
 	{
 		FBoulder& B = Boulders[i];
 		// The helm carries the ship out from under it.
-		B.Fall.Y -= HelmTurn * 1100.f * DeltaSeconds * Director->TimeScale;
+		B.Fall.Y -= HelmTurn * 1500.f * DeltaSeconds * Director->TimeScale;
 		const float U = (Elapsed - B.ThrownAt) / Flight;
 		const FVector Where = FMath::Lerp(B.From, B.Fall, FMath::Clamp(U, 0.f, 1.f)) + FVector(0.f, 0.f, 4.f * Apex * U * (1.f - U));
 		if (AActor* A = B.Actor.Get()) { A->SetActorLocation(Where); A->SetActorRotation(FRotator(Elapsed * 200.f, Elapsed * 130.f, 0.f)); }
