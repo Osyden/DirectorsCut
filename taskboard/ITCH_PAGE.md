@@ -59,3 +59,16 @@ Unreal Engine 5.8, NVIDIA DLSS 4.5. Crew AI: whisper.cpp, llama.cpp (Qwen3.5-4B)
 ## AI disclosure
 
 The game's code, materials and tuning were written by AI coding agents (Claude Code, with Codex) under the direction of a human designer, during the jam. The crew in the game are driven by local AI models at runtime.
+
+## Suggested changes for the text above, 14 Nov (Claude; for the owner to take or leave)
+
+The page above describes Thursday's build. Against the build of 14 Nov, `2026-11-14_0235_0a152ce_guns-reach-down-slope`:
+
+- **The voyage paragraph.** There is no burning sea, no ghost ships (they are off) and no faces in the clouds (parked). What is there now, in order: open sea at sunset; a wall of storm cloud that grows on the horizon with lightning inside it and a tunnel through its foot; the tunnel, lit from within by lightning; drowned Atlantis in layered fog, with statues, temples and a sea that rises like a half-pipe either side of the channel; the sea rolling up into a tunnel of water and dropping away; and the maelstrom, where the creature's arms reach for the ship, waterspouts and burning stones come at her, its young swim in to board, and it is beaten when the clock runs out. A possible wording:
+
+  > The voyage is an eight-minute ride. Open sea at sunset. A wall of storm that grows out of nothing, with lightning in its belly and one way through. Drowned Atlantis in the fog: colossal statues, broken temples, a sea that climbs away on either hand. The water rolling up into a tunnel and dropping from under the keel. And at the end a maelstrom a mile wide, with something very large in the middle of it that throws waterspouts, fire and its own young at you until the storm takes it back.
+
+- **Quick orders.** Worth saying that in the maelstrom "hard to port" and "hard to starboard" are how you dodge: one order to the helmsman clears a waterspout.
+- **Disk space.** The build is now 7.7 GB, not about 6.
+- **Made with.** Add: Ultra Dynamic Sky, Dynamic Real Water, Clouds Tunnel Vdb Effects Pack Loop (one.studio2), Easy Fog, Ancient Ruins, Claw Kaiju, Sonniss GDC audio bundle. Check each licence's wording for store pages before publishing; I have not.
+- **Pictures.** Thirteen clean 4K frames without the HUD are in `E:\projects\directorscut\StoreShots\2026-11-14` (outside the repository); a contact sheet is in `taskboard/review/56-store-shots`.
