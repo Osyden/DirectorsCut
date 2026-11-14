@@ -24,7 +24,10 @@ struct FDCStation
 	EDCSide Side = EDCSide::None;
 	FVector Location = FVector::ZeroVector;
 	TWeakObjectPtr<ADCCrewMember> Operator;
+	TWeakObjectPtr<ADCCrewMember> AssignedGunner;
 	bool bPlayerOperated = false;
+	int32 GunIndex = INDEX_NONE;
+	bool bPlayerGun = true;
 };
 
 UENUM()
@@ -94,6 +97,7 @@ public:
 	ADCCrewMember* SpawnCrew(const FString& Name, const FLinearColor& Color, const FVector& Location);
 
 	int32 FindStation(EDCStationType Type, EDCSide Side) const;
+	int32 FindCrewGun(EDCSide Side, const FString& Name) const;
 	FDCStation* GetStation(int32 Index) { return Stations.IsValidIndex(Index) ? &Stations[Index] : nullptr; }
 	const TArray<FDCStation>& GetStations() const { return Stations; }
 	const TArray<TObjectPtr<ADCCrewMember>>& GetCrew() const { return Crew; }

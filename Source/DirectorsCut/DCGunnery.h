@@ -9,8 +9,8 @@ class UInstancedStaticMeshComponent;
 class ADCTreadmill;
 
 /**
- * The ship's guns. Player and crew both fire through here, so a broadside looks and behaves
- * the same whoever orders it: staggered shots, ballistic arcs, splash or hit at the far end.
+ * Individually assigned ship guns. Each trigger launches one ballistic cannonball
+ * from the moving barrel, with its own reload and water/solid impact.
  */
 UCLASS()
 class ADCGunnery : public AActor
@@ -27,22 +27,30 @@ public:
 	void Init(AActor* Ship, float InSeaLevelZ);
 	AActor* GetGunShip() const { return GunShip.Get(); }
 
-	/** Fire up to MaxGuns at a world position. Returns false while that side is reloading. */
+	/** Legacy test entry point; fires a single gun. */
 	bool FireBroadside(EDCSide Side, const FVector& Target, int32 MaxGuns, bool bPlayerVolley = false);
 	bool ResolveAim(EDCSide Side, const FVector& Origin, const FVector& Direction, FVector& OutTarget) const;
-	float GetReloadSeconds(EDCSide Side) const { return ReloadLeft[Side == EDCSide::Port ? 0 : 1]; }
+	int32 GetPlayerGun(EDCSide Side) const;
+	int32 GetGunCount() const { return Guns.Num(); }
+	EDCSide GetGunSide(int32 Gun) const;
+	FVector GetGunStation(int32 Gun) const;
+	FVector GetMuzzle(int32 Gun) const;
+	bool IsGunReady(int32 Gun) const;
+	bool FireGun(int32 Gun, const FVector& Target, bool bPlayer = false);
+	bool CanAimGun(int32 Gun, const FVector& Target) const;
+	bool FindCrewTarget(int32 Gun, FVector& OutTarget) const;
+	float GetReloadSeconds(EDCSide Side) const;
 	FString GetPlayerImpactLabel(EDCSide Side) const;
-	bool IsReady(EDCSide Side) const { return ReloadLeft[Side == EDCSide::Port ? 0 : 1] <= 0.f; }
-	float GetReloadFraction(EDCSide Side) const { return FMath::Clamp(ReloadLeft[Side == EDCSide::Port ? 0 : 1] / FMath::Max(ReloadTime, UE_SMALL_NUMBER), 0.f, 1.f); }
-	int32 NumGuns(EDCSide Side) const { return Muzzles[Side == EDCSide::Port ? 0 : 1].Num(); }
+	bool IsReady(EDCSide Side) const { return IsGunReady(GetPlayerGun(Side)); }
+	float GetReloadFraction(EDCSide Side) const { return FMath::Clamp(GetReloadSeconds(Side) / FMath::Max(ReloadTime, UE_SMALL_NUMBER), 0.f, 1.f); }
+	int32 NumGuns(EDCSide Side) const;
 
 	UPROPERTY(EditAnywhere) float ReloadTime = 3.f;
 	UPROPERTY(EditAnywhere) float ShotSpeed = 7000.f;
 	UPROPERTY(EditAnywhere) float Gravity = 1400.f;
-	UPROPERTY(EditAnywhere) float HitRadius = 700.f;
 
 protected:
-	struct FPendingShot { FVector Muzzle; FVector Target; float Delay; EDCSide PlayerSide; };
+	struct FPendingShot { int32 Gun; FVector Target; EDCSide PlayerSide; };
 	struct FShot { FVector Pos; FVector Vel; float Life; EDCSide PlayerSide; };
 
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UInstancedStaticMeshComponent> Balls;
@@ -50,8 +58,21 @@ protected:
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UInstancedStaticMeshComponent> Spray;
 	UPROPERTY() TObjectPtr<UClass> MuzzleEffectClass;
 	UPROPERTY() TObjectPtr<UClass> ImpactEffectClass;
+	UPROPERTY() TObjectPtr<class UParticleSystem> WaterImpact;
+	UPROPERTY() TObjectPtr<class UParticleSystem> StoneImpact;
+	UPROPERTY() TObjectPtr<class UParticleSystem> CreatureImpact;
 
 	TWeakObjectPtr<AActor> GunShip;
+	struct FGun
+	{
+		TWeakObjectPtr<class USkeletalMeshComponent> Component;
+		FVector LocalMuzzle = FVector::ZeroVector;
+		FVector Station = FVector::ZeroVector;
+		EDCSide Side = EDCSide::None;
+		float Reload = 0.f;
+		bool bPlayer = false;
+	};
+	TArray<FGun> Guns;
 	float ImpactUntil[2] = {};
 	bool bImpactHit[2] = {};
 	TArray<FVector> Muzzles[2];
@@ -59,6 +80,11 @@ protected:
 	TArray<FShot> Shots;
 	struct FSplash { FVector Position; float Age; };
 	TArray<FSplash> Splashes;
-	float ReloadLeft[2] = { 0.f, 0.f };
 	float SeaLevelZ = 0.f;
+#if !UE_BUILD_SHIPPING
+	void TickVerification();
+	int32 VerificationStage = 0;
+	bool bVerificationFailed = false;
+	TWeakObjectPtr<AActor> VerificationTarget;
+#endif
 };

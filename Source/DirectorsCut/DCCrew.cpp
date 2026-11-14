@@ -187,7 +187,17 @@ void ADCCrewMember::AssignStation(int32 NewStation)
 	StationIndex = NewStation;
 	if (FDCStation* New = Sub->GetStation(NewStation))
 	{
+		if (New->Type == EDCStationType::Cannons && !New->bPlayerGun)
+		{
+			for (int32 I = 0; I < Sub->GetStations().Num(); ++I)
+			{
+				FDCStation* Previous = Sub->GetStation(I);
+				if (I != NewStation && Previous->AssignedGunner.Get() == this) { Previous->AssignedGunner.Reset(); }
+			}
+			New->AssignedGunner = this;
+		}
 		New->Operator = this;
+		UE_LOG(LogDC, Log, TEXT("Crew station: %s station=%d gun=%d playerGun=%d"), *CrewName, NewStation, New->GunIndex, New->bPlayerGun);
 		State = EDCCrewState::Moving;
 	}
 	else
@@ -293,12 +303,12 @@ void ADCCrewMember::TickCannons(float DeltaSeconds, ADCTreadmill* Treadmill, EDC
 {
 	if (bHoldFire) { return; }
 	ADCGunnery* Guns = ADCGunnery::Get(this);
-	if (!Guns || !Guns->IsReady(Side)) { return; }
+	const FDCStation* Station = GetWorld()->GetSubsystem<UDCCrewSubsystem>()->GetStation(StationIndex);
+	if (!Guns || !Station || !Guns->IsGunReady(Station->GunIndex)) { return; }
 
 	// 200 m (was 130): the creature's young come in at 13 m a second, and at 130 m a battery had time for one broadside.
-	const int32 Target = Treadmill->FindHostile(Side, 20000.f);
-	if (Target == INDEX_NONE) { return; }
-	Guns->FireBroadside(Side, Treadmill->GetObjectLocation(Target), 4);
+	FVector Target;
+	if (Guns->FindCrewTarget(Station->GunIndex, Target)) { Guns->FireGun(Station->GunIndex, Target); }
 }
 
 // ---------------------------------------------------------------- Crew subsystem
@@ -330,6 +340,23 @@ int32 UDCCrewSubsystem::FindStation(EDCStationType Type, EDCSide Side) const
 		{
 			return i;
 		}
+	}
+	return INDEX_NONE;
+}
+
+int32 UDCCrewSubsystem::FindCrewGun(EDCSide Side, const FString& Name) const
+{
+	// Keep each hand at their gun; new hands take a vacant gun, never evict another.
+	for (int32 I = 0; I < Stations.Num(); ++I)
+	{
+		const FDCStation& S = Stations[I];
+		if (S.Type != EDCStationType::Cannons || S.Side != Side || S.bPlayerGun) { continue; }
+		if (S.AssignedGunner.IsValid() && !Name.IsEmpty() && S.AssignedGunner->CrewName.Equals(Name, ESearchCase::IgnoreCase)) { return I; }
+	}
+	for (int32 I = 0; I < Stations.Num(); ++I)
+	{
+		const FDCStation& S = Stations[I];
+		if (S.Type == EDCStationType::Cannons && S.Side == Side && !S.bPlayerGun && !S.Operator.IsValid() && !S.AssignedGunner.IsValid()) { return I; }
 	}
 	return INDEX_NONE;
 }
@@ -474,17 +501,38 @@ void UDCCrewSubsystem::ExecuteIntent(const FDCIntent& I)
 		// No side given: both batteries if already manned, otherwise the starboard one.
 		TArray<EDCSide> Sides;
 		if (I.Side != EDCSide::None) { Sides.Add(I.Side); }
+		else if (!I.CrewName.IsEmpty())
+		{
+			for (const FDCStation& S : Stations)
+			{
+				if (S.Type == EDCStationType::Cannons && S.AssignedGunner.IsValid()
+					&& S.AssignedGunner->CrewName.Equals(I.CrewName, ESearchCase::IgnoreCase))
+				{ Sides.Add(S.Side); break; }
+			}
+			if (!Sides.Num()) { Sides.Add(EDCSide::Starboard); }
+		}
 		else
 		{
 			for (const FDCStation& S : Stations)
 			{
-				if (S.Type == EDCStationType::Cannons && S.Operator.IsValid()) { Sides.Add(S.Side); }
+				if (S.Type == EDCStationType::Cannons && S.Operator.IsValid()) { Sides.AddUnique(S.Side); }
 			}
 			if (!Sides.Num()) { Sides.Add(EDCSide::Starboard); }
 		}
 		for (EDCSide Side : Sides)
 		{
-			ADCCrewMember* M = EnsureOperator(FindStation(EDCStationType::Cannons, Side), Sides.Num() == 1 ? I.CrewName : FString());
+			// An unnamed order applies to every hand already on that side.
+			bool bOrdered = false;
+			if (I.CrewName.IsEmpty())
+			{
+				for (FDCStation& Station : Stations)
+				{
+					if (Station.Type == EDCStationType::Cannons && Station.Side == Side && Station.Operator.IsValid())
+					{ Station.Operator->SetHoldFire(I.Action == EDCAction::HoldFire); bOrdered = true; }
+				}
+			}
+			if (bOrdered) { Reply(TEXT("Crew"), I.Action == EDCAction::HoldFire ? TEXT("Holding fire, Captain.") : TEXT("Guns ready, Captain.")); continue; }
+			ADCCrewMember* M = EnsureOperator(FindCrewGun(Side, I.CrewName), I.CrewName);
 			if (!M) { continue; }
 			const TCHAR* S = Side == EDCSide::Port ? TEXT("Port") : TEXT("Starboard");
 			if (I.Action == EDCAction::HoldFire)
