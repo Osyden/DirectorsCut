@@ -20,6 +20,8 @@ struct FDCWorldObject
 	float Health = 1.f;
 	/** Moved by its owner (e.g. a kraken arm), not by the treadmill. */
 	bool bExternal = false;
+	/** The batteries take this one before a nearer hostile (a creature swimming in to board). */
+	bool bUrgent = false;
 	/** Heading in degrees, on top of the sea rocking. */
 	float Yaw = 0.f;
 	/** False for scenery that the ship cannot hit. */
@@ -72,7 +74,7 @@ public:
 	/** Damage hostiles near a world position. bDirect uses a tighter radius and stops at the first hit. Returns hits. */
 	int32 DamageNear(const FVector& WorldPos, float Radius, float Damage, bool bDirect);
 	/** Register a hostile that something else moves. The treadmill destroys the actor when its health runs out. */
-	void AddExternalHostile(AActor* Actor, float Radius, float Health);
+	void AddExternalHostile(AActor* Actor, float Radius, float Health, bool bUrgent = false);
 	int32 NumObjects() const { return Objects.Num(); }
 	int32 NumHostiles() const;
 

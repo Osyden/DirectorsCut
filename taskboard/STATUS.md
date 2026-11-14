@@ -2,6 +2,14 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 02:25 Claude: why the starboard battery never sank a spawnling, and what was done
+
+- The battery was firing at it (five broadsides in one run), but the guns do not lead a target: to starboard the creature is far down the slope (100 m below the ship at 176 m off), the balls take two or three seconds, and at 13 m a second it had moved 25 to 40 m on by the time they fell. To port it comes down from the rim, nearer and level, and was hit.
+- Now: it crosses the open water at 13 m a second and comes up the last 200 m to the hull at 5, which is the stretch the batteries reach; its target is a little larger (1500, was 900) and is marked urgent, so a battery takes it before a nearer arm joint (`ADCTreadmill::AddExternalHostile` has a fourth argument, `FindHostile` honours it). They are sent at 92 and 108 s after the breach and take 48 s from sight to hull.
+- Two runs with the bot's guns manned: port sunk at 176 and 166 m off, starboard sunk both times but only 7 m off the hull. The starboard battery still mostly misses down the slope; I have not fixed its aim.
+- `-DCGunLog` logs where each shot ended.
+- Not in the fifteenth build.
+
 ## 14 Nov 02:18 Claude: a sunk spawnling rolls and goes down; batteries open fire at 200 m
 
 - The guns' target is now an unseen actor riding with the spawnling. When they destroy it the creature plays its defeated animation, rolls and sinks over four seconds instead of vanishing (`review/55-spawnling/20-sunk-390-to-396s.png`: whole at 390 s, claws only at 391.5, gone by 392.5).

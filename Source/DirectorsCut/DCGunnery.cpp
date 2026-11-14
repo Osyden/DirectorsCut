@@ -312,6 +312,8 @@ void ADCGunnery::Tick(float DeltaSeconds)
 				bImpactHit[Index] = bHitTarget || (bImpactHit[Index] && Now < ImpactUntil[Index]);
 				ImpactUntil[Index] = Now + 1.15f;
 			}
+			static const bool bGunLog = FParse::Param(FCommandLine::Get(), TEXT("DCGunLog"));
+			if (bGunLog) { UE_LOG(LogDC, Log, TEXT("Shot ended at %s: hit %d splash %d life %.2f"), *S.Pos.ToCompactString(), bHitTarget, bSplash, S.Life); }
 			if (bSplash) { Splashes.Add({S.Pos, 0.f}); }
 			if (ImpactEffectClass && (bHitTarget || bSplash))
 			{

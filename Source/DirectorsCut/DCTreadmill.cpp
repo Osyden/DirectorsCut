@@ -461,7 +461,9 @@ int32 ADCTreadmill::FindHostile(EDCSide Side, float MaxRange) const
 		if (!Obj.bHostile) { continue; }
 		const float Y = Obj.bExternal ? Obj.Base.Y - LaneOffset : Obj.Base.Y;
 		if ((Side == EDCSide::Port && Y > 0.f) || (Side == EDCSide::Starboard && Y < 0.f)) { continue; }
-		const float Dist = FVector2D(Obj.Base.X, Y).Size();
+		float Dist = FVector2D(Obj.Base.X, Y).Size();
+		if (Dist >= MaxRange) { continue; }
+		if (Obj.bUrgent) { Dist -= MaxRange; }   // in range and urgent: before anything nearer
 		if (Dist < BestDist)
 		{
 			BestDist = Dist; Best = i;
@@ -529,7 +531,7 @@ int32 ADCTreadmill::DamageNear(const FVector& WorldPos, float Radius, float Dama
 	return Hits;
 }
 
-void ADCTreadmill::AddExternalHostile(AActor* Actor, float Radius, float Health)
+void ADCTreadmill::AddExternalHostile(AActor* Actor, float Radius, float Health, bool bUrgent)
 {
 	FDCWorldObject& Obj = Objects.AddDefaulted_GetRef();
 	Obj.Actor = Actor;
@@ -537,6 +539,7 @@ void ADCTreadmill::AddExternalHostile(AActor* Actor, float Radius, float Health)
 	Obj.Radius = Radius;
 	Obj.bHostile = true;
 	Obj.bExternal = true;
+	Obj.bUrgent = bUrgent;
 	Obj.Health = Health;
 }
 

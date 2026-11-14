@@ -956,7 +956,7 @@ void ADCMaelstrom::UpdateSpawnlings(float DeltaSeconds)
 {
 	// Two in the later part of the fight, one on each beam.
 	static const FSpawnlingHooks Hooks;
-	static const float SendAt[] = { 100.f, 123.f };
+	static const float SendAt[] = { 92.f, 108.f };   // 48 s from sight to hull: the first is on her at 140 s, the second at 156
 	const float Finale = Boss ? Boss->FinaleAt : 160.f;
 	static const bool bOff = FParse::Param(FCommandLine::Get(), TEXT("DCNoSpawnlings"));
 	static float Extra = -1.f; static bool bRead = false;   // test hook: -DCSpawnlingAt=<seconds after the breach> sends one more, to port
@@ -965,7 +965,7 @@ void ADCMaelstrom::UpdateSpawnlings(float DeltaSeconds)
 	while (!bOff && SpawnlingsSent < UE_ARRAY_COUNT(SendAt) && Elapsed >= SendAt[SpawnlingsSent])
 	{
 		const float At = SendAt[SpawnlingsSent++];
-		if (Elapsed <= At + 2.f && At < Finale - 26.f) { bSend = true; }
+		if (Elapsed <= At + 2.f && At < Finale - 50.f) { bSend = true; }
 	}
 	if (Extra >= 0.f && Elapsed >= Extra && Elapsed < Extra + 1.f) { Extra = -1.f; bSend = true; }
 	UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>();
@@ -1008,7 +1008,7 @@ void ADCMaelstrom::UpdateSpawnlings(float DeltaSeconds)
 				Mark->SetRootComponent(Root);
 				Root->RegisterComponent();
 				Mark->SetActorLocation(A->GetActorLocation());
-				Treadmill->AddExternalHostile(Mark, 900.f, 3.f);
+				Treadmill->AddExternalHostile(Mark, 1500.f, 3.f, true);
 				S.Mark = Mark;
 			}
 			Spawnlings.Add(S);
@@ -1049,7 +1049,9 @@ void ADCMaelstrom::UpdateSpawnlings(float DeltaSeconds)
 			S.bWarned = true;
 			if (Crew) { Crew->Report(S.Side < 0.f ? TEXT("Something is swimming at us on the port beam! Port battery, sink it before it boards!") : TEXT("Something is swimming at us on the starboard beam! Starboard battery, sink it before it boards!"), true); }
 		}
-		S.Abeam -= 1300.f * DeltaSeconds * Director->TimeScale;
+		// Fast across the open water, then slowly up to the hull over the last 200 m, which is where the batteries can
+		// reach it. (At 13 m a second all the way the guns, which do not lead a target, put every ball behind it.)
+		S.Abeam -= (S.Abeam > 20000.f ? 1300.f : 500.f) * DeltaSeconds * Director->TimeScale;
 		FVector Where(1500.f, S.Side * (S.Abeam + 600.f), 0.f);
 		// Half under: its back and claws break the surface.
 		Where.Z = SampleSurfaceWorld(Where) - 37.f * 100.f * SpawnlingScale * SpawnlingSunk;
