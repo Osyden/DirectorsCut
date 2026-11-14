@@ -127,9 +127,12 @@ protected:
 	/** One passing lane, shared by the crew and gentle current assistance. */
 	float AvoidanceLane = 0.f;
 	float AvoidanceHold = 0.f;
+	float AvoidanceCandidate = 0.f;
+	float AvoidanceCandidateTime = 0.f;
 	bool bHasAvoidance = false;
 	bool bPlayerHelm = false;
 	float ChooseClearLane(float Lookahead) const;
+	float ScoreLane(float Candidate, float Lookahead) const;
 	TWeakObjectPtr<AActor> LastStrikeActor;
 	/** For the hand at the helm: how far ahead (cm) the first stone lies on each lane he might choose
 	 *  (lane i is at -LaneLimit + i * 250), or a negative number where the way is clear. Looked for a few times a second. */

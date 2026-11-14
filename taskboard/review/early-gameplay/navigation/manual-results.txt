@@ -1,0 +1,37 @@
+[2026.11.14-21.33.53:839][  1]LogDC: Lane 0 cm, moving 0 cm/s, helm 0.00, sea rise here 0 cm, slope 0.000, at 90.2 s
+[2026.11.14-21.33.55:193][  3]LogDC: Lane 0 cm, moving 0 cm/s, helm 0.00, sea rise here 0 cm, slope 0.000, at 90.8 s
+[2026.11.14-21.33.55:724][ 17]LogDC: Lane 0 cm, moving 0 cm/s, helm 0.00, sea rise here 0 cm, slope 0.000, at 91.3 s
+[2026.11.14-21.33.56:228][ 67]LogDC: Lane 0 cm, moving 0 cm/s, helm 0.00, sea rise here 0 cm, slope 0.000, at 91.8 s
+[2026.11.14-21.33.56:728][123]LogDC: Lane 0 cm, moving 0 cm/s, helm 0.00, sea rise here 0 cm, slope 0.000, at 92.3 s
+[2026.11.14-21.33.57:229][181]LogDC: Lane 0 cm, moving 0 cm/s, helm 0.00, sea rise here 0 cm, slope 0.000, at 92.8 s
+[2026.11.14-21.33.57:731][241]LogDC: Lane 66 cm, moving 380 cm/s, helm 0.70, sea rise here 0 cm, slope 0.005, at 93.3 s
+[2026.11.14-21.33.58:239][301]LogDC: Lane 347 cm, moving 676 cm/s, helm 0.70, sea rise here 5 cm, slope 0.027, at 93.8 s
+[2026.11.14-21.33.58:465][324]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 94.0
+[2026.11.14-21.33.58:940][325]LogDC: Lane 826 cm, moving 804 cm/s, helm 0.70, sea rise here 26 cm, slope 0.061, at 94.4 s
+[2026.11.14-21.33.59:442][376]LogDC: Lane 1222 cm, moving 770 cm/s, helm 0.70, sea rise here 55 cm, slope 0.086, at 94.9 s
+[2026.11.14-21.33.59:946][430]LogDC: Lane 1598 cm, moving 721 cm/s, helm 0.70, sea rise here 92 cm, slope 0.107, at 95.4 s
+[2026.11.14-21.34.00:448][484]LogDC: Lane 1947 cm, moving 671 cm/s, helm 0.70, sea rise here 132 cm, slope 0.124, at 96.0 s
+[2026.11.14-21.34.00:957][541]LogDC: Lane 2276 cm, moving 626 cm/s, helm 0.70, sea rise here 175 cm, slope 0.139, at 96.5 s
+[2026.11.14-21.34.01:459][601]LogDC: Lane 2580 cm, moving 587 cm/s, helm 0.70, sea rise here 219 cm, slope 0.150, at 97.0 s
+[2026.11.14-21.34.01:964][661]LogDC: Lane 2599 cm, moving -455 cm/s, helm -0.70, sea rise here 222 cm, slope 0.151, at 97.5 s
+[2026.11.14-21.34.02:468][721]LogDC: Lane 2225 cm, moving -950 cm/s, helm -0.70, sea rise here 168 cm, slope 0.136, at 98.0 s
+[2026.11.14-21.34.02:510][726]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 98.0
+[2026.11.14-21.34.02:969][768]LogDC: Lane 1689 cm, moving -1136 cm/s, helm -0.70, sea rise here 102 cm, slope 0.112, at 98.5 s
+[2026.11.14-21.34.03:473][826]LogDC: Lane 1104 cm, moving -1170 cm/s, helm -0.70, sea rise here 46 cm, slope 0.079, at 99.0 s
+[2026.11.14-21.34.03:980][887]LogDC: Lane 519 cm, moving -1129 cm/s, helm -0.70, sea rise here 11 cm, slope 0.040, at 99.5 s
+[2026.11.14-21.34.04:482][947]LogDC: Lane -29 cm, moving -1050 cm/s, helm -0.70, sea rise here 0 cm, slope -0.002, at 100.0 s
+[2026.11.14-21.34.04:982][  5]LogDC: Lane -530 cm, moving -954 cm/s, helm -0.70, sea rise here 11 cm, slope -0.041, at 100.5 s
+[2026.11.14-21.34.05:488][ 65]LogDC: Lane -988 cm, moving -860 cm/s, helm -0.70, sea rise here 37 cm, slope -0.072, at 101.0 s
+[2026.11.14-21.34.05:992][124]LogDC: Lane -1250 cm, moving -255 cm/s, helm 0.00, sea rise here 58 cm, slope -0.088, at 101.5 s
+[2026.11.14-21.34.06:494][176]LogDC: Lane -1296 cm, moving 26 cm/s, helm 0.00, sea rise here 62 cm, slope -0.090, at 102.0 s
+[2026.11.14-21.34.06:513][178]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 102.0
+[2026.11.14-21.34.07:002][219]LogDC: Lane -1245 cm, moving 148 cm/s, helm 0.00, sea rise here 57 cm, slope -0.087, at 102.5 s
+[2026.11.14-21.34.07:503][269]LogDC: Lane -1158 cm, moving 192 cm/s, helm 0.00, sea rise here 50 cm, slope -0.082, at 103.0 s
+[2026.11.14-21.34.08:009][320]LogDC: Lane -1057 cm, moving 202 cm/s, helm 0.00, sea rise here 42 cm, slope -0.076, at 103.5 s
+[2026.11.14-21.34.08:510][374]LogDC: Lane -957 cm, moving 197 cm/s, helm 0.00, sea rise here 35 cm, slope -0.070, at 104.0 s
+[2026.11.14-21.34.09:014][425]LogDC: Lane -860 cm, moving 185 cm/s, helm 0.00, sea rise here 28 cm, slope -0.063, at 104.5 s
+[2026.11.14-21.34.09:516][476]LogDC: Lane -771 cm, moving 171 cm/s, helm 0.00, sea rise here 23 cm, slope -0.057, at 105.0 s
+[2026.11.14-21.34.10:021][526]LogDC: Lane -688 cm, moving 156 cm/s, helm 0.00, sea rise here 18 cm, slope -0.052, at 105.5 s
+[2026.11.14-21.34.10:514][576]LogDC: Capture state: hull=100.0 score=100 fires=0 rigging=0 at 106.0
+[2026.11.14-21.34.10:624][577]LogDC: Lane -600 cm, moving 139 cm/s, helm 0.00, sea rise here 14 cm, slope -0.046, at 106.1 s
+[2026.11.14-21.34.11:127][633]LogDC: Lane -534 cm, moving 125 cm/s, helm 0.00, sea rise here 11 cm, slope -0.041, at 106.6 s

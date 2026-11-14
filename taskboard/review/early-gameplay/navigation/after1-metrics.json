@@ -1,0 +1,30 @@
+{
+  "window": [
+    60.0,
+    240.0
+  ],
+  "samples": 327,
+  "stone_contacts": [],
+  "strong_helm_reversals": [
+    162.2
+  ],
+  "successive_reversals_within_4s": [],
+  "large_target_changes": [
+    77.0,
+    105.1,
+    162.2,
+    176.3,
+    215.0
+  ],
+  "capture_states": [
+    "Capture state: hull=87.7 score=900 fires=2 rigging=0 at 210.0",
+    "Capture state: hull=84.1 score=900 fires=2 rigging=0 at 225.0",
+    "Capture state: hull=83.3 score=1000 fires=2 rigging=0 at 230.0",
+    "Capture state: hull=82.7 score=1000 fires=2 rigging=0 at 234.0",
+    "Capture state: hull=82.4 score=1000 fires=2 rigging=0 at 236.0",
+    "Capture state: hull=81.9 score=1000 fires=2 rigging=0 at 239.0",
+    "Capture state: hull=81.5 score=1000 fires=1 rigging=0 at 242.0",
+    "Capture state: hull=81.2 score=1000 fires=0 rigging=0 at 246.0"
+  ],
+  "interpretation": "Different random obstacle layouts are not a controlled A/B. Inspect reversals and captures; legitimate avoidance also reverses helm."
+}

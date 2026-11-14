@@ -1,0 +1,21 @@
+[2026.11.14-21.37.14:821][ 84]LogDC: Navigation plan: 0 -> 0 urgent=0 clearance=-1 at 74.5
+[2026.11.14-21.37.17:276][363]LogDC: Navigation plan: 0 -> 1000 urgent=0 clearance=8518 at 76.9
+[2026.11.14-21.37.35:028][261]LogDC: Navigation plan: 1000 -> -1500 urgent=0 clearance=15196 at 94.7
+[2026.11.14-21.37.57:586][560]LogDC: Navigation plan: -1500 -> -1750 urgent=0 clearance=-1 at 117.2
+[2026.11.14-21.38.07:603][587]LogDC: Navigation plan: -1750 -> -3000 urgent=0 clearance=15354 at 127.3
+[2026.11.14-21.38.28:312][627]LogDC: Navigation plan: -3000 -> 1500 urgent=0 clearance=15121 at 148.0
+[2026.11.14-21.38.28:549][650]LogDC: Hull struck stone at V(X=-1900.00, Y=438.62, Z=370.00) (in 11 cm, closing 0 cm/s, strength 0.20) at ride time 148.2
+[2026.11.14-21.38.30:784][865]LogDC: Navigation plan: 1500 -> 3250 urgent=0 clearance=10735 at 150.4
+[2026.11.14-21.39.06:690][ 34]LogDC: Navigation plan: 3250 -> -2500 urgent=0 clearance=14389 at 186.3
+[2026.11.14-21.39.09:047][330]LogDC: Hull struck stone at V(X=-1420.00, Y=-474.55, Z=370.00) (in 5 cm, closing 458 cm/s, strength 0.38) at ride time 188.7
+[2026.11.14-21.39.30:360][888]LogDC: Capture state: hull=91.9 score=800 fires=0 rigging=0 at 210.0
+[2026.11.14-21.39.45:418][655]LogDC: Capture state: hull=91.9 score=1000 fires=0 rigging=0 at 225.0
+[2026.11.14-21.39.48:835][ 98]LogDC: Navigation plan: -2500 -> -2750 urgent=0 clearance=-1 at 228.4
+[2026.11.14-21.39.50:416][308]LogDC: Capture state: hull=91.9 score=1000 fires=0 rigging=0 at 230.0
+[2026.11.14-21.39.54:416][843]LogDC: Capture state: hull=91.9 score=1000 fires=0 rigging=0 at 234.0
+[2026.11.14-21.39.56:423][ 89]LogDC: Capture state: hull=91.9 score=1000 fires=0 rigging=0 at 236.0
+[2026.11.14-21.39.57:135][170]LogDC: Navigation plan: -2750 -> 1500 urgent=0 clearance=15877 at 236.7
+[2026.11.14-21.39.58:165][312]LogDC: Hull struck stone at V(X=1460.00, Y=413.52, Z=370.00) (in 133 cm, closing 1373 cm/s, strength 1.10) at ride time 237.8
+[2026.11.14-21.39.59:420][488]LogDC: Capture state: hull=87.6 score=1000 fires=0 rigging=0 at 239.0
+[2026.11.14-21.40.02:424][860]LogDC: Capture state: hull=87.6 score=1000 fires=0 rigging=0 at 242.0
+[2026.11.14-21.40.06:415][367]LogDC: Capture state: hull=87.6 score=1000 fires=0 rigging=0 at 246.0

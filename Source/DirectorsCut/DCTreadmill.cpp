@@ -579,25 +579,25 @@ float ADCTreadmill::ChooseClearLane(float Lookahead) const
 	for (float Candidate = -LaneLimit; Candidate <= LaneLimit; Candidate += 250.f)
 	{
 		if (FMath::Abs(Candidate) > Reach) { continue; }
-		// Prefer staying put, and drift back toward the middle when nothing is in the way.
-		float Cost = FMath::Abs(Candidate - LaneOffset) * 0.0005f + FMath::Abs(Candidate) * 0.00005f;
-		for (const FDCWorldObject& Obj : Objects)
-		{
-			if (Obj.bHostile || !Obj.bSolid || !Obj.Actor.IsValid() || Obj.Actor->IsHidden()) { continue; }
-			if (Obj.Base.X < -ShipHalfLength || Obj.Base.X > Lookahead) { continue; }
-			const float Gap = FMath::Abs(Obj.Base.Y - Candidate) - (ShipHalfWidth + Obj.Radius);
-			if (Gap < 500.f)
-			{
-				// Nearer obstacles count for more; overlapping the hull counts for much more than a tight squeeze.
-				Cost += (Gap < 0.f ? 10.f : 2.f) * (1.f + 8000.f / FMath::Max(Obj.Base.X + 2500.f, 500.f));
-			}
-		}
-		// Stone of the drowned city on this lane (TickStrikes looks for it).
-		const int32 Lane = FMath::RoundToInt32((Candidate + LaneLimit) / 250.f);
-		if (StoneAhead.IsValidIndex(Lane) && StoneAhead[Lane] >= 0.f) { Cost += 10.f * (1.f + 8000.f / (StoneAhead[Lane] + 2500.f)); }
+		const float Cost = ScoreLane(Candidate, Lookahead);
 		if (Cost < BestCost) { BestCost = Cost; Best = Candidate; }
 	}
 	return Best;
+}
+
+float ADCTreadmill::ScoreLane(float Candidate, float Lookahead) const
+{
+	float Cost = FMath::Abs(Candidate - LaneOffset) * .0005f + FMath::Abs(Candidate) * .00005f;
+	for (const FDCWorldObject& Obj : Objects)
+	{
+		if (Obj.bHostile || !Obj.bSolid || !Obj.Actor.IsValid() || Obj.Actor->IsHidden()) { continue; }
+		if (Obj.Base.X < -ShipHalfLength || Obj.Base.X > Lookahead) { continue; }
+		const float Gap = FMath::Abs(Obj.Base.Y - Candidate) - (ShipHalfWidth + Obj.Radius);
+		if (Gap < 500.f) { Cost += (Gap < 0.f ? 10.f : 2.f) * (1.f + 8000.f / FMath::Max(Obj.Base.X + 2500.f, 500.f)); }
+	}
+	const int32 Lane = FMath::RoundToInt32((Candidate + LaneLimit) / 250.f);
+	if (StoneAhead.IsValidIndex(Lane) && StoneAhead[Lane] >= 0.f) { Cost += 10.f * (1.f + 8000.f / (StoneAhead[Lane] + 2500.f)); }
+	return Cost;
 }
 
 void ADCTreadmill::LaunchAt(const FVector& From)
@@ -914,11 +914,12 @@ void ADCTreadmill::TickStrikes(float DeltaSeconds)
 	if (!Director || FParse::Param(FCommandLine::Get(), TEXT("DCNoStrikes"))) { return; }
 	bool bAny = false;
 	for (const FDCWorldObject& Obj : Objects) { if (Obj.bFeelable) { bAny = true; break; } }
-	if (!bAny) { StoneAhead.Reset(); bHasAvoidance = false; AvoidanceHold = 0.f; CurrentDrift = FMath::FInterpTo(CurrentDrift, 0.f, DeltaSeconds, 2.f); return; }
+	if (!bAny) { StoneAhead.Reset(); bHasAvoidance = false; AvoidanceHold = AvoidanceCandidateTime = 0.f; CurrentDrift = FMath::FInterpTo(CurrentDrift, 0.f, DeltaSeconds, 2.f); return; }
 
 	// The helmsman's look ahead: for each lane he might take, three lines run forward from the bow
 	// (keel and both sides) and the nearest stone on any of them is remembered.
 	StoneLookTimer -= DeltaSeconds;
+	const bool bScanned = StoneLookTimer <= 0.f;
 	if (StoneLookTimer <= 0.f)
 	{
 		StoneLookTimer = 0.2f;
@@ -948,7 +949,38 @@ void ADCTreadmill::TickStrikes(float DeltaSeconds)
 	const float StoneDistance = StoneAhead.IsValidIndex(LaneIndex) ? StoneAhead[LaneIndex] : -1.f;
 	const bool bBlocked = StoneDistance >= 0.f && StoneDistance < 15500.f;
 	AvoidanceHold = FMath::Max(0.f, AvoidanceHold - DeltaSeconds);
-	if (bBlocked)
+	const bool bStablePlanning = Director->GetPhase() <= EDCPhase::Fog
+		&& !FParse::Param(FCommandLine::Get(), TEXT("DCLegacyAvoidance"));
+	if (bStablePlanning)
+	{
+		// Plan on the probe cadence even before the current lane is blocked. The
+		// old uncommitted path chose a fresh target every crew tick, then snapped
+		// back to a different held lane as soon as a single probe found stone.
+		if (bScanned)
+		{
+			const float Candidate = ChooseClearLane(17000.f);
+			if (FMath::Abs(Candidate - AvoidanceCandidate) > 250.f) { AvoidanceCandidateTime = 0.f; }
+			AvoidanceCandidate = Candidate;
+			AvoidanceCandidateTime += .2f;
+			const int32 TargetIndex = FMath::RoundToInt((AvoidanceLane + LaneLimit) / 250.f);
+			const float TargetStone = StoneAhead.IsValidIndex(TargetIndex) ? StoneAhead[TargetIndex] : -1.f;
+			const bool bUrgent = TargetStone >= 0.f && TargetStone < 4500.f;
+			const bool bBetter = ScoreLane(Candidate, 17000.f) + .6f < ScoreLane(AvoidanceLane, 17000.f);
+			const bool bDifferent = FMath::Abs(Candidate - AvoidanceLane) > 125.f;
+			if (!bHasAvoidance || (bDifferent && bBetter && (bUrgent || (AvoidanceHold <= 0.f && AvoidanceCandidateTime >= .8f))))
+			{
+				if (FParse::Param(FCommandLine::Get(), TEXT("DCCurrentLog")))
+				{
+					UE_LOG(LogDC, Log, TEXT("Navigation plan: %.0f -> %.0f urgent=%d clearance=%.0f at %.1f"), AvoidanceLane, Candidate, bUrgent, TargetStone, Director->RideTime);
+				}
+				AvoidanceLane = Candidate;
+				bHasAvoidance = true;
+				AvoidanceHold = 2.4f;
+				AvoidanceCandidateTime = 0.f;
+			}
+		}
+	}
+	else if (bBlocked)
 	{
 		const int32 TargetIndex = FMath::RoundToInt((AvoidanceLane + LaneLimit) / 250.f);
 		const bool bTargetBlocked = !StoneAhead.IsValidIndex(TargetIndex) || StoneAhead[TargetIndex] >= 0.f;
@@ -985,8 +1017,12 @@ void ADCTreadmill::TickStrikes(float DeltaSeconds)
 	if (bCurrentLog && CurrentLogTimer <= 0.f)
 	{
 		CurrentLogTimer = .5f;
-		UE_LOG(LogDC, Log, TEXT("Navigation: obstacle=%.0f target=%.0f lane=%.0f velocity=%.0f assist=%.0f helm=%.2f manual=%d t=%.1f"),
-			StoneDistance, bHasAvoidance ? AvoidanceLane : LaneOffset, LaneOffset, GetLateralVelocity(), CurrentDrift, Steer, bPlayerHelm || bSteerForced, Director->RideTime);
+		const float Sight = FMath::Clamp(1600.f / FMath::Max(Director->GetEnv().FogDensity, .01f), 9000.f, 20000.f);
+		const float Target = FindClearLane(Sight);
+		const int32 TargetIndex = FMath::RoundToInt((Target + LaneLimit) / 250.f);
+		const float TargetStone = StoneAhead.IsValidIndex(TargetIndex) ? StoneAhead[TargetIndex] : -1.f;
+		UE_LOG(LogDC, Log, TEXT("Navigation: obstacle=%.0f target=%.0f lane=%.0f velocity=%.0f assist=%.0f helm=%.2f manual=%d t=%.1f committed=%d hold=%.1f targetStone=%.0f"),
+			StoneDistance, Target, LaneOffset, GetLateralVelocity(), CurrentDrift, Steer, bPlayerHelm || bSteerForced, Director->RideTime, bHasAvoidance, AvoidanceHold, TargetStone);
 	}
 
 	// Feelers at the waterline, in the ship's resting place (she lies at the origin, bow to +X): out
@@ -1029,7 +1065,7 @@ void ADCTreadmill::TickStrikes(float DeltaSeconds)
 	// She cannot sail through it: shoulder her off the stone (the sea is moved, not the ship) and kill her swing toward it.
 	if (StrikeAway == 0.f || LastStrikeActor.Get() != ContactActor)
 	{
-		StrikeAway = bHasAvoidance && FMath::Abs(AvoidanceLane - LaneOffset) > 200.f
+		StrikeAway = !bPlayerHelm && !bSteerForced && bHasAvoidance && FMath::Abs(AvoidanceLane - LaneOffset) > 200.f
 			? FMath::Sign(AvoidanceLane - LaneOffset) : (PushY >= 0.f ? 1.f : -1.f);
 	}
 	const float Away = StrikeAway;
