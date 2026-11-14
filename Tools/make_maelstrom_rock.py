@@ -1,7 +1,15 @@
 """Physical-scale cliff stone. Unit-scale basin mesh: R=wet, G=recess.
 Installed tile textures are referenced in place, never copied.
+Set DC_ROCK_REVIEW_NO_FRACTURES=1 only for a matched diagnostic capture. It
+removes the 22m fracture normal and its paired colour/AO response; regenerate
+with the flag unset to restore the default saved material.
 """
+import os
 import unreal
+fracture_review = os.environ.get('DC_ROCK_REVIEW_NO_FRACTURES', '0')
+if fracture_review not in ('0', '1'):
+    raise RuntimeError('DC_ROCK_REVIEW_NO_FRACTURES must be 0 or 1')
+without_procedural_fractures = fracture_review == '1'
 M=unreal.MaterialEditingLibrary
 path='/Game/DC/Maelstrom/M_CraterRock'
 mat=unreal.load_asset(path)
@@ -77,7 +85,7 @@ float2 ux=float2(p.y*s.x,p.z),uy=float2(p.x*s.y,p.z),uz=float2(p.x*s.z,p.y);
 # A ground normal repeated every 1.6m or 12m averages away on a cliff kilometres
 # from the camera. Add real angular fracture normals at a separate 22m scale;
 # retain the installed normal map for fine grain rather than magnifying it.
-fractures=custom(projection+r'''
+fracture_code=projection+r'''
 struct FracturePlanes {
  float3 hash(float2 p) {
   return frac(sin(float3(dot(p,float2(127.1,311.7)),dot(p,float2(269.5,183.3)),dot(p,float2(419.2,371.9))))*43758.5453);
@@ -105,7 +113,13 @@ float fade=1-smoothstep(10,32,footprint);
 // faces, unlike a smoothly interpolated low-frequency bump texture.
 float3 g=(float3(0,fx.x*s.x,fx.y)*w.x+float3(fy.x*s.y,0,fy.y)*w.y+float3(fz.x*s.z,fz.y,0)*w.z)*(.159*fade);
 return float4(-g,dot(float3(fx.z,fy.z,fz.z),w)*fade);
-''',unreal.CustomMaterialOutputType.CMOT_FLOAT4,{'P':pos,'N':normal})
+'''
+# One shared zero removes exactly this normal and its matching colour/AO
+# dimming. Keep both installed normal-map scales, weathering and vertex recess.
+# The default HLSL is unchanged; this is a generator-only A/B switch.
+if without_procedural_fractures:
+    fracture_code='return float4(0,0,0,0);'
+fractures=custom(fracture_code,unreal.CustomMaterialOutputType.CMOT_FLOAT4,{'P':pos,'N':normal})
 color=custom(projection+r'''
 float3 tx=Texture2DSample(RockColor,RockColorSampler,ux/4).rgb;
 float3 ty=Texture2DSample(RockColor,RockColorSampler,uy/4).rgb;
@@ -151,3 +165,5 @@ if M.get_material_property_input_node(mat,unreal.MaterialProperty.MP_ROUGHNESS) 
 M.recompile_material(mat)
 unreal.EditorAssetLibrary.save_loaded_asset(mat,only_if_is_dirty=False)
 unreal.log_warning('DC_ROCK_MATERIAL_COMPLETE physical stone 1.6m/4m/12m +22m angular fracture normals; world normal connected; R wet G recess')
+unreal.log_warning('DC_ROCK_REVIEW_NO_FRACTURES='+fracture_review+'; saved material mode='+
+                   ('DIAGNOSTIC: 22m procedural normal/colour/AO removed' if without_procedural_fractures else 'DEFAULT: all fracture shading enabled'))
