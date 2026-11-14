@@ -9,6 +9,8 @@ passing through it, and light of its own for lightning.
   Tint     albedo
   Density  scales the volume's density
   Cut      density below this is taken as empty (0 = use the volume as it is)
+  Crown    r = height of the ceiling in the volume's units, g = how far it rolls up and down, b = length of a roll (r huge = no ceiling)
+  Phase    where along its length the rolls fall
   Floor    r = height of the floor in the volume's own units, g = how far above it the cloud reaches full density
   Glow     light of its own where the volume's second attribute (temperature) is high: the folds
   Flare    light of its own everywhere (lightning)
@@ -22,7 +24,10 @@ mel = unreal.MaterialEditingLibrary
 EXT = """
 // Cut takes off the thin haze that fills the volume's whole box, which shows as a box when the cloud is thin.
 float d = saturate((A.r - Cut) / max(1.0 - Cut, 0.001)) * Density;
-return d * saturate((LP.z - Floor.r) / max(Floor.g, 0.001));
+d *= saturate((LP.z - Floor.r) / max(Floor.g, 0.001));
+// Crown: nothing above a rolling ceiling, so a long volume's top is hills and saddles, not one level line.
+float top = Crown.r + Crown.g * (sin(LP.y / max(Crown.b, 1.0) + Phase) * 0.65 + sin(LP.y / max(Crown.b, 1.0) * 2.7 + Phase * 1.9) * 0.35);
+return d * saturate((top - LP.z) / 14.0);
 """
 
 path = PKG + "/" + NAME
@@ -55,6 +60,8 @@ lp = mel.create_material_expression(mat, unreal.MaterialExpressionLocalPosition,
 tint = vector("Tint", (0.78, 0.83, 0.92, 1.0), 0)
 density = scalar("Density", 1.0, 200)
 cut = scalar("Cut", 0.0, 250)
+crown = vector("Crown", (100000.0, 0.0, 100.0, 0.0), 400)
+phase = scalar("Phase", 0.0, 450)
 floor = vector("Floor", (-100000.0, 1.0, 0.0, 0.0), 300)
 glow = vector("Glow", (0.0, 0.0, 0.0, 0.0), 500)
 flare = vector("Flare", (0.0, 0.0, 0.0, 0.0), 700)
@@ -62,13 +69,13 @@ flare = vector("Flare", (0.0, 0.0, 0.0, 0.0), 700)
 e = mel.create_material_expression(mat, unreal.MaterialExpressionCustom, -500, 300)
 e.set_editor_property("code", EXT)
 e.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT1)
-names = ["A", "LP", "Density", "Floor", "Cut"]
+names = ["A", "LP", "Density", "Floor", "Cut", "Crown", "Phase"]
 ins = []
 for n in names:
     ci = unreal.CustomInput(); ci.set_editor_property("input_name", n); ins.append(ci)
 e.set_editor_property("inputs", ins)
 unreal.log_warning("DC_RESULT svt outputs: A=%s B=%s" % (mel.connect_material_expressions(svt, "Attributes A", e, "A"), 0))
-for node, name in zip([lp, density, floor, cut], names[1:]):
+for node, name in zip([lp, density, floor, cut, crown, phase], names[1:]):
     mel.connect_material_expressions(node, "", e, name)
 mel.connect_material_property(tint, "", unreal.MaterialProperty.MP_BASE_COLOR)
 mel.connect_material_property(e, "", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)

@@ -280,6 +280,9 @@ void ADCFogFront::BuildTunnel()
 	// the mouth, and one over it whose foot is cut away above the tunnel's crown.
 	if (FParse::Param(FCommandLine::Get(), TEXT("DCNoFrontWall"))) { return; }
 	float WallScale = 1400.f, WallDensity = 1.f, WallGap = 11000.f;
+	float WallCrown = 118.f, WallCrownRoll = 30.f;   // test hooks: -DCFrontWallCrown= (0 = off) -DCFrontWallCrownRoll=, in voxels of 160
+	FParse::Value(FCommandLine::Get(), TEXT("DCFrontWallCrown="), WallCrown);
+	FParse::Value(FCommandLine::Get(), TEXT("DCFrontWallCrownRoll="), WallCrownRoll);
 	FParse::Value(FCommandLine::Get(), TEXT("DCFrontWallScale="), WallScale);
 	FParse::Value(FCommandLine::Get(), TEXT("DCFrontWallDensity="), WallDensity);
 	FParse::Value(FCommandLine::Get(), TEXT("DCFrontWallGap="), WallGap);
@@ -303,6 +306,8 @@ void ADCFogFront::BuildTunnel()
 		M->SetVectorParameterValue(TEXT("Floor"), FLinearColor(P.Floor, P.Soft, 0.f, 0.f));
 		M->SetVectorParameterValue(TEXT("Tint"), StormTint);
 		M->SetScalarParameterValue(TEXT("Cut"), FrontCut);
+		// A rolling ceiling, different on each piece, so the wall's top is not one level line from far off.
+		if (WallCrown > 0.f) { M->SetVectorParameterValue(TEXT("Crown"), FLinearColor(WallCrown, WallCrownRoll, 75.f + 20.f * P.Size, 0.f)); M->SetScalarParameterValue(TEXT("Phase"), P.Frame * 0.07f); }
 		M->SetVectorParameterValue(TEXT("Glow"), FLinearColor(0.45f, 0.6f, 1.f) * Temp);
 		C->SetMaterial(0, M);
 		C->StartFrame = 0.f; C->EndFrame = 200.f; C->FrameRate = Rate * 0.75f; C->Frame = P.Frame; C->bPlaying = true; C->bLooping = true;

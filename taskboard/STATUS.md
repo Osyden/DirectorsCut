@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 14 Nov 03:14 Claude: the wall's top rolls; no longer one level line from far off
+
+- `M_VdbCloud` has a `Crown`: nothing above a ceiling that rises and falls along the volume's length (two sines, phase per piece). The three wall pieces use it (ceiling at 118 of 160 voxels, rolling 30 either way; `-DCFrontWallCrown=0` turns it off, `-DCFrontWallCrownRoll=`). From 38 to 54 s the bank on the horizon is now hills and saddles of cloud, not a mesa. The tunnel, spouts and plume do not use it. `review/57-one-front/10-rolling-top-32-to-57s.png`.
+- A slip on the way: my first version read a fourth channel a vector parameter does not have, the material failed to compile, and the game drew **no wall and no tunnel at all** without any error on screen. Caught in the frames; the log line is "Failed to compile Material". Worth a grep after any material change.
+- Not in the eighteenth build.
+
 ## 14 Nov 03:07 Claude: eighteenth build packaged and run: `2026-11-14_0301_5018846_one-front`
 
 - `Builds/2026-11-14_0301_5018846_one-front/Windows/DirectorsCut.exe`. Run from the exe at 1600x900 without sound: the bank on the horizon at 32 and 44 s with no slab behind it, wall and portal at 56, a flash in the tunnel at 63.5, the city at 120 (93 to 104 fps); the whole maelstrom at 3x with the bot captain from 262 s: both spawnlings sunk (172 and 135 m off), 7 arms broken, beaten on the clock at 160.0 s, exit at 450.02, ending card.
