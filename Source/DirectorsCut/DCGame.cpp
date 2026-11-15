@@ -203,6 +203,63 @@ void ADCHUD::DrawHUD()
 	{
 		APlayerController* PC = GetOwningPlayerController();
 		ADCGunnery* Guns = ADCGunnery::Get(this);
+		// The repair destination must survive mast/deck occlusion, including from
+		// the helm. Keep its compact HUD plate clear of crew cards and prompts.
+		if (ADCTroubles* Troubles=ADCTroubles::Get(this); Troubles && Troubles->IsRiggingLoose()
+			&& PC && (!D || D->GetPhase()!=EDCPhase::Ending))
+		{
+			FVector RepairDeck;
+			if (Troubles->GetRiggingRepairLocation(RepairDeck))
+			{
+				const FVector RepairWorld=D ? D->DeckToWorld(RepairDeck) : RepairDeck;
+				const FVector Target=D ? D->DeckToWorld(RepairDeck+FVector(0,0,95)) : RepairDeck+FVector(0,0,95);
+				FVector2D Screen;
+				const bool Projected=PC->ProjectWorldLocationToScreen(Target,Screen);
+				if (!Projected)
+				{
+					FVector Eye; FRotator View;
+					PC->GetPlayerViewPoint(Eye,View);
+					const float Side=FVector::DotProduct(Target-Eye,FRotationMatrix(View).GetUnitAxis(EAxis::Y));
+					Screen=FVector2D(Side<0 ? -W : W*2.f,H*.48f);
+				}
+				const float MS=FMath::Clamp(FMath::Min(W/1280.f,H/720.f),.78f,1.6f);
+				const float CrewS=FMath::Clamp(FMath::Min(W/1280.f,H/720.f),.78f,2.f);
+				const FString Text=FString::Printf(TEXT("REPAIR RIGGING  |  %.0f m"),FVector::Distance(Captain->GetActorLocation(),RepairWorld)/100.f);
+				float TW=0.f,TH=0.f;
+				CrispSize(Text,TW,TH,Font,MS);
+				const float Pad=8.f*MS, PW=TW+2.f*Pad, PH=TH+2.f*Pad;
+				// Reserve the entire crew-card column and bottom speech/cannon UI.
+				const float Left=24.f*MS+PW*.5f;
+				const float Right=FMath::Max(Left,W-266.f*CrewS-PW*.5f);
+				const float Top=FMath::Min(200.f*MS,H*.38f);
+				const float Bottom=FMath::Max(Top,H*.58f-PH);
+				const FVector2D Pin(FMath::Clamp(float(Screen.X),Left,Right),FMath::Clamp(float(Screen.Y),Top,Bottom));
+				const bool AtEdge=!Projected || FVector2D::Distance(Pin,Screen)>2.f;
+				auto RepairLine=[&](FVector2D A,FVector2D B)
+				{
+					DrawLine(A.X,A.Y,B.X,B.Y,FLinearColor(.01f,.02f,.025f,.95f),4.f*MS);
+					DrawLine(A.X,A.Y,B.X,B.Y,Gold,1.5f*MS);
+				};
+				if (AtEdge)
+				{
+					const FVector2D Direction=(Screen-Pin).GetSafeNormal();
+					const FVector2D Perp(-Direction.Y,Direction.X);
+					const FVector2D Tip=Pin+Direction*(9.f*MS),Tail=Pin-Direction*(4.f*MS);
+					RepairLine(Tip,Tail+Perp*(5.f*MS)); RepairLine(Tip,Tail-Perp*(5.f*MS));
+				}
+				else
+				{
+					const float R=6.f*MS;
+					RepairLine(Pin+FVector2D(0,-R),Pin+FVector2D(R,0));
+					RepairLine(Pin+FVector2D(R,0),Pin+FVector2D(0,R));
+					RepairLine(Pin+FVector2D(0,R),Pin+FVector2D(-R,0));
+					RepairLine(Pin+FVector2D(-R,0),Pin+FVector2D(0,-R));
+				}
+				const float X=Pin.X-PW*.5f,Y=Pin.Y+13.f*MS;
+				DrawRect(FLinearColor(.012f,.022f,.03f,.92f),X,Y,PW,PH);
+				CrispText(Text,Gold,X+Pad,Y+Pad,Font,MS);
+			}
+		}
 		if (!Captain->IsTypingOrder() && !Captain->IsAtStation() && !Captain->IsShipView() && PC)
 		{
 			if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
