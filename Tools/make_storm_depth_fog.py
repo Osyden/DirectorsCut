@@ -1,7 +1,6 @@
-"""Alternate ground mist for the existing heterogeneous storm front.
+"""Continuous ground mist for the existing heterogeneous storm front.
 
-Generates the same M_StormComposite consumed by DCFogFront. This does not
-replace make_storm_composite.py; run only when selecting this alternate.
+Generates M_StormComposite consumed by DCFogFront.
 WorldPosition in a post-process material reconstructs the opaque scene-depth
 endpoint, preserving wave crests/troughs and foreground ship occlusion.
 """
@@ -41,18 +40,18 @@ float3 ray=delta/max(length(delta),.001);
 float lengthFog=end-25.0;
 float h0=(Camera.z-Origin.z)*.01+ray.z*25.0;
 float h1=h0+ray.z*lengthFog;
-// Exact integral of exp(-max(height,0)/50) along the depth-clipped ray.
+// Exact integral of exp(-max(height,0)/15) along the depth-clipped ray.
 // Its continuous primitive also handles waves below mean sea without a
 // separate flat-plane cutoff or a discontinuous water-only pixel mask.
 float integral;
 if(abs(ray.z)<.0001) {
- integral=lengthFog*exp(-max((h0+h1)*.5,0.0)/50.0);
+ integral=lengthFog*exp(-max((h0+h1)*.5,0.0)/15.0);
 } else {
- float f0=h0<=0.0 ? h0 : 50.0*(1.0-exp(-h0/50.0));
- float f1=h1<=0.0 ? h1 : 50.0*(1.0-exp(-h1/50.0));
+ float f0=h0<=0.0 ? h0 : 15.0*(1.0-exp(-h0/15.0));
+ float f1=h1<=0.0 ? h1 : 15.0*(1.0-exp(-h1/15.0));
  integral=max((f1-f0)/ray.z,0.0);
 }
-float trans=exp(-.0015*integral*amount);
+float trans=exp(-.010*integral*amount);
 float3 fogColor=float3(.58,.66,.76)*Light;
 return Scene.rgb*trans+fogColor*(1.0-trans);
 '''
@@ -75,4 +74,5 @@ for name, source in inputs.items():
 assert mel.connect_material_property(custom, '', unreal.MaterialProperty.MP_EMISSIVE_COLOR)
 mel.recompile_material(mat)
 assert unreal.EditorAssetLibrary.save_asset(path, only_if_is_dirty=False)
-unreal.log_warning('STORM_DEPTH_FOG alternate M_StormComposite saved')
+unreal.log_warning('STORM_DEPTH_FOG M_StormComposite saved')
+

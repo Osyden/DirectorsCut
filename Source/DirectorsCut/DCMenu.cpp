@@ -146,11 +146,13 @@ void ADCGameMode::TickMainMenu(float DeltaSeconds)
     }
     if(FParse::Param(FCommandLine::Get(),TEXT("DCMenuCapture")) && MenuAge>5.f && !bMenuCaptured) {
         bMenuCaptured=true;
+        UE_LOG(LogDC,Log,TEXT("MAIN_MENU motion at %.2f ride=%.2f heave=%.3f slope=%.4f,%.4f"),MenuAge,Director?Director->RideTime:-1.f,ShipHeave,ShipSlope.X,ShipSlope.Y);
         FScreenshotRequest::RequestScreenshot(FPaths::ProjectSavedDir()/TEXT("Screenshots/MainMenu.png"),true,false);
     }
     if(FParse::Param(FCommandLine::Get(),TEXT("DCMenuMotionReview")) && PreviousMenuAge<9.f && MenuAge>=9.f) {
         FScreenshotRequest::RequestScreenshot(FPaths::ProjectSavedDir()/TEXT("Screenshots/MainMenuMotion.png"),true,false);
         UE_LOG(LogDC,Log,TEXT("MAIN_MENU animated backdrop; route held at %.2f"),Director?Director->RideTime:-1.f);
+        UE_LOG(LogDC,Log,TEXT("MAIN_MENU motion at %.2f ride=%.2f heave=%.3f slope=%.4f,%.4f"),MenuAge,Director?Director->RideTime:-1.f,ShipHeave,ShipSlope.X,ShipSlope.Y);
     }
     float AutoStart=0;
     if(FParse::Value(FCommandLine::Get(),TEXT("DCMenuAutoStart="),AutoStart) && AutoStart>0 && MenuAge>=AutoStart) { StartVoyage(); }

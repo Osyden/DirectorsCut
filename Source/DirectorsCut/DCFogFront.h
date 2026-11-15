@@ -55,6 +55,8 @@ protected:
 	/** The unified sloping storm and mist-filled throat; the bought tube is a diagnostic fallback. */
 	UPROPERTY() TObjectPtr<class AHeterogeneousVolume> Tunnel;
 	UPROPERTY() TObjectPtr<class UMaterialInstanceDynamic> TunnelMID;
+	UPROPERTY() TObjectPtr<class APostProcessVolume> StormComposite;
+	UPROPERTY() TObjectPtr<class UMaterialInstanceDynamic> StormCompositeMID;
 	/** Light inside the tunnel: daylight coming down it from its far end, and a little overhead, so its rolling walls are seen from within. */
 	UPROPERTY() TArray<TObjectPtr<class APointLight>> TunnelLights;
 	float TunnelLight = 0.f;   // off: tried 14 Nov, the lights fill the air in the tunnel with pale haze rather than modelling its walls

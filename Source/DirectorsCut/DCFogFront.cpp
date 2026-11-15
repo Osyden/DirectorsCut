@@ -11,6 +11,7 @@
 #include "HAL/IConsoleManager.h"
 #include "SparseVolumeTexture/SparseVolumeTexture.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/PostProcessVolume.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
 ADCFogFront::ADCFogFront()
@@ -212,6 +213,18 @@ void ADCFogFront::Tick(float DeltaSeconds)
 
 void ADCFogFront::BuildTunnel()
 {
+	if(!FParse::Param(FCommandLine::Get(),TEXT("DCLegacyFront")) && !FParse::Param(FCommandLine::Get(),TEXT("DCNoStormDepthFog")))
+	{
+		if(UMaterialInterface* Material=LoadObject<UMaterialInterface>(nullptr,TEXT("/Game/DC/Materials/M_StormComposite.M_StormComposite")))
+		{
+			StormComposite=GetWorld()->SpawnActor<APostProcessVolume>();
+			StormComposite->bUnbound=true;
+			StormComposite->Priority=50.f;
+			StormCompositeMID=UMaterialInstanceDynamic::Create(Material,this);
+			StormComposite->Settings.AddBlendable(StormCompositeMID,1.f);
+			UE_LOG(LogDC,Log,TEXT("FogFront: continuous depth mist across sea and cloud foot"));
+		}
+	}
 	if (!FParse::Param(FCommandLine::Get(), TEXT("DCLegacyFront")))
 	{
 		if (UMaterialInterface* Unified = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_UnifiedStorm.M_UnifiedStorm"), nullptr, LOAD_NoWarn | LOAD_Quiet))
@@ -374,6 +387,17 @@ void ADCFogFront::BuildTunnel()
 void ADCFogFront::TickTunnel(float T)
 {
 	if (!Tunnel && TunnelShown < 0.f) { TunnelShown = 0.f; BuildTunnel(); }
+	if(StormCompositeMID)
+	{
+		const float Reach=ArrivalTime*(1.f-6000.f/1500000.f);
+		const float Mouth=FMath::Max(Director->StormFrontX,6000.f-(T-Reach)*11250.f);
+		const float Shown=FMath::SmoothStep(.25f,.9f,Director->StormGrowth)*(1.f-FMath::SmoothStep(74.f,80.f,T));
+		StormCompositeMID->SetVectorParameterValue(TEXT("Origin"),FLinearColor(Mouth,0.f,Director->SeaLevelZ,0.f));
+		StormCompositeMID->SetScalarParameterValue(TEXT("Shown"),Shown);
+		StormCompositeMID->SetScalarParameterValue(TEXT("StormTime"),T);
+		StormCompositeMID->SetScalarParameterValue(TEXT("Light"),.04f+.045f*Director->GetEnv().SunIntensity);
+		StormComposite->BlendWeight=Shown>.001f?1.f:0.f;
+	}
 	if (!Tunnel) { return; }
 	if (bUnifiedFront)
 	{
@@ -382,10 +406,9 @@ void ADCFogFront::TickTunnel(float T)
 		const float Reach = ArrivalTime * (1.f - 6000.f / 1500000.f);
 		const float Mouth = FMath::Max(Director->StormFrontX, 6000.f - (T - Reach) * 11250.f);
 		const float Opening = FMath::SmoothStep(ArrivalTime - 18.f, ArrivalTime - 2.f, T);
-		// Hand over to the interior atmosphere as the bow crosses the wall.
-		// Keeping the enormous front around the camera leaves a dark waterline
-		// where its volume intersects the distant sea.
-		const float Shown = FMath::SmoothStep(0.25f, 0.9f, Director->StormGrowth) * (1.f - FMath::SmoothStep(ArrivalTime - 2.f, ArrivalTime + 2.f, T));
+		// Continuous depth mist joins the sculpted front to the water throughout
+		// the crossing, then both hand over to the city atmosphere at 74--80s.
+		const float Shown = FMath::SmoothStep(0.25f, 0.9f, Director->StormGrowth) * (1.f - FMath::SmoothStep(StormCompositeMID?74.f:ArrivalTime-2.f, StormCompositeMID?80.f:ArrivalTime+2.f, T));
 		Tunnel->SetActorTransform(FTransform(FRotator::ZeroRotator, FVector(Mouth+65000.f, 0.f, Director->SeaLevelZ+80000.f), FVector(1000.f,1200.f,750.f)));
 		TunnelMID->SetScalarParameterValue(TEXT("Opening"), Opening);
 		TunnelMID->SetScalarParameterValue(TEXT("StormTime"), T);
