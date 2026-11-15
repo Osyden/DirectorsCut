@@ -1,0 +1,31 @@
+Reference implementation: https://github.com/aparis69/Rock-fracturing
+Revision: b91965b3011ed269cbc3a051b00c9b284aaa2e36
+
+Algorithm credit: Axel Paris, Adrien Peytavie, Eric Guerin, Jean-Michel
+Dischler and Eric Galin, Modeling Rocky Scenery using Implicit Blocks,
+The Visual Computer 36(10), 2251-2261 (2020).
+
+Tools/run_implicit_cliff_reference.py creates a derived local source snapshot
+from this revision. Original source and bundled notices are preserved in that
+ignored snapshot. The game repository does not include the upstream image,
+sample models or bundled headers. This notice accompanies source patch excerpts.
+
+Copyright 2019 Axel Paris
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.

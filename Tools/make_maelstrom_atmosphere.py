@@ -111,6 +111,7 @@ camera = expression(plume, unreal.MaterialExpressionCameraPositionWS, -1300, 400
 clock = scalar(plume, "Clock", 0.0)
 reveal = scalar(plume, "Reveal", 1.0)
 density = scalar(plume, "Density", 0.65)
+crest_spray = scalar(plume, "CrestSpray", 0.0)
 
 opacity_code = NOISE + r"""
 float seed=VC.g*41.0+VC.b*17.0;
@@ -126,17 +127,21 @@ float edgeWidth=lerp(0.70,1.15,pn.fbm(float2(UV.y*4.7+seed,seed+3.9)));
 float2 edge=float2(((UV.x-0.5)*2.0+edgeWander)/edgeWidth,(UV.y-0.48)*1.95);
 float silhouette=pow(saturate(1.0-dot(edge,edge)),1.15);
 float torn=smoothstep(0.18,0.55,large+silhouette*0.25);
-float proximity=smoothstep(3000.0,9000.0,length(P-Camera));
-return saturate(lobe*torn*silhouette*VC.r*Alpha*Density*Reveal*proximity);
+float proximity=lerp(smoothstep(3000.0,9000.0,length(P-Camera)),smoothstep(500.0,2500.0,length(P-Camera)),Crest);
+// Short downstream tendrils at a breaker; keep distant fall plumes unchanged.
+float tendrils=pn.fbm(UV*float2(35.0,9.0)+float2(seed,-T*1.4));
+float spray=smoothstep(.34,.67,tendrils)*(1-smoothstep(.35,1.0,UV.y));
+return saturate(lerp(lobe*torn,spray,Crest)*silhouette*VC.r*Alpha*Density*Reveal*proximity);
 """
 opacity = custom(plume, opacity_code, FLOAT, {
     "UV": uv, "VC": vc, "Alpha": (vc, "A"), "P": position, "Camera": camera,
-    "T": clock, "Reveal": reveal, "Density": density,
+    "T": clock, "Reveal": reveal, "Density": density, "Crest":crest_spray,
 })
 fade = expression(plume, unreal.MaterialExpressionDepthFade, 0, 120)
 fade.set_editor_property("fade_distance_default", 1200.0)
 if not MEL.connect_material_expressions(opacity, "", fade, "Opacity"):
     raise RuntimeError("Could not bind plume depth fade")
+MEL.connect_material_expressions(scalar(plume,"DepthFadeDistance",1200.0),"",fade,"FadeDistance")
 output(fade, unreal.MaterialProperty.MP_OPACITY)
 output(vector(plume, "SprayAlbedo", (0.68, 0.77, 0.82, 1.0)), unreal.MaterialProperty.MP_BASE_COLOR)
 output(scalar(plume, "Roughness", 1.0), unreal.MaterialProperty.MP_ROUGHNESS)

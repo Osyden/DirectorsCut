@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "DCMaelstromWaterBridge.h"
+#include "DCWaterfallTrajectory.h"
 #include "DCMaelstrom.generated.h"
 
 class UProceduralMeshComponent;
@@ -24,22 +25,114 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
 	static ADCMaelstrom* Get(const UObject* Context);
 	bool IsActive() const { return bActive; }
+	bool IsCalderaLake() const { return true; }
 	float GetElapsed() const { return Elapsed; }
+	float GetRouteOffset() const { return RouteOffset; }
+	void EmitWaterContact(const FVector& Position, float Strength = 1.f, bool ProjectToSurface = true);
 	FTransform GetArenaTransform() const;
 	float SampleSurfaceWorld(const FVector& Position) const;
 	float GetRimRadius(float Angle) const;
 	float GetRimDrop(float Angle) const;
 	float GetRimJoin(float Angle) const;
 	float GetOverflowAmount(float Angle) const;
+	/** Actual lower shoreline in basin coordinates, for water-contact atmosphere. */
+	FVector GetShorelinePoint(float Angle) const;
+	struct FWaterfallContact { FVector Position; float Width; };
+	/** Generated waterfall feet in basin coordinates; atmosphere shares this layout. */
+	TArray<FWaterfallContact> GetWaterfallContacts() const;
 
 	UPROPERTY(EditAnywhere) float Radius = 160000.f;
 	UPROPERTY(EditAnywhere) float Depth = 90000.f;
 
 private:
 	float HeightAt(const FVector2D& Point, bool bWaves = true) const;
+	float BaseHeightAt(const FVector2D& Point) const;
 	float RimElevation(float Angle) const;
+	void UpdateContacts(float DeltaSeconds);
 	float RimGroundHeight(float R, float Angle) const;
+	float WaterEdgeRadius(float Angle) const;
+	static constexpr int32 WaterfallCount=20;
+	float WaterfallAngle(int32 Index) const;
+	float WaterfallWidth(int32 Index) const;
+	float CliffHeightAt(const FVector2D& Point) const;
+	FVector CliffSurfacePoint(float Angle,float V) const;
+	void BuildTerrain();
+	// Installed complete terrain uses the same arena frame and preserved water
+	// shoreline. Explicit authoring flags retain a separate inspection camera.
+	bool bCompleteCliffArena=false;
+	FString CliffArenaDataDirectory;
+	void BuildCliffPreview();
+	void UpdateCliffPreview();
+	void ClearCliffPreview();
+	UPROPERTY() TObjectPtr<class UStaticMeshComponent> CliffPreviewMesh;
+	TWeakObjectPtr<class ACameraActor> CliffPreviewCamera;
+	TWeakObjectPtr<AActor> CliffPreviewPreviousTarget;
+	struct FCliffPreviewHidden { TWeakObjectPtr<USceneComponent> Component; bool bVisible=false; };
+	TArray<FCliffPreviewHidden> CliffPreviewHidden;
+	TSet<TWeakObjectPtr<AActor>> CliffPreviewSupportedLandmarks;
+	TMap<TWeakObjectPtr<AActor>,FVector> CliffPreviewLandmarkOrigins;
+	TMap<TWeakObjectPtr<AActor>,FVector> CliffPreviewLandmarkOffsets;
+	void UpdateCliffPreviewFalls();
+	void ClearCliffPreviewFalls();
+	void UpdateCliffDetailPreview();
+	void ClearCliffDetailPreview();
+	UPROPERTY() TArray<TObjectPtr<class UInstancedStaticMeshComponent>> CliffDetailPreviewMeshes;
+	bool bCliffDetailPreviewTried=false;
+	UPROPERTY() TObjectPtr<class UStaticMeshComponent> CliffPreviewFallCore;
+	UPROPERTY() TArray<TObjectPtr<class ULocalFogVolumeComponent>> CliffImpactMist;
+	void UpdateInletMist();
+	void ClearInletMist();
+	UPROPERTY() TArray<TObjectPtr<class ULocalFogVolumeComponent>> InletMistVolumes;
+	bool bInletMistTried=false;
+	int32 PreviousCalderaFogBudget=-1;
+	int32 AppliedCalderaFogBudget=256;
+	struct FCliffPreviewVolume { TWeakObjectPtr<class AHeterogeneousVolume> Actor; int32 Frames=1; float FPS=12.f; };
+	TArray<FCliffPreviewVolume> CliffPreviewVolumes;
+	bool bCliffPreviewFallsTried=false;
+	float CliffPreviewPreviousTraceDistance=-1.f;
+	float CliffPreviewAppliedTraceDistance=-1.f;
+	void UpdateTerrainShadows();
+	float NextTerrainShadowUpdate=-1.f;
 	void BuildBasin();
+	void BuildCataract();
+	UPROPERTY() TObjectPtr<UProceduralMeshComponent> Cataract;
+	void BuildInletBed();
+	UPROPERTY() TObjectPtr<UProceduralMeshComponent> InletBed;
+	UPROPERTY() TArray<TObjectPtr<class UInstancedStaticMeshComponent>> InletBoulders;
+	void BuildBreakers();
+	void BuildFoamSource();
+	void BuildWhitewater();
+	void UpdateWhitewater();
+	void UpdateProceduralFalls();
+	void ClearProceduralFalls();
+	struct FProceduralFall
+	{
+		TWeakObjectPtr<class AHeterogeneousVolume> Actor;
+		int32 Frames = 1;
+		int32 DiagnosticTicks = 0;
+	};
+	TArray<FProceduralFall> ProceduralFalls;
+	bool bProceduralFallsTried = false;
+	float PreviousFallTraceDistance = -1.f;
+	float AppliedFallTraceDistance = -1.f;
+	TWeakObjectPtr<class ACameraActor> FallReviewCamera;
+	FTransform FallReviewLocalFrame=FTransform::Identity;
+	TWeakObjectPtr<AActor> FallReviewPreviousTarget;
+	struct FFallHiddenComponent { TWeakObjectPtr<class USceneComponent> Component; bool bWasVisible = false; };
+	TArray<FFallHiddenComponent> FallHiddenComponents;
+	struct FWaterFeed { FVector Foot; float Width; float Seed; TArray<FVector2D> Trail; FVector Lip = FVector::ZeroVector; int32 SourceIndex = INDEX_NONE;
+		float ContactV=0.f; FVector ContactPoint=FVector::ZeroVector; };
+	bool SampleReceivingWater(const FVector2D& Point,float& OutMeanHeight) const;
+	FVector SampleAttachedWaterfallPoint(float Angle,float V,float Across=0.f) const;
+	FVector SampleWaterfallCorePoint(float Angle,float V,float Across=0.f) const;
+	TArray<DCWaterfallTrajectory::FSegment> DetachedFallSegments;
+	int32 DetachedFallSource=INDEX_NONE;
+	TArray<FWaterFeed> WaterFeeds;
+	UPROPERTY() TObjectPtr<UProceduralMeshComponent> Whitewater;
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> WhitewaterMID;
+	float NextFeedSpray=0.f;
+	UPROPERTY() TObjectPtr<class UTexture2D> FoamSourceTexture;
+	void UpdateBreakers();
 	void BuildTunnel();
 	void BuildLandmarks();
 	void UpdateStage(float DeltaSeconds);
@@ -53,16 +146,41 @@ private:
 	UPROPERTY() TObjectPtr<ADCRideDirector> Director;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<USceneComponent> Arena;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Basin;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> ContactMesh;
+	struct FBreakingWave { FVector2D Center, Along, Across; float Length, Width, Height, Seed; };
+	TArray<FBreakingWave> BreakingWaves;
+	UPROPERTY() TObjectPtr<UProceduralMeshComponent> CrestSpray;
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> CrestSprayMID;
+	float BreakerHeight(const FVector2D& Point, float* Foam = nullptr) const;
+	TArray<FVector> BreakerSprayPoints;
+	float NextBreakerSpray=0.f;
+	struct FContactParticle { FVector Position, Velocity; float Age, Life, Size; };
+	TArray<FContactParticle> ContactParticles;
+	float NextWakeAt = 0.f;
+	UPROPERTY() TObjectPtr<class USoundBase> ContactSound;
+	float NextContactSoundAt = -100.f;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Falls;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> RimLand;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Cliffs;
+	UPROPERTY() TArray<TObjectPtr<class UInstancedStaticMeshComponent>> CliffRocks;
+	UPROPERTY() TArray<TObjectPtr<class UInstancedStaticMeshComponent>> CliffShadowRocks;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Tunnel;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UPostProcessComponent> Exposure;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> WaterMID;
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> CataractMID;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> TunnelMID;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> CascadeMID;
 	FDCMaelstromWaterBridge WaterBridge;
 	UPROPERTY() TObjectPtr<ADCLeviathan> Boss;
 	UPROPERTY() TObjectPtr<ADCMaelstromAtmosphere> Atmosphere;
+	// This encounter's exit fog masks its sea/sky handoff without changing the
+	// earlier route's weather. Absolute ride time also supports direct seeks.
+	void UpdateExitTransition();
+	void ResetExitTransition();
+	UPROPERTY() TArray<TObjectPtr<class ULocalFogVolumeComponent>> ExitFogVolumes;
+	TWeakObjectPtr<class APlayerCameraManager> ExitFogCamera;
+	bool bExitFogOwnsFade=false;
+	int32 ExitFogPhase=INDEX_NONE;
 	UPROPERTY() TArray<TObjectPtr<AActor>> Landmarks;
 	TWeakObjectPtr<AActor> Ocean;
 	TWeakObjectPtr<AActor> LegacyWeather;
@@ -86,6 +204,7 @@ private:
 	TArray<FStageFogVolume> StageFogVolumes;
 	bool bAtmosphereAdjusted = false;
 	TArray<TWeakObjectPtr<AActor>> OceanGrids;
+	TMap<TWeakObjectPtr<AActor>, bool> OceanCollisionBeforeHide;
 	float NextOceanScan = 0.f;
 	bool bOceanHidden = false;
 	TWeakObjectPtr<class UCameraComponent> CaptainCamera;
@@ -98,6 +217,7 @@ private:
 		TWeakObjectPtr<UMaterialInstanceDynamic> MID;
 		float RaisedAt = 0.f;     // seconds after the breach
 		float Ahead = 0.f;        // cm ahead of the ship
+		float RouteOffsetAtSpawn = 0.f;
 		float Abeam = 0.f;        // cm to starboard of her course
 		bool bStruck = false;
 		bool bCalled = false;
@@ -118,6 +238,8 @@ private:
 		TWeakObjectPtr<AActor> Actor;
 		float ThrownAt = 0.f;     // seconds after the breach
 		FVector From = FVector::ZeroVector;
+		float RouteOffsetAtSpawn = 0.f;
+		float TargetAcross = 0.f;
 		FVector Fall = FVector::ZeroVector;   // where it comes down, in the ship's space
 		TArray<TWeakObjectPtr<class UStaticMeshComponent>> Tail;
 	};
@@ -140,6 +262,9 @@ private:
 		float Side = 1.f;         // -1 port, +1 starboard
 		float Abeam = 0.f;        // cm off the ship's side
 		bool bWarned = false;
+		bool bAttacked = false;
+		float SafeDistance = 4000.f;
+		float NextSprayAt = 0.f;
 	};
 	TArray<FSpawnling> Spawnlings;
 	int32 SpawnlingsSent = 0;
@@ -160,4 +285,7 @@ private:
 	float PreviousTime = -1.f;
 	float ShipRadius = 0.f;
 	float HelmTurn = 0.f;
+	float RouteOffset = 0.f;
+	float RouteVelocity = 0.f;
+	float NextRouteLog = 0.f;
 };

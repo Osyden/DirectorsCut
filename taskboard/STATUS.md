@@ -2,6 +2,229 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 15 Nov 14:05 Codex: inlet outcrops now match the bank palette
+
+Added adjustable cool-gray derivatives of the two owned Nordic scan materials and bound them only to inlet boulder instances. The conspicuous ochre spots now blend with the surrounding stone. Original assets, texture pixels, source UVs/normals/roughness, placement, terrain, water, bank fog and sky remain unchanged. Generated materials stay ignored; source builder and replay instructions are in the branch.
+
+Editor/Game builds, initial/repeated material commandlets, native overview/player captures and open-sea/backward-seek checks pass. Source hashes confirm the original material/texture files were not changed. [Actual comparison, replay and remaining limitations](CALDERA-LAKE-15NOV.md). The broad bank forms and early-descent water/rock edges still need refinement; this is a local visual checkpoint, not a release build. Engine jobs are finished. Separate boss work remains unmerged here.
+
+## 15 Nov 13:38 Codex: visible low fog around the caldera banks
+
+Fixed the zero radial density that made shoreline fog invisible in UE5.8. Replaced the gapped angular placement with160 contacts sampled from the actual accepted terrain/water intersection. Radius46m keeps the haze close to the shore, with a shallow vertical fade; river spray redistribution keeps total scene/ending volumes253 within the unchanged256 budget. Dense waterfall impact fog, terrain, water and sky remain unchanged. The runtime marker preserves the legacy128-point field for older parallel checkouts and adds a separate validated coverage field.
+
+Editor/Game builds and final native overview/player/ending/restoration checks pass. [Screenshots, exact parameters, source hashes and replay](CALDERA-LAKE-15NOV.md). This is a local playable checkpoint, not a cooked release. The fog is intentionally subtle in shadow; bank materials and scan accents still need improvement. No Unreal jobs remain active from this pass; boss gameplay stays with the separate chat.
+
+## 15 Nov 13:23 Codex: lower river curtain reduced, varied foam and impact fog
+
+The lower inlet now narrows within its existing bed, removing the large suspended side-curtain in the native overview. Added slowly varying foam supply and softened the impact fog with unequal, gently drifting volumes. The hidden river/lake overlap stays submerged even beneath the hull-flatten effect. Terrain, lake size, route and sky are unchanged. A raised-bank trial produced a rock fin and conflicted with the full steering envelope, so it was rejected and the previous verified terrain restored.
+
+Editor/Game builds, water import, actual restored-mesh audit and chart probe pass. Final offscreen player captures verify clear views, ending fog, open-sea restoration and backward-seek fade cleanup. This is a local checkpoint, not a cooked release or completed art: sculpted banks, contrasting brown rock accents and remaining fine edge transitions need work. [Current source identities, evidence and critique](CALDERA-LAKE-15NOV.md). Engine jobs are finished; no standing engine slot lock. Separate boss work remains unmerged. The30-minute visual scheduler stays active.
+
+## 15 Nov 12:33 Codex: integrated river banks, local spray and dense impact fog
+
+The caldera inlet now uses connected, source-fractured cliff banks, physical rock mapping and foam transported along its actual curved river chart. Removed the giant mist cards. Shore haze is confined to40m from surveyed waterline points; shallow slope-aligned spray follows the river. The owner requested dense fog at the waterfall bottom: nine overlapping impact volumes now obscure the lower slope while staying outside the nominal radius928m battle lane. A player-view regression initially hid the arena; moving that bank uphill cleared it at ride321 and340.
+
+Editor/Game builds, imported geometry/mask audit, installed support data and39,961-sample flow-chart probe pass. Native captures verify current material compilation, clear battle-lane visibility and seek/ending restoration. [Current source identities, replay, screenshots and critique](CALDERA-LAKE-15NOV.md). Local launcher: `Play Caldera.cmd`. This has not been cooked into a fresh release build or merged to main. Preserve newer main crew UI/names/voice and the separate pending VFX material edits.
+
+The separate **Caldera boss fight** chat is active in `Boss-Caldera`. Visual work stays here; boss gameplay stays there. The existing visual-iteration heartbeat is active every30minutes with its obsolete spiral instructions replaced. Next priorities are less uniform impact-fog edges, more natural broad bank forms/scan accents and less repetitive ramp foam. This is an improved checkpoint, not final reference-quality art.
+
+## 15 Nov 11:45 Codex: simplified caldera lake, supported inlet and fog exit
+
+The owner's revised layout is implemented on `codex/maelstrom-saturday`: one level lake using DRW waves, one foaming descending inlet, a steady level ship orbit, and the selected maelstrom sky. Removed the spiral banks and retired perimeter falls. The inlet now has a continuous rock base and 68 bank boulders. The complete cliff toe extends below the lake, closing the open undersides exposed by the lower water level. Light shoreline mist and heavier drifting inlet mist gather after descent. Boss death is followed by local fog covering the scene swap, then clearing into open sea; no physical exit channel is required.
+
+Editor/Game builds, actual imported geometry/mask audit and installed-runtime validation pass. Native normal-game captures verify the opaque fog at 448–451, open sea restored at 458, and backward seek cleanup. [Current source identities, install/launch instructions, captures and limitations](CALDERA-LAKE-15NOV.md). `Play Caldera.cmd` launches the local game just before the reveal. This is a local playable change, not a newly packaged standalone release. Preserve the newer crew UI/names/voice work on main when integrating; this branch does not edit those systems.
+
+The lower cliff textures still stretch, the inlet remains visibly authored, and the boss needs a separate placement/gameplay pass for the lake. No claim that the reference's final visual quality or boss balance is achieved. Generated owned content stays ignored and must accompany integration locally. The earlier four pending cascade/mist/spray/whitewater material edits remain separate from this checkpoint.
+
+## 15 Nov 10:23 Codex: unique cliff surface maps and measured stone detail
+
+Replaced the repeated scan colour with separate unique detailed-sector and full-ring geology maps. Added interrupted bedding, geometry-guided weathering, varied wet/dry roughness, and native-scale scan normal detail without the scan's colour motifs. Fixed context V mapping and capped layered normal slopes after actual close frames revealed excessive scratches. Geometry and crater scale are unchanged. [Actual screenshots, source inputs and reproduction](CLIFF-SURFACE-15NOV.md).
+
+This is installed in the local continuous-cliff review, not a finished arena or normal-game terrain rollout. The broad sculpted cavities and smoother neighbouring landforms remain visible; the material pass does not solve them. Existing water/VFX edits stay outside this checkpoint. Sky, boss, early game and voice are unchanged; old scheduler remains paused.
+
+## 15 Nov 09:04 Codex: continuous scan-cliff prototype delivered; visual target still unmet
+
+Current local demo uses connected 497m geometry, a unique 4K scan-derived atlas and irregular planar fracture relief; stacked scans, repeated waffle displacement and blank crest material are removed. Actual [wide frame](review/continuous-scan-15nov/cliff-wide.png) and [deck frame](review/continuous-scan-15nov/cliff-deck.png) still show overly uniform cliff massing and artificial joints. This is not accepted AAA art and does not replace normal gameplay terrain. [Source identities, critique, validation and launch commands](CONTINUOUS-SCAN-CLIFF-15NOV.md).
+
+Native source/triangle/mask audit passed, all50 ruin groups remain supported, 300/350s views and 250/451s restoration captures completed, and the final deck views rendered. No new C++ build or packaged-build claim. The interactive launcher is syntax-checked and ready for manual use; offscreen rendering was verified. Existing waterfall bindings are stale and disabled; boss, sky/lighting and voice remain untouched. Old scheduler stays paused. RTX Mega Geometry engine migration is deferred for the deadline. Existing pending water/VFX material edits are outside this cliff checkpoint.
+
+## 15 Nov 08:45 Codex: continuous scan-derived cliff in native review
+
+Stacked scans and whole-terrain placement are abandoned for this task. A connected 497 m sector now imports with measured Nordic scan relief and registered PBR maps. The actual first frame exposed repeated waffle geometry and an untextured crest, so it is rejected visually; a unique sector-wide field and broader asymmetric cliff forms are being prepared. [Native findings and local review command](CONTINUOUS-SCAN-CLIFF-15NOV.md). Source-mesh/vertex-mask audit, all50 ruin supports, reverse seek and ending restoration passed. Old fitted waterfalls are disabled because their bindings are stale. No normal-game terrain rollout or main merge. RTX Mega Geometry engine migration is deferred; see [decision](RTX-MEGA-GEOMETRY-15NOV.md). Existing scheduler stays paused.
+
+## 15 Nov 08:25 Codex: owned scans installed; stacked assembly rejected
+
+User authorized a fast installed-asset demo after the crash, then explicitly rejected the stacked-cliff result. Two owned Nordic coastal raw scans (vefkehbva/vfmjadufa) now import as local Nanite meshes with original 8K PBR maps under ignored Content/LocalScans. Optional `-DCCliffScanDemo` attaches an authored instance manifest to the existing Arena; Editor build/import/native renders pass. This is not visual acceptance: `Saved/SceneReview/OwnedScansFirst` and `OwnedScansOverlap` show shelves/pancakes, so no further row/courses placement is authorized by the latest direction. Cropped local derivatives preserve source UVs but do not solve the large-form problem.
+
+Next: evaluate the owned Desert Cliffs Terrain Scan as one continuous headland, retain whole-form geology, and use small coastal pieces only selectively. Root is downloading its GLTF source; no accepted replacement or gameplay rollout yet. Existing crater scale/route, sky, boss and main remain untouched. The old autonomous visual-iteration automation is now confirmed PAUSED. Root owns imports/GPU; workers must not restart procedural solver or stacking sweeps.
+
+## 15 Nov 07:45 Codex: water shading/geometry faults isolated; cliff weathering continues
+
+The bank's old wave and shore masks never overlapped at ride350, producing zero added relief. Corrected region now carries roughly +/-1.3 m waves while preserving the ship corridor and shore. Actual source-mask capture shows the large silver sheet is mostly reflection; matching normal/displacement weights and removing a fresh-crest geometry freeze are now in native review. Focused CPU checks and Editor build pass.
+
+The current full-ring preview has a rebuilt pilot with larger buttresses and two source-fitted waterfalls. Its perfectly planar faces still look artificial, so physical surface weathering is underway. Waterfall ligaments replace uniform veil opacity; core/volume placement was independently confirmed. Still below target, no normal terrain rollout/main merge/package. [Current sources, evidence and next work](CRATER-ESCARPMENT-WORKFLOW-15NOV.md).
+
+## 15 Nov 07:22 Codex: whole rocky headland and aerated falls in native review
+
+- Replaced the pilot's soft exposed face with a connected jointed rock mass. [Actual native frame](review/cliff-native-15nov/jointed-headland-first.png) is structurally clearer but still too uniform/clean; larger buttresses, irregular margins and better stone shading remain active work. All50 current ruin groups bind to actual triangles; seek/ending restoration passes. Normal gameplay terrain remains unchanged.
+- [Aerated waterfall fans](review/cliff-native-15nov/aerated-fans-h2.png) now spread below their narrow upper jets. These are the oldH2 contacts; the worker is fitting unequal outlets to the new headland before a combined review. Runtime now handles the fourth translucent material correctly.
+- [White foam rafts](review/cliff-native-15nov/foam-rafts-player.png) replace uniformly diluted powder. Removed the separate flat-ocean gray foam blanket from the crater, preserving wave detail/tunnel behavior; current-aligned fingers are being reviewed to replace isolated white islands. Sky chat supplied opt-in sunlight balance. No claim of reference quality, main integration or a packaged release. [Current workflow and artifacts](CRATER-ESCARPMENT-WORKFLOW-15NOV.md).
+
+## 15 Nov Codex: full-ring cliff pilot in native review; still below visual target
+
+- The500m eroded-cliff pilot is joined to the full3.2km crater in an opt-in preview. Actual player/sector views, source-mesh verification and seek/ending restoration ran. Normal gameplay terrain and the separate chat's sky/cloud work remain unchanged.
+- Current-frame ruin support now handles randomized assemblies; all50 groups are grounded in the latest preview, including three raised foundations. The rock still reads as folded clay, and both bedding treatments were rejected. A connected fractured buttress and a150m falling-water outlet are active next steps, not completed polish.
+- [Actual screenshots, working artifacts, ownership and next implementation](CRATER-ESCARPMENT-WORKFLOW-15NOV.md). Boss remains deferred. No main merge or package is implied by this checkpoint.
+
+## 15 Nov Codex: natural parent terrain and shading diagnosis; crater cut next
+
+- Wider terrain tied to the modern coast still failed as smooth mounds. A separate historical-datum/uniform-uplift model now produces useful branching valleys and interlocking ridges at native scale. Portable CLI replay matches all 40 numeric arrays exactly. [Actual images, limits and next crater-cut stage](CRATER-ESCARPMENT-WORKFLOW-15NOV.md).
+- Found that 24,538 split normal edges caused much of the apparent striping; a same-geometry smooth-normal comparison removes it. Broad corrugation and pointed skyline still need work. Fixed 1.5/3.2 km views preserve scale. The model is not converged and deliberately does not preserve current coast/route/temple supports, so it remains offline. No scene, water/sky/boss, build or main changes.
+
+## 15 Nov Codex: physical escarpment adaptation tested; neither shape accepted
+
+- Built fresh 500 m terrain at 2 m spacing with the real coast/frame and exact outer boundaries. The API's default smoothing violated interior constraints; replaced it with checked valid-edge diffusion for a matched second trial. [Implementation, actual A/B images and next construction](CRATER-ESCARPMENT-WORKFLOW-15NOV.md).
+- Actual clay rejects both: incision alone creates parallel drapes; added slope transport smooths them into a dam. Next construct connected parent ridges/catchments before extracting detailed cliffs, instead of tuning a narrow step and flat lid. Old temple foundations are explicitly unsupported by these offline proposals; live actors remain unchanged. No native import, runtime/build, water/sky/boss change or main merge.
+
+## 15 Nov Codex: cuts/deep erosion rejected; complete escarpment reference reproduced
+
+- Two connected-body cell-release versions still look like quarry pockets. A deeper existing-solver erosion test changes terrain by over 50 m but creates grid-like spines and isolated support pedestals. All remain offline/rejected; source supports and geometry checks are separately recorded. [Actual images and diagnosis](CRATER-ESCARPMENT-WORKFLOW-15NOV.md).
+- Installed Fastscapelib 0.3.0 in an isolated Saved folder and reproduced its pinned official escarpment model unchanged, with independently identical output arrays. Native-scale clay shows coherent branching drainage/retreat but coarse 100 m facets. This is a method proof, not a crater asset; next generate a fresh physically sized sector before support/material/falls integration. No runtime, sky, water, boss or gameplay changes.
+
+## 15 Nov Codex: larger cliff exposure rejected; assembly cause identified
+
+- Generated one physical 160 x 96 m original-3D exposure and joined it into the measured 500 m sector. Final geometry checks pass after removing two verified hidden cavity shells, but actual close/context/1.5 km renders still show a rubble patch within soft terrain. [Actual images, diagnosis and next experiment](CRATER-REGIONAL-CLIFF-15NOV.md).
+- The current assembler excavates a window and adds cluster hulls back into it, which preserves the scar-like appearance even at larger scale. Next test continuous bedrock with shared cell boundaries, limited fracture openings and coherent whole-face massing; avoid repeating the failed saw-slot or giant-prism trials. Offline tooling only, no arena rollout or new Unreal build. Water/falls, sky/light, boss and gameplay remain unchanged.
+
+## 15 Nov Codex: full-height cliff trials rejected; installed stone material proof
+
+- Diagnosed soft curtains: the old smooth fit created most of the cliff drop. New full-height structural seeds preserve all constraints but still look like engineered walls in actual near/far clay; both rejected, no terrain import. [Diagnosis, actual captures and next representation](CRATER-STRUCTURE-AND-ROCK-15NOV.md).
+- Added separate measured mean-water context to avoid misreading the submerged toe, plus optional installed slate texture sampling for the isolated preview. Corrected obvious texture repetition; native shader and seek/exit checks pass. Material remains an intermediate proof, with diagnostic masks and no final-quality/performance claim. No normal arena, sky/light, water, boss or early-game changes.
+
+## 15 Nov Codex: repaired cliff exposure, actual native and full-sector context
+
+- Removed artificial anchor fins and corrected exposure-boundary skirts. The original 3D rock surface now imports and renders in an isolated Nanite preview; Editor/Game builds, source import fidelity, five focused tests and seek/exit restoration pass. [Actual captures and remaining work](CRATER-CLIFF-CONTEXT-15NOV.md).
+- Matched full 500 m context proves the patch fits the scale but remains a fractured scar on soft fluted terrain. No arena rollout: next establish coherent sector-wide escarpments, rock layers/joints and drainage, then final-surface masks and materials. Erosion and ridged terrain algorithms already exist; their presence is not visual acceptance. Water/falls, sky/light, boss and normal gameplay unchanged.
+
+## 15 Nov Codex: source-shaped fractured bedrock, larger coherent rock masses
+
+- Corrected the reference's inactive fracture normals and unreliable bounds, then generated real clusters inside the measured curved cliff. Cube/panel placement and a dense rubble variant were rejected. Larger source-shaped masses now give useful planes and ledges; the abrupt exposure boundary and thin fins still prevent final visual approval. [Actual work, renders and next step](CRATER-CURVED-BEDROCK-15NOV.md).
+- The final repaired solid is one connected component with all7,488 crop-guard vertices preserved. Its original open face has28,936 triangles and exactly matching source boundary edges. Actual flat/angle and1500m reviews are retained; no normal-game terrain, water, sky/light, boss or early-game changes. No Unreal import/build or performance claim this pass.
+
+## 15 Nov Codex: surface-detail trials rejected; rock-fracturing reference reproduced
+
+- Refined the full 500 m sector and rendered two procedural-detail trials, then a separate radial-shear crop. All remain too soft/repetitive; none entered the game. Guards, masks and original-triangle contact checks distinguish numerical validity from the failed appearance. [Current evidence and next algorithm](CRATER-ROCK-STRUCTURE-15NOV.md).
+- Inspected, built and ran the authors' MIT reference implementation of *Modeling Rocky Scenery using Implicit Blocks*, generating all four examples successfully. Eight supplied-model clay views favour polyhedral faces, then rhombohedral; neither is ready for the scene. Fix grid-coordinate/Y-up export, reduce smoothing/warping, and adapt connected fracture volumes to one protected outcrop next. Stop adding generic surface-noise variants to the current soft mass. See [reproduction](ROCK-FRACTURING-REFERENCE.md) and [visual review](ROCK-FRACTURING-REFERENCE-REVIEW.md).
+- Added an isolated metric-distance camera and original-3D import-reference support. Editor/Game builds, source-reference regression checks and actual far-camera seek/exit restoration pass. Normal arena, water/falls, sky/light and boss unchanged; no main merge/package.
+
+## 15 Nov Codex: established terrain workflow; 3D fracture tests rejected visually
+
+- Answered the mountain-algorithm direction: ridged terrain and erosion for connected landforms, detailed 3D cliff meshes, and terrain-derived material masks. [Workflow, evidence and next shape work](CRATER-CLIFF-ALGORITHMS-15NOV.md).
+- Two physical-scale outcrop trials have valid overhang geometry but fail the visual target: straight saw slots, then repeated quarry-like pockets. Neither is promoted to the game. Added a standalone original-triangle query for future overhang-aware contacts and matched 3D review tools; CPU checks pass.
+- An actual native Nanite-triangle view confirms the current preview's soft form is authored geometry, not simply its coarse fallback. Normal arena, water/falls, sky/light and boss remain unchanged. No main merge or package.
+
+## 15 Nov Codex: connected massif, measured supports and corrected native preview
+
+- Replaced the offline locked cap/apron with a connected massif fitted to actual coast/seams and ruin footprints. Protected land drops from65.51% to15.29%; bounded erosion and independent exact-triangle support checks pass. [Actual evidence and next fracture work](CRATER-MASSIF-15NOV.md).
+- Corrected white masks caused by an existing-asset reimport route and missing Nanite material usage. Previous pass7 native stone comparisons used a fallback material; final pass8 does not. Actual view shows the new silhouette and two matching supported landmarks, but soft faces remain far from the target. One randomized colonnade is deliberately excluded from the preview because its bounds no longer match the export.
+- Final Editor/Game builds and active backward-seek/exit checks pass. Normal gameplay geometry, water/falls, clouds/light and boss remain unchanged; this is still an isolated authoring proof. Next is genuine joint/fracture geometry, reproducible skyline placement and exact surface integration. No main merge/package.
+
+## 14 Nov Codex: actual eroded-cliff preview; shape rejected for integration
+
+- Imported terrain now renders in an isolated Unreal view with source-audited orientation/masks, original procedural stone and an exact source-triangle query utility. Editor/Game builds pass; actual active backward-seek and exit restoration pass. [Evidence and next shape plan](CRATER-ENGINE-CLIFF-PREVIEW-14NOV.md).
+- The new images still expose a faceted dam: the generator freezes the cap and lower apron, about 69% of samples. Next pass must free those regions except actual shore/seam/temple anchors and build connected geology behind the crest before erosion/fracture. More material detail alone will not solve it. Normal gameplay terrain/falls, clouds/light, early game and boss remain unchanged. No main merge/package.
+
+## 14 Nov Codex: ridged cliff authoring proof, gameplay unchanged
+
+- Rejected three clean radial/catchment variants after matched CPU clay review. An independent Blender ridged-multifractal/heterogeneous terrain basis produces more irregular projecting masses and smaller broken shoulders. Actual erosion masks and an isolated 500 m Nanite preview import now work. [Evidence, reproduction and next gate](CRATER-RIDGED-PREVIEW-14NOV.md).
+- Added explicit conserved shoreline outflow to the offline erosion kernel; thirteen tests pass, plus six seed tests and deterministic ridge checks. FBX physical dimensions and Blender mask roundtrip pass; Unreal import builds Nanite successfully. GPU/in-game preview, final fracture detail, exact live seams/temple support and a shared contact sampler remain outstanding. No runtime replacement or visual-finalization claim.
+- No game C++, cloud/light, water, boss or gameplay changes this pass. Other chats' renders were preserved; only CPU authoring and NullRHI imports ran. Own review branch, no main merge/package. Automation updated to follow the new landform direction.
+
+## 14 Nov Codex: erosion direction, actual diagnostics and irregular rim city
+
+- Added irregular columns, arches, broken courts and statues around the rim: 50 groups with actual rendered-triangle footing checks. Retained finite bank wave packets outside the ship and shoreline protections; detached waterfall trajectories remain opt-in. [Changes, actual reviews and next plan](CRATER-EROSION-DIRECTION-14NOV.md).
+- Tested local fractures/crease normals and rejected their dark triangular cuts; restored previous cliff geometry. Implemented offline hydraulic/thermal erosion and exported a measured 500 m sector, but rejected its first result: erosion mostly follows heightfield projection defects at existing overhangs. Next work is a clean constrained geological landform, then erosion and genuine 3D cliff faces. No claim of AAA cliffs or successful erosion integration.
+- Final Editor/Game builds and five maelstrom engine tests pass. Actual wide/close reviews and independent CPU clay diagnostics distinguish visual failure from numerical success. Crater, route and ownership boundaries retained; no main merge/package.
+
+## 14 Nov Codex scheduled continuation: cliff structure, material isolation and native spray
+
+- Replaced giant cliff shelves with shallower vertical geology; matched shader isolation then identified and removed the 22 m masonry-pattern normal/AO layer. Replacement detail uses shallow physical erosion and sparse cracks. Crater size, route, corrected shoreline, temples and sky retained. [Actual renders, reproducible cache and remaining failures](CRATER-GEOLOGY-AND-SPRAY-14NOV.md).
+- Fixed the native VDB coefficient units, regenerated the source-8 waterfall against the revised face and proved scene-lit volume visibility with zero emission. It remains opt-in: the close effect still looks attached and the landing mist too dusty. This is a technical checkpoint, not visual finalization. Basin wave normals now account for the flow map and actual tilted surface; broad bank geometry still needs work.
+- Final Editor/Game builds and four maelstrom engine tests pass. CPU geometry/contact and full generated-cache checks pass. A backward-seek visibility bug was found, fixed and exercised through active/inactive restoration. Actual offscreen views still reject the scene as reference quality; see the handoff for NullRHI and performance limitations. Own branch only; no main merge/package.
+
+## 14 Nov Codex scheduled continuation: waterfall contact and supported shoreline
+
+- Found that the cliff toe let waterfalls enter the finite basin 6.6–16.4 m underwater. Corrected the actual low rock/water join and trimmed each branch at first covered contact; removed the terminal upward curl. All nine production geometry/core contacts now pass, with a reproducible source-extracting probe. [Evidence, captures and remaining visual failures](CRATER-WATER-CONTACT-14NOV.md).
+- Waterfall shading now has lit liquid/aerated variation, stable downstream motion and small normal detail. Fitted VDB generation respects water coverage and first contact, and a corrected source-8 cache imports successfully. It remains opt-in: the actual close render still exposes a waterfall glued to oversized shelves and weak volume detail. Shared detached/freefall paths and better cliff shapes are next; this is not visual sign-off.
+- Editor/Game builds, four engine tests, both CPU probes, generated-cache checks and actual wide/close reviews pass. Crater dimensions, route, temples and sky/cloud/light code retained. Existing VSM marking overflow remains. Own branch only; no main merge/package.
+
+## 14 Nov Codex scheduled continuation: inlet and water-flow artifacts corrected
+
+- Fixed the angular shoreline discontinuity behind the inlet: the largest sampled neighboring mesh edge drops from 785 m to 12.5 m, retaining 35 m steering clearance. Replaced the singular inner texture backtrace; matched beauty/normal renders confirm the giant stretched triangle and star pinch are gone. [Evidence, captures and next work](CRATER-SEAMS-FITTED-FALLS-14NOV.md).
+- Surface falls now share actual cliff triangles, clear overhangs without upward penetration, and no longer twist at their endpoint. One original VDB is fitted to a measured 234.9 m lower reach, with stable source IDs and matching current/receiving-water samples. It remains opt-in: close renders still show weak mist, overly attached ribbon water, and a submerged dip needing first-contact trimming.
+- Final Editor/Game builds, material generation, native VDB import, three engine tests and the production-source geometry/flow probe pass. Entry/descent/exit captures clear volumes and restore sky/fog. No main merge/package; cloud/sky and early-game code untouched. See the note for screenshot timing limitations and remaining shadow cost.
+
+## 14 Nov 20:21 Codex: scheduled crater iterations, three workers and measured shader fix
+
+- App automation `directorscut-crater-visual-iterations` is ACTIVE every 30 minutes in the existing maelstrom chat. Three isolated workers contributed cliffs/temple support, water/foam and original procedural VDB generation. [Current handoff, actual rejected captures and next steps](CRATER-VISUAL-ITERATIONS.md).
+- Corrected a verified raw FFT-wave-mask/perceptual-roughness mismatch; source-driven foam now has gaps. Cliffs use fractured planes rather than smooth giant terraces, with middle-scale rock normals. Steering now turns toward the displaced trajectory, bounded to 12 degrees. Crater dimensions, central route and temple supports preserved; cloud/sky and early-game code untouched.
+- Original 24 fps VDB sequences generate and import successfully. Actual close-ups reject their current cliff attachment, so runtime remains opt-in. No purchase required for further procedural experimentation; do not treat this prototype as a finished waterfall replacement.
+- Final Editor/Game builds, material generation, cliff/route automation and entry/descent/exit captures pass. Visual target remains unmet: smooth banks, ribbon falls, blocky close cliff faces, some dark ledge seams and a lower-descent geometry artifact remain. VSM non-Nanite marking overflow also remains. Own review branch only; no main merge/package.
+
+## 14 Nov Codex: dedicated cliffs and temple skyline
+
+- Replaced heightfield cliffs and both old scaled-crag paths with a parametric geological wall/cap generator. Temples now sit on supported low plateau pads against sky; references drive the skyline hierarchy. [Implementation, rejected trials, actual captures and verification](MAELSTROM-CLIFFS-14NOV.md).
+- Editor/Game builds, rock material generation and cliff-continuity automation pass. Actual multi-phase renders restore open sea. Water/foam/sky lighting/boss unchanged; existing falls only reattached to the new cliff surface. No main merge/package. Still needs material/art refinement, not AAA sign-off.
+- User requested a waterfall worker. Exact OneStudio2 video pack identified but not installed; [pack assessment and integration plan](WATERFALL-VDB-14NOV.md), read-only audit tool ready.
+
+## 14 Nov Codex: sky integrated, foam transport and scale overhaul
+
+- Merged sky branch through `e32cd85` into `codex/maelstrom-saturday` (`ee156ec`), keeping current terrain/water. [Combined implementation, captures, asset decision and remaining failures](MAELSTROM-INTEGRATED-14NOV.md).
+- Fixed foam sources disappearing below texture resolution and added persistent downstream wakes. Narrower irregular falls, smaller clustered rocks, fractured benches and cliff self-shadowing improve scale. Actual fall contacts now place the receiving-water mist. Narrowed the inner bank shoulder after rejecting a camera-only attempt to expose crater depth.
+- Editor/Game builds and material generation pass; combined continuous descent restores open sea, direct backward seek restores sky/fog correctly. The note distinguishes captures before/after the final inner-bank change. Still not reference quality: broad smooth banks, thin falling streams, rock material and shoreline contact remain priorities. No main merge or packaged build.
+
+## 14 Nov Codex: exposed rock crater and lower turbulent basin
+
+- Rebuilt the land/water boundary: water ends at an irregular lower shoreline, connected procedural cliffs fill the space to the rim, and discrete falls use shared carved channels. Preserved the 3.2km crater, 900m depth and descending route; added shorter breakers and bounded moving-crest compression. [Plan, implementation, actual captures and remaining visual failures](MAELSTROM-ROCK-BASIN-PLAN.md).
+- Editor/material builds pass, continuous trial C restores open sea, final short capture run passes, minimum calculated full-steer shoreline clearance is 35m. Rock surfacing, ribbon-like falls, broad smooth water, near-water grid artifacts and atmosphere contact still need work; not AAA visual acceptance.
+- Isolated `codex/maelstrom-saturday`, not merged or packaged. Clouds/lighting untouched. Sky integration now has `GetShorelinePoint(angle)` for contact mist rather than the former upper-water join.
+
+## 14 Nov Codex: branched falls and turbulent-water follow-up
+
+- Replaced continuous feed sheets with uneven branches and interrupted aerated reaches; added irregular moving wave packets, filtered bank foam, stronger short chop and finer impact spray. [Changes, rejected trials, actual captures and remaining visual gaps](MAELSTROM-WHITEWATER-14NOV.md#follow-up-turbulent-slopes-and-branched-feeds).
+- Crater/route, clouds, lighting and boss code unchanged. Editor build, material generation and final capture run pass; a preceding full descent reached open sea. Isolated `codex/maelstrom-saturday` review branch, not merged or packaged. Broad banks still need geometry/art refinement.
+
+## 14 Nov Codex: whitewater and moving-crests pass
+
+- Added side feeds, contact-anchored downstream foam, local spray and animated breaking crests on the spiral. [Implementation, critique and integration](MAELSTROM-WHITEWATER-14NOV.md).
+- Kept crater scale/route; cloud and lighting ownership remains with the sky chat, which received the edit boundaries. Editor build/material generation and continuous scene reviews passed; actual captures and remaining quality gaps are in the note. Isolated water branch review checkpoint; not merged or packaged.
+
+## 14 Nov Codex: descending spiral prototype ready for review
+
+- User authorized a bespoke banked spiral and ship-centred movement, retaining the crater scale. [Prototype and ownership](MAELSTROM-SPIRAL-PROTOTYPE-14NOV.md).
+- Coordinated directly with **Improve Maelstrom sky visuals**. Water/route and sky/lighting remain separate; shared DCMaelstrom.cpp edits require function-level merging.
+- Build and extended route tests pass. Full normal-speed scene review and held-port narrowing test reached open sea; a final short run verified the fix for a folded bank near the centre. Actual captures and remaining visual gaps are linked in the prototype note. This is geometry/movement work, not a finished water, boss or underwater-exit pass. Isolated branch only; no main merge or packaged build.
+
+## 14 Nov Codex: concept critique, finer water scale and a leftward feeding current
+
+- Generated three explicitly labelled paintovers of the game frame. A/B fail the owner's far-wave scale requirement; C is the useful starting direction, not a final approval. [Concepts, exact prompts, critique and implementation plan](MAELSTROM-WATER-DIRECTION-14NOV.md).
+- Removed the giant crossing swell field and angular bowl buttresses; narrowed foam sources, reduced ordinary crest scale, reversed the route to enter a leftward descending current before the lip, and preserved starboard controls. Built a guarded bridge to the installed water simulation's actual vertex displacement with hull/distance bounds. Added dedicated crest-spray fading and smaller current-driven droplets.
+- The user proposed a separate chat for clouds and sky lighting. This pass leaves that system unchanged; the new port-facing view requires a revised sun composition. Coordinate edits to the phase values in DCMaelstrom.cpp and the shared plume generator/material. Boss iteration remains deferred.
+- Work remains isolated on `codex/maelstrom-saturday`; no main merge, packaged build or main-editor changes. Visual quality is still in progress; read the detailed note before integration.
+
+## 14 Nov Codex: maelstrom environment checkpoint; boss deferred
+
+- Continued on `codex/maelstrom-saturday` in the isolated project. [Changes, replay instructions, review captures and remaining quality gaps](MAELSTROM-SCENE-POLISH-14NOV.md).
+- Integrated wave crests, advected foam source, crest spray, corrected tunnel winding/normals and clearer daylight atmosphere. Crater dimensions and route retained. A rejected detached-sheet experiment was removed.
+- Editor build and material generation pass; native 1440p reveal/descent captures taken. This is not finalized, packaged or merged into the active project. Boss iteration remains on hold at the user's request.
+
+## 14 Nov Codex: maelstrom orbit/contact pass, isolated review branch
+
+- Branch `codex/maelstrom-saturday`, based on `cf49b3b`; project `E:/Projects/DirectorsCut/Maelstrom-Saturday`. [Changes, tests and remaining gaps](MAELSTROM-14NOV-CODEX.md).
+- Continuous descending orbit, bounded lateral steering and matching hazard displacement. Swimmers stop outside the hull and withdraw after a wake attack; tentacles strike water outboard with contact spray. Smaller lit weak points replace the oversized glowing bulbs.
+- Editor target builds; route/steering automation passes at 30 and 120 fps. Offscreen encounter and close-up checks are documented in the handoff. This is not a claim of reference-quality visuals or a packaged release.
+- Early-game, player, gunnery, crew, HUD, treadmill and global sky/weather files untouched. Review/cherry-pick the branch before merging into the active project; the overnight packaged executable does not contain these changes.
+
 ## 14 Nov 07:54 Claude: END OF THE OVERNIGHT RUN. Claim on the maelstrom files released
 
 - Last build, from the last source of the night: `Builds/2026-11-14_0748_69449a3_handover/Windows/DirectorsCut.exe`, run from its exe start to ending card at 2x with the bot captain, no errors (six giants killed, both spawnlings sunk, beaten on the clock; eleven blows on stone, two on the stem, hull 12 at the card).

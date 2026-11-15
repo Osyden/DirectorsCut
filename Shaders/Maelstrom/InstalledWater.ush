@@ -1,0 +1,9 @@
+#ifndef DC_MAELSTROM_INSTALLED_WATER
+#define DC_MAELSTROM_INSTALLED_WATER
+
+// The purchased helper has no file-wide guard. Unreal can emit the same
+// custom expression for both vertex and pixel contexts in one shader. Only
+// include it once; keep all vendor implementation in the installed plugin.
+#include "/Plugin/DynamicRealWater/Private/DRW_Common.usf"
+
+#endif

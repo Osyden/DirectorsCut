@@ -62,17 +62,17 @@ void ADCLeviathan::BeginPlay()
 	}
 	PainAudio->SetSound(LoadObject<USoundBase>(nullptr, TEXT("/Game/Sonniss/kraken_pain.kraken_pain"),
 		nullptr, LOAD_NoWarn | LOAD_Quiet));
-	if (UMaterialInterface* Skin = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Kraken.M_Kraken")))
+	if (UMaterialInterface* Skin = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Maelstrom/M_LeviathanWet.M_LeviathanWet")))
 	{
 		ArmMaterial = UMaterialInstanceDynamic::Create(Skin, this);
 		ArmMaterial->SetVectorParameterValue(TEXT("Skin"), FLinearColor(0.035f, 0.048f, 0.045f));
 		ArmMaterial->SetVectorParameterValue(TEXT("Belly"), FLinearColor(0.22f, 0.11f, 0.055f));
 	}
 	TargetMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere"));
-	if (UMaterialInterface* Glow = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Glow.M_Glow")))
+	if (UMaterialInterface* Glow = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Maelstrom/M_LeviathanWeakpoint.M_LeviathanWeakpoint")))
 	{
 		TargetMaterial = UMaterialInstanceDynamic::Create(Glow, this);
-		TargetMaterial->SetVectorParameterValue(TEXT("Color"), FLinearColor(3.5f, 0.75f, 0.13f));
+		TargetMaterial->SetVectorParameterValue(TEXT("Color"), FLinearColor(1.2f, 0.28f, 0.07f));
 	}
 	for (int32 Ring = 0; Ring < ArmRings - 1; ++Ring)
 	{
@@ -139,7 +139,7 @@ void ADCLeviathan::UpdateEncounter(float Elapsed, const FTransform& Arena, float
 	SetActorHiddenInGame(Elapsed < FirstPeekAt);
 	ADCRideDirector* Director = ADCRideDirector::Get(this);
 	ShipPosition = FVector(0.f, 0.f, Director ? Director->SeaLevelZ : 0.f);
-	const ADCMaelstrom* Maelstrom = ADCMaelstrom::Get(this);
+	ADCMaelstrom* Maelstrom = ADCMaelstrom::Get(this);
 	FVector HiddenBodyPosition = Arena.TransformPosition(FVector(Radius * 0.1f, 0.f, 0.f));
 	const float SurfaceZ = Maelstrom ? Maelstrom->SampleSurfaceWorld(HiddenBodyPosition) : ShipPosition.Z;
 	HiddenBodyPosition.Z = SurfaceZ - (MeshBoundsCenter.Z + MeshBoundsExtent.Z) * BodyScale - FMath::Max(Depth, 20000.f);
@@ -198,7 +198,7 @@ void ADCLeviathan::SpawnTarget(FArm& Arm, const FVector& Position)
 	Component->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 	Component->SetCastShadow(false);
 	if (TargetMaterial) { Component->SetMaterial(0, TargetMaterial); }
-	Target->SetActorScale3D(FVector(4.f, 4.f, 6.f));
+	Target->SetActorScale3D(FVector(2.8f, 1.2f, 3.6f));
 	Treadmill->AddExternalHostile(Target, 550.f, 8.f);
 	Arm.Target = Target;
 	Arm.bTargetRegistered = true;
@@ -254,6 +254,7 @@ void ADCLeviathan::UpdateArm(int32 Index, float Elapsed, bool bCanDamage)
 		Arm.Cycle = Cycle;
 		Arm.bBrokenThisCycle = false;
 		Arm.bStruck = false;
+		Arm.bEmerged=false;
 	}
 	if (Arm.bTargetRegistered && !Arm.Target.IsValid())
 	{
@@ -288,7 +289,7 @@ void ADCLeviathan::UpdateArm(int32 Index, float Elapsed, bool bCanDamage)
 	const float TellX = Index < 2 ? 4000.f : 2600.f;
 	const FVector IdleTip = ShipPosition + FVector(TellX + 600.f * FMath::Sin(Elapsed * 0.2f + Index), Side * 8000.f, 1250.f);
 	const FVector RaisedTip = ShipPosition + FVector(TellX, Side * 6500.f, 1150.f);
-	const FVector StrikeTip = ShipPosition + FVector(Longitudinal, Side * 220.f, 500.f);
+	const FVector StrikeTip = ShipPosition + FVector(Longitudinal, Side * 1850.f, -50.f);
 	FVector Tip = IdleTip;
 	if (Cycle != INDEX_NONE && Phase < 6.f) { Tip = FMath::Lerp(IdleTip, RaisedTip, FMath::SmoothStep(0.f, 6.f, Phase)); }
 	else if (Phase < 7.1f) { Tip = FMath::Lerp(RaisedTip, StrikeTip, FMath::SmoothStep(6.f, 7.1f, Phase)); }
@@ -305,7 +306,7 @@ void ADCLeviathan::UpdateArm(int32 Index, float Elapsed, bool bCanDamage)
 	const FVector DeckTip = Tip;
 	if (Cycle != INDEX_NONE && !Arm.bBrokenThisCycle && DefeatedAt < 0.f) { Tip = KeepTipReachable(Tip, Side); }
 	FVector WeakPoint = Tip + FVector(0.f, Side * 950.f, 350.f);
-	// The striking extremity still reaches the deck. Its vulnerable joint remains
+	// The strike lands outside the rail. Its vulnerable joint remains
 	// on the arm just outboard, above the local sea and inside the cannon envelope.
 	const float StrikeBlend = FMath::SmoothStep(6.f, 7.1f, Phase) * (1.f - FMath::SmoothStep(7.7f, 9.f, Phase));
 	Tip = FMath::Lerp(Tip, DeckTip, StrikeBlend);
@@ -319,6 +320,21 @@ void ADCLeviathan::UpdateArm(int32 Index, float Elapsed, bool bCanDamage)
 	WeakPoint.Z -= Submerge;
 	Bend.Z -= Submerge;
 	BuildArm(Index, Base, Bend, WeakPoint, Tip, Elapsed);
+	if (Maelstrom && Arm.bHasWaterContact && Elapsed>=PeekAt && Retract<.7f)
+	{
+		// Contact belongs at the actual spline/water intersection, not the
+		// submerged root tens of metres away from the visible arm.
+		if (!Arm.bEmerged && Rise>.15f)
+		{
+			const_cast<ADCMaelstrom*>(Maelstrom)->EmitWaterContact(Arm.WaterContact,2.f);
+			Arm.bEmerged=true;
+		}
+		if (Elapsed>Arm.NextSprayAt)
+		{
+			const_cast<ADCMaelstrom*>(Maelstrom)->EmitWaterContact(Arm.WaterContact,.25f);
+			Arm.NextSprayAt=Elapsed+.25f;
+		}
+	}
 	Arms->SetMeshSectionVisible(Index, Elapsed >= PeekAt && (DefeatedAt < 0.f || Elapsed - DefeatedAt < 6.f));
 
 	const bool bExposed = Cycle != INDEX_NONE && Phase < 13.f && !Arm.bBrokenThisCycle && DefeatedAt < 0.f;
@@ -326,12 +342,13 @@ void ADCLeviathan::UpdateArm(int32 Index, float Elapsed, bool bCanDamage)
 	if (bExposed)
 	{
 		if (!Arm.bTargetRegistered) { SpawnTarget(Arm, WeakPoint); }
-		if (AActor* Target = Arm.Target.Get()) { Target->SetActorLocation(WeakPoint); }
+		if (AActor* Target = Arm.Target.Get()) { Target->SetActorLocation(WeakPoint + FVector(0.f, -Side * 180.f, 0.f)); }
 	}
 	else { RemoveTarget(Arm); }
 	if (Phase >= 7.1f && Phase < 7.7f && !Arm.bStruck && bCanDamage && !Arm.bBrokenThisCycle && DefeatedAt < 0.f)
 	{
 		Arm.bStruck = true;
+		if (Maelstrom) { const_cast<ADCMaelstrom*>(Maelstrom)->EmitWaterContact(Tip,2.2f); }
 		if (ADCRideDirector* Director = ADCRideDirector::Get(this)) { Director->DamageShip(StrikeDamage); }
 	}
 }
@@ -362,7 +379,31 @@ void ADCLeviathan::BuildArm(int32 Index, const FVector& Base, const FVector& Ben
 			Point = Joint * V * V * V + TailControl * 3.f * V * V * T
 				+ FMath::Lerp(Tip, Joint, 0.35f) * 3.f * V * T * T + Tip * T * T * T;
 		}
+		const float ShipX=Point.X-ShipPosition.X;
+		if (FMath::Abs(ShipX)<4000.f && Point.Z>ShipPosition.Z-250.f)
+		{
+			const float Safe=1400.f+ArmWidthScale*FMath::Lerp(2200.f,130.f,FMath::Pow(U,.7f));
+			const float Sign=Base.Y<0.f ? -1.f : 1.f;
+			Point.Y=ShipPosition.Y+Sign*FMath::Max(FMath::Abs(Point.Y-ShipPosition.Y),Safe);
+		}
 		Points.Add(Point);
+	}
+	FArm& State=ArmState[Index];
+	State.bHasWaterContact=false;
+	if (const ADCMaelstrom* Stage=ADCMaelstrom::Get(this); Stage && Elapsed>=FirstPeekAt+Index*2.5f)
+	{
+		float PreviousDepth=Points[0].Z-Stage->SampleSurfaceWorld(Points[0]);
+		for (int32 Ring=4;Ring<Points.Num()+3;Ring+=4)
+		{
+			const int32 Current=FMath::Min(Ring,Points.Num()-1);
+			const float DepthHere=Points[Current].Z-Stage->SampleSurfaceWorld(Points[Current]);
+			if (PreviousDepth<0.f && DepthHere>=0.f)
+			{
+				State.WaterContact=FMath::Lerp(Points[Ring-4],Points[Current],-PreviousDepth/FMath::Max(.01f,DepthHere-PreviousDepth));
+				State.bHasWaterContact=true; break;
+			}
+			PreviousDepth=DepthHere;
+		}
 	}
 	TArray<FVector> Vertices, Normals;
 	TArray<FVector2D> UVs;

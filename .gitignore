@@ -46,6 +46,8 @@ Content/UltraDynamicSky/
 Content/__ExternalActors__/
 Content/__ExternalObjects__/
 Content/Fab/
+# Owned Fab scan sources and imported materials stay local.
+Content/LocalScans/
 # Regenerated from purchased Kaiju source textures; never publish these assets.
 /Content/DC/Maelstrom/LeviathanSkin/
 
@@ -73,3 +75,8 @@ Content/Demon*/
 /Content/MetaHumans/
 /Content/ACEComparisonVendor/
 /Tools/ACE/__pycache__/
+# Original procedural waterfall caches; regenerate with Tools/generate_waterfall_vdb.py.
+Content/DC/Maelstrom/ProceduralWaterfalls/
+
+# Original offline cliff authoring previews; regenerate from Tools scripts.
+Content/DC/Maelstrom/GeneratedCliffPreview/

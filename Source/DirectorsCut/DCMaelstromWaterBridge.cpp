@@ -8,6 +8,8 @@
 #include "Materials/MaterialParameterCollection.h"
 #include "Materials/MaterialParameterCollectionInstance.h"
 #include "UObject/UnrealType.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 
 namespace
 {
@@ -47,7 +49,8 @@ namespace
 
 bool FDCMaelstromWaterBridge::Update(UWorld* World, UMaterialInstanceDynamic* Material, bool bActive)
 {
-	if (!bActive || !IsValid(World) || !IsValid(Material))
+	static const bool bNoFFT = FParse::Param(FCommandLine::Get(),TEXT("DCMaelstromNoFFT"));
+	if (bNoFFT || !bActive || !IsValid(World) || !IsValid(Material))
 	{
 		Reset(Material);
 		return false;
@@ -126,7 +129,7 @@ bool FDCMaelstromWaterBridge::Update(UWorld* World, UMaterialInstanceDynamic* Ma
 	Material->SetScalarParameterValue(TEXT("UseLiveFFT"), 1.f);
 	if (!bWasBound)
 	{
-		UE_LOG(LogTemp, Display, TEXT("DC_MAELSTROM live DRW FFT material bound: %s, %.0f cascades; geometry unchanged"), *Ocean->GetName(), Count);
+		UE_LOG(LogTemp, Display, TEXT("DC_MAELSTROM live DRW FFT material bound: %s, %.0f cascades; water material controls bounded displacement"), *Ocean->GetName(), Count);
 	}
 	bWasBound = true;
 	return true;
