@@ -29,6 +29,11 @@ default sourcechart preserves U/Z registration. The triplanar candidate uses
 source normal strength1.0; sourcechart retains0.5. No scan geometry is enlarged.
 Large fracture volume belongs to the mesh. Detail is shallow centimetre/metre
 surface relief with derivative filtering; no displaced vertices or fake blocks.
+DC_CLIFF_SCAN_CANDIDATE=1 creates ONLY M_CliffScanSurface: verified scan at
+native scale, signed triplanar projection, co-registered rotated offset samples,
+source colour and roughness, and physical-footprint normal filtering. It leaves
+the default material/clay unchanged. Intended for geometry without registered
+raw scan displacement; no unverified drainage/vertex masks are interpreted.
 """
 import json
 import os
@@ -178,17 +183,63 @@ struct StoneTile {
 };StoneTile tile;
 """
 
+# Candidate-only stochastic rotation retains the scan's authored metric size.
+# D/N/R share exact sample coordinates; decoded tangent normals are rotated back
+# before blending, so colour seams and lighting do not disagree on joint axes.
+SCAN_TILE_FILTERED = r"""
+struct StoneTile {
+ float2 hash(float2 p) {
+  return frac(sin(float2(dot(p,float2(127.1,311.7)),dot(p,float2(269.5,183.3))))*43758.5453);
+ }
+ void lattice(float2 uv,out float2 a,out float2 b,out float2 c,out float3 w) {
+  float2 g=float2(uv.x+uv.y*.57735027,uv.y*1.15470054)*.65;
+  float2 cell=floor(g),f=frac(g);a=cell;
+  if(f.x+f.y<1) { b=cell+float2(1,0);c=cell+float2(0,1);w=float3(1-f.x-f.y,f.x,f.y); }
+  else { a=cell+1;b=cell+float2(0,1);c=cell+float2(1,0);w=float3(f.x+f.y-1,1-f.x,1-f.y); }
+  w=pow(max(w,0),3);w/=max(w.x+w.y+w.z,.00001);
+ }
+ float2 rotate(float2 p,float2 cs) { return float2(cs.x*p.x-cs.y*p.y,cs.y*p.x+cs.x*p.y); }
+ float2 rotation(float2 id) { float angle=(hash(id+float2(31.7,-19.3)).x-.5)*.9;return float2(cos(angle),sin(angle)); }
+ float4 sampleMap(Texture2D tex,SamplerState samp,float2 uv) {
+  float2 a,b,c;float3 w;lattice(uv,a,b,c,w);
+  float2 ra=rotation(a),rb=rotation(b),rc=rotation(c),dx=ddx(uv),dy=ddy(uv);
+  return tex.SampleGrad(samp,rotate(uv,ra)+hash(a),rotate(dx,ra),rotate(dy,ra))*w.x
+       +tex.SampleGrad(samp,rotate(uv,rb)+hash(b),rotate(dx,rb),rotate(dy,rb))*w.y
+       +tex.SampleGrad(samp,rotate(uv,rc)+hash(c),rotate(dx,rc),rotate(dy,rc))*w.z;
+ }
+ float3 sampleNormal(Texture2D tex,SamplerState samp,float2 uv) {
+  float2 a,b,c;float3 w;lattice(uv,a,b,c,w);
+  float2 ra=rotation(a),rb=rotation(b),rc=rotation(c),dx=ddx(uv),dy=ddy(uv);
+  float3 na=UnpackNormalMap(tex.SampleGrad(samp,rotate(uv,ra)+hash(a),rotate(dx,ra),rotate(dy,ra))).xyz;
+  float3 nb=UnpackNormalMap(tex.SampleGrad(samp,rotate(uv,rb)+hash(b),rotate(dx,rb),rotate(dy,rb))).xyz;
+  float3 nc=UnpackNormalMap(tex.SampleGrad(samp,rotate(uv,rc)+hash(c),rotate(dx,rc),rotate(dy,rc))).xyz;
+  na.xy=rotate(na.xy,ra*float2(1,-1));nb.xy=rotate(nb.xy,rb*float2(1,-1));nc.xy=rotate(nc.xy,rc*float2(1,-1));
+  return normalize(na*w.x+nb*w.y+nc*w.z);
+ }
+};StoneTile tile;
+"""
+
 
 def create_material():
+    candidate = os.environ.get('DC_CLIFF_SCAN_CANDIDATE', '0')
+    if candidate not in ('0', '1'):
+        raise RuntimeError('DC_CLIFF_SCAN_CANDIDATE must be0 or1')
+    candidate = candidate == '1'
+    material_name = 'M_CliffScanSurface' if candidate else 'M_CliffRock'
+    material_path = ROOT + '/' + material_name
     assign = os.environ.get("DC_CLIFF_PREVIEW_ASSIGN", "0")
     if assign not in ("0", "1"):
         raise RuntimeError("DC_CLIFF_PREVIEW_ASSIGN must be 0 or 1")
     preset = os.environ.get('DC_CLIFF_STONE', 'procedural')
+    if candidate:
+        preset = 'scan'
     if preset not in ('procedural', 'slate', 'scan'):
         raise RuntimeError('DC_CLIFF_STONE must be procedural, slate or scan')
     texture_assets = {}
     scan = None
     transport_masks = os.environ.get('DC_CLIFF_TRANSPORT_MASKS', 'vertex')
+    if candidate:
+        transport_masks = 'none'
     if transport_masks not in ('vertex', 'none'):
         raise RuntimeError('DC_CLIFF_TRANSPORT_MASKS must be vertex or none')
     slate_strength = 1. if transport_masks == 'none' else .7
@@ -206,6 +257,9 @@ struct StoneTile {
  }
 }; StoneTile tile;
 """
+    if candidate:
+        scan_sampling,scan_projection,scan_strength='rotated_offsets','triplanar',1.
+        scan_tile_code=SCAN_TILE_FILTERED
     if preset == 'scan':
         scan = json.loads((Path(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_saved_dir())) /
                            'CliffScanImport.json').read_text(encoding='utf-8'))
@@ -230,10 +284,10 @@ struct StoneTile {
             if suffix == 'N' and asset.get_editor_property('compression_settings') != unreal.TextureCompressionSettings.TC_NORMALMAP:
                 raise RuntimeError('Slate normal map requires native normal compression')
             texture_assets[suffix] = asset
-    material = unreal.load_asset(MATERIAL_PATH)
+    material = unreal.load_asset(material_path)
     if material is None:
-        material = unreal.AssetToolsHelpers.get_asset_tools().create_asset("M_CliffRock", ROOT, unreal.Material, unreal.MaterialFactoryNew())
-    if not isinstance(material, unreal.Material) or material.get_path_name().split(".")[0] != MATERIAL_PATH:
+        material = unreal.AssetToolsHelpers.get_asset_tools().create_asset(material_name, ROOT, unreal.Material, unreal.MaterialFactoryNew())
+    if not isinstance(material, unreal.Material) or material.get_path_name().split(".")[0] != material_path:
         raise RuntimeError("Unexpected preview material target")
     M.delete_all_material_expressions(material)
     material.set_editor_property("blend_mode", unreal.BlendMode.BLEND_OPAQUE)
@@ -244,7 +298,7 @@ struct StoneTile {
     # Commandlet-created materials do not automatically acquire editor usage.
     # Repair the isolated clay too so geometry reviews never use a fallback.
     clay = unreal.load_asset(ROOT + "/M_CliffClay")
-    if isinstance(clay, unreal.Material):
+    if not candidate and isinstance(clay, unreal.Material):
         clay.set_editor_property("used_with_nanite", True)
         M.recompile_material(clay)
         if not unreal.EditorAssetLibrary.save_loaded_asset(clay):
@@ -371,6 +425,19 @@ stone=lerp(dot(stone,float3(.2126,.7152,.0722)).xxx,stone,.4);
 return stone*float3(.80,.86,.91)*lerp(.90,1.06,Weather.x);
 """, types.CMOT_FLOAT3, {'P':position,'N':normal,'Albedo':scan_nodes['D'],
                          'TileMetres':scan_tile_size,'Weather':weather})
+    if candidate:
+        color = custom(scan_tile_code + r"""
+float3 p=P*.01/max(TileMetres,.1),n=normalize(N);
+float3 w=pow(abs(n),4);w/=max(w.x+w.y+w.z,.001);
+float3 s=float3(n.x<0?-1:1,n.y<0?-1:1,n.z<0?-1:1);
+float3 x=tile.sampleMap(Albedo,AlbedoSampler,float2(p.y*s.x,-p.z)).rgb;
+float3 y=tile.sampleMap(Albedo,AlbedoSampler,float2(-p.x*s.y,-p.z)).rgb;
+float3 z=tile.sampleMap(Albedo,AlbedoSampler,float2(p.x*s.z,-p.y)).rgb;
+// Preserve source chromaticity: no blue lighting compensation, fake large
+// cavities, unverified wetness or procedural colour camouflage.
+return saturate((x*w.x+y*w.y+z*w.z)*max(AlbedoScale,0));
+""", types.CMOT_FLOAT3, {'P':position,'N':normal,'Albedo':scan_nodes['D'],
+            'TileMetres':scan_tile_size,'AlbedoScale':parameter('AlbedoScale',1.)})
     output(color, unreal.MaterialProperty.MP_BASE_COLOR)
     local_normal = custom(r"""
 float3 n=normalize(N);
@@ -422,6 +489,25 @@ perturb-=n*dot(n,perturb);
 return normalize(n+perturb*saturate(Strength));
 """, types.CMOT_FLOAT3, {'P':position,'N':normal,'NormalTex':scan_nodes['N'],
                          'TileMetres':scan_tile_size,'Strength':parameter('ScanNormalStrength', scan_strength)})
+    if candidate:
+        local_normal = custom(scan_tile_code + r"""
+float3 metres=P*.01,p=metres/max(TileMetres,.1),n=normalize(N);
+float3 w=pow(abs(n),4);w/=max(w.x+w.y+w.z,.001);
+float3 s=float3(n.x<0?-1:1,n.y<0?-1:1,n.z<0?-1:1);
+float3 x=tile.sampleNormal(NormalTex,NormalTexSampler,float2(p.y*s.x,-p.z));
+float3 y=tile.sampleNormal(NormalTex,NormalTexSampler,float2(-p.x*s.y,-p.z));
+float3 z=tile.sampleNormal(NormalTex,NormalTexSampler,float2(p.x*s.z,-p.y));
+float3 perturb=float3(0,x.x*s.x,-x.y)/max(x.z,.25)*w.x
+    +float3(-y.x*s.y,0,-y.y)/max(y.z,.25)*w.y
+    +float3(z.x*s.z,-z.y,0)/max(z.z,.25)*w.z;
+perturb-=n*dot(n,perturb);
+// Preserve the actual angular mesh planes once centimetre/metre scan normals
+// become unresolved. Source4.299m texture scale never grows with camera range.
+float footprint=max(length(ddx(metres)),length(ddy(metres)));
+float resolved=1-smoothstep(.12,.65,footprint);
+return normalize(n+perturb*saturate(Strength)*resolved);
+""", types.CMOT_FLOAT3, {'P':position,'N':normal,'NormalTex':scan_nodes['N'],
+            'TileMetres':scan_tile_size,'Strength':parameter('ScanNormalStrength',1.)})
     world_normal = node(unreal.MaterialExpressionTransform)
     world_normal.set_editor_property("transform_source_type", unreal.MaterialVectorCoordTransformSource.TRANSFORMSOURCE_LOCAL)
     world_normal.set_editor_property("transform_type", unreal.MaterialVectorCoordTransform.TRANSFORM_WORLD)
@@ -470,7 +556,7 @@ return clamp(dot(float3(x,y,z),w),.52,.94);
         mesh.set_material(0, material)
         if not unreal.EditorAssetLibrary.save_loaded_asset(mesh):
             raise RuntimeError("Could not save preview mesh material assignment")
-    report = dict(material=MATERIAL_PATH, assigned_preview_mesh=assign=="1", vendor_textures_used=preset=='slate',
+    report = dict(material=material_path, candidate_only=candidate, assigned_preview_mesh=assign=="1", vendor_textures_used=preset=='slate',
                   cc0_scan_used=preset=='scan', scan_source=scan,
                   preset=preset, texture_references={key:asset.get_path_name() for key,asset in texture_assets.items()},
                   texture_tile_metres=scan['width_metres'] if preset=='scan' else (4. if preset=='slate' else None),
@@ -480,18 +566,21 @@ return clamp(dot(float3(x,y,z),w),.52,.94);
                   vertex_contract="linear R normalized log-flow; G gross-deposition; B gross-erosion",
                   relief_bands_m=[.75,.18,.045] if preset=='procedural' else [], relief_heights_m=[.012,.002,.00055] if preset=='procedural' else [],
                   fracture_length_m=[.9,2.3] if preset=='procedural' else [], fracture_width_m=[.036,.086] if preset=='procedural' else [], fracture_depth_m=[.003,.009] if preset=='procedural' else [],
-                  normal_fully_filtered_above_metres_per_pixel=.38 if preset=='procedural' else None, cracks_filtered_above_metres_per_pixel=.0645 if preset=='procedural' else None,
+                  normal_fully_filtered_above_metres_per_pixel=.65 if candidate else .38 if preset=='procedural' else None, cracks_filtered_above_metres_per_pixel=.0645 if preset=='procedural' else None,
                   transport_masks=transport_masks,
                   slate_normal_strength=slate_strength if preset=='slate' else None,
                   slate_dry_roughness=.80 if preset=='slate' and transport_masks=='none' else None,
                   scan_normal_strength=scan_strength if preset=='scan' else None,
                   scan_sampling=scan_sampling if preset=='scan' else None,
                   scan_projection=scan_projection if preset=='scan' else None,
+                  scan_cell_rotation_degrees=[-25.78310078,25.78310078] if candidate else None,
+                  albedo_response='Unmodified source chromaticity; achromatic AlbedoScale1' if candidate else 'Existing preset response',
+                  drainage_response='None: current whole-face geometry has no verified transport masks' if candidate else 'Existing preset response',
                   scan_coordinates=('Signed local triplanar, shared D/N/R offsets; DX gradients transformed by exact signed UV axes' if scan_projection=='triplanar' else 'Source-chart U/Z, native physical tile, top projection blend; DX normal mapped back to source axes') if preset=='scan' else None,
                   slate_sampling='Three-offset triangular blend per local triplanar projection; same albedo/normal offsets, explicit continuous UV mip gradients' if preset=='slate' else None,
                   roughness_bounds=[.52 if preset=='scan' else .53,.94], emissive=False, displacement=False,
                   runtime_integrated=False, actual_shader_compile_and_visual_review_pending=True)
-    destination = Path(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_saved_dir())) / "CliffRockMaterialPreview.json"
+    destination = Path(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_saved_dir())) / ("CliffScanSurfacePreview.json" if candidate else "CliffRockMaterialPreview.json")
     destination.write_text(json.dumps(report, indent=2)+"\n", encoding="utf-8")
     unreal.log_warning("DC_CLIFF_ROCK_PREVIEW " + json.dumps(report))
 
