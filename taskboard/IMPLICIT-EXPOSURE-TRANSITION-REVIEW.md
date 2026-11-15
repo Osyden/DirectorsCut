@@ -80,3 +80,31 @@ All six corrected views were inspected. The angle-15 pass changes shading only;
 the renderer verifies positions and topology unchanged. No new geometry,
 engine import, runtime mutation, FBX export or sector acceptance was performed
 by this review worker.
+
+## Single patch in the full massif
+
+At the parent's request, rendered the unchanged full-sector baseline and one
+substituted patch from `Flow-Seams/Saved/ImplicitFaceProof/FullMassifContext/`.
+The actual chart dimensions are 500 × 492 × 230.63 m. Inputs are `baseline.npz`
+(SHA256 `15583c3d1a9cd6ba6db5b2053db7386a816e1e3753c490824154d8d9487c6809`)
+and `context.npz`
+(`bea887a211dd15ded0fb73f8d1880e331c668bd6ed4ec3cd3ef4bfc169ab03ff`).
+Matched wall and oblique outputs are under this worker's ignored
+`Saved/ImplicitCliffReview/FullMassifContextAngle15/`; each camera has
+`_baseline.png` and `_fractured.png`. Both use the same original sector frame,
+15-degree shading and neutral CPU clay setup, with no vertical exaggeration.
+
+The 72 × 40 m patch has the right subordinate scale, preserves the massif
+silhouette, and supplies legible planes and recesses where the source had a
+smooth face. It nevertheless reads as a sharp fractured scar in broad soft,
+fluted terrain. The surrounding slopes lack a common geological joint/strata
+hierarchy. The regular triangular fringe and stepped diagonal seams are already
+visible in the baseline; they were not introduced by this patch substitution.
+
+This preserves the recommendation for a **bounded native local proof**, but
+does **not** justify repeating the patch across the sector. The full context
+has not become a coherent realistic cliff merely by adding this exposure.
+The macro landform, drainage and joint orientations need to agree before a
+sector-wide fracture pass. The existing open-surface audit passes, with all
+992 outer boundary edges unchanged; topology success is separate from this
+visual limitation. No source geometry was mutated by the reviewer.
