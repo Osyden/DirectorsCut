@@ -21,6 +21,10 @@ public:
 	virtual void DrawHUD() override;
 
 protected:
+	void DrawCrewPanel();
+	void DrawCrewDutyIcon(EDCStationType Duty, float X, float Y, float Size, const FLinearColor& Color, bool bMirror = false);
+	UPROPERTY() TArray<TObjectPtr<class UTexture2D>> CrewPortraits;
+	bool bCrewPortraitsLoaded = false;
 	/** Text drawn from the engine's vector font at the size it is shown, so it stays sharp at any resolution (the stock HUD fonts are small bitmaps stretched up). */
 	void CrispText(const FString& Str, FLinearColor Color, float X, float Y, UFont* SizeOf, float Scale);
 	void CrispSize(const FString& Str, float& OutWidth, float& OutHeight, UFont* SizeOf, float Scale);

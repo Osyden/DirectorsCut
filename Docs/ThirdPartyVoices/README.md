@@ -4,9 +4,9 @@ Runtime synthesis uses the existing Piper installation and the following unmodif
 
 | Character | Model / speaker | Source and attribution | Documented source licence |
 | --- | --- | --- | --- |
-| Finch | en_GB-vctk-medium, p226 / speaker ID 95 | CSTR VCTK Corpus, Junichi Yamagishi, Christophe Veaux, Kirsten MacDonald; [University of Edinburgh](https://datashare.ed.ac.uk/handle/10283/3443) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
-| Marlow | en_GB-northern_english_male-medium | UK and Ireland English Dialect speech data set / OpenSLR 83, copyright 2018–2019 Google, Inc.; [OpenSLR](https://www.openslr.org/83/) | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
-| Odessa | en_GB-alba-medium | Alba speech corpus (2019), Cassia Valentini-Botinhao and Junichi Yamagishi, University of Edinburgh; [source](https://doi.org/10.7488/ds/2506) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| Rex | en_GB-vctk-medium, p226 / speaker ID 95 | CSTR VCTK Corpus, Junichi Yamagishi, Christophe Veaux, Kirsten MacDonald; [University of Edinburgh](https://datashare.ed.ac.uk/handle/10283/3443) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| Duncan | en_GB-northern_english_male-medium | UK and Ireland English Dialect speech data set / OpenSLR 83, copyright 2018–2019 Google, Inc.; [OpenSLR](https://www.openslr.org/83/) | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
+| Ruby | en_GB-alba-medium | Alba speech corpus (2019), Cassia Valentini-Botinhao and Junichi Yamagishi, University of Edinburgh; [source](https://doi.org/10.7488/ds/2506) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 
 The models are not fine-tuned or modified by this project. Runtime settings adjust speaking pace and generation noise. Generated dialogue is fictional crew speech, not a recording or endorsement by the corpus speakers. Attribution does not imply endorsement.
 

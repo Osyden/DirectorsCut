@@ -1,4 +1,5 @@
 #include "DCCrew.h"
+#include "DCSpeech.h"
 #include "DCTreadmill.h"
 #include "DCRideDirector.h"
 #include "DCVoice.h"
@@ -37,7 +38,7 @@ FDCIntent DCIntentParser::Parse(const FString& InText, const TArray<FString>& Cr
 {
 	FDCIntent I;
 	I.RawText = InText;
-	FString Normalized = InText.ToLower().Replace(TEXT("don't"), TEXT("do not")).Replace(TEXT("don’t"), TEXT("do not"));
+	FString Normalized = DCSpeech::NormalizeCrewAddress(InText).ToLower().Replace(TEXT("don't"), TEXT("do not")).Replace(TEXT("don’t"), TEXT("do not"));
 	for (TCHAR& C : Normalized) { if (!FChar::IsAlnum(C)) { C = TEXT(' '); } }
 	TArray<FString> Tokens;
 	Normalized.ParseIntoArrayWS(Tokens);
@@ -69,6 +70,10 @@ FDCIntent DCIntentParser::Parse(const FString& InText, const TArray<FString>& Cr
 	else if (bExtinguish)
 	{
 		I.Station = EDCStationType::Fire; I.Action = EDCAction::Extinguish;
+	}
+	else if (HasAny(T, { TEXT("fire at will") }))
+	{
+		I.Station = EDCStationType::Cannons; I.Action = EDCAction::Fire;
 	}
 	else if (HasAny(T, { TEXT("steady"), TEXT("midships"), TEXT("straight"), TEXT("hold course"), TEXT("as she goes") }))
 	{
@@ -144,7 +149,7 @@ ADCCrewMember::ADCCrewMember()
 void ADCCrewMember::Init(const FString& InName, const FLinearColor& Color)
 {
 	CrewName = InName;
-	const bool bFemale = InName == TEXT("Odessa");
+	const bool bFemale = InName == TEXT("Ruby");
 	const TCHAR* Dir = TEXT("/Game/Brigantine/Demo/Characters/Mannequins");
 	USkeletalMesh* SkelMesh = LoadObject<USkeletalMesh>(nullptr, *FString::Printf(TEXT("%s/Meshes/%s"), Dir, bFemale ? TEXT("SKM_Quinn_Simple.SKM_Quinn_Simple") : TEXT("SKM_Manny_Simple.SKM_Manny_Simple")));
 	IdleAnim = LoadObject<UAnimationAsset>(nullptr, *FString::Printf(TEXT("%s/Animations/%s"), Dir, bFemale ? TEXT("Quinn/MF_Idle.MF_Idle") : TEXT("Manny/MM_Idle.MM_Idle")));
@@ -441,7 +446,7 @@ FString UDCCrewSubsystem::ExecuteOrder(const FString& Text)
 	const bool bQuick = Intent.bValid && Text.Len() < 30;
 	if (Voice && Voice->IsLLMReady() && !bQuick)
 	{
-		Voice->ResolveOrder(Text); // answers a moment later
+		Voice->ResolveOrder(DCSpeech::NormalizeCrewAddress(Text)); // answers a moment later
 	}
 	else
 	{

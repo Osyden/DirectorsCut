@@ -53,6 +53,7 @@ public:
 	void AssignStation(int32 StationIndex);
 	void SetHelmOrder(EDCAction Action);
 	void SetHoldFire(bool bHold) { bHoldFire = bHold; }
+	bool IsHoldingFire() const { return bHoldFire; }
 
 	UPROPERTY(VisibleAnywhere) FString CrewName;
 	EDCCrewState State = EDCCrewState::Idle;

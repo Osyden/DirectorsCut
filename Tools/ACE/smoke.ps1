@@ -14,7 +14,7 @@ $log = Join-Path $out 'runtime.log'
 $startedUtc = [DateTime]::UtcNow
 $launch = @('/Game/DC/Maps/L_Ride','-unattended','-nop4','-RenderOffscreen','-nosplash','-windowed',
     '-ResX=1920','-ResY=1080','-DCVoiceSmokeTest',"-DCVoiceSmokeRepeats=$Repeats",'-useCIGforAI=0',
-    '-DCRunThrough','-DCAutoShots=10,1000','-ExecCmds=t.MaxFPS 60',"-abslog=$log")
+    '-DCSkipIntro','-DCRunThrough','-DCAutoShots=10,1000','-ExecCmds=t.MaxFPS 60',"-abslog=$log")
 if (!$Packaged) { $launch = @((Join-Path $ProjectRoot 'DirectorsCut.uproject'),'-game') + $launch }
 if ($Mode -eq 'ACE') { $launch += '-DCEnableACE' } else { $launch += '-DCNoACE' }
 $quoted = ($launch | ForEach-Object { if ($_.Contains('"')) { throw 'Unexpected quote in argument' }; '"' + $_ + '"' }) -join ' '
@@ -33,7 +33,7 @@ if ($proc.ExitCode -ne 0 -or !$text.Contains("VOICE_SMOKE_SUCCESS mode=$expected
     throw "Voice smoke failed (exit $($proc.ExitCode)); inspect $log"
 }
 if ($text -match 'GPU timeout|Fatal error|EXCEPTION_ACCESS_VIOLATION') { throw "Runtime fault in $log" }
-if ($text -match 'running without a ship|SkipPackage: /Game/(Brigantine|UltraDynamicSky|AncientRuins|PirateCast|MetaHumans|Fab/Claw_Kaiju_Monster)/') {
+if ($text -match 'Crew HUD portrait missing|running without a ship|SkipPackage: /Game/(Brigantine|UltraDynamicSky|AncientRuins|PirateCast|MetaHumans|Fab/Claw_Kaiju_Monster)/') {
     throw "Missing core voyage content; voice playback alone is not a valid game test. Inspect $log"
 }
 $shot = Join-Path $ProjectRoot 'Saved/Screenshots/Auto/shot_0010.png'

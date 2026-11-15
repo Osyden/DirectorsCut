@@ -1,3 +1,5 @@
+Current crew names: **Rex, Duncan and Ruby**. See [crew HUD and speech vocabulary update](CREW-UI.md) for the new names, portraits and fire-at-will recognition. Earlier verification records below retain their original names and build dates.
+
 # Correction: incomplete ACE candidate (15 November, 11:02 GMT)
 
 Do not use the 08:25 `2026-11-15_0825_ace-gpu-safe` package as a playable candidate. It was built from an isolated checkout missing ignored licensed ship, sky, ruins, audio and creature assets. Speech/face checks passed, but the HUD rendered over a black world. The saved 40-second screenshot and runtime missing-package warnings confirm the failure. Earlier claims of full-voyage validation for this candidate were too broad: they established ACE speech/face operation, not a complete rendered voyage or representative rendering load.

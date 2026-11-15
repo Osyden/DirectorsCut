@@ -7,11 +7,13 @@ The purchased MHC Pirates bundle is rigged, textured, assembled and bound to the
 | Role | Preset | Outfit | Headwear |
 | --- | --- | --- | --- |
 | Player captain | Breeza | Sovereign Corsair | Female pirate hat |
-| Finch | Davy | Dread Captain | Male pirate hat |
-| Marlow | Davy | Tide Duelist | Male headband |
-| Odessa | Breeza | Rogue Swashbuckler | Female headband |
+| Rex | Davy | Dread Captain | Male pirate hat |
+| Duncan | Davy | Tide Duelist | Male headband |
+| Ruby | Breeza | Rogue Swashbuckler | Female headband |
 
-Editable characters: `/Game/PirateCast/Presets/{Captain,Finch,Marlow,Odessa}`. Actors: `/Game/PirateCast/Assembled/<Role>/BP_<Role>`. Original wardrobe accessories are retained. Marlow uses the bundle's male hat hairstyle; it contains no separate male headband hairstyle.
+Names were updated on 15 November; internal asset paths retain the original role names. See [crew HUD and speech hints](CREW-UI.md).
+
+Editable characters: `/Game/PirateCast/Presets/{Captain,Finch,Marlow,Odessa}`. Actors: `/Game/PirateCast/Assembled/<Role>/BP_<Role>`. Original wardrobe accessories are retained. Duncan uses the bundle's male hat hairstyle; it contains no separate male headband hairstyle.
 
 ## Integration
 

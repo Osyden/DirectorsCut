@@ -4,6 +4,7 @@ Synthetic clean speech verifies the pipeline; it does not substitute for a live 
 import array
 import io
 import json
+import re
 from pathlib import Path
 import subprocess
 import time
@@ -13,21 +14,28 @@ import wave
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "Saved/ACE/SpokenOrders"
 CASES = [
-    ("Finch, take the helm.", 1, 1, 0, "Finch"),
-    ("Finch, hard to port.", 4, 1, 1, "Finch"),
-    ("Finch, hard to starboard.", 5, 1, 2, "Finch"),
-    ("Finch, steady as she goes.", 6, 1, 0, "Finch"),
-    ("Marlow, man the port cannons.", 1, 2, 1, "Marlow"),
-    ("Marlow, man the starboard guns.", 1, 2, 2, "Marlow"),
-    ("Marlow, port battery, fire.", 2, 2, 1, "Marlow"),
-    ("Marlow, starboard guns, fire.", 2, 2, 2, "Marlow"),
-    ("Marlow, hold your fire.", 3, 2, 0, "Marlow"),
-    ("Marlow, do not shoot.", 3, 2, 0, "Marlow"),
-    ("Odessa, put out the fire.", 7, 3, 0, "Odessa"),
-    ("Odessa, repair the rigging.", 8, 4, 0, "Odessa"),
-    ("Odessa, report.", 9, 0, 0, "Odessa"),
+    ("Rex, take the helm.", 1, 1, 0, "Rex"),
+    ("Rex, hard to port.", 4, 1, 1, "Rex"),
+    ("Rex, hard to starboard.", 5, 1, 2, "Rex"),
+    ("Rex, steady as she goes.", 6, 1, 0, "Rex"),
+    ("Duncan, man the port cannons.", 1, 2, 1, "Duncan"),
+    ("Duncan, man the starboard guns.", 1, 2, 2, "Duncan"),
+    ("Duncan, port battery, fire.", 2, 2, 1, "Duncan"),
+    ("Duncan, starboard guns, fire.", 2, 2, 2, "Duncan"),
+    ("Duncan, hold your fire.", 3, 2, 0, "Duncan"),
+    ("Duncan, do not shoot.", 3, 2, 0, "Duncan"),
+    ("Ruby, put out the fire.", 7, 3, 0, "Ruby"),
+    ("Ruby, repair the rigging.", 8, 4, 0, "Ruby"),
+    ("Ruby, report.", 9, 0, 0, "Ruby"),
+    ("Fire at will.", 2, 2, 0, ""),
+    ("Duncan, fire at will.", 2, 2, 0, "Duncan"),
+    ("Port battery, fire at will.", 2, 2, 1, ""),
+    ("Starboard guns, fire at will.", 2, 2, 2, ""),
+    ("Rex, report.", 9, 0, 0, "Rex"),
+    ("Duncan, report.", 9, 0, 0, "Duncan"),
+    ("Ruby, hold fire.", 3, 2, 0, "Ruby"),
 ]
-PROMPT = "Orders on a sailing ship. Finch, Marlow, Odessa. Hard to starboard. Hard to port. Steady as she goes. Take the helm. Man the cannons. Port battery, fire. Starboard guns, hold fire. Put out the fire. Repair the rigging."
+PROMPT = re.search(r'^STTVocabulary=(.+)$', (ROOT / 'Config/DefaultGame.ini').read_text(), re.MULTILINE).group(1).strip()
 
 def pcm16k(path):
     with wave.open(str(path), "rb") as wav:
@@ -75,7 +83,7 @@ def main():
             wav.write_bytes(audio)
             boundary = "----DCBoundary7MA4YWxk"
             body = bytearray()
-            for name, value in {"response_format":"json", "temperature":"0.0", "prompt":PROMPT}.items():
+            for name, value in {"response_format":"json", "temperature":"0.0", "language":"en", "prompt":PROMPT}.items():
                 body.extend(f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{value}\r\n'.encode())
             body.extend(f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="order.wav"\r\nContent-Type: audio/wav\r\n\r\n'.encode())
             body.extend(audio)

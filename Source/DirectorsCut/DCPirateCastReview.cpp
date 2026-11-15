@@ -7,6 +7,8 @@
 #include "Components/PointLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/ChildActorComponent.h"
+#include "Components/TextRenderComponent.h"
 #include "EngineUtils.h"
 #include "GroomComponent.h"
 #include "HAL/IConsoleManager.h"
@@ -75,9 +77,16 @@ void ADCPirateCastReviewGameMode::BeginPlay()
 	Captain->SetActorTickEnabled(false);
 	Captain->SetActorEnableCollision(false);
 	UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>();
-	Crew->SpawnCrew(TEXT("Finch"), FLinearColor(.9f,.7f,.25f), FVector(0,-80,0));
-	Crew->SpawnCrew(TEXT("Marlow"), FLinearColor(.35f,.7f,.95f), FVector(0,80,0));
-	Crew->SpawnCrew(TEXT("Odessa"), FLinearColor(.9f,.4f,.5f), FVector(0,240,0));
+	Crew->SpawnCrew(TEXT("Rex"), FLinearColor(.9f,.7f,.25f), FVector(0,-80,0));
+	Crew->SpawnCrew(TEXT("Duncan"), FLinearColor(.35f,.7f,.95f), FVector(0,80,0));
+	Crew->SpawnCrew(TEXT("Ruby"), FLinearColor(.9f,.4f,.5f), FVector(0,240,0));
+	if (FParse::Param(FCommandLine::Get(), TEXT("CrewPortraits")))
+	{
+		for (ADCCrewMember* Member : Crew->GetCrew())
+		{
+			if (UTextRenderComponent* Label = Member->FindComponentByClass<UTextRenderComponent>()) { Label->SetHiddenInGame(true); }
+		}
+	}
 	ReviewCamera = GetWorld()->SpawnActor<ACameraActor>(FVector(800,0,100), FRotator(0,180,0));
 	ReviewCamera->GetCameraComponent()->SetFieldOfView(45.f);
 	if (APlayerController* PC = GetWorld()->GetFirstPlayerController()) { PC->Possess(Captain); PC->SetViewTarget(ReviewCamera); }
@@ -87,6 +96,37 @@ void ADCPirateCastReviewGameMode::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	Elapsed += DeltaSeconds;
+	if (FParse::Param(FCommandLine::Get(), TEXT("CrewPortraits")))
+	{
+		if (Elapsed < 8.f + Stage * 2.f) { return; }
+		if (Stage >= 6) { FPlatformMisc::RequestExit(false); return; }
+		const TCHAR* Names[] = { TEXT("Rex"),TEXT("Duncan"),TEXT("Ruby") };
+		if (Stage % 2 == 0)
+		{
+			UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>();
+			for (ADCCrewMember* Member : Crew->GetCrew())
+			{
+				if (Member->CrewName != Names[Stage / 2]) { continue; }
+				UChildActorComponent* Child = Member->FindComponentByClass<UChildActorComponent>();
+				if (!Child || !Child->GetChildActor()) { continue; }
+				TInlineComponentArray<USkeletalMeshComponent*> Meshes(Child->GetChildActor());
+				for (USkeletalMeshComponent* Mesh : Meshes)
+				{
+					if (Mesh->GetName() != TEXT("Face")) { continue; }
+					const FVector Focus = Mesh->GetBoneLocation(TEXT("FACIAL_C_Jaw")) + FVector(0,0,6);
+					ReviewCamera->SetActorLocation(Focus + FVector(200,0,0));
+					ReviewCamera->SetActorRotation(FRotator(0,180,0));
+					ReviewCamera->GetCameraComponent()->SetFieldOfView(22.f);
+                    ReviewCamera->GetCameraComponent()->bConstrainAspectRatio = false;
+					ReviewCamera->GetCameraComponent()->PostProcessSettings.bOverride_AutoExposureBias = true;
+					ReviewCamera->GetCameraComponent()->PostProcessSettings.AutoExposureBias = -1.f;
+				}
+			}
+		}
+		else { FScreenshotRequest::RequestScreenshot(Output / FString::Printf(TEXT("T_Crew_%s.png"),Names[Stage/2]),false,false); }
+		++Stage;
+		return;
+	}
 	if (FParse::Param(FCommandLine::Get(), TEXT("PirateReviewStandalone")) && Elapsed > 14.f)
 	{
 		if (FParse::Param(FCommandLine::Get(), TEXT("PirateReviewAutoQuit"))) { FPlatformMisc::RequestExit(false); }
@@ -126,7 +166,7 @@ void ADCPirateCastReviewGameMode::Tick(float DeltaSeconds)
 		FScreenshotRequest::RequestScreenshot(Output / TEXT("00-cast.png"), false, false);
 		Stage = 1;
 	}
-	const TCHAR* Roles[] = { TEXT("Captain"), TEXT("Finch"), TEXT("Marlow"), TEXT("Odessa") };
+	const TCHAR* Roles[] = { TEXT("Captain"), TEXT("Rex"), TEXT("Duncan"), TEXT("Ruby") };
 	if (Stage >= 1 && Stage <= 8)
 	{
 		const int32 Index = (Stage - 1) / 2;

@@ -54,6 +54,8 @@ public:
 	UPROPERTY(Config, EditAnywhere) FString LLMModel = TEXT("Qwen3.5-4B-Q5_K_M.gguf");
 	UPROPERTY(Config, EditAnywhere) FString STTModel = TEXT("ggml-base.en.bin");
 	UPROPERTY(Config, EditAnywhere) bool bUseLLM = true;
+	/** Whisper vocabulary/context hint, not a strict grammar or guaranteed whitelist. */
+	UPROPERTY(Config, EditAnywhere) FString STTVocabulary = TEXT("Rex, Duncan, Ruby. Rex, take the helm. Duncan, fire at will. Ruby, put out the fire. Hard to port. Hard to starboard. Steady as she goes. Man the cannons. Hold fire. Repair the rigging. Report.");
 	/** Seconds to wait for the LLM before speaking the canned line instead. */
 	UPROPERTY(Config, EditAnywhere) float LLMTimeout = 1.5f;
 	/** Uses a separate CUDA context; shared graphics contexts remain blocked. */

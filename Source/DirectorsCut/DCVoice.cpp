@@ -1,4 +1,5 @@
 #include "DCVoice.h"
+#include "DCSpeech.h"
 #include "ACEAudioCurveSourceComponent.h"
 #include "ACEBlueprintLibrary.h"
 #include "AsyncActionAnimateCharacter.h"
@@ -329,9 +330,9 @@ void ADCVoice::Tick(float DeltaSeconds)
 		if (!bSmokeStarted && GetWorld()->GetTimeSeconds() > 5)
 		{
 			bSmokeStarted = true;
-			Speak(TEXT("Finch"), TEXT("Aye, Captain. Bringing her hard to starboard."));
-			Speak(TEXT("Marlow"), TEXT("Port guns ready. Waiting for your order."));
-			Speak(TEXT("Odessa"), TEXT("The fire is out. Checking the rigging now."));
+			Speak(TEXT("Rex"), TEXT("Aye, Captain. Bringing her hard to starboard."));
+			Speak(TEXT("Duncan"), TEXT("Port guns ready. Waiting for your order."));
+			Speak(TEXT("Ruby"), TEXT("The fire is out. Checking the rigging now."));
 		}
 		if (bSmokeStarted && SmokeCompleted.Num() == 3 && PendingTTS.IsEmpty() && Playing.IsEmpty() && !ActiveCurves && SpeechQueue.IsEmpty())
 		{
@@ -452,7 +453,8 @@ void ADCVoice::SendToWhisper(const TArray<float>& Mono, int32 SampleRate)
 	Field(TEXT("response_format"), TEXT("json"));
 	Field(TEXT("temperature"), TEXT("0.0"));
 	// Bias the recogniser toward the words the crew understands.
-	Field(TEXT("prompt"), TEXT("Orders on a sailing ship. Finch, Marlow, Odessa. Hard to starboard. Hard to port. Steady as she goes. Take the helm. Man the cannons. Port battery, fire. Starboard guns, hold fire. Put out the fire. Repair the rigging."));
+	Field(TEXT("prompt"), STTVocabulary);
+	Field(TEXT("language"), TEXT("en"));
 	AppendStr(Body, FString::Printf(TEXT("--%s\r\nContent-Disposition: form-data; name=\"file\"; filename=\"order.wav\"\r\nContent-Type: audio/wav\r\n\r\n"), *Boundary));
 	Body.Append(Wav);
 	AppendStr(Body, FString::Printf(TEXT("\r\n--%s--\r\n"), *Boundary));
@@ -502,16 +504,16 @@ void ADCVoice::OnHeard(const FString& Text)
 
 FString ADCVoice::VoiceFor(const FString& Speaker) const
 {
-	if (Speaker == TEXT("Marlow")) { return MarlowVoice; }
-	if (Speaker == TEXT("Odessa")) { return OdessaVoice; }
+	if (Speaker == TEXT("Duncan")) { return MarlowVoice; }
+	if (Speaker == TEXT("Ruby")) { return OdessaVoice; }
 	return FinchVoice;
 }
 
 FString ADCVoice::PersonaFor(const FString& Speaker) const
 {
-	if (Speaker == TEXT("Marlow")) { return TEXT("Marlow, the young gunner: eager, cocky, loves the cannons"); }
-	if (Speaker == TEXT("Odessa")) { return TEXT("Odessa, the bosun: sharp-tongued, dry, fearless"); }
-	return TEXT("Finch, the old helmsman: gruff, superstitious, loyal");
+	if (Speaker == TEXT("Duncan")) { return TEXT("Duncan, the young gunner: eager, cocky, loves the cannons"); }
+	if (Speaker == TEXT("Ruby")) { return TEXT("Ruby, the bosun: sharp-tongued, dry, fearless"); }
+	return TEXT("Rex, the old helmsman: gruff, superstitious, loyal");
 }
 
 void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const FString& Context)
@@ -667,9 +669,9 @@ void ADCVoice::StartNextLine()
 	const FString Piper = Dir / TEXT("bin/piper/piper/piper.exe");
 	const FString Model = Dir / TEXT("models/voices") / VoiceFor(Speaker);
 	if (!FPaths::FileExists(Model)) { UE_LOG(LogDC, Warning, TEXT("Voice: missing model for %s: %s"), *Speaker, *Model); return; }
-	const float Pace = Speaker == TEXT("Marlow") ? MarlowLengthScale : Speaker == TEXT("Odessa") ? OdessaLengthScale : FinchLengthScale;
+	const float Pace = Speaker == TEXT("Duncan") ? MarlowLengthScale : Speaker == TEXT("Ruby") ? OdessaLengthScale : FinchLengthScale;
 	const FString Cmd = FString::Printf(TEXT("--model \"%s\" --output_file \"%s\" --speaker %d --length_scale %.3f --noise_scale 0.5 --noise_w %.3f --sentence_silence 0.12 --quiet"),
-		*Model, *WavPath, Speaker == TEXT("Finch") ? FinchSpeakerId : 0, FMath::Clamp(Pace, .75f, 1.3f), Speaker == TEXT("Odessa") ? .333f : .65f);
+		*Model, *WavPath, Speaker == TEXT("Rex") ? FinchSpeakerId : 0, FMath::Clamp(Pace, .75f, 1.3f), Speaker == TEXT("Ruby") ? .333f : .65f);
 	void* ReadPipe = nullptr; void* WritePipe = nullptr;
 	if (!FPlatformProcess::CreatePipe(ReadPipe, WritePipe, true)) { return; }
 
@@ -816,9 +818,9 @@ void ADCVoice::ResolveOrder(const FString& Text)
 	// The keyword grammar did not recognise this. Ask the language model to turn it into the same
 	// structured intent, so loose phrasing ("somebody get on that wheel!") still works.
 	const FString System =
-		TEXT("You turn a ship captain's spoken order into JSON for the crew. The crew are Finch, Marlow and Odessa. ")
+		TEXT("You turn a ship captain's spoken order into JSON for the crew. The crew are Rex, Duncan and Ruby. ")
 		TEXT("Reply with JSON only, with exactly these keys: ")
-		TEXT("\"crew\" (Finch, Marlow, Odessa, or empty if nobody is named), ")
+		TEXT("\"crew\" (Rex, Duncan, Ruby, or empty if nobody is named), ")
 		TEXT("\"station\" (helm, cannons, fire, rigging, none), ")
 		TEXT("\"side\" (port, starboard, none; left means port, right means starboard), ")
 		TEXT("\"action\" (man, fire, hold_fire, turn_port, turn_starboard, steady, extinguish, repair, report, none). ")
@@ -902,7 +904,7 @@ void ADCVoice::ResolveOrder(const FString& Text)
 			Parsed->TryGetStringField(TEXT("action"), Action);
 			Station = Station.ToLower(); Side = Side.ToLower(); Action = Action.ToLower();
 
-			if (CrewName == TEXT("Finch") || CrewName == TEXT("Marlow") || CrewName == TEXT("Odessa")) { Intent.CrewName = CrewName; }
+			Intent.CrewName = DCSpeech::CanonicalCrewName(CrewName);
 			Intent.Side = Side == TEXT("port") ? EDCSide::Port : (Side == TEXT("starboard") ? EDCSide::Starboard : EDCSide::None);
 			Intent.Station = Station == TEXT("helm") ? EDCStationType::Helm : Station == TEXT("cannons") ? EDCStationType::Cannons
 				: Station == TEXT("fire") ? EDCStationType::Fire : Station == TEXT("rigging") ? EDCStationType::Rigging : EDCStationType::None;
