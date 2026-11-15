@@ -1,13 +1,37 @@
-param([Parameter(Mandatory=$true)][string]$SourceRoot, [Parameter(Mandatory=$true)][string]$GameRoot, [switch]$ValidateOnly)
+param([Parameter(Mandatory=$true)][string]$SourceRoot, [Parameter(Mandatory=$true)][string]$GameRoot,
+    [switch]$ValidateOnly, [string]$ProjectRoot)
 $ErrorActionPreference = 'Stop'
 $source = (Resolve-Path -LiteralPath $SourceRoot).Path
 $game = (Resolve-Path -LiteralPath $GameRoot).Path
 if ($game -eq $source -or $game.StartsWith($source + [IO.Path]::DirectorySeparatorChar)) { throw 'Stage into a separate packaged game directory.' }
 $target = Join-Path $game 'Sidecars'
 if (Test-Path -LiteralPath $target) { throw 'Stage sidecars only into a fresh candidate; never overwrite an existing candidate.' }
-$project = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
+if (!$ProjectRoot) { $ProjectRoot = Join-Path $PSScriptRoot '../..' }
+$project = (Resolve-Path -LiteralPath $ProjectRoot).Path
 $config = Get-Content -LiteralPath (Join-Path $project 'Config/DefaultGame.ini') -Raw
 $voiceSection = [regex]::Match($config, '(?ms)^\[/Script/DirectorsCut\.DCVoice\]\s*\r?\n(?<settings>.*?)(?=^\[|\z)').Groups['settings'].Value
+$ttsBackend = 'Piper'
+$ttsSetting = [regex]::Match($voiceSection, '(?m)^TTSBackend=([^\r\n]+)')
+if ($ttsSetting.Success) { $ttsBackend = $ttsSetting.Groups[1].Value.Trim() }
+if ($ttsBackend -notin @('Phonon','Piper')) { throw "Unsupported TTSBackend for staging: $ttsBackend" }
+$selectedBins = @('llama','whisper', $ttsBackend.ToLowerInvariant())
+foreach ($bin in $selectedBins) {
+    if (!(Test-Path -LiteralPath (Join-Path $source "bin/$bin") -PathType Container)) { throw "Selected runtime is missing: $bin" }
+}
+$selectedVoices = @()
+if ($ttsBackend -eq 'Piper') {
+    # Phonon has no Piper fallback; package these only for a Piper-selected build.
+    $defaults = @{ FinchVoice='en_GB-vctk-medium.onnx'; MarlowVoice='en_GB-northern_english_male-medium.onnx'; OdessaVoice='en_GB-alba-medium.onnx' }
+    foreach ($key in @('FinchVoice','MarlowVoice','OdessaVoice')) {
+        $setting = [regex]::Match($voiceSection, "(?m)^$key=([^\r\n]+)")
+        $voice = if ($setting.Success) { $setting.Groups[1].Value.Trim() } else { $defaults[$key] }
+        if ($voice -notmatch '^[A-Za-z0-9_.-]+\.onnx$' -or $voice -eq 'en_GB-alan-medium.onnx') { throw "Unsupported Piper voice: $voice" }
+        foreach ($name in @($voice, "$voice.json")) {
+            if (!(Test-Path -LiteralPath (Join-Path $source "models/voices/$name") -PathType Leaf)) { throw "Selected voice is missing: $name" }
+            if ($name -notin $selectedVoices) { $selectedVoices += $name }
+        }
+    }
+}
 $selectedModel = 'Qwen3.5-4B-Q5_K_M.gguf'
 $modelSetting = [regex]::Match($voiceSection, '(?m)^LLMModel=([^\r\n]+)')
 if ($modelSetting.Success) { $selectedModel = $modelSetting.Groups[1].Value.Trim() }
@@ -21,7 +45,7 @@ if ($selectedModel -eq 'gemma-4-E4B-it-Q4_K_M.gguf') {
         throw 'Gemma E4B does not match the pinned Q4_K_M artifact.'
     }
 }
-if ($voiceSection -match '(?m)^TTSBackend=Phonon\s*$') {
+if ($ttsBackend -eq 'Phonon') {
     $phonon = [IO.Path]::GetFullPath((Join-Path $source 'bin/phonon'))
     function Get-PhononFile([string]$Root, [string]$Relative) {
         # Refuse traversal, alternate streams and junction/symlink escapes, including
@@ -111,22 +135,24 @@ if ($voiceSection -match '(?m)^TTSBackend=Phonon\s*$') {
         throw 'Phonon portable import verification is missing or failed; run stage_python.py --verify-only.'
     }
 }
-if ($ValidateOnly) { Write-Output 'Sidecar prerequisite validation passed; no files copied.'; return }
+if ($ValidateOnly) { Write-Output "Sidecar prerequisite validation passed: LLM=$selectedModel TTS=$ttsBackend bins=$($selectedBins -join ','); no files copied."; return }
 New-Item -ItemType Directory -Path $target | Out-Null
-Copy-Item -LiteralPath (Join-Path $source 'bin') -Destination $target -Recurse
-New-Item -ItemType Directory -Path (Join-Path $target 'models/voices') -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $target 'bin'),(Join-Path $target 'models') | Out-Null
+foreach ($bin in $selectedBins) {
+    Copy-Item -LiteralPath (Join-Path $source "bin/$bin") -Destination (Join-Path $target 'bin') -Recurse
+}
 foreach ($model in @($selectedModel,'ggml-base.en.bin')) {
     Copy-Item -LiteralPath (Join-Path $source "models/$model") -Destination (Join-Path $target 'models')
 }
-# Do not redistribute the unused Alan model: its linked upstream licence is unclear.
-foreach ($voice in @('en_GB-vctk-medium','en_GB-northern_english_male-medium','en_GB-alba-medium')) {
-    foreach ($suffix in @('.onnx','.onnx.json')) {
-        Copy-Item -LiteralPath (Join-Path $source "models/voices/$voice$suffix") -Destination (Join-Path $target 'models/voices')
+if ($selectedVoices.Count) {
+    New-Item -ItemType Directory -Path (Join-Path $target 'models/voices') | Out-Null
+    foreach ($voice in $selectedVoices) {
+        Copy-Item -LiteralPath (Join-Path $source "models/voices/$voice") -Destination (Join-Path $target 'models/voices')
     }
 }
 $notices = Join-Path $game 'ThirdPartyNotices'
 New-Item -ItemType Directory -Force -Path $notices | Out-Null
-Copy-Item -LiteralPath (Join-Path $project 'Docs/ThirdPartyVoices') -Destination $notices -Recurse
+if ($ttsBackend -eq 'Piper') { Copy-Item -LiteralPath (Join-Path $project 'Docs/ThirdPartyVoices') -Destination $notices -Recurse }
 if (Test-Path -LiteralPath (Join-Path $project 'Docs/ThirdPartyACELLM')) {
     Copy-Item -LiteralPath (Join-Path $project 'Docs/ThirdPartyACELLM') -Destination $notices -Recurse
 }
@@ -139,4 +165,16 @@ foreach ($plugin in @('NV_ACE_Reference','NvAudio2FaceMarkRegressive')) {
     Get-ChildItem -LiteralPath (Join-Path $project "Plugins/$plugin") -File | Where-Object { $_.Name -match 'licen[cs]e' } | Copy-Item -Destination $destination
 }
 & (Join-Path $PSScriptRoot 'prune_unused_gpt_model.ps1') -GameRoot $game
+# Leave an explicit inventory so acceptance can detect accidentally bundled alternatives.
+$inventory = @(Get-ChildItem -LiteralPath $target -Recurse -File | ForEach-Object {
+    [pscustomobject]@{ path=$_.FullName.Substring($target.Length+1).Replace('\','/'); bytes=$_.Length }
+})
+$expectedModels = @($selectedModel,'ggml-base.en.bin') + @($selectedVoices | ForEach-Object { "voices/$_" })
+$actualModels = @(Get-ChildItem -LiteralPath (Join-Path $target 'models') -Recurse -File | ForEach-Object {
+    $_.FullName.Substring((Join-Path $target 'models').Length+1).Replace('\','/')
+})
+if (Compare-Object ($expectedModels | Sort-Object) ($actualModels | Sort-Object)) { throw 'Staged model inventory differs from the selected configuration.' }
+[pscustomobject]@{ schema_version=1; llm_model=$selectedModel; tts_backend=$ttsBackend; runtime_bins=$selectedBins;
+    total_payload_bytes=($inventory | Measure-Object bytes -Sum).Sum; files=$inventory } |
+    ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $target 'staging-manifest.json') -Encoding utf8NoBOM
 Write-Output "Staged sidecars and notices at $game"
