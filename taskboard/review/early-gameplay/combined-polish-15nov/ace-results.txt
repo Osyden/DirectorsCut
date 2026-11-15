@@ -1,0 +1,12 @@
+[2026.11.15-09.03.54:575][177]LogACEAIMSDK: Warning: AIM: [2026-11-15 09:03:54.575][nvaim][warn][thread.h:231][flush] Worker thread 'nvaim.plugin.a2x.pipeline.polling' timed out
+[2026.11.15-09.03.55:996][321]LogDC: Voice: ACE speaking Finch
+[2026.11.15-09.03.58:632][657]LogDC: Voice: ACE finished Finch
+[2026.11.15-09.04.01:963][ 14]LogACEAIMSDK: Warning: AIM: [2026-11-15 09:04:01.963][nvaim][warn][thread.h:231][flush] Worker thread 'nvaim.plugin.a2x.pipeline.polling' timed out
+[2026.11.15-09.04.03:343][110]LogDC: Voice: ACE speaking Marlow
+[2026.11.15-09.04.06:086][327]LogDC: Voice: ACE finished Marlow
+[2026.11.15-09.04.09:667][566]LogACEAIMSDK: Warning: AIM: [2026-11-15 09:04:09.667][nvaim][warn][thread.h:231][flush] Worker thread 'nvaim.plugin.a2x.pipeline.polling' timed out
+[2026.11.15-09.04.11:223][662]LogDC: Voice: ACE speaking Odessa
+[2026.11.15-09.04.14:275][900]LogDC: Voice: ACE finished Odessa
+[2026.11.15-09.04.14:288][901]LogDC: Display: VOICE_SMOKE_CYCLE mode=ACE cycle=1 completed=3
+[2026.11.15-09.04.14:288][901]LogDC: Display: VOICE_SMOKE_SUCCESS mode=ACE cycles=1
+[2026.11.15-09.04.15:364][902]LogExit: Exiting.

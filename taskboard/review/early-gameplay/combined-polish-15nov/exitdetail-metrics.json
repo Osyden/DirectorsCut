@@ -1,0 +1,58 @@
+{
+  "window": [
+    60,
+    240
+  ],
+  "samples": 328,
+  "stone_contacts": [],
+  "strong_helm_reversals": [
+    108.4,
+    142.2,
+    181.8,
+    236.5
+  ],
+  "successive_reversals_within_4s": [],
+  "large_target_changes": [
+    77.0,
+    108.4,
+    137.2,
+    142.2,
+    147.8,
+    181.8,
+    201.5,
+    218.3,
+    230.9,
+    236.5,
+    240.0
+  ],
+  "sampled_path_probe_ms": {
+    "samples": 328,
+    "mean": 0.969,
+    "p95": 1.339,
+    "max": 1.788,
+    "scope": "Most recent complete probe at each navigation log sample, not a frame-time benchmark."
+  },
+  "capture_states": [
+    "Capture state: hull=95.8 score=300 fires=1 rigging=0 at 150.0",
+    "Capture state: hull=91.0 score=500 fires=2 rigging=0 at 169.0",
+    "Capture state: hull=90.8 score=500 fires=2 rigging=0 at 170.0",
+    "Capture state: hull=90.0 score=500 fires=2 rigging=0 at 175.0",
+    "Capture state: hull=87.6 score=600 fires=2 rigging=0 at 190.0",
+    "Capture state: hull=86.8 score=700 fires=0 rigging=0 at 200.0",
+    "Capture state: hull=85.4 score=800 fires=1 rigging=0 at 205.0",
+    "Capture state: hull=83.8 score=800 fires=2 rigging=0 at 210.0",
+    "Capture state: hull=82.2 score=900 fires=2 rigging=0 at 220.0",
+    "Capture state: hull=80.6 score=1000 fires=2 rigging=0 at 230.0",
+    "Capture state: hull=80.0 score=1000 fires=2 rigging=0 at 234.0",
+    "Capture state: hull=79.6 score=1000 fires=2 rigging=0 at 236.0",
+    "Capture state: hull=79.3 score=1000 fires=2 rigging=0 at 238.0",
+    "Capture state: hull=79.2 score=1000 fires=2 rigging=0 at 239.0",
+    "Capture state: hull=79.0 score=1000 fires=2 rigging=0 at 240.0",
+    "Capture state: hull=78.8 score=1000 fires=2 rigging=0 at 241.1",
+    "Capture state: hull=78.7 score=1000 fires=2 rigging=0 at 242.1",
+    "Capture state: hull=78.4 score=1000 fires=1 rigging=0 at 244.0",
+    "Capture state: hull=78.3 score=1000 fires=1 rigging=0 at 246.0",
+    "Capture state: hull=78.0 score=1000 fires=0 rigging=0 at 250.0"
+  ],
+  "interpretation": "Different random obstacle layouts are not a controlled A/B. Inspect reversals and captures; legitimate avoidance also reverses helm."
+}

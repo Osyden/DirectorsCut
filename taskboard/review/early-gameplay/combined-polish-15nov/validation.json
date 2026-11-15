@@ -1,0 +1,86 @@
+{
+  "source_checkpoint": "093ba85",
+  "package": "E:\\Projects\\DirectorsCut\\Builds\\2026-11-15_0850_combined-polish\\Windows\\DirectorsCut.exe",
+  "source_manifest_entries": 85,
+  "all_source_hashes_match": true,
+  "build_cook_archive_seconds": 169.94,
+  "editor_target_build": "Succeeded",
+  "runs": {
+    "navigation": {
+      "normal_exit": true,
+      "failure_matches": [],
+      "passed_checks": 10,
+      "screenshots": 0,
+      "pirate_bindings": 4
+    },
+    "rag": {
+      "normal_exit": true,
+      "failure_matches": [],
+      "passed_checks": 38,
+      "screenshots": 10,
+      "pirate_bindings": 4
+    },
+    "encounters": {
+      "normal_exit": true,
+      "failure_matches": [],
+      "passed_checks": 6,
+      "screenshots": 13,
+      "pirate_bindings": 4
+    },
+    "exitdetail": {
+      "normal_exit": true,
+      "failure_matches": [],
+      "passed_checks": 0,
+      "screenshots": 20,
+      "pirate_bindings": 4
+    },
+    "cannons": {
+      "normal_exit": true,
+      "failure_matches": [],
+      "passed_checks": 10,
+      "screenshots": 0,
+      "pirate_bindings": 4
+    },
+    "voyage": {
+      "normal_exit": true,
+      "failure_matches": [],
+      "passed_checks": 0,
+      "screenshots": 14,
+      "pirate_bindings": 4
+    }
+  },
+  "text_command_cases": 38,
+  "new_synthetic_speech_cases": 13,
+  "command_tests_passed": 2,
+  "ace": {
+    "completed_cycles": 1,
+    "crew_lines": 3,
+    "separate_cuda_context": true,
+    "first_longer_attempt": "Stopped only our own process when another chat began a render; not counted as a pass.",
+    "warnings": "Vendor worker polling timeouts before successful animation/audio delivery; no observed NVIDIA system event in the test window."
+  },
+  "full_voyage": {
+    "completed_ride_time": 451,
+    "final_state": "Capture state: hull=3.4 score=1200 fires=0 rigging=0 at 451.0",
+    "voice_disabled": true,
+    "scope": "Main baseline finale; other chats' unmerged maelstrom and sky work remains separate."
+  },
+  "limitations": [
+    "No live-microphone, human sound-mix audition or clean-machine install check.",
+    "Existing plugin/UDS/legacy asset warnings, occasional particle waits and VSM queue warning remain.",
+    "Hard exit water-shell silhouette and pale hull foam rim remain.",
+    "One earlier random layout showed rapid helm reversals; this run does not prove the absence of that issue.",
+    "Other chats' unmerged maelstrom/sky branches are not part of this package."
+  ],
+  "main_source_integration": "093ba85",
+  "preserved_other_chat_files": [
+    {
+      "path": "taskboard/CODEX-MAELSTROM-OWNERSHIP-14NOV.md",
+      "sha256": "01257d8580710d37b52d219be670946b98fefb899cb32c5ec66c1b0dcf1390f0"
+    },
+    {
+      "path": "taskboard/SATURDAY-PRIORITIES-14NOV.md",
+      "sha256": "7dcd1e206f3fb7f4f05688707a85d4fb668a4cb0b257409b72667f416b7438eb"
+    }
+  ]
+}

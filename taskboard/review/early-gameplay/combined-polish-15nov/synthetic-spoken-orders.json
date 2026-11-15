@@ -1,0 +1,106 @@
+[
+  {
+    "source": "Finch, take the helm.",
+    "text": "Finch, take the helm.",
+    "action": 1,
+    "station": 1,
+    "side": 0,
+    "crew": "Finch"
+  },
+  {
+    "source": "Finch, hard to port.",
+    "text": "Finch, Hard to port.",
+    "action": 4,
+    "station": 1,
+    "side": 1,
+    "crew": "Finch"
+  },
+  {
+    "source": "Finch, hard to starboard.",
+    "text": "Finch, Hard to starboard.",
+    "action": 5,
+    "station": 1,
+    "side": 2,
+    "crew": "Finch"
+  },
+  {
+    "source": "Finch, steady as she goes.",
+    "text": "Finch, steady as she goes.",
+    "action": 6,
+    "station": 1,
+    "side": 0,
+    "crew": "Finch"
+  },
+  {
+    "source": "Marlow, man the port cannons.",
+    "text": "Marlow, Man the Port cannons.",
+    "action": 1,
+    "station": 2,
+    "side": 1,
+    "crew": "Marlow"
+  },
+  {
+    "source": "Marlow, man the starboard guns.",
+    "text": "Marlow, man the starboard guns.",
+    "action": 1,
+    "station": 2,
+    "side": 2,
+    "crew": "Marlow"
+  },
+  {
+    "source": "Marlow, port battery, fire.",
+    "text": "Marlow, port battery, fire.",
+    "action": 2,
+    "station": 2,
+    "side": 1,
+    "crew": "Marlow"
+  },
+  {
+    "source": "Marlow, starboard guns, fire.",
+    "text": "Marlow, starboard guns, fire.",
+    "action": 2,
+    "station": 2,
+    "side": 2,
+    "crew": "Marlow"
+  },
+  {
+    "source": "Marlow, hold your fire.",
+    "text": "Marlow, hold your fire.",
+    "action": 3,
+    "station": 2,
+    "side": 0,
+    "crew": "Marlow"
+  },
+  {
+    "source": "Marlow, do not shoot.",
+    "text": "Marlow, do not shoot.",
+    "action": 3,
+    "station": 2,
+    "side": 0,
+    "crew": "Marlow"
+  },
+  {
+    "source": "Odessa, put out the fire.",
+    "text": "Odessa, put out the fire.",
+    "action": 7,
+    "station": 3,
+    "side": 0,
+    "crew": "Odessa"
+  },
+  {
+    "source": "Odessa, repair the rigging.",
+    "text": "Odessa, repair the rigging.",
+    "action": 8,
+    "station": 4,
+    "side": 0,
+    "crew": "Odessa"
+  },
+  {
+    "source": "Odessa, report.",
+    "text": "Odessa, report.",
+    "action": 9,
+    "station": 0,
+    "side": 0,
+    "crew": "Odessa"
+  }
+]

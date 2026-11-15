@@ -1,0 +1,8 @@
+LogCsvProfiler: Display: Metadata set : commandline="" C:\Users\ejobse\Documents\ChatGPT\DirectorsCut\pending-weather\DirectorsCut.uproject -NullRHI -Unattended -NoSound -NoP4 -DCNoVoice -ExecCmds="Automation RunTests DirectorsCut.Commands" -TestExit="Automation Test Queue Empty" -abslog=E:\Projects\DirectorsCut\early-gameplay-review\final-polish-15nov\commands-with-speech.log""
+LogInit: Command Line: -NullRHI -Unattended -NoSound -NoP4 -DCNoVoice -ExecCmds="Automation RunTests DirectorsCut.Commands" -TestExit="Automation Test Queue Empty" -abslog=E:\Projects\DirectorsCut\early-gameplay-review\final-polish-15nov\commands-with-speech.log
+[2026.11.15-08.56.49:604][596]LogAutomationController: Display: Test Started. Name={SpokenOrders} Path={DirectorsCut.Commands.SpokenOrders}
+[2026.11.15-08.56.49:622][599]LogAutomationController: Display: Test Completed. Result={Success} Name={SpokenOrders} Path={DirectorsCut.Commands.SpokenOrders}
+[2026.11.15-08.56.49:623][600]LogAutomationController: Display: Test Started. Name={SupportedOrders} Path={DirectorsCut.Commands.SupportedOrders}
+[2026.11.15-08.56.49:647][602]LogAutomationController: Display: Test Completed. Result={Success} Name={SupportedOrders} Path={DirectorsCut.Commands.SupportedOrders}
+[2026.11.15-08.56.49:648][602]LogAutomationCommandLine: Display: ...Automation Test Queue Empty 2 tests performed.
+[2026.11.15-08.56.49:648][603]LogExit: Display: **** TestExit: Automation Test Queue Empty ****
