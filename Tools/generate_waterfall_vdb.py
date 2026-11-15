@@ -163,6 +163,17 @@ class FittedWaterfall(Waterfall):
     """Advect particles on the exported physical path; never stretch a cache."""
     def __init__(self, args, profile):
         self.profile = profile
+        self.ballistic_launch = profile.get("ballistic_launch")
+        if self.ballistic_launch:
+            self.ballistic_sources = np.asarray(self.ballistic_launch["cross_sources_local_cm"], dtype=float) / 100
+            self.ballistic_offsets = np.asarray(self.ballistic_launch["cross_offsets_cm"], dtype=float) / 100
+            self.ballistic_velocity = np.asarray(self.ballistic_launch["initial_velocity_local_cm_s"], dtype=float) / 100
+            if (self.ballistic_sources.shape != (len(self.ballistic_offsets), 3)
+                    or not np.all(np.diff(self.ballistic_offsets)>0)
+                    or not np.isfinite(self.ballistic_sources).all()
+                    or not np.isfinite(self.ballistic_velocity).all()
+                    or not math.isclose(float(self.ballistic_launch["gravity_cm_s2"]), 981.0)):
+                raise ValueError("Invalid physical ballistic launch contract")
         water = profile["receiving_water"]
         if "coverage_y_major" not in water:
             raise ValueError("Profile lacks receiving-water coverage; re-export the contact-trimmed core")
@@ -247,7 +258,9 @@ class FittedWaterfall(Waterfall):
         # density remains close to the source rather than becoming rising smoke.
         self.spray_indices = np.arange(0, len(self.birth), 5)
         self.spray_launch_time = times[-1] * (.12 + .72 * (self.phase[:, 2] / (2 * np.pi)))
-        self.spray_birth = np.mod(self.birth + self.spray_launch_time / self.speed_scale, args.duration)
+        if self.ballistic_launch:
+            self.spray_launch_time = self.flight * (.10 + .72 * (self.phase[:, 2] / (2 * np.pi)))
+        self.spray_birth = np.mod(self.birth + (self.spray_launch_time if self.ballistic_launch else self.spray_launch_time / self.speed_scale), args.duration)
 
     def sample_path(self, time_s):
         return np.column_stack([np.interp(time_s, self.path_time, self.path[:, axis]) for axis in range(3)])
@@ -322,6 +335,16 @@ class FittedWaterfall(Waterfall):
     def fall_positions(self, age):
         if not getattr(self, "profile_ready", False):
             return super().fall_positions(age)
+        if self.ballistic_launch:
+            source = np.column_stack([np.interp(self.x, self.ballistic_offsets, self.ballistic_sources[:, axis]) for axis in range(3)])
+            p = source + self.ballistic_velocity * age[:, None]
+            p[:, 2] -= .5 * 9.81 * age ** 2
+            # Modest coherent lateral breakup after launch; gravity and feeder
+            # momentum set the full drop. Never stretch an80m cache to fit it.
+            spread = .03 * np.maximum(0, age-.25)**2
+            p[:, 0] += spread*np.sin(self.phase[:, 0])
+            p[:, 1] += spread*.6*np.sin(self.phase[:, 1])
+            return p
         clock = np.minimum(age * self.speed_scale, self.path_time[-1])
         p = self.sample_width(clock, self.x + .25 * np.sin(age * 2.3 + self.phase[:, 0]))
         outward = .20 + np.abs(self.y) * .6 + .18 * np.sin(age * 3.1 + self.phase[:, 1])
@@ -338,18 +361,25 @@ class FittedWaterfall(Waterfall):
             p, mass = super().particles(time_s, component)
             indices = self.spray_indices
             age = np.mod(round(time_s % self.a.duration, 12) - self.spray_birth[indices], self.a.duration)
-            active = (age < .85) & (self.spray_launch_time[indices]/self.speed_scale[indices] < self.flight[indices])
+            launch_age = self.spray_launch_time[indices] if self.ballistic_launch else self.spray_launch_time[indices]/self.speed_scale[indices]
+            active = (age < .85) & (launch_age < self.flight[indices])
             indices, age = indices[active], age[active]
             launch = self.spray_launch_time[indices]
             normal = np.tile((0.0, 1.0, 0.0), (len(indices), 1))
-            start = self.sample_width(launch, self.x[indices])
-            tangent = np.column_stack([np.interp(launch, self.path_time, self.path_tangent[:, axis]) for axis in range(3)])
-            speed = np.interp(launch, self.path_time, self.path_speed) * self.speed_scale[indices]
+            if self.ballistic_launch:
+                start = self.fall_positions(self.spray_launch_time)[indices]
+                launch_velocity = np.broadcast_to(self.ballistic_velocity,(len(indices),3)).copy()
+                launch_velocity[:,2] -= 9.81*launch
+            else:
+                start = self.sample_width(launch, self.x[indices])
+                tangent = np.column_stack([np.interp(launch, self.path_time, self.path_tangent[:, axis]) for axis in range(3)])
+                speed = np.interp(launch, self.path_time, self.path_speed) * self.speed_scale[indices]
+                launch_velocity = tangent*speed[:,None]
             travel = .6 * (1 - np.exp(-age / .6))
-            spray = start + tangent * (speed * travel)[:, None] + normal * (1.5 + 3 * travel)[:, None]
+            spray = start + launch_velocity * travel[:, None] + normal * (1.5 + 3 * travel)[:, None]
             spray[:, 2] -= .5 * 9.81 * age ** 2
             expected = self.sample_width(np.minimum(launch + age * self.speed_scale[indices], self.path_time[-1]), self.x[indices])
-            clearance = spray[:, 1] - expected[:, 1]
+            clearance = np.ones(len(indices)) if self.ballistic_launch else spray[:, 1] - expected[:, 1]
             fade = smoothstep(0, .08, age) * (1-smoothstep(.55, .85, age)) * smoothstep(0, .4, clearance)
             spray_mass = self.mass * self.strength[indices] * fade * .35
             return self.keep_airborne(np.concatenate((p, spray)), np.concatenate((mass, spray_mass)))
@@ -536,7 +566,13 @@ def main():
                                       "path_length_cm": profile["path_length_cm"]}
         manifest["coordinates"]["lip_cm"] = profile["source_local_cm"]
         manifest["coordinates"]["nominal_foot_cm"] = profile["foot_local_cm"]
+        manifest["coordinates"]["origin"] = "explicit fitted_profile.local_origin_arena_cm; do not infer it from bounds"
         manifest["physics"]["model"] = "gravity/drag path advection on actual core profile, short outward ballistic spray, current-aligned impact on sampled receiving water"
+        if profile.get("ballistic_launch"):
+            manifest["physics"]["model"] = "measured high-rim source with authored horizontal feeder momentum and gravity; secondary spray acquires drag after release"
+            manifest["physics"]["ballistic_launch"] = profile["ballistic_launch"]
+            manifest["physics"].pop("terminal_velocity_m_s",None)
+            manifest["physics"]["core_drag"] = "none; source momentum plus gravity; drag applies to secondary spray"
         manifest["water_contact"] = {**model.contact_stats, "coverage_required": True,
                                       "outside_height_grid_is_water": False, "post_blur_submerged_density_mask": True,
                                       "core_endpoint_lift": False, "impact_timing": "first actual covered water entry per strand"}

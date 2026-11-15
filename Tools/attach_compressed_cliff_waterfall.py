@@ -106,6 +106,8 @@ def main():
     p.add_argument('--cliff',type=Path,required=True);p.add_argument('--water',type=Path,required=True)
     p.add_argument('--output',type=Path,required=True);p.add_argument('--source-index',type=int)
     p.add_argument('--template-source-index',type=int,default=939,help='Ring pilot: use template tag only to choose a seed; all fitting uses actual ring triangles')
+    p.add_argument('--hero-source-index',type=int,help='Explicit actual ring vertex for a supported high-rim ballistic source')
+    p.add_argument('--hero-speed',type=float,default=12.5,help='Physical horizontal feeder speed in metres/second')
     p.add_argument('--width-m',type=float,default=6);p.add_argument('--render',action='store_true')
     p.add_argument('--exposed-jet',action='store_true',help='Try one longer supported ravine jet; authored launch velocity, no invented ledge')
     a=p.parse_args(sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else [])
@@ -178,6 +180,37 @@ def main():
                          gravity_m_s2=9.81,drop_m=float(start[2]-end[2]))
                 path=np.vstack((path[:i],np.asarray(samples),end));break
         if jet is not None:break
+    if a.hero_source_index is not None:
+        if not ring or not 10<=a.hero_speed<=20:raise ValueError('Hero source requires actual ring and10–20m/s horizontal momentum')
+        source=q[a.hero_source_index];world=cliff['vertices_m'][a.hero_source_index]
+        direction=np.array((-world[0],-world[1],0));direction/=np.linalg.norm(direction);direction=direction@B
+        vel=direction*a.hero_speed;vel[2]=-1.
+        feeder=[]
+        for dist in np.linspace(-4,-.25,16):
+            h=rock.hit(source[:2]+direction[:2]*dist)
+            if h is None:raise ValueError('Hero feeder has no actual rock support')
+            feeder.append(h[0])
+        start=source.copy();start[2]+=.30;samples=[];hit=None;minimum_clearance=1e9
+        for time in np.arange(0,9,.015):
+            pt=start+vel*time+np.array((0,0,-4.905*time*time));rh=rock.hit(pt[:2]);wh=sea.hit(pt[:2])
+            if wh is not None and pt[2]<=wh[0][2]:hit=(time,pt,wh);break
+            if rh is not None:
+                clearance=pt[2]-rh[0][2];minimum_clearance=min(minimum_clearance,clearance)
+                if clearance<.08:raise ValueError('High-rim ballistic centre intersects actual ring')
+            samples.append(pt)
+        if hit is None:raise ValueError('Hero misses finite receiving water')
+        low=hit[0]-.015;high=hit[0]
+        for _ in range(26):
+            tm=(low+high)*.5;pt=start+vel*tm+np.array((0,0,-4.905*tm*tm));wh=sea.hit(pt[:2])
+            if wh is not None and pt[2]<=wh[0][2]:high=tm
+            else:low=tm
+        end=start+vel*high+np.array((0,0,-4.905*high*high))
+        if not 100<start[2]-end[2]<180:raise ValueError('Hero physical drop is outside100–180m')
+        path=np.vstack((feeder,samples,end));ids=np.array([a.hero_source_index]);upstream=0.
+        jet=dict(launch_index=len(feeder),initial_velocity_chart_m_s=vel.tolist(),duration_s=high,gravity_m_s2=9.81,
+                 drop_m=float(start[2]-end[2]),minimum_centre_clearance_m=minimum_clearance,
+                 horizontal_projection_m=float(np.linalg.norm(end[:2]-start[:2])),high_rim_source=True,
+                 feeder_depth_m=.4,feeder_momentum_authored=True,source_support_vertex=a.hero_source_index)
     if jet is None:raise ValueError('No short terminal ballistic jet clears rock and reaches measured finite water')
     launch_index=jet['launch_index'];s=np.r_[0,np.cumsum(np.linalg.norm(np.diff(path,axis=0),axis=1))]
     support_ids=[];support_weights=[];sections=[];widths=[];positions=[];faces=[];materials=[];uvs=[]
@@ -185,13 +218,13 @@ def main():
     launch=path[launch_index]; tangent=path[launch_index]-path[max(0,launch_index-6)]
     launch_hit=rock.hit(launch[:2]);jet_side=np.cross(launch_hit[1],tangent);jet_side/=np.linalg.norm(jet_side)
     jet_starts=[];jet_times=[];jet_vel=np.asarray(jet['initial_velocity_chart_m_s'])
-    jet_width=a.width_m*.65
+    jet_width=a.width_m if a.hero_source_index is not None else a.width_m*.65
     for f in normalized_offsets:
         h=rock.nearest(launch+jet_side*f*jet_width*.5)
         if h is None:raise ValueError('Jet launch leaves supported cliff')
-        start=h[0].copy();start[2]+=.18
+        start=h[0].copy();start[2]+=.30 if a.hero_source_index is not None else .18
         end_time=None
-        for time in np.arange(.005,5.5,.005):
+        for time in np.arange(.005,9,.005):
             pt=start+jet_vel*time+np.array((0,0,-4.905*time*time));rh=rock.hit(pt[:2]);wh=sea.hit(pt[:2])
             if wh is not None and pt[2]<=wh[0][2]:
                 low=time-.005;high=time
@@ -233,6 +266,15 @@ def main():
             # A continuous wet core with three broken aerated strands. Geometry
             # remains physical; shader animation is a separate native task.
             strand=j in (2,3,6,7,10)
+            if a.hero_source_index is not None and i>=launch_index:
+                progress=(i-launch_index)/max(len(path)-1-launch_index,1)
+                # Retain a short sheet near the lip; only unequal, interrupted
+                # thin ligaments remain farther down. Airborne volume carries
+                # the broken water between them, not an opaque150m ribbon.
+                keep=progress<.10 or (j in (2,3,6,9,10) and progress<.36) or (j in (2,6,10) and math.sin(s[i]*.47+j*2.3)>.25)
+                if not keep:
+                    del faces[-2:]
+                    continue
             materials.extend((int(strand),int(strand)))
     # Follow original triangles through sharp creases instead of bridging a
     # ridge with a coarse quad. Only offending attached faces are subdivided.
@@ -318,6 +360,13 @@ def main():
         terminal_ballistic_jet=jet,
         limitations='Static finite measured water; no animated-wave collision. Author-selected feed; no upstream source water yet. Sampled VDB water coverage at1m. Preview source800 is not runtime feed8.')
     profile['profile_sha1']=hashlib.sha1(json.dumps(profile,sort_keys=True).encode()).hexdigest()
+    if a.hero_source_index is not None:
+        profile['ballistic_launch']=dict(initial_velocity_local_cm_s=(jet_vel@B.T@FB*100).tolist(),
+            cross_sources_local_cm=local(jet_starts).tolist(),cross_offsets_cm=(normalized_offsets*a.width_m*50).tolist(),
+            gravity_cm_s2=981.,source_thickness_cm=40.,source_launch_local_cm=local(np.asarray(jet_starts)[6:7])[0].tolist(),
+            model='physical ballistic core; secondary droplets acquire drag after release',sampled_centre_flight_seconds=jet['duration_s'])
+        profile['source_local_cm']=profile['ballistic_launch']['source_launch_local_cm']
+        profile['profile_sha1']=hashlib.sha1(json.dumps({k:v for k,v in profile.items() if k!='profile_sha1'},sort_keys=True).encode()).hexdigest()
     a.output.mkdir(parents=True)
     (a.output/'waterfall_profile.json').write_text(json.dumps(profile,indent=2),encoding='utf-8')
     np.savez_compressed(a.output/'support.npz',path_chart_m=path,cross_sections_chart_m=sections,

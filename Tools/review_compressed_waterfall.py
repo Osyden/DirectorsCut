@@ -53,6 +53,10 @@ def main():
             path=a.attachment/'Volumes'/name/f'{name}_{a.frame:04d}.vdb'
             if not path.is_file():raise ValueError(f'Missing actual VDB frame {path}')
             volume=bpy.data.volumes.new(name);volume.filepath=str(path.resolve());volume.grids.load()
+            # Imported grids are centimetres but the scene is metres. OBJECT
+            # mode preserves optical depth while scale=.01 shrinks the volume,
+            # incorrectly multiplying this per-metre extinction by100.
+            volume.render.space='WORLD'
             ob=bpy.data.objects.new(name,volume);bpy.context.collection.objects.link(ob)
             ob.location=(np.asarray(profile['local_origin_arena_cm'])*.01-origin)@B
             ob.rotation_euler=(0,0,math.pi);ob.scale=(.01,.01,.01)
@@ -64,12 +68,13 @@ def main():
             vol.inputs['Density Attribute'].default_value=''
             m.node_tree.links.new(attr.outputs['Fac'],multiply.inputs[0]);m.node_tree.links.new(multiply.outputs[0],vol.inputs['Density']);m.node_tree.links.new(vol.outputs['Volume'],out.inputs['Volume']);volume.materials.append(m)
             frames.append(dict(path=str(path.resolve()),sha256=sha(path),density_extinction_per_m=extinction,object_scale=.01,
-                               grids=[g.name for g in volume.grids]))
+                               density_space=volume.render.space,grids=[g.name for g in volume.grids]))
     sun=bpy.data.objects.new('Fixed review light',bpy.data.lights.new('Fixed review light','SUN'));scene.collection.objects.link(sun)
     sun.data.energy=2.;sun.data.angle=.08;sun.rotation_euler=Vector((.7,.45,-.6)).to_track_quat('-Z','Y').to_euler()
     source=np.asarray(report['source_chart_m']);foot=np.asarray(report['foot_chart_m']);center=(source+foot)*.5
     a.output.mkdir(parents=True)
-    cameras=[('close',center+np.array((-80,-150,35)),center,110),('sector',np.array((700,-642,370.754114151)),np.array((250,258,-54.245885849)),900)]
+    hero=report['drop_m']>100
+    cameras=[('close',center+np.array((-150,-260,60) if hero else (-80,-150,35)),center,300 if hero else 110),('sector',np.array((700,-642,370.754114151)),np.array((250,258,-54.245885849)),900)]
     for name,location,target,width in cameras:
         title='ACTUAL CORE + VDB ON RING PILOT' if report.get('template_seed_only') else 'ACTUAL CORE + VDB ON SIGMA6'
         cam=camera_at(scene,location,target,width);label_camera(scene,cam,title,f'{report["drop_m"]:.1f} m drop | native physical width | float-density CPU review','Measured mean water | no emission | separate falling/impact volumes | native UE result unverified')
