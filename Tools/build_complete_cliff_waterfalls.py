@@ -70,10 +70,15 @@ def main():
         width=np.linalg.norm(points[0,-1]-points[0,0])
         for i in range(rows):
             for j in range(cols):
-                vertices.append(points[i,j]);uv.append((j/(cols-1),arc[i]));colors.append((0,min(width/64,1),1,alpha))
+                vertices.append(points[i,j]);uv.append((j/(cols-1),i/(rows-1) if role==3 else arc[i]));colors.append((0,min(width/64,1),min(arc[-1]/128,1) if role==3 else 1,alpha))
         for i in range(rows-1):
             for j in range(cols-1):
-                q=base+i*cols+j;faces.extend(((q,q+cols,q+1),(q+1,q+cols,q+cols+1)));slots.extend((role,role));face_source.extend((-1,-1))
+                q=base+i*cols+j
+                for face in ((q,q+cols,q+1),(q+1,q+cols,q+cols+1)):
+                    if role==1:
+                        middle=np.asarray([vertices[k] for k in face]).mean(axis=0);hits=[h for h in (rock.hit(middle[:2]),sea.hit(middle[:2])) if h is not None]
+                        if hits and middle[2]<max(h[0][2] for h in hits)+.01:continue
+                    faces.append(face);slots.append(role);face_source.append(-1)
     def rock_patch(radial,cross,width,start,end,crest_z):
         # A resampled ribbon can bridge fractured ledges even when all of its
         # vertices touch rock. Preserve original triangles instead, so every
@@ -86,8 +91,53 @@ def main():
                 at=point.copy();at[2]+=.28;vertices.append(at)
                 lateral=float(point@cross);distance=math.hypot(start-float(point@radial),crest_z-point[2])
                 uv.append((.5+lateral/width,distance));colors.append((0,min(width/64,1),1,.45))
-            faces.append((base,base+1,base+2));slots.append(0 if (start-along[triangle])/(start-end)<.14 else 1);face_source.append(int(triangle))
+            faces.append((base,base+1,base+2));slots.append(0);face_source.append(int(triangle))
         return len(chosen)
+    def flight(source,radial,speed):
+        start=source.copy();start[2]+=.30;velocity=-radial*speed+np.array((0.,0.,-1.))
+        def at(t):return start+velocity*t+np.array((0.,0.,-4.905*t*t))
+        clearance=0.;last=0.
+        for t in np.arange(.04,9.,.04):
+            point=at(t);hits=[h for h in (rock.hit(point[:2]),sea.hit(point[:2])) if h is not None]
+            if not hits:last=t;continue
+            height=max(h[0][2] for h in hits);gap=point[2]-height;clearance=max(clearance,gap)
+            if gap<=.08:
+                lo=last;hi=t
+                for _ in range(12):
+                    mid=(lo+hi)/2;point=at(mid);hits=[h for h in (rock.hit(point[:2]),sea.hit(point[:2])) if h is not None]
+                    if hits and point[2]<=max(h[0][2] for h in hits)+.08:hi=mid
+                    else:lo=mid
+                if start[2]-at(hi)[2]<12 or clearance<2:return None
+                return start,velocity,hi,clearance
+            last=t
+        return None
+    def detached_curtains(radial,cross,width,seq):
+        accepted=[];last_radius=1.e9
+        for k in range(3,len(seq)-4,9):
+            radius=seq[k][0]
+            if last_radius-radius<24:continue
+            center=rock.hit((radial*radius)[:2])
+            if center is None or flight(center[0],radial,22.) is None:continue
+            group=[]
+            for offset in np.linspace(-.32,.32,13)*width:
+                hit=rock.hit((radial*radius+cross*offset)[:2]);f=None if hit is None else flight(hit[0],radial,22.)
+                if f is None:
+                    if len(group)>=3:break
+                    group=[];continue
+                group.append(f)
+            if len(group)<3:continue
+            points=[]
+            for fraction in np.linspace(0,1,49):
+                row=[]
+                for start,velocity,duration,clearance in group:
+                    t=duration*fraction;row.append(start+velocity*t+np.array((0,0,-4.905*t*t)))
+                points.append(row)
+            before=len(faces);strip(points,1);count=len(faces)-before
+            if count:
+                accepted.append(dict(launch_radius_m=radius,columns=len(group),triangles=count,speed_m_s=22.,duration_s=[min(g[2] for g in group),max(g[2] for g in group)],maximum_detachment_m=max(g[3] for g in group)))
+                last_radius=radius
+            if len(accepted)>=8:break
+        return accepted
     # Deliberately irregular spacing and widths; keep the entry corridor clear.
     candidates=[(18,64),(52,108),(87,46),(120,125),(147,80),(215,44),(248,96),(286,70),(323,68),(342,38)]
     for number,(degrees,width) in enumerate(candidates):
@@ -127,6 +177,7 @@ def main():
         if wet is None:continue
         foot[2]=wet[0][2]
         patch_triangles=rock_patch(radial,cross,width,seq[0][0],seq[-1][0],track[0,8,2]-.28)
+        curtains=detached_curtains(radial,cross,width,seq)
         support_ids.extend(local_ids);support_weights.extend(local_weights)
         # Each filament starts at its own measured receiving hit and follows
         # the production current direction with repeated water queries.
@@ -156,16 +207,17 @@ def main():
                 if len(row)!=5:break
                 foam.append(row)
             if len(foam)>2:strip(foam,2)
-            # Broken overlapping little spray arcs originate at the contact;
-            # their material carries fine moving gaps and scene-depth fade.
+            # Crossed, bowed cards retain apparent mist depth from the basin
+            # and ship. The old radial cards were edge-on from inside the bowl.
             for plume in range(3):
-                spray=[];height=15.+width*.13+plume*3.5
-                for s in np.linspace(0,1,11):
-                    center=start+direction*(8+plume*4)*s;center[2]+=height*math.sin(s*math.pi*.85)
-                    half=(3.+plume*1.8)*(1+.8*s)
-                    spray.append([center-across*half,center+across*half])
-                strip(spray,3,alpha=.58)
-        proofs.append(dict(angle_degrees=degrees,width_m=width,crest_arena_m=track[0,8].tolist(),contact_arena_m=foot.tolist(),drop_m=float(track[0,8,2]-foot[2]),contacts_arena_m=[c.tolist() for c in contacts],rock_samples=len(local_ids)-covered,water_samples=covered,supported_core_triangles=patch_triangles))
+                spray=[];height=22.+width*.20+plume*5;angle=plume*math.pi/3
+                axis=cross*math.cos(angle)+radial*math.sin(angle)
+                for s in np.linspace(0,1,13):
+                    center=start-radial*(3+15*s)+direction*(plume-1)*4;center[2]+=height*s
+                    half=(9.+width*.06)*(1+.65*s)
+                    spray.append([center+axis*x*half for x in np.linspace(-1,1,9)])
+                strip(spray,3,alpha=.72)
+        proofs.append(dict(angle_degrees=degrees,width_m=width,crest_arena_m=track[0,8].tolist(),contact_arena_m=foot.tolist(),drop_m=float(track[0,8,2]-foot[2]),contacts_arena_m=[c.tolist() for c in contacts],rock_samples=len(local_ids)-covered,water_samples=covered,supported_core_triangles=patch_triangles,detached_curtains=curtains))
     if len(proofs)<5:raise RuntimeError(f'Only {len(proofs)} honest full-ring feeds found; inspect actual source geometry')
     np.savez_compressed(out/'support.npz',support_triangle=np.asarray(support_ids),support_barycentric=np.asarray(support_weights))
     np.savez_compressed(out/'core.npz',vertices_m=np.asarray(vertices),triangles=np.asarray(faces),uv=np.asarray(uv),face_material_index=np.asarray(slots),vertex_rgba=np.asarray(colors),source_rock_triangle=np.asarray(face_source))

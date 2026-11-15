@@ -86,10 +86,11 @@ def material(role):
     if mat is None: mat=tools.create_asset(name,ROOT,unreal.Material,unreal.MaterialFactoryNew())
     M.delete_all_material_expressions(mat)
     veil=role=='AeratedVeil'
-    mat.set_editor_property('blend_mode',unreal.BlendMode.BLEND_TRANSLUCENT if veil else unreal.BlendMode.BLEND_MASKED)
+    curtain=mesh_spray and role=='AeratedCore'
+    mat.set_editor_property('blend_mode',unreal.BlendMode.BLEND_TRANSLUCENT if veil or curtain else unreal.BlendMode.BLEND_MASKED)
     mat.set_editor_property('two_sided',True)
     mat.set_editor_property('opacity_mask_clip_value',.38)
-    if veil:
+    if veil or curtain:
         mat.set_editor_property('translucency_lighting_mode',unreal.TranslucencyLightingMode.TLM_SURFACE_PER_PIXEL_LIGHTING)
     def node(cls):return M.create_material_expression(mat,cls)
     def custom(code,kind,inputs):
@@ -111,21 +112,23 @@ def material(role):
     time=node(unreal.MaterialExpressionScalarParameter)
     time.set_editor_property('parameter_name','PreviewTime');time.set_editor_property('default_value',0.)
     if veil and mesh_spray:
+        mat.set_editor_property('translucency_lighting_mode',unreal.TranslucencyLightingMode.TLM_VOLUMETRIC_NON_DIRECTIONAL)
         color=node(unreal.MaterialExpressionVertexColor)
         state=custom(NOISE+r'''
 float width=max(2.,Color.g*64.);
-float along=1-UV.y;
-float2 p=float2((UV.x-.5)*width,along-8*T);
+float v=saturate(1-UV.y),height=max(12.,Color.b*128.);
+float along=v*height;
+float2 p=float2((UV.x-.5)*width,along-5*T);
 float warp=(field.evaluate(p/float2(7,17)).x-.5)*3;
 float cloud=field.evaluate((p+float2(warp,0))/float2(4.8,11.)).x;
 float fine=field.evaluate(p/float2(1.4,3.2)+float2(13.7,6.3)).x;
 float footprint=max(length(ddx(p)),length(ddy(p)));
 float body=lerp(.63,smoothstep(.20,.72,.78*cloud+.22*fine),1-smoothstep(2,6,footprint));
-float fringe=smoothstep(0,.18,UV.x)*(1-smoothstep(.82,1,UV.x));
-float release=smoothstep(0,3,along);
-return float3((1-exp(-Tau*1.6))*body*fringe*release,cloud,fine);
+float fringe=pow(saturate(1-abs(2*UV.x-1)),1.25);
+float heightFade=pow(saturate(sin(v*3.14159265)),.7);
+return float3((1-exp(-Tau*.8))*body*fringe*heightFade,cloud,fine);
 ''',unreal.CustomMaterialOutputType.CMOT_FLOAT3,{'UV':uv,'T':time,'Color':color,'Tau':(color,'A')})
-        output(custom('return lerp(float3(.67,.75,.77),float3(.87,.91,.91),State.y);',unreal.CustomMaterialOutputType.CMOT_FLOAT3,{'State':state}),unreal.MaterialProperty.MP_BASE_COLOR)
+        output(custom('return lerp(float3(.73,.79,.81),float3(.91,.94,.94),State.y);',unreal.CustomMaterialOutputType.CMOT_FLOAT3,{'State':state}),unreal.MaterialProperty.MP_BASE_COLOR)
         alpha=custom('return State.x;',unreal.CustomMaterialOutputType.CMOT_FLOAT1,{'State':state})
         depth=node(unreal.MaterialExpressionDepthFade)
         if not M.connect_material_expressions(alpha,'',depth,'Opacity') or not M.connect_material_expressions(scalar(250.),'',depth,'FadeDistance'):raise RuntimeError('Spray contact fade connection failed')
@@ -248,14 +251,20 @@ return float4(aeration,lerp(.58,channel,fine),streak,edge);
         rough_code='return lerp(.29,.48,Field.x);'
     if mesh_spray and aerated:
         color_code='return lerp(float3(.43,.59,.64),float3(.86,.91,.90),Field.x);'
-        mask_code='return Field.w*smoothstep(.12,.29,Field.y);'
+        mask_code='return Field.w*(.32+.28*Field.x)*smoothstep(.12,.29,Field.y);'
         rough_code='return lerp(.48,.69,Field.z);'
     elif mesh_spray and foam:
         color_code='return lerp(float3(.50,.62,.64),float3(.86,.91,.90),Field.x);'
         mask_code='return Field.w*smoothstep(.16,.42,Field.x);'
     output(custom(color_code,unreal.CustomMaterialOutputType.CMOT_FLOAT3,{'Field':field}),unreal.MaterialProperty.MP_BASE_COLOR)
     output(custom(rough_code,unreal.CustomMaterialOutputType.CMOT_FLOAT1,{'Field':field}),unreal.MaterialProperty.MP_ROUGHNESS)
-    output(custom(mask_code,unreal.CustomMaterialOutputType.CMOT_FLOAT1,{'Field':field}),unreal.MaterialProperty.MP_OPACITY_MASK)
+    mask=custom(mask_code,unreal.CustomMaterialOutputType.CMOT_FLOAT1,{'Field':field})
+    if curtain:
+        depth=node(unreal.MaterialExpressionDepthFade)
+        if not M.connect_material_expressions(mask,'',depth,'Opacity') or not M.connect_material_expressions(scalar(180.),'',depth,'FadeDistance'):raise RuntimeError('Detached curtain contact fade connection failed')
+        output(depth,unreal.MaterialProperty.MP_OPACITY)
+    else:
+        output(mask,unreal.MaterialProperty.MP_OPACITY_MASK)
     normal=custom(NOISE+f'''
 float2 p=float2(UV.x*{width:.9g},1-UV.y-{speed:.9g}*T)/float2(.38,1.9);
 float3 n=field.evaluate(p);
