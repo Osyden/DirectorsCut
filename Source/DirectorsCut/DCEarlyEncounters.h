@@ -31,6 +31,7 @@ private:
 		FVector DeckTarget = FVector::ZeroVector;
 		float X = 0.f, SeaY = 0.f, Side = 1.f, Age = 0.f, Exposure = 0.f, Clock = 0.f;
 		float Size = 1.f, InitialWait = 8.f, HoldX = 3500.f, FootHeight = 0.f;
+		int32 CannonHits = 0;
 		int32 Stage = 0; // approach, charge, attack, cooldown, defeated
 		bool bStatue = false, bImpact = false, bAnnounced = false, bGroupLeader = true, bCanShoot = false;
 	};
@@ -60,7 +61,8 @@ private:
 	void Ignite(const FVector& DeckPoint, const TCHAR* Cause);
 	void Clear();
 	void RemoveThreat(FThreat& Threat);
-	AActor* MakeTarget(const FVector& Position, float Radius, float Health);
+	AActor* MakeTarget(const FVector& Position, float Radius, float Health, bool bCreature = false);
+	float AcceptCreatureHit(float Damage, TWeakObjectPtr<AActor> Target);
 	AActor* MakeFireball(const FVector& Position);
 	AActor* MakeMarker(const FVector& DeckPoint);
 	FVector Hand(const FThreat& Threat) const;
@@ -68,6 +70,7 @@ private:
 	void TickVerification(float DeltaSeconds);
 	void TickEncounterVerification();
 	TWeakObjectPtr<AActor> VerifyEnemy;
+	int32 VerifyCreatureHits = 0;
 	int32 VerifyShots = 0, VerifyFireballImpacts = 0, VerifyBeamImpacts = 0;
 	bool bVerifyInterrupted = false;
 	int32 VerifyStage = 0, VerifyScore = 0;

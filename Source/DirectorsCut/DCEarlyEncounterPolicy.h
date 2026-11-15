@@ -2,6 +2,12 @@
 
 namespace DCEarlyEncounterPolicy
 {
+    // Treadmill damage delegates may reduce, but cannot amplify, a cannon hit.
+    // A normalized one-point budget therefore represents two half-point hits.
+    constexpr float CreatureHealth=1.f;
+    inline float CreatureHitCost(int PreviousHits,int FirstHitPercentile)
+    { return PreviousHits>0 || FirstHitPercentile<33 ? CreatureHealth : .5f; }
+
     constexpr float StatueHealth=4.f;
     constexpr float StatueFirstExposure=11.f;
     constexpr float StatueCharge=3.5f;

@@ -125,7 +125,7 @@ bool ADCEarlyEncounters::GetReviewStatueTarget(EDCSide Side,FVector& Out) const
 	return false;
 }
 
-AActor* ADCEarlyEncounters::MakeTarget(const FVector& Position, float Radius, float Health)
+AActor* ADCEarlyEncounters::MakeTarget(const FVector& Position, float Radius, float Health, bool bCreature)
 {
 	AActor* Target = Empty(GetWorld(), Position);
 	if (!Target) { return nullptr; }
@@ -137,8 +137,31 @@ AActor* ADCEarlyEncounters::MakeTarget(const FVector& Position, float Radius, fl
 	Hit->SetCollisionResponseToAllChannels(ECR_Ignore);
 	Hit->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 	Hit->RegisterComponent();
-	Treadmill->AddExternalHostile(Target, Radius, Health, true);
+	Treadmill->AddExternalHostile(Target, Radius, Health, true, bCreature
+        ? FDCExternalDamage::CreateUObject(this, &ADCEarlyEncounters::AcceptCreatureHit, TWeakObjectPtr<AActor>(Target))
+        : FDCExternalDamage());
 	return Target;
+}
+
+float ADCEarlyEncounters::AcceptCreatureHit(float Damage, TWeakObjectPtr<AActor> Target)
+{
+    if (Damage <= 0.f || !Target.IsValid()) { return 0.f; }
+    for (FThreat& T : Threats)
+    {
+        if (T.bStatue || T.Target != Target || T.Stage == 4) { continue; }
+        // Roll exactly once, on the first accepted cannon contact (never spawn/miss).
+        const int32 Roll = T.CannonHits == 0 ? FMath::RandHelper(100) : 99;
+        const float Cost = DCEarlyEncounterPolicy::CreatureHitCost(T.CannonHits, Roll);
+        ++T.CannonHits;
+        const bool bKilled = Cost >= DCEarlyEncounterPolicy::CreatureHealth;
+        if (bKilled && Director) { Director->Score += 100; } // Bound damage callbacks own kill scoring.
+#if !UE_BUILD_SHIPPING
+        if (T.Body == VerifyEnemy) { VerifyCreatureHits = T.CannonHits; }
+#endif
+        UE_LOG(LogDC, Display, TEXT("Creature cannon hit=%d firstRoll=%d killed=%d"), T.CannonHits, Roll, bKilled);
+        return FMath::Min(Damage, Cost);
+    }
+    return 0.f;
 }
 
 AActor* ADCEarlyEncounters::MakeFireball(const FVector& Position)
@@ -217,7 +240,7 @@ void ADCEarlyEncounters::SpawnGroup(int32 Group)
 		Body->SetActorScale3D(FVector(G.Size));
 		G.GaitPhase = I * .23f;
 		UpdateCreaturePose(G, 0.f, 0.f, 0.f);
-		G.Target = MakeTarget(FVector(G.X, G.SeaY, Director->SeaLevelZ + G.Size * 175.f), 1050.f, 3.f);
+		G.Target = MakeTarget(FVector(G.X, G.SeaY, Director->SeaLevelZ + G.Size * 175.f), 1050.f, DCEarlyEncounterPolicy::CreatureHealth, true);
 		UE_LOG(LogDC, Display, TEXT("City walker support side=%.0f y=%.0f sole=%.1f bankTop=%.0f"), Side,G.SeaY,G.FootHeight,DCFogRouteLayout::BankTop);
 		Threats.Add(G);
 	}
