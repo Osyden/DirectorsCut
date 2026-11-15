@@ -140,7 +140,7 @@ def main():
             raise RuntimeError('Texture import failed: '+str(path))
         texture.set_editor_property('srgb', role == 'albedo')
         texture.set_editor_property('compression_settings', unreal.TextureCompressionSettings.TC_NORMALMAP if role == 'normal'
-                                    else (unreal.TextureCompressionSettings.TC_MASKS if role == 'roughness' else unreal.TextureCompressionSettings.TC_DEFAULT))
+                                    else unreal.TextureCompressionSettings.TC_DEFAULT)
         if role == 'normal':
             texture.set_editor_property('flip_green_channel', args.normal_format == 'gl')
         if not unreal.EditorAssetLibrary.save_loaded_asset(texture, only_if_is_dirty=False):
