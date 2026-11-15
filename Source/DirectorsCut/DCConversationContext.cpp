@@ -176,6 +176,7 @@ FString DCConversationContext::Build(const UObject* WorldContext, const FString&
     const ADCGunnery* Guns = ADCGunnery::Get(WorldContext);
     UDCCrewSubsystem* Crew = World->GetSubsystem<UDCCrewSubsystem>();
 
+    FString SelfAppearance = TEXT("not confirmed");
     Out += TEXT("LIVE DUTIES AND APPEARANCES (known shipmates, not a claim of direct line of sight):\n");
     if (Crew)
     {
@@ -183,6 +184,10 @@ FString DCConversationContext::Build(const UObject* WorldContext, const FString&
         {
             if (!IsValid(Member)) { continue; }
             const FDCStation* Station = Crew->GetStation(Member->StationIndex);
+            if (Member->CrewName.Equals(Speaker, ESearchCase::IgnoreCase) && HasPirateAppearance(Member))
+            {
+                SelfAppearance = Appearance(Member->CrewName);
+            }
             Out += FString::Printf(TEXT("%s%s: %s. Appearance: %s.\n"),
                 *Member->CrewName, Member->CrewName.Equals(Speaker, ESearchCase::IgnoreCase) ? TEXT(" (you)") : TEXT(""),
                 *Duty(Member, Station, Troubles, Guns), HasPirateAppearance(Member) ? Appearance(Member->CrewName) : TEXT("not confirmed"));
@@ -202,6 +207,7 @@ FString DCConversationContext::Build(const UObject* WorldContext, const FString&
     }
     Out += FString::Printf(TEXT("Captain: %s. Appearance: %s.\n"), *CaptainDuty,
         HasPirateAppearance(Captain) ? Appearance(TEXT("Captain")) : TEXT("not confirmed"));
+    Out += FString::Printf(TEXT("IDENTITY CHECK: You are %s, not the captain. YOUR own appearance is: %s. Keep each person's features separate.\n"), *Speaker, *SelfAppearance);
 
     if (Director)
     {
@@ -224,6 +230,7 @@ FString DCConversationContext::Build(const UObject* WorldContext, const FString&
         // or FindObstacleAhead: those can include scenery hidden behind the tunnel.
         if (Director->GetPhase() == EDCPhase::Fog)
         {
+            Out += TEXT("NAVIGATION IN THIS SCENE: keep the ship in the clear channel and give stone banks, pillars and obstacles room. Never advise approaching the banks to see through fog.\n");
             if (const ADCEarlyEncounters* Encounters = ADCEarlyEncounters::Get(WorldContext))
             {
                 const FString Threat = Encounters->GetThreatText();
@@ -251,6 +258,6 @@ FString DCConversationContext::Build(const UObject* WorldContext, const FString&
         Out += FString::Printf(TEXT("DECK: %d active fires. Rigging %s.\n"), Troubles->NumFires(),
             Troubles->IsRiggingLoose() ? TEXT("loose; needs repair at the marked lines on deck") : TEXT("secure"));
     }
-    Out += TEXT("PRACTICAL FACTS: keep the ship in the clear channel and give stone banks, pillars and obstacles room; never advise steering closer to banks to see through fog. Smother deck fires by swatting with a rag; repair rigging at marked lines on deck, without climbing. Wind is not measured: do not claim still air, calm wind or a wind direction. Describe only the recorded rain, mist, cloud and water conditions. Conversation itself changes no duties. Distinguish personal hunches or an ominous mood from the facts above. Never predict unseen encounters, invent a current hazard, or claim an action has happened merely because you said it.");
+    Out += TEXT("GENERAL MECHANICS (not a statement that a hazard is present): smother deck fires by swatting with a rag; repair rigging at marked lines on deck, without climbing. Wind is not measured: do not claim still air, calm wind or a wind direction. Describe only the recorded rain, mist, cloud and water conditions. Conversation itself changes no duties. Distinguish personal hunches or an ominous mood from the facts above. Never predict unseen encounters, invent a current hazard, or claim an action has happened merely because you said it.");
     return Out;
 }
