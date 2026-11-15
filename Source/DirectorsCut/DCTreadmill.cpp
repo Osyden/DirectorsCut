@@ -1047,7 +1047,10 @@ void ADCTreadmill::TickStrikes(float DeltaSeconds)
 			const bool bSafer = TargetPath >= 0.f && LanePathImpact.IsValidIndex(CandidateIndex) && LanePathImpact[CandidateIndex] < 0.f;
 			const bool bBetter = bSafer || ScoreLane(Candidate, 17000.f) + .6f < ScoreLane(AvoidanceLane, 17000.f);
 			const bool bDifferent = FMath::Abs(Candidate - AvoidanceLane) > 125.f;
-			if (!bHasAvoidance || (bDifferent && bBetter && (bUrgent || (AvoidanceHold <= 0.f && AvoidanceCandidateTime >= .8f))))
+			// A swept collision on the held route with a swept-clear alternative
+			// is actionable at the full forecast horizon. Waiting out the 2.4s
+			// hold or the old 1.8s emergency window wastes the inertial turn's lead.
+			if (!bHasAvoidance || (bDifferent && bBetter && (bSafer || bUrgent || (AvoidanceHold <= 0.f && AvoidanceCandidateTime >= .8f))))
 			{
 				if (FParse::Param(FCommandLine::Get(), TEXT("DCCurrentLog")))
 				{

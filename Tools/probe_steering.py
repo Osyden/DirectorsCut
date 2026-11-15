@@ -18,6 +18,34 @@ void Run(State& S,float Input,float Seconds,float Dt=1.f/120,float Limit=5000,fl
  const int Frames=int(std::lround(Seconds/Dt));
  for(int I=0;I<Frames;++I)Advance(S,Input,900,Limit,Drift,0,Dt);
 }
+// Analytic expanded-box oracle for the native test's 4x5m stone and padded
+// 47x11.6m hull. Sweeps retain native forecast cadence (four 0.1s steps).
+bool CrossesStone(float X0,float Y0,float X1,float Y1,float StoneX,float StoneY){
+ float Enter=0,Exit=1;
+ const float Start[2]={X0,Y0},End[2]={X1,Y1},Center[2]={StoneX,StoneY},Extent[2]={2550,830};
+ for(int Axis=0;Axis<2;++Axis){
+  float D=End[Axis]-Start[Axis],Low=Center[Axis]-Extent[Axis],High=Center[Axis]+Extent[Axis];
+  if(std::abs(D)<1e-6f){if(Start[Axis]<Low||Start[Axis]>High)return false;continue;}
+  float A=(Low-Start[Axis])/D,B=(High-Start[Axis])/D;
+  Enter=std::max(Enter,std::min(A,B));Exit=std::min(Exit,std::max(A,B));
+  if(Enter>Exit)return false;
+ }
+ return true;
+}
+bool ClearFixture(float Target,float Limit,float ForwardSpeed,float AheadX){
+ State S;float PreviousX=0,PreviousY=0;
+ for(int Group=0;Group<15;++Group){
+  for(int Step=0;Step<4;++Step){
+   float Helm=std::clamp((Target-S.Position-S.Velocity*.7f)/700.f,-1.f,1.f);
+   Advance(S,Helm,900,Limit,0,0,.1f);
+  }
+  float X=(Group+1)*.4f*ForwardSpeed;
+  if(CrossesStone(PreviousX,PreviousY,X,S.Position,ForwardSpeed*2.5f,1400)||
+     CrossesStone(PreviousX,PreviousY,X,S.Position,AheadX,0))return false;
+  PreviousX=X;PreviousY=S.Position;
+ }
+ return true;
+}
 int main(){
  State S;Run(S,1,.1f);
  Check(S.Velocity>0&&S.Velocity<30,"initial turn accelerates without an immediate strafe");
@@ -52,6 +80,15 @@ int main(){
    WaterError=std::max(WaterError,std::abs(Shader-CPU));
  }
  Check(WaterError<1e-9,"world-fixed water phase and CPU surface queries remain aligned while steering");
+ for(float ForwardSpeed:{937.5f,1000.f}){
+  bool OldEscape=false;
+  for(float Target=-5000;Target<=5000;Target+=250)OldEscape|=ClearFixture(Target,5000,ForwardSpeed,ForwardSpeed*4.5f);
+  Check(!OldEscape,"old center-distance fixture leaves no physically reachable route with inertia");
+  const float AheadX=2550.f+ForwardSpeed*3.25f;
+  Check(ClearFixture(-1500,2000,ForwardSpeed,AheadX),"3.25 seconds of actual bow-contact warning permits the narrow port escape");
+  Check(!ClearFixture(0,2000,ForwardSpeed,AheadX)&&!ClearFixture(3000,5000,ForwardSpeed,AheadX),"revised fixture still blocks holding course and the intervening starboard crossing");
+ }
+ Check(ClearFixture(-1500,2000,1500,2550+1500*3.25f),"actual bow-contact warning also permits the port escape at fog-phase forward speed");
  return Failures?1:0;
 }
 ''')

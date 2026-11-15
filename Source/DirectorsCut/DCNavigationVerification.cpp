@@ -15,7 +15,7 @@ void ADCTreadmill::VerifyNavigation()
 		bFailed |= !bPassed;
 		UE_LOG(LogDC, Display, TEXT("NAVIGATION VERIFY %s: %s"), bPassed ? TEXT("PASS") : TEXT("FAIL"), What);
 	};
-	LaneOffset = LaneVelocity = CurrentDrift = 0.f;
+	LaneOffset = LaneVelocity = LaneAcceleration = CurrentDrift = 0.f;
 	const float Speed = Director->GetEnv().ShipSpeed * Director->TimeScale;
 	const float Z = Director->SeaLevelZ + 140.f;
 	auto Pillar = [this, Z](float X, float Y)
@@ -45,6 +45,19 @@ void ADCTreadmill::VerifyNavigation()
 		TEXT("mirrored obstacle reverses which crossing is blocked"));
 	CrossingStone->SetActorLocation(FVector(Speed * 2.5f, 1400.f, Z));
 	AStaticMeshActor* AheadStone = Pillar(Speed * 4.5f, 0.f);
+	// The original center-distance fixture leaves under two seconds before the
+	// bow contacts this stone. With carried steering that is genuinely too late:
+	// keep it as an impossible-escape regression, not an expected safe route.
+	bool bLateEscape = false;
+	for (float Candidate = -LaneLimit; Candidate <= LaneLimit; Candidate += 250.f)
+	{
+		bLateEscape |= ForecastLaneImpact(Candidate) < 0.f;
+	}
+	Check(!bLateEscape, TEXT("late stone correctly has no physically reachable escape under inertia"));
+	// Measure warning from the padded bow to the stone's near face, rather
+	// than from the ship center. The crossing stone and every sweep stay real.
+	const float AheadX = ShipHalfLength + 150.f + 200.f + Speed * 3.25f;
+	AheadStone->SetActorLocation(FVector(AheadX, 0.f, Z));
 	UpdateLanePaths();
 	const float Chosen = ChooseClearLane(17000.f);
 	Check(Chosen <= -750.f && ForecastLaneImpact(Chosen) < 0.f,
@@ -76,9 +89,13 @@ void ADCTreadmill::VerifyNavigation()
 		TEXT("clear swept route takes priority over accumulated scenery-envelope costs"));
 	UE_LOG(LogDC, Display, TEXT("NAVIGATION VERIFY ENVELOPES chosen=%.0f hit=%.2f cost=%.2f clearCost=%.2f"),
 		EnvelopeChoice, ForecastLaneImpact(EnvelopeChoice), ScoreLane(EnvelopeChoice, 17000.f), ScoreLane(-1500.f, 17000.f));
-	AvoidanceLane = 0.f; bHasAvoidance = true; AvoidanceHold = 0.f;
+	AvoidanceLane = 0.f; bHasAvoidance = true; AvoidanceHold = 2.4f;
 	AvoidanceCandidateTime = 0.f; StoneLookTimer = 0.f;
-	for (int32 Probe = 0; Probe < 6; ++Probe) { TickStrikes(.2f); }
+	Check(ForecastLaneImpact(0.f) >= 3.f, TEXT("reachable escape is detected with at least three seconds of bow-contact warning"));
+	TickStrikes(.2f);
+	Check(AvoidanceLane < 0.f && ForecastLaneImpact(AvoidanceLane) < 0.f,
+		TEXT("proven safe escape immediately cancels a held blocked course while steering time remains"));
+	for (int32 Probe = 0; Probe < 5; ++Probe) { TickStrikes(.2f); }
 	Check(FindClearLane(17000.f) < 0.f && ForecastLaneImpact(FindClearLane(17000.f)) < 0.f,
 		TEXT("committed crew course accepts the safer route despite its higher envelope cost"));
 	for (AStaticMeshActor* Stone : RearStones) { Stone->Destroy(); }
@@ -89,7 +106,7 @@ void ADCTreadmill::VerifyNavigation()
 	// turning hull. That must not override a held, swept-clear course.
 	CrossingStone->GetStaticMeshComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	AheadStone->GetStaticMeshComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	LaneOffset = LaneVelocity = CurrentDrift = 0.f;
+	LaneOffset = LaneVelocity = LaneAcceleration = CurrentDrift = 0.f;
 	AStaticMeshActor* AsternStone = Pillar(-1900.f, 1500.f);
 	FDCWorldObject& Astern = Objects.AddDefaulted_GetRef();
 	Astern.Actor = AsternStone; Astern.Base = FVector(-1900.f, 1500.f, Z);
@@ -109,7 +126,7 @@ void ADCTreadmill::VerifyNavigation()
 	// A real imminent collision must still cancel that hold without waiting.
 	AsternStone->SetActorLocation(FVector(ShipHalfLength + 1200.f, 0.f, Z));
 	Astern.Base = AsternStone->GetActorLocation();
-	LaneOffset = LaneVelocity = CurrentDrift = 0.f;
+	LaneOffset = LaneVelocity = LaneAcceleration = CurrentDrift = 0.f;
 	AvoidanceLane = 0.f; AvoidanceHold = 2.4f; AvoidanceCandidateTime = 0.f; StoneLookTimer = 0.f;
 	const float Imminent = ForecastLaneImpact(0.f);
 	Check(Imminent >= 0.f && Imminent < 1.8f, TEXT("forward pillar creates an imminent swept collision"));
@@ -118,7 +135,7 @@ void ADCTreadmill::VerifyNavigation()
 		TEXT("imminent swept collision interrupts the course hold immediately"));
 	AsternStone->SetActorLocation(FVector(4600.f, 0.f, Z));
 	Astern.Base = AsternStone->GetActorLocation();
-	LaneOffset = LaneVelocity = CurrentDrift = 0.f;
+	LaneOffset = LaneVelocity = LaneAcceleration = CurrentDrift = 0.f;
 	AvoidanceLane = 0.f; AvoidanceHold = 2.4f; AvoidanceCandidateTime = 0.f; StoneLookTimer = 0.f;
 	Check(ForecastLaneImpact(0.f) >= 1.8f,
 		TEXT("farther pillar gives more than 1.8 seconds of swept warning"));
