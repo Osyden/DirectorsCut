@@ -1,6 +1,6 @@
 # Caldera boss fight — 15 November
 
-Branch: `codex/boss-caldera-15nov`. Isolated worktree: `E:/Projects/DirectorsCut/Boss-Caldera`. Base: `a368e8f`.
+Branch: `codex/boss-caldera-15nov`. Isolated worktree: `E:/Projects/DirectorsCut/Boss-Caldera`. Base: `a368e8f`. Revised implementation checkpoint: **`66aadbe`**, pushed for source review.
 
 ## Latest owner direction
 

@@ -4,7 +4,7 @@ Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claud
 
 ## 15 Nov Codex: revised three-attack boss source; Kraken audition pending
 
-Isolated `codex/boss-caldera-15nov` replaces the superseded spout/add prototype with committed tentacle obstacles, interruptible permanent-limb slams, and cannon-gated mouth charges using the fog giant's fireball helper. Fixed finale and cumulative performance scoring remain. The revised CPU replay passes 4,951 checks; current source still needs a fresh Unreal build and the requested Kraken animation/cut audition. The earlier native pass belongs to the superseded prototype, not this change. [Exact source scope, dependencies, checks and next native window](BOSS-CALDERA-15NOV.md).
+Pushed source checkpoint `66aadbe` on isolated `codex/boss-caldera-15nov` replaces the superseded spout/add prototype with committed tentacle obstacles, interruptible permanent-limb slams, and cannon-gated mouth charges using the fog giant's fireball helper. Fixed finale and cumulative performance scoring remain. The revised CPU replay passes 4,951 checks; current source still needs a fresh Unreal build and the requested Kraken animation/cut audition. The earlier native pass belongs to the superseded prototype, not this change. [Exact source scope, dependencies, checks and next native window](BOSS-CALDERA-15NOV.md).
 
 No main/scene source edits or merge; crew UI/voice and parent environment remain owned elsewhere. Plugin build outputs are isolated after a shared-binary lock was found. A five-minute engine window has been requested; no new boss native job is running.
 
