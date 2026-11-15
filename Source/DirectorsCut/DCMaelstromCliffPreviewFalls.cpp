@@ -154,7 +154,7 @@ void ADCMaelstrom::UpdateCliffPreviewFalls()
     }
     if(CliffPreviewFallCore)
     {
-        CliffPreviewFallCore->SetVisibility(true);
+        CliffPreviewFallCore->SetVisibility(!FParse::Param(FCommandLine::Get(),TEXT("DCCliffFallHideCore")));
         CliffPreviewFallCore->SetScalarParameterValueOnMaterials(TEXT("PreviewTime"),FMath::Max(0.f,Elapsed));
     }
     if(!CliffPreviewVolumes.IsEmpty())

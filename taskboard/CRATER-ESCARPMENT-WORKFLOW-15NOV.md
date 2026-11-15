@@ -1,8 +1,18 @@
-# Escarpment workflow: shape the eroded parent into the cliff
+# Maelstrom cliff and water iteration
 
 Branch: `codex/maelstrom-saturday`. **Normal gameplay geometry remains unchanged; the current full-ring candidate is available only in the opt-in native preview. The visual target is not met.** Preserve the3.2km crater,900m depth and existing steering route; clouds/sky remain owned by the separate chat, boss deferred.
 
-## Current work, 15 November 07:22
+## Current work, 15 November 07:45
+
+Active source is `Cliff-Contact/Saved/StructuralWholeFace/ButtressRidgesClean/full_ring_candidate.npz`, SHA `d0a590e798ae9eb80a0dd3d28785c1b96960cd3cd80c33a65d1ecaeb51c45793`. Native bundle: `Cliff-Contact/Saved/JointedButtressNative`; FBX `925861d63faef9518f8daae3b1cd268825e0792c2d75cd44ecd3c524fa87f920`. Same export origin and camera as the prior F candidate. Actual `Saved/SceneReview/ButtressWetFalls` runs complete core/volumes and seek/exit restoration. The three larger buttresses clarify hierarchy, but their perfectly planar faces still look like carved panels. Worker is weathering this same connected mass at physical metre scale, protecting the fall corridor. No whole-crater art acceptance.
+
+Falls are now `Fitted-Waterfall/Saved/CompressedWaterfall/ButtressRidgesFans`, profile `6a86eb4e46cbf96503967510d68cc8c05c4f21cd`, with actual unequal 188.6/147.1 m drops. Same physical cache as JointedF, locally revalidated against the new triangles (not claimed exact preservation). Veil has flowing ligaments/gaps, but native realism is still insufficient. Root's opt-in `DC_CLIFF_FITTED_WETNESS=1` uses actual matched trajectories to darken/lower roughness of nearby rock. It is authored spray proximity, not a saturation solver. Native volume/core placement agrees to 0.00044 cm for the same source/foot; the isolated puff to the right is not this impact volume. Volume-only diagnostic is next.
+
+Water diagnosis has changed: the broad silver sheet at player350 is largely reflection over a black source-mask region; do not cut foam globally. The old bank masks required offset >150 m AND <125 m, so added turbulence was zero there. Corrected physical bank relief is about -1.20..+1.32 m with route/hull/shore preserved. Also found mismatched normal/displacement weights and a displacement-only freeze on fresh crests. Source correction and focused finite-difference probe pass; regenerated native shader review is pending. FFT roughness now follows its normal's 120–500 m transition. See `WATER-BANK-VISIBLE-WINDOW-15NOV.md` and `WATER-NORMAL-WPO-CONSISTENCY-15NOV.md`.
+
+Root owns native GPU/build/import work. Clouds/lighting remain in the sky chat; its 45% correction remains opt-in. User's procedural-flight-terrain question was answered: coherent large forms, eroded middle-scale structure, physically scaled materials and atmosphere work together; some demos use real-world 3D tiles. Our missing middle-scale rock hierarchy is an actual remaining fault, not solved by naming an algorithm. Continue actual geometry, fall and player/motion reviews; boss/main/package remain deferred.
+
+## Previous checkpoint, 15 November 07:22
 
 Active native source is now `Cliff-Contact/Saved/StructuralWholeFace/JointedFExterior/full_ring_candidate.npz`, sourceSHA `a3ec491c5faf3fd3fdbdf7f907cce21b802535a47bdfaab264664e08d3d2e826`. Export/reference bundle is `Cliff-Contact/Saved/JointedHeadlandNative`, FBX `42ba5fa822e2b5ebb8d8e006bc1ad494748d2bcb1d47cfb28731c148dc99fafb`. Source/import audit and actual50-ruin support pass; native `Saved/SceneReview/JointedHeadlandFirst` includes backseek/ending restoration. Camera665m, local target(-56.71,-59.9222,-10)m, azimuth39.624deg reflects new export origin(-1083,1147,-25)m.
 

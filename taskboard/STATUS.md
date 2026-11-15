@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 15 Nov 07:45 Codex: water shading/geometry faults isolated; cliff weathering continues
+
+The bank's old wave and shore masks never overlapped at ride350, producing zero added relief. Corrected region now carries roughly +/-1.3 m waves while preserving the ship corridor and shore. Actual source-mask capture shows the large silver sheet is mostly reflection; matching normal/displacement weights and removing a fresh-crest geometry freeze are now in native review. Focused CPU checks and Editor build pass.
+
+The current full-ring preview has a rebuilt pilot with larger buttresses and two source-fitted waterfalls. Its perfectly planar faces still look artificial, so physical surface weathering is underway. Waterfall ligaments replace uniform veil opacity; core/volume placement was independently confirmed. Still below target, no normal terrain rollout/main merge/package. [Current sources, evidence and next work](CRATER-ESCARPMENT-WORKFLOW-15NOV.md).
+
 ## 15 Nov 07:22 Codex: whole rocky headland and aerated falls in native review
 
 - Replaced the pilot's soft exposed face with a connected jointed rock mass. [Actual native frame](review/cliff-native-15nov/jointed-headland-first.png) is structurally clearer but still too uniform/clean; larger buttresses, irregular margins and better stone shading remain active work. All50 current ruin groups bind to actual triangles; seek/ending restoration passes. Normal gameplay terrain remains unchanged.
