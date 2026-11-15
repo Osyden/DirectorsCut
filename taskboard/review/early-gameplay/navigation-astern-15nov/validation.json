@@ -1,0 +1,41 @@
+{
+  "source_checkpoint": "2730e9e",
+  "package": "E:\\Projects\\DirectorsCut\\Builds\\2026-11-15_0927_final-polish\\Windows\\DirectorsCut.exe",
+  "build_cook_archive_seconds": 135.76,
+  "source_manifest_entries": 85,
+  "owned_private_exact_manifest_match": true,
+  "main_source_matches_after_line_ending_normalization": true,
+  "baseline": {
+    "checks_passed": 11,
+    "checks_failed": 1,
+    "clear_held_lane": 1500,
+    "unexpected_destination": -750,
+    "swept_hit_time": -1,
+    "ray_hit_x": -2100
+  },
+  "final_editor_checks_passed": 16,
+  "final_packaged_checks_passed": 16,
+  "packaged_route": {
+    "normal_exit": true,
+    "failure_matches": [],
+    "screenshots": 20,
+    "final_state": "Capture state: hull=82.4 score=1000 fires=0 rigging=0 at 250.0",
+    "contacts": [],
+    "strong_helm_reversals": [
+      129.6,
+      199.5,
+      206.6
+    ],
+    "rapid_reversal_pairs": []
+  },
+  "scope": "Only suppress false emergency urgency for a confirmed clear held path; original emergency timing, fallback, hold, manual steering and contact separation remain.",
+  "prior_combined_validation": "../combined-polish-15nov/validation.json",
+  "limitations": [
+    "Different random layouts are not a controlled A/B navigation-rate comparison.",
+    "The earlier random 116s reversal is not proven to have this exact cause.",
+    "Final package rechecked through 250s; full 451s voyage, crew commands, ACE, rag, cannon and encounter checks passed in the preceding combined build before this navigation-only correction.",
+    "No human sound-mix audition, live microphone or clean-machine check.",
+    "Pale hull foam rim, hard exit water silhouette and occasional glare still need art polish."
+  ],
+  "main_editor_build": "Succeeded in 11.92 seconds"
+}

@@ -1,0 +1,63 @@
+[2026.11.15-09.32.08:870][ 49]LogDC: Navigation plan: 0 -> 0 urgent=0 clearance=-1 pathHit=-1.00 at 74.5
+[2026.11.15-09.32.09:378][ 99]LogDC: Navigation alternatives: held=0 heldCost=169.58 heldHit=5.97 best=1000 bestCost=0.55 clear=1000 clearCost=0.55 clearCount=33 t=75.0
+[2026.11.15-09.32.09:879][150]LogDC: Navigation alternatives: held=0 heldCost=170.80 heldHit=5.56 best=1000 bestCost=0.55 clear=1000 clearCost=0.55 clearCount=31 t=75.5
+[2026.11.15-09.32.10:388][202]LogDC: Navigation alternatives: held=0 heldCost=172.93 heldHit=4.94 best=1000 bestCost=0.55 clear=1000 clearCost=0.55 clearCount=31 t=76.0
+[2026.11.15-09.32.10:897][251]LogDC: Navigation alternatives: held=0 heldCost=174.61 heldHit=4.53 best=1000 bestCost=0.55 clear=1000 clearCost=0.55 clearCount=31 t=76.5
+[2026.11.15-09.32.11:346][294]LogDC: Navigation plan: 0 -> 1000 urgent=0 clearance=8492 pathHit=3.90 at 77.0
+[2026.11.15-09.32.28:440][896]LogDC: Navigation plan: 1000 -> 1250 urgent=0 clearance=-1 pathHit=-1.00 at 94.0
+[2026.11.15-09.32.55:589][365]LogDC: Navigation plan: 1250 -> 1000 urgent=0 clearance=-1 pathHit=-1.00 at 121.2
+[2026.11.15-09.32.59:303][698]LogDC: Navigation plan: 1000 -> 500 urgent=0 clearance=-1 pathHit=-1.00 at 124.9
+[2026.11.15-09.33.03:629][ 78]LogDC: Navigation plan: 500 -> -2250 urgent=0 clearance=-1 pathHit=-1.00 at 129.2
+[2026.11.15-09.33.11:215][753]LogDC: Navigation plan: -2250 -> -3500 urgent=0 clearance=15012 pathHit=-1.00 at 136.8
+[2026.11.15-09.33.24:399][917]LogDC: Auto shot shot_0150.png at ride time 150.0, 87 fps (game 7.0 ms, render 11.8 ms, gpu 8.7 ms)
+[2026.11.15-09.33.24:399][917]LogDC: Capture state: hull=95.8 score=400 fires=1 rigging=0 at 150.0
+[2026.11.15-09.33.43:399][697]LogDC: Auto shot shot_0169.png at ride time 169.0, 96 fps (game 6.9 ms, render 10.5 ms, gpu 7.6 ms)
+[2026.11.15-09.33.43:399][697]LogDC: Capture state: hull=93.2 score=500 fires=1 rigging=0 at 169.0
+[2026.11.15-09.33.44:418][785]LogDC: Auto shot shot_0170.png at ride time 170.0, 96 fps (game 7.3 ms, render 9.9 ms, gpu 7.8 ms)
+[2026.11.15-09.33.44:418][785]LogDC: Capture state: hull=93.1 score=500 fires=1 rigging=0 at 170.0
+[2026.11.15-09.33.49:406][247]LogDC: Auto shot shot_0175.png at ride time 175.0, 93 fps (game 6.5 ms, render 10.8 ms, gpu 8.2 ms)
+[2026.11.15-09.33.49:406][247]LogDC: Capture state: hull=92.7 score=600 fires=1 rigging=0 at 175.0
+[2026.11.15-09.33.55:311][800]LogDC: Navigation plan: -3500 -> -2750 urgent=0 clearance=15094 pathHit=-1.00 at 180.9
+[2026.11.15-09.33.59:004][156]LogDC: Navigation plan: -2750 -> -2250 urgent=0 clearance=10171 pathHit=-1.00 at 184.6
+[2026.11.15-09.34.04:400][686]LogDC: Auto shot shot_0190.png at ride time 190.0, 97 fps (game 5.9 ms, render 10.0 ms, gpu 8.5 ms)
+[2026.11.15-09.34.04:400][686]LogDC: Capture state: hull=91.5 score=600 fires=1 rigging=0 at 190.0
+[2026.11.15-09.34.08:998][133]LogDC: Navigation plan: -2250 -> -3500 urgent=0 clearance=14466 pathHit=-1.00 at 194.6
+[2026.11.15-09.34.13:716][627]LogDC: Navigation plan: -3500 -> 0 urgent=0 clearance=-1 pathHit=-1.00 at 199.3
+[2026.11.15-09.34.14:353][694]LogDC: Navigation alternatives: held=0 heldCost=156.34 heldHit=5.53 best=-3500 bestCost=4.21 clear=-3500 clearCost=4.21 clearCount=4 t=200.0
+[2026.11.15-09.34.14:401][699]LogDC: Auto shot shot_0200.png at ride time 200.0, 105 fps (game 5.6 ms, render 9.8 ms, gpu 7.5 ms)
+[2026.11.15-09.34.14:401][699]LogDC: Capture state: hull=91.2 score=700 fires=0 rigging=0 at 200.0
+[2026.11.15-09.34.14:854][734]LogDC: Navigation alternatives: held=0 heldCost=157.04 heldHit=5.12 best=-500 bestCost=4.64 clear=-500 clearCost=4.64 clearCount=2 t=200.5
+[2026.11.15-09.34.15:356][784]LogDC: Navigation alternatives: held=0 heldCost=158.61 heldHit=4.51 best=-500 bestCost=4.41 clear=-500 clearCost=4.41 clearCount=2 t=201.0
+[2026.11.15-09.34.15:864][835]LogDC: Navigation alternatives: held=0 heldCost=159.94 heldHit=4.09 best=-500 bestCost=4.32 clear=-500 clearCost=4.32 clearCount=2 t=201.5
+[2026.11.15-09.34.16:179][867]LogDC: Navigation plan: 0 -> -500 urgent=0 clearance=-1 pathHit=3.67 at 201.8
+[2026.11.15-09.34.19:397][183]LogDC: Auto shot shot_0205.png at ride time 205.0, 100 fps (game 5.7 ms, render 10.0 ms, gpu 7.3 ms)
+[2026.11.15-09.34.19:397][183]LogDC: Capture state: hull=89.6 score=800 fires=1 rigging=0 at 205.0
+[2026.11.15-09.34.20:961][324]LogDC: Navigation plan: -500 -> -3500 urgent=0 clearance=10692 pathHit=5.47 at 206.6
+[2026.11.15-09.34.24:396][651]LogDC: Auto shot shot_0210.png at ride time 210.0, 98 fps (game 6.9 ms, render 10.5 ms, gpu 9.0 ms)
+[2026.11.15-09.34.24:396][651]LogDC: Capture state: hull=87.7 score=800 fires=2 rigging=0 at 210.0
+[2026.11.15-09.34.34:405][614]LogDC: Auto shot shot_0220.png at ride time 220.0, 96 fps (game 6.0 ms, render 10.4 ms, gpu 8.3 ms)
+[2026.11.15-09.34.34:405][614]LogDC: Capture state: hull=86.1 score=800 fires=2 rigging=0 at 220.0
+[2026.11.15-09.34.44:397][618]LogDC: Auto shot shot_0230.png at ride time 230.0, 107 fps (game 5.7 ms, render 8.9 ms, gpu 8.5 ms)
+[2026.11.15-09.34.44:397][618]LogDC: Capture state: hull=84.5 score=1000 fires=2 rigging=0 at 230.0
+[2026.11.15-09.34.44:918][661]LogDC: Navigation plan: -3500 -> -2750 urgent=0 clearance=15794 pathHit=-1.00 at 230.5
+[2026.11.15-09.34.48:401][ 20]LogDC: Auto shot shot_0234.png at ride time 234.0, 107 fps (game 6.7 ms, render 9.4 ms, gpu 8.2 ms)
+[2026.11.15-09.34.48:401][ 20]LogDC: Capture state: hull=83.9 score=1000 fires=2 rigging=0 at 234.0
+[2026.11.15-09.34.50:396][216]LogDC: Auto shot shot_0236.png at ride time 236.0, 99 fps (game 6.0 ms, render 10.4 ms, gpu 9.5 ms)
+[2026.11.15-09.34.50:397][216]LogDC: Capture state: hull=83.5 score=1000 fires=2 rigging=0 at 236.0
+[2026.11.15-09.34.52:400][409]LogDC: Auto shot shot_0238.png at ride time 238.0, 105 fps (game 5.1 ms, render 9.4 ms, gpu 8.0 ms)
+[2026.11.15-09.34.52:400][409]LogDC: Capture state: hull=83.2 score=1000 fires=2 rigging=0 at 238.0
+[2026.11.15-09.34.53:413][503]LogDC: Auto shot shot_0239.png at ride time 239.0, 104 fps (game 6.3 ms, render 9.4 ms, gpu 8.3 ms)
+[2026.11.15-09.34.53:413][503]LogDC: Capture state: hull=83.1 score=1000 fires=2 rigging=0 at 239.0
+[2026.11.15-09.34.54:429][600]LogDC: Auto shot shot_0240.png at ride time 240.0, 106 fps (game 7.0 ms, render 9.0 ms, gpu 8.2 ms)
+[2026.11.15-09.34.54:429][600]LogDC: Capture state: hull=82.9 score=1000 fires=2 rigging=0 at 240.0
+[2026.11.15-09.34.55:443][691]LogDC: Auto shot shot_0241.png at ride time 241.0, 99 fps (game 7.5 ms, render 9.9 ms, gpu 8.9 ms)
+[2026.11.15-09.34.55:443][691]LogDC: Capture state: hull=82.8 score=1000 fires=1 rigging=0 at 241.0
+[2026.11.15-09.34.56:458][784]LogDC: Auto shot shot_0242.png at ride time 242.1, 103 fps (game 6.8 ms, render 9.6 ms, gpu 8.6 ms)
+[2026.11.15-09.34.56:458][784]LogDC: Capture state: hull=82.7 score=1000 fires=1 rigging=0 at 242.1
+[2026.11.15-09.34.58:398][983]LogDC: Auto shot shot_0244.png at ride time 244.0, 110 fps (game 6.5 ms, render 8.8 ms, gpu 7.0 ms)
+[2026.11.15-09.34.58:398][983]LogDC: Capture state: hull=82.6 score=1000 fires=1 rigging=0 at 244.0
+[2026.11.15-09.35.00:394][190]LogDC: Auto shot shot_0246.png at ride time 246.0, 111 fps (game 6.4 ms, render 9.1 ms, gpu 7.4 ms)
+[2026.11.15-09.35.00:394][190]LogDC: Capture state: hull=82.4 score=1000 fires=0 rigging=0 at 246.0
+[2026.11.15-09.35.04:394][776]LogDC: Auto shot shot_0250.png at ride time 250.0, 170 fps (game 7.5 ms, render 5.6 ms, gpu 4.7 ms)
+[2026.11.15-09.35.04:394][776]LogDC: Capture state: hull=82.4 score=1000 fires=0 rigging=0 at 250.0
+[2026.11.15-09.35.06:303][910]LogExit: Exiting.

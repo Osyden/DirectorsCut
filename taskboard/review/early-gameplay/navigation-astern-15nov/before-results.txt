@@ -1,0 +1,18 @@
+[2026.11.15-09.21.02:261][ 16]LogDC: Display: NAVIGATION VERIFY PASS: starboard destination is clear along its full straight lane
+[2026.11.15-09.21.02:261][ 16]LogDC: Display: NAVIGATION VERIFY PASS: hull sweep detects intervening stone on the starboard crossing
+[2026.11.15-09.21.02:261][ 16]LogDC: Display: NAVIGATION VERIFY PASS: opposite crossing remains usable
+[2026.11.15-09.21.02:261][ 16]LogDC: Display: NAVIGATION VERIFY PASS: holding the current clear lane remains usable
+[2026.11.15-09.21.02:261][ 16]LogDC: Display: NAVIGATION VERIFY PASS: mirrored obstacle reverses which crossing is blocked
+[2026.11.15-09.21.02:262][ 16]LogDC: Display: NAVIGATION VERIFY PASS: planner chooses a reachable port route around both stones
+[2026.11.15-09.21.02:262][ 16]LogDC: Display: NAVIGATION VERIFY METRICS chosen=-1500 pathMs=1.006
+[2026.11.15-09.21.02:263][ 16]LogDC: Display: NAVIGATION VERIFY PASS: rear scenery envelopes leave a swept port escape from the blocked course
+[2026.11.15-09.21.02:263][ 16]LogDC: Display: NAVIGATION VERIFY PASS: clear swept route takes priority over accumulated scenery-envelope costs
+[2026.11.15-09.21.02:263][ 16]LogDC: Display: NAVIGATION VERIFY ENVELOPES chosen=-1500 hit=-1.00 cost=306.73 clearCost=306.73
+[2026.11.15-09.21.02:263][ 16]LogDC: Navigation plan: 0 -> -2000 urgent=1 clearance=4300 at 1.0
+[2026.11.15-09.21.02:267][ 16]LogDC: Display: NAVIGATION VERIFY PASS: committed crew course accepts the safer route despite its higher envelope cost
+[2026.11.15-09.21.02:267][ 16]LogDC: Display: NAVIGATION VERIFY PASS: astern pillar obstructs the destination ray but leaves the turning hull clear
+[2026.11.15-09.21.02:268][ 16]LogDC: Navigation plan: 1500 -> -750 urgent=1 clearance=0 at 1.0
+[2026.11.15-09.21.02:269][ 16]LogDC: Display: NAVIGATION VERIFY ASTERN path=-1.00 rayX=-2100 held=-750 hold=2.40
+[2026.11.15-09.21.02:269][ 16]LogDC: Display: NAVIGATION VERIFY FAIL: astern destination-ray hit cannot interrupt a clear committed turn
+[2026.11.15-09.21.02:270][ 16]LogDC: Display: NAVIGATION VERIFY PASS: starboard contact separates to port despite an opposing crew destination
+[2026.11.15-09.21.02:270][ 16]LogDC: Display: NAVIGATION VERIFICATION FAILED

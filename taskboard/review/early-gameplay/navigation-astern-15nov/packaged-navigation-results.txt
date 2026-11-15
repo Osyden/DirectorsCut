@@ -1,0 +1,23 @@
+[2026.11.15-09.30.46:260][  4]LogDC: Bow spray waterline: x=1216 halfwidth=78
+[2026.11.15-09.30.46:260][  4]LogDC: Bow wash: tuned 2 live water materials; shared assets unchanged
+[2026.11.15-09.30.46:896][ 36]LogDC: Display: NAVIGATION VERIFY PASS: starboard destination is clear along its full straight lane
+[2026.11.15-09.30.46:896][ 36]LogDC: Display: NAVIGATION VERIFY PASS: hull sweep detects intervening stone on the starboard crossing
+[2026.11.15-09.30.46:896][ 36]LogDC: Display: NAVIGATION VERIFY PASS: opposite crossing remains usable
+[2026.11.15-09.30.46:897][ 36]LogDC: Display: NAVIGATION VERIFY PASS: holding the current clear lane remains usable
+[2026.11.15-09.30.46:897][ 36]LogDC: Display: NAVIGATION VERIFY PASS: mirrored obstacle reverses which crossing is blocked
+[2026.11.15-09.30.46:897][ 36]LogDC: Display: NAVIGATION VERIFY PASS: planner chooses a reachable port route around both stones
+[2026.11.15-09.30.46:897][ 36]LogDC: Display: NAVIGATION VERIFY METRICS chosen=-1500 pathMs=0.801
+[2026.11.15-09.30.46:898][ 36]LogDC: Display: NAVIGATION VERIFY PASS: rear scenery envelopes leave a swept port escape from the blocked course
+[2026.11.15-09.30.46:898][ 36]LogDC: Display: NAVIGATION VERIFY PASS: clear swept route takes priority over accumulated scenery-envelope costs
+[2026.11.15-09.30.46:898][ 36]LogDC: Display: NAVIGATION VERIFY ENVELOPES chosen=-1500 hit=-1.00 cost=306.73 clearCost=306.73
+[2026.11.15-09.30.46:901][ 36]LogDC: Display: NAVIGATION VERIFY PASS: committed crew course accepts the safer route despite its higher envelope cost
+[2026.11.15-09.30.46:901][ 36]LogDC: Display: NAVIGATION VERIFY PASS: astern pillar obstructs the destination ray but leaves the turning hull clear
+[2026.11.15-09.30.46:903][ 36]LogDC: Display: NAVIGATION VERIFY ASTERN path=-1.00 rayX=-2100 held=1500 hold=2.20
+[2026.11.15-09.30.46:903][ 36]LogDC: Display: NAVIGATION VERIFY PASS: astern destination-ray hit cannot interrupt a clear committed turn
+[2026.11.15-09.30.46:903][ 36]LogDC: Display: NAVIGATION VERIFY PASS: forward pillar creates an imminent swept collision
+[2026.11.15-09.30.46:904][ 36]LogDC: Display: NAVIGATION VERIFY PASS: imminent swept collision interrupts the course hold immediately
+[2026.11.15-09.30.46:904][ 36]LogDC: Display: NAVIGATION VERIFY PASS: farther pillar gives more than 1.8 seconds of swept warning
+[2026.11.15-09.30.46:905][ 36]LogDC: Display: NAVIGATION VERIFY PASS: blocked course retains the earlier straight-probe emergency lead time
+[2026.11.15-09.30.46:905][ 36]LogDC: Hull struck stone at V(X=1460.00, Y=150.00, Z=370.00) (in 397 cm, closing 693 cm/s, strength 0.58) at ride time 1.0
+[2026.11.15-09.30.46:905][ 36]LogDC: Display: NAVIGATION VERIFY PASS: starboard contact separates to port despite an opposing crew destination
+[2026.11.15-09.30.46:905][ 36]LogDC: Display: NAVIGATION VERIFICATION PASSED
