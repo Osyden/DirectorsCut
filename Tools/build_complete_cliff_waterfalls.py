@@ -89,7 +89,7 @@ def main():
             faces.append((base,base+1,base+2));slots.append(0 if (start-along[triangle])/(start-end)<.14 else 1);face_source.append(int(triangle))
         return len(chosen)
     # Deliberately irregular spacing and widths; keep the entry corridor clear.
-    candidates=[(18,24),(52,48),(87,18),(120,66),(147,32),(215,19),(248,58),(286,36),(323,25),(342,15)]
+    candidates=[(18,64),(52,108),(87,46),(120,125),(147,80),(215,44),(248,96),(286,70),(323,68),(342,38)]
     for number,(degrees,width) in enumerate(candidates):
         angle=math.radians(degrees);radial=np.array((math.cos(angle),math.sin(angle),0.));cross=np.array((-radial[1],radial[0],0.))
         # Scan inward through actual triangles. Start at the highest local crest
@@ -139,7 +139,7 @@ def main():
             length=48+number*5+(j%4)*9;foam=[]
             for distance in np.linspace(0,length,65):
                 center=start+direction*distance+across*math.sin(distance*.055+j)*1.8
-                half=(1.2+width*.025)*(1-.75*distance/length);row=[]
+                half=(3.+width*.04)*(1-.75*distance/length);row=[]
                 for sign in (-1,1):
                     point=center+across*sign*half;h=sea.hit(point[:2]);r=rock.hit(point[:2])
                     if h is None or (r is not None and r[0][2]>h[0][2]+.1):break
@@ -150,12 +150,12 @@ def main():
             # Broken overlapping little spray arcs originate at the contact;
             # their material carries fine moving gaps and scene-depth fade.
             for plume in range(3):
-                spray=[];height=3.+width*.08+plume*1.7
+                spray=[];height=15.+width*.13+plume*3.5
                 for s in np.linspace(0,1,11):
-                    center=start+direction*(2+plume*2)*s;center[2]+=height*math.sin(s*math.pi*.85)
-                    half=(.65+plume*.45)*(1+.8*s)
+                    center=start+direction*(8+plume*4)*s;center[2]+=height*math.sin(s*math.pi*.85)
+                    half=(3.+plume*1.8)*(1+.8*s)
                     spray.append([center-across*half,center+across*half])
-                strip(spray,3,alpha=.32)
+                strip(spray,3,alpha=.58)
         proofs.append(dict(angle_degrees=degrees,width_m=width,crest_arena_m=track[0,8].tolist(),contact_arena_m=foot.tolist(),drop_m=float(track[0,8,2]-foot[2]),contacts_arena_m=[c.tolist() for c in contacts],rock_samples=len(local_ids)-covered,water_samples=covered,supported_core_triangles=patch_triangles))
     if len(proofs)<5:raise RuntimeError(f'Only {len(proofs)} honest full-ring feeds found; inspect actual source geometry')
     np.savez_compressed(out/'support.npz',support_triangle=np.asarray(support_ids),support_barycentric=np.asarray(support_weights))

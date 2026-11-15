@@ -110,6 +110,32 @@ def material(role):
     uv=node(unreal.MaterialExpressionTextureCoordinate)
     time=node(unreal.MaterialExpressionScalarParameter)
     time.set_editor_property('parameter_name','PreviewTime');time.set_editor_property('default_value',0.)
+    if veil and mesh_spray:
+        color=node(unreal.MaterialExpressionVertexColor)
+        state=custom(NOISE+r'''
+float width=max(2.,Color.g*64.);
+float along=1-UV.y;
+float2 p=float2((UV.x-.5)*width,along-8*T);
+float warp=(field.evaluate(p/float2(7,17)).x-.5)*3;
+float cloud=field.evaluate((p+float2(warp,0))/float2(4.8,11.)).x;
+float fine=field.evaluate(p/float2(1.4,3.2)+float2(13.7,6.3)).x;
+float footprint=max(length(ddx(p)),length(ddy(p)));
+float body=lerp(.63,smoothstep(.20,.72,.78*cloud+.22*fine),1-smoothstep(2,6,footprint));
+float fringe=smoothstep(0,.18,UV.x)*(1-smoothstep(.82,1,UV.x));
+float release=smoothstep(0,3,along);
+return float3((1-exp(-Tau*1.6))*body*fringe*release,cloud,fine);
+''',unreal.CustomMaterialOutputType.CMOT_FLOAT3,{'UV':uv,'T':time,'Color':color,'Tau':(color,'A')})
+        output(custom('return lerp(float3(.67,.75,.77),float3(.87,.91,.91),State.y);',unreal.CustomMaterialOutputType.CMOT_FLOAT3,{'State':state}),unreal.MaterialProperty.MP_BASE_COLOR)
+        alpha=custom('return State.x;',unreal.CustomMaterialOutputType.CMOT_FLOAT1,{'State':state})
+        depth=node(unreal.MaterialExpressionDepthFade)
+        if not M.connect_material_expressions(alpha,'',depth,'Opacity') or not M.connect_material_expressions(scalar(250.),'',depth,'FadeDistance'):raise RuntimeError('Spray contact fade connection failed')
+        output(depth,unreal.MaterialProperty.MP_OPACITY)
+        output(scalar(.85),unreal.MaterialProperty.MP_ROUGHNESS)
+        output(scalar(.08),unreal.MaterialProperty.MP_SPECULAR)
+        output(scalar(0.),unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+        M.recompile_material(mat)
+        if not unreal.EditorAssetLibrary.save_loaded_asset(mat,only_if_is_dirty=False):raise RuntimeError('Spray material save failed')
+        return mat
     if veil:
         # Dedicated lower fan: A stores optical depth, G width/64m. Alpha is
         # linear and avoids any RGB import colour-space ambiguity for density.
@@ -169,7 +195,7 @@ return normalize(float3(-n.y*.10*fade,n.z*.035*fade,1));
     # FBX import reverses texture V; 1-UV.y recovers increasing downstream arc.
     foam=role=='ReceivingFoam';aerated=role=='AeratedCore'
     width=1.5 if foam else float(max(attachment['width_range_m']))
-    speed=3. if foam else 18.
+    speed=3. if foam else (25. if mesh_spray and aerated else 18.)
     code=NOISE+f'''
 float across=UV.x*{width:.9g},along=1-UV.y;
 float2 p=float2(across,along-{speed:.9g}*T);
@@ -188,6 +214,23 @@ float right=.025+.065*field.evaluate(float2(along*.17-T*1.7,41.3)).x;
 float edge=smoothstep(left,left+.055,UV.x)*(1-smoothstep(1-right-.055,1-right,UV.x));
 return float4(bubbles,large,small,edge);
 '''
+    if mesh_spray and aerated:
+        # A 500m descent needs continuous elongated flow. The pilot's metre
+        # packets clipped into dotted dark ribbons at ordinary ship distance.
+        code=NOISE+f'''
+float across=UV.x*{width:.9g},along=1-UV.y;
+float2 p=float2(across,along-25*T);
+float bend=(field.evaluate(p/float2(14,90)+float2(3.7,9.1)).x-.5)*5;
+float channel=field.evaluate((p+float2(bend,0))/float2(6,72)).x;
+float streak=field.evaluate((p+float2(bend*.6,0))/float2(1.8,24)+float2(13,5)).x;
+float footprint=max(length(ddx(p)),length(ddy(p)));
+float fine=1-smoothstep(1,5,footprint);
+float aeration=.60+.40*lerp(.55,streak,fine);
+float edgeNoise=field.evaluate(float2(along/35-T*1.3,17)).x;
+float left=.015+.025*edgeNoise,right=.015+.03*(1-edgeNoise);
+float edge=smoothstep(left,left+.025,UV.x)*(1-smoothstep(1-right-.025,1-right,UV.x));
+return float4(aeration,lerp(.58,channel,fine),streak,edge);
+'''
     field=custom(code,unreal.CustomMaterialOutputType.CMOT_FLOAT4,{'UV':uv,'T':time})
     if foam:
         color_code='return lerp(float3(.29,.38,.39),float3(.72,.79,.78),Field.x);'
@@ -203,6 +246,13 @@ return float4(bubbles,large,small,edge);
         color_code='return lerp(float3(.018,.055,.065),float3(.23,.34,.35),Field.x*.48);'
         mask_code='return Field.w*smoothstep(.13,.43,.72*Field.y+.28*Field.x);'
         rough_code='return lerp(.29,.48,Field.x);'
+    if mesh_spray and aerated:
+        color_code='return lerp(float3(.43,.59,.64),float3(.86,.91,.90),Field.x);'
+        mask_code='return Field.w*smoothstep(.12,.29,Field.y);'
+        rough_code='return lerp(.48,.69,Field.z);'
+    elif mesh_spray and foam:
+        color_code='return lerp(float3(.50,.62,.64),float3(.86,.91,.90),Field.x);'
+        mask_code='return Field.w*smoothstep(.16,.42,Field.x);'
     output(custom(color_code,unreal.CustomMaterialOutputType.CMOT_FLOAT3,{'Field':field}),unreal.MaterialProperty.MP_BASE_COLOR)
     output(custom(rough_code,unreal.CustomMaterialOutputType.CMOT_FLOAT1,{'Field':field}),unreal.MaterialProperty.MP_ROUGHNESS)
     output(custom(mask_code,unreal.CustomMaterialOutputType.CMOT_FLOAT1,{'Field':field}),unreal.MaterialProperty.MP_OPACITY_MASK)
