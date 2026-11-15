@@ -82,9 +82,12 @@ def material(role):
     mat=unreal.load_asset(ROOT+'/'+name)
     if mat is None: mat=tools.create_asset(name,ROOT,unreal.Material,unreal.MaterialFactoryNew())
     M.delete_all_material_expressions(mat)
-    mat.set_editor_property('blend_mode',unreal.BlendMode.BLEND_MASKED)
+    veil=role=='AeratedVeil'
+    mat.set_editor_property('blend_mode',unreal.BlendMode.BLEND_TRANSLUCENT if veil else unreal.BlendMode.BLEND_MASKED)
     mat.set_editor_property('two_sided',True)
     mat.set_editor_property('opacity_mask_clip_value',.38)
+    if veil:
+        mat.set_editor_property('translucency_lighting_mode',unreal.TranslucencyLightingMode.TLM_SURFACE_PER_PIXEL_LIGHTING)
     def node(cls):return M.create_material_expression(mat,cls)
     def custom(code,kind,inputs):
         n=node(unreal.MaterialExpressionCustom)
@@ -94,7 +97,8 @@ def material(role):
             p=unreal.CustomInput();p.set_editor_property('input_name',key);pins.append(p)
         n.set_editor_property('inputs',pins)
         for key,value in inputs.items():
-            if not M.connect_material_expressions(value,'',n,key):raise RuntimeError('Material input failed:'+key)
+            expression,output_name=value if isinstance(value,tuple) else (value,'')
+            if not M.connect_material_expressions(expression,output_name,n,key):raise RuntimeError('Material input failed:'+key)
         return n
     def output(n,prop):
         if not M.connect_material_property(n,'',prop):raise RuntimeError('Material output failed')
@@ -103,6 +107,35 @@ def material(role):
     uv=node(unreal.MaterialExpressionTextureCoordinate)
     time=node(unreal.MaterialExpressionScalarParameter)
     time.set_editor_property('parameter_name','PreviewTime');time.set_editor_property('default_value',0.)
+    if veil:
+        # Dedicated lower fan: A stores optical depth, G width/64m. Alpha is
+        # linear and avoids any RGB import colour-space ambiguity for density.
+        # Geometry supplies edge thinning; no masked threshold, white floor or
+        # arbitrary hard width is added by the shader.
+        color=node(unreal.MaterialExpressionVertexColor)
+        speed=float(attachment.get('aerated_veil',{}).get('advection_speed_m_s',38.))
+        if not math.isfinite(speed) or not 1. <= speed <= 100.:
+            raise RuntimeError('Invalid veil visual advection speed')
+        state=custom(NOISE+f'''
+float width=max(.25,saturate(Color.g)*64.);
+float2 p=float2(UV.x*width,1-UV.y-{speed:.9g}*T);
+float large=field.evaluate(p/float2(3.4,11.)+float2(7.3,-2.9)).x;
+float fineFade=1-smoothstep(.12,.45,max(length(ddx(p)),length(ddy(p))));
+float fine=lerp(.5,field.evaluate(p/float2(.65,2.7)+float2(-9.7,13.1)).x,fineFade);
+float modulation=clamp(.85+.25*large+.10*(fine-.5),.8,1.15);
+float alpha=1-exp(-saturate(Tau)*modulation);
+return float3(alpha,large,saturate(Color.b));
+''',unreal.CustomMaterialOutputType.CMOT_FLOAT3,{'UV':uv,'T':time,'Color':(color,'RGB'),'Tau':(color,'A')})
+        output(custom('return lerp(float3(.61,.69,.71),float3(.74,.79,.79),State.b);',
+            unreal.CustomMaterialOutputType.CMOT_FLOAT3,{'State':state}),unreal.MaterialProperty.MP_BASE_COLOR)
+        output(custom('return State.r;',unreal.CustomMaterialOutputType.CMOT_FLOAT1,{'State':state}),unreal.MaterialProperty.MP_OPACITY)
+        output(scalar(.82),unreal.MaterialProperty.MP_ROUGHNESS)
+        output(scalar(.12),unreal.MaterialProperty.MP_SPECULAR)
+        output(scalar(0.),unreal.MaterialProperty.MP_METALLIC)
+        output(scalar(0.),unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+        M.recompile_material(mat)
+        if not unreal.EditorAssetLibrary.save_loaded_asset(mat,only_if_is_dirty=False):raise RuntimeError('Veil material save failed')
+        return mat
     # Export UV: U is normalized across the sheet, V is physical arc metres.
     # FBX import reverses texture V; 1-UV.y recovers increasing downstream arc.
     foam=role=='ReceivingFoam';aerated=role=='AeratedCore'
@@ -183,7 +216,10 @@ if mesh is None:
 if not isinstance(mesh,unreal.StaticMesh):raise RuntimeError('Missing core mesh')
 slots=mesh.get_editor_property('static_materials')
 expected=['WetCore','AeratedCore','ReceivingFoam']
-if len(slots)!=3:raise RuntimeError('Expected exactly three authored water material slots')
+if len(slots)==4:
+    expected.append('AeratedVeil')
+elif len(slots)!=3:
+    raise RuntimeError('Expected three original slots and an optional AeratedVeil slot')
 seen=set()
 for i,slot in enumerate(slots):
     slot_name=str(slot.material_slot_name)
@@ -207,8 +243,11 @@ report=dict(schema='directorscut.cliff_preview_waterfall.v1',cliff_fbx_sha256=ac
     core=dict(asset=mesh.get_path_name(),source_fbx=str(fbx),source_fbx_sha256=fbx_hash,size_metres=size_m,
         origin_arena_m=attachment['frame_origin_arena_m'],basis_u_arena=attachment['basis_u_arena'],
         basis_v_arena=attachment['basis_v_arena'],basis_z_arena=attachment['basis_z_arena']),volumes=volumes,
-    material_model='Scene-lit masked wet/aerated core and broken advected receiving foam; zero emissive; no refraction or fluid simulation claimed',
+    material_model='Scene-lit masked wet/aerated core and broken advected receiving foam; optional continuous-translucent optical-depth AeratedVeil; zero emissive; no refraction or fluid simulation claimed',
     uv_contract='Across0..1; original arc metres recovered by1-importedV; verify actual import UV direction in motion',
+    aerated_veil=dict(enabled='AeratedVeil' in seen,vertex_contract='A=optical depth; G=fan width metres/64; B=breakup progression; R unused',
+        opacity='1-exp(-tau*bounded_coherent_modulation)',advection_speed_m_s=float(attachment.get('aerated_veil',{}).get('advection_speed_m_s',38.)),
+        advection_speed_source='attachment' if 'advection_speed_m_s' in attachment.get('aerated_veil',{}) else 'authored appearance default'),
     runtime_integrated=False,visual_accepted=False)
 (saved/'CliffPreviewWaterfall.json').write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')
 unreal.log_warning('DC_CLIFF_PREVIEW_FALL_IMPORT '+json.dumps(report))
