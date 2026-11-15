@@ -71,6 +71,31 @@ surface. That diagnostic boundary comparison correctly reports failure; this
 crop is not a separately protected integration tile. It does not contradict
 the exact full-sector boundary result.
 
+## Second and final candidate: visual gate not passed
+
+The bounded second trial is under `Flow-Seams/Saved/WeatheredCliff/faceted/`,
+using the same four file names. Actual original baseline vertices, triangles and
+all frame arrays are bitwise identical between the two trials. The second
+generator uses angular Voronoi distances in geological axes at two scales,
+with modest warp and fine noise. It retains the0.125 horizontal direction bias
+and does not claim overhangs.
+
+Matched images are `Saved/WeatheredReview/FacetedClose/` and `FacetedFull/`,
+reusing the first trial's camera manifests without recentering. The full
+eight-image set again includes wall, deck, oblique and1,500m perspective. The
+second trial adds shallow horizontal/crosshatched markings to the500m face;
+these read as a repeated texture-like pattern over the same soft folds. The
+close crop remains lumpy rather than clearly broken into geological planes.
+The far view does not acquire a stronger cliff hierarchy. **This candidate is
+also rejected for export/integration.** Neither extra noise amplitude nor
+additional triangles would address the demonstrated large-form problem.
+
+Second candidate SHA256:
+`157769fb9a8c8dedbf83f177034538532627aa5c510ba3f77e77bd95f40273d3`.
+The same independent topology checks pass and all4,448 full-sector boundary
+edges are preserved. The two-trial limit is reached; no third candidate,
+FBX exporter, Unreal import or shader tuning was started during this pass.
+
 The reviewer does not prove arbitrary self-intersection absence, absolute
 outward orientation, temple support, or game contact correctness. Vertex colors
 in the source describe interpolated old v3 erosion/transport masks; no solver
