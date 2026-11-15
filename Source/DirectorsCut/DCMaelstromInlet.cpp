@@ -123,6 +123,9 @@ void ADCMaelstrom::BuildInletBed()
     const TCHAR* Paths[]={
         TEXT("/Game/LocalScans/vefkehbva/SM_Huge_Nordic_Coastal_Cliff_vefkehbva_Raw_53074843a3.SM_Huge_Nordic_Coastal_Cliff_vefkehbva_Raw_53074843a3"),
         TEXT("/Game/LocalScans/vfmjadufa/SM_Massive_Nordic_Coastal_Cliff_vfmjadufa_Raw_4064086b07.SM_Massive_Nordic_Coastal_Cliff_vfmjadufa_Raw_4064086b07")};
+    const TCHAR* BankMaterials[]={
+        TEXT("/Game/DC/Maelstrom/GeneratedCliffPreview/M_CalderaBank_vefkehbva.M_CalderaBank_vefkehbva"),
+        TEXT("/Game/DC/Maelstrom/GeneratedCliffPreview/M_CalderaBank_vfmjadufa.M_CalderaBank_vfmjadufa")};
     FRandomStream Random(151126);
     for(int32 Kind=0;Kind<2;++Kind)
     {
@@ -130,6 +133,13 @@ void ADCMaelstrom::BuildInletBed()
         UInstancedStaticMeshComponent* Rocks=NewObject<UInstancedStaticMeshComponent>(this);
         Rocks->SetupAttachment(InletBed);Rocks->SetMobility(EComponentMobility::Movable);
         Rocks->SetCollisionEnabled(ECollisionEnabled::NoCollision);Rocks->SetStaticMesh(Mesh);
+        // Scope the palette match to these accents. Preserve the source scan
+        // mesh, UVs and original material everywhere else in the project.
+        if(UMaterialInterface* BankMaterial=LoadObject<UMaterialInterface>(nullptr,BankMaterials[Kind],nullptr,LOAD_NoWarn|LOAD_Quiet))
+        {
+            Rocks->SetMaterial(0,BankMaterial);
+            UE_LOG(LogTemp,Display,TEXT("DC_CALDERA_BANK_MATERIAL kind=%d asset=%s"),Kind,*BankMaterial->GetPathName());
+        }
         Rocks->RegisterComponent();InletBoulders.Add(Rocks);
         const FBox Bounds=Mesh->GetBoundingBox();
         const int32 Count=Integrated?(InstalledAnchors.Num()+1-Kind)/2:34;

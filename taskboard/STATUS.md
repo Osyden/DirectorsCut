@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 15 Nov 14:05 Codex: inlet outcrops now match the bank palette
+
+Added adjustable cool-gray derivatives of the two owned Nordic scan materials and bound them only to inlet boulder instances. The conspicuous ochre spots now blend with the surrounding stone. Original assets, texture pixels, source UVs/normals/roughness, placement, terrain, water, bank fog and sky remain unchanged. Generated materials stay ignored; source builder and replay instructions are in the branch.
+
+Editor/Game builds, initial/repeated material commandlets, native overview/player captures and open-sea/backward-seek checks pass. Source hashes confirm the original material/texture files were not changed. [Actual comparison, replay and remaining limitations](CALDERA-LAKE-15NOV.md). The broad bank forms and early-descent water/rock edges still need refinement; this is a local visual checkpoint, not a release build. Engine jobs are finished. Separate boss work remains unmerged here.
+
 ## 15 Nov 13:38 Codex: visible low fog around the caldera banks
 
 Fixed the zero radial density that made shoreline fog invisible in UE5.8. Replaced the gapped angular placement with160 contacts sampled from the actual accepted terrain/water intersection. Radius46m keeps the haze close to the shore, with a shallow vertical fade; river spray redistribution keeps total scene/ending volumes253 within the unchanged256 budget. Dense waterfall impact fog, terrain, water and sky remain unchanged. The runtime marker preserves the legacy128-point field for older parallel checkouts and adds a separate validated coverage field.
