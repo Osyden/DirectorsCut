@@ -3,6 +3,11 @@
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInterface.h"
+#include "Dom/JsonObject.h"
+#include "Serialization/JsonReader.h"
+#include "Serialization/JsonSerializer.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
 
 namespace
 {
@@ -46,6 +51,35 @@ namespace
 
 void ADCMaelstrom::BuildInletBed()
 {
+    bool Integrated=false;
+    TArray<FVector> InstalledAnchors;
+    FString Text;
+    TSharedPtr<FJsonObject> Marker;
+    const FString MarkerPath=FPaths::ProjectContentDir()/TEXT("DC/Maelstrom/GeneratedCliffPreview/Runtime/CompleteArena.json");
+    if(FFileHelper::LoadFileToString(Text,*MarkerPath)
+        &&FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Text),Marker)&&Marker.IsValid())
+    {
+        Marker->TryGetBoolField(TEXT("integrated_inlet_banks"),Integrated);
+        const TArray<TSharedPtr<FJsonValue>>* Anchors=nullptr;
+        if(Integrated&&Marker->TryGetArrayField(TEXT("bank_boulder_anchors_m"),Anchors))
+        {
+            for(const TSharedPtr<FJsonValue>& Anchor:*Anchors)
+            {
+                const TArray<TSharedPtr<FJsonValue>>* XYZ=nullptr;
+                if(Anchor->TryGetArray(XYZ)&&XYZ->Num()==3)
+                {
+                    const FVector P((*XYZ)[0]->AsNumber()*100.,(*XYZ)[1]->AsNumber()*100.,(*XYZ)[2]->AsNumber()*100.);
+                    if(!P.ContainsNaN()) { InstalledAnchors.Add(P); }
+                }
+            }
+        }
+    }
+    Integrated=Integrated&&CliffPreviewMesh&&bCompleteCliffArena;
+    InletBed->SetCustomPrimitiveDataFloat(0,1.f);
+    InletBed->ClearAllMeshSections();
+    // A verified merged source replaces the old detached procedural banks.
+    if(!Integrated)
+    {
     constexpr int32 Rows=192,Sides=160;
     TArray<FVector> V,N; TArray<FVector2D> UV; TArray<int32> I;
     TArray<FColor> C; TArray<FProcMeshTangent> T;
@@ -82,6 +116,7 @@ void ADCMaelstrom::BuildInletBed()
     UMaterialInterface* Rock=LoadObject<UMaterialInterface>(nullptr,TEXT("/Game/DC/Maelstrom/GeneratedCliffPreview/M_CliffScanSurface.M_CliffScanSurface"));
     if(!Rock) { Rock=LoadObject<UMaterialInterface>(nullptr,TEXT("/Game/DC/Maelstrom/M_CraterRock.M_CraterRock")); }
     if(Rock) { InletBed->SetMaterial(0,Rock); }
+    }
 
     for(UInstancedStaticMeshComponent* Old:InletBoulders) { if(Old) { Old->DestroyComponent(); } }
     InletBoulders.Reset();
@@ -97,12 +132,14 @@ void ADCMaelstrom::BuildInletBed()
         Rocks->SetCollisionEnabled(ECollisionEnabled::NoCollision);Rocks->SetStaticMesh(Mesh);
         Rocks->RegisterComponent();InletBoulders.Add(Rocks);
         const FBox Bounds=Mesh->GetBoundingBox();
-        for(int32 Index=0;Index<34;++Index)
+        const int32 Count=Integrated?(InstalledAnchors.Num()+1-Kind)/2:34;
+        for(int32 Index=0;Index<Count;++Index)
         {
             const float R=Radius*Random.FRandRange(.61f,1.07f);
             const float Sign=(Index%2)==0?-1.f:1.f;
             const float Across=Sign*Random.FRandRange(25100.f,31500.f);
             FVector P=InletPoint(R,Across,Radius);P.Z=InletBedHeight(R,Across,Radius);
+            if(Integrated) { P=InstalledAnchors[Index*2+Kind]; }
             const float Scale=Random.FRandRange(.85f,1.65f);
             const float A=FMath::Atan2(P.Y,P.X);
             const FRotator Rotation(Random.FRandRange(-6.f,6.f),

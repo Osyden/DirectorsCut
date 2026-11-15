@@ -86,7 +86,9 @@ def main():
                 material=geology['material'],waterfalls=None if args.caldera else falls.get('core',{}).get('asset'),
                 normal_game_enabled=True,caldera_lake=args.caldera,
                 lake_height_m=-400 if args.caldera else None,
-                shore_mist_centers_m=shape.get('shore_mist_centers_m',[]) if args.caldera else [])
+                shore_mist_centers_m=shape.get('shore_mist_centers_m',[]) if args.caldera else [],
+                integrated_inlet_banks=shape.get('integrated_inlet_banks',False),
+                bank_boulder_anchors_m=shape.get('bank_boulder_anchors_m',[]))
     temporary=target/'CompleteArena.pending'
     temporary.write_text(json.dumps(marker,indent=2)+'\n')
     temporary.replace(target/'CompleteArena.json')

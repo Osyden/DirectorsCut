@@ -2,6 +2,14 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 15 Nov 12:33 Codex: integrated river banks, local spray and dense impact fog
+
+The caldera inlet now uses connected, source-fractured cliff banks, physical rock mapping and foam transported along its actual curved river chart. Removed the giant mist cards. Shore haze is confined to40m from surveyed waterline points; shallow slope-aligned spray follows the river. The owner requested dense fog at the waterfall bottom: nine overlapping impact volumes now obscure the lower slope while staying outside the nominal radius928m battle lane. A player-view regression initially hid the arena; moving that bank uphill cleared it at ride321 and340.
+
+Editor/Game builds, imported geometry/mask audit, installed support data and39,961-sample flow-chart probe pass. Native captures verify current material compilation, clear battle-lane visibility and seek/ending restoration. [Current source identities, replay, screenshots and critique](CALDERA-LAKE-15NOV.md). Local launcher: `Play Caldera.cmd`. This has not been cooked into a fresh release build or merged to main. Preserve newer main crew UI/names/voice and the separate pending VFX material edits.
+
+The separate **Caldera boss fight** chat is active in `Boss-Caldera`. Visual work stays here; boss gameplay stays there. The existing visual-iteration heartbeat is active every30minutes with its obsolete spiral instructions replaced. Next priorities are less uniform impact-fog edges, more natural broad bank forms/scan accents and less repetitive ramp foam. This is an improved checkpoint, not final reference-quality art.
+
 ## 15 Nov 11:45 Codex: simplified caldera lake, supported inlet and fog exit
 
 The owner's revised layout is implemented on `codex/maelstrom-saturday`: one level lake using DRW waves, one foaming descending inlet, a steady level ship orbit, and the selected maelstrom sky. Removed the spiral banks and retired perimeter falls. The inlet now has a continuous rock base and 68 bank boulders. The complete cliff toe extends below the lake, closing the open undersides exposed by the lower water level. Light shoreline mist and heavier drifting inlet mist gather after descent. Boss death is followed by local fog covering the scene swap, then clearing into open sea; no physical exit channel is required.

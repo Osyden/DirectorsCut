@@ -1,100 +1,128 @@
 #include "DCMaelstrom.h"
-#include "Components/StaticMeshComponent.h"
-#include "Engine/StaticMesh.h"
-#include "Engine/Texture.h"
-#include "Engine/World.h"
-#include "GameFramework/PlayerController.h"
-#include "Materials/MaterialInstanceDynamic.h"
+#include "Components/LocalFogVolumeComponent.h"
+#include "Dom/JsonObject.h"
+#include "HAL/IConsoleManager.h"
+#include "Misc/FileHelper.h"
+#include "Serialization/JsonSerializer.h"
 
 void ADCMaelstrom::UpdateInletMist()
 {
-    const float Gather=FMath::SmoothStep(26.f,42.f,Elapsed);
-    if(!IsCalderaLake()||!bActive||Gather<=0.f)
-    { ClearInletMist(); return; }
-
+    if(!IsCalderaLake()||!bActive||Elapsed<-7.f) { ClearInletMist(); return; }
+    // Small volumes distributed around the shoreline need more instances,
+    // rather than kilometre-scale clouds. Restore the shared budget on exit.
+    if(IConsoleVariable* Budget=IConsoleManager::Get().FindConsoleVariable(TEXT("r.LocalFogVolume.TileMaxInstanceCount")))
+    {
+        if(PreviousCalderaFogBudget<0) { PreviousCalderaFogBudget=Budget->GetInt(); }
+        AppliedCalderaFogBudget=FMath::Max(256,PreviousCalderaFogBudget);
+        if(Budget->GetInt()!=AppliedCalderaFogBudget) { Budget->SetWithCurrentPriority(AppliedCalderaFogBudget); }
+    }
+    const FName ShoreTag(TEXT("DCCalderaShoreline")),SprayTag(TEXT("DCCalderaRiverSpray")),FootTag(TEXT("DCCalderaImpactFog"));
     if(!bInletMistTried)
     {
         bInletMistTried=true;
-        UStaticMesh* Mesh=LoadObject<UStaticMesh>(nullptr,TEXT("/Game/EasyFog/Meshes/SM_easyFogCard_02.SM_easyFogCard_02"));
-        UMaterialInterface* Base=LoadObject<UMaterialInterface>(nullptr,TEXT("/Game/EasyFog/Materials/M_BP_EasyFog.M_BP_EasyFog"));
-        const TCHAR* Masks[]={
-            TEXT("/Game/EasyFog/Textures/Fog/T_mountainFog_02_mask.T_mountainFog_02_mask"),
-            TEXT("/Game/EasyFog/Textures/Fog/T_mountainFog_05_mask.T_mountainFog_05_mask"),
-            TEXT("/Game/EasyFog/Textures/Fog/T_mountainFog_07_mask.T_mountainFog_07_mask"),
-            TEXT("/Game/EasyFog/Textures/Fog/T_smoothRadial_mask.T_smoothRadial_mask")};
-        UTexture* Textures[4]={};
-        for(int32 I=0;I<4;++I) { Textures[I]=LoadObject<UTexture>(nullptr,Masks[I]); }
-        if(!Mesh||!Base||!Textures[3])
+        auto Add=[&](FVector P,float RadiusM,FName Tag,float Density,FVector Up)
         {
-            UE_LOG(LogTemp,Warning,TEXT("DC_CALDERA_INLET_MIST missing EasyFog mesh/material/soft mask"));
-            return;
-        }
-        for(int32 I=0;I<8;++I)
+            ULocalFogVolumeComponent* Fog=NewObject<ULocalFogVolumeComponent>(this);
+            AddInstanceComponent(Fog); Fog->SetupAttachment(Arena);
+            Fog->SetMobility(EComponentMobility::Movable);
+            Fog->SetRelativeLocation(P*100.f);
+            Fog->SetRelativeRotation(FRotationMatrix::MakeFromZ(Up).Rotator());
+            Fog->SetRelativeScale3D(FVector(RadiusM*100.f/ULocalFogVolumeComponent::GetBaseVolumeSize()));
+            Fog->RadialFogExtinction=0.f;
+            Fog->HeightFogExtinction=Density;
+            Fog->HeightFogFalloff=Tag==ShoreTag?1100.f:(Tag==FootTag?200.f:420.f);
+            Fog->FogAlbedo=FLinearColor(.56f,.63f,.68f);
+            Fog->FogEmissive=FLinearColor::Black; Fog->FogPhaseG=.20f;
+            Fog->ComponentTags.Add(Tag); Fog->RegisterComponent(); InletMistVolumes.Add(Fog);
+        };
+        TArray<FVector> Shore;
+        FString Text; TSharedPtr<FJsonObject> Data;
+        if(FFileHelper::LoadFileToString(Text,*(CliffArenaDataDirectory/TEXT("CompleteArena.json")))
+            &&FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Text),Data)&&Data.IsValid())
         {
-            UStaticMeshComponent* Card=NewObject<UStaticMeshComponent>(this);
-            AddInstanceComponent(Card);
-            Card->SetupAttachment(Arena);
-            Card->SetMobility(EComponentMobility::Movable);
-            Card->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-            Card->SetStaticMesh(Mesh);
-            Card->SetCastShadow(false);
-            Card->SetVisibility(false);
-            Card->TranslucencySortPriority=10+I;
-            UMaterialInstanceDynamic* MID=UMaterialInstanceDynamic::Create(Base,this);
-            MID->SetTextureParameterValue(TEXT("Opacity Map"),Textures[I%4]?Textures[I%4]:Textures[3]);
-            MID->SetScalarParameterValue(TEXT("Fog Density"),0.f);
-            MID->SetScalarParameterValue(TEXT("Fading Distance"),2000.f);
-            MID->SetScalarParameterValue(TEXT("Camera Fading Distance"),1800.f);
-            MID->SetScalarParameterValue(TEXT("Emissive Intensity"),0.f);
-            MID->SetVectorParameterValue(TEXT("Base Color Tint"),FLinearColor(.76f,.82f,.86f));
-            Card->SetMaterial(0,MID);
-            Card->RegisterComponent();
-            InletMistCards.Add(Card); InletMistMIDs.Add(MID);
+            const TArray<TSharedPtr<FJsonValue>>* Points=nullptr;
+            if(Data->TryGetArrayField(TEXT("shore_mist_centers_m"),Points))
+            {
+                for(const TSharedPtr<FJsonValue>& Point:*Points)
+                {
+                    const TArray<TSharedPtr<FJsonValue>>* XYZ=nullptr;
+                    if(Point->TryGetArray(XYZ)&&XYZ->Num()==3)
+                    { Shore.Add(FVector((*XYZ)[0]->AsNumber(),(*XYZ)[1]->AsNumber(),-399.f)); }
+                }
+            }
         }
-        UE_LOG(LogTemp,Display,TEXT("DC_CALDERA_INLET_MIST cards=8 width_m=380..520 scene_lit=1 emissive=0 gather_elapsed=26..42"));
+        // Sphere boundaries confine haze to 40 m from the surveyed waterline.
+        // Height extinction leaves a low veil, not large round cloud puffs.
+        for(int32 I=0;I<128;++I)
+        {
+            const float A=UE_TWO_PI*I/128.f;
+            FVector P(FMath::Cos(A)*1050.f,FMath::Sin(A)*1050.f,-399.f);
+            if(!Shore.IsEmpty())
+            {
+                const float S=I*Shore.Num()/128.f; const int32 J=FMath::FloorToInt(S);
+                P=FMath::Lerp(Shore[J%Shore.Num()],Shore[(J+1)%Shore.Num()],S-J);
+            }
+            Add(P,40.f,ShoreTag,.30f,FVector::UpVector);
+        }
+        // Rotate the shallow density profile to the river normal. Horizontal
+        // layers cut a steep river into bright stripes. Staggered, overlapping
+        // volumes instead form a continuous thin veil above the moving water.
+        FRandomStream SprayRandom(151128);
+        for(int32 Row=0;Row<22;++Row)
+        {
+            for(int32 Side=-2;Side<=2;++Side)
+            {
+                const float R=FMath::Lerp(1545.f,930.f,Row/21.f)+SprayRandom.FRandRange(-9.f,9.f);
+                const float U=FMath::Clamp((R/1600.f-.58f)/.405f,0.f,1.f);
+                const float Q=U*U*(3.f-2.f*U);
+                const float Across=Side*74.f+SprayRandom.FRandRange(-20.f,20.f);
+                const float A=UE_PI-.40f*(1.f-Q)+Across/R;
+                const float Slope=400.f*6.f*U*(1.f-U)/(1600.f*.405f);
+                const FVector Up=FVector(-Slope*FMath::Cos(A),-Slope*FMath::Sin(A),1.f).GetSafeNormal();
+                const FVector P(FMath::Cos(A)*R,FMath::Sin(A)*R,-400.f+400.f*Q);
+                Add(P-Up*2.f,SprayRandom.FRandRange(37.f,43.f),SprayTag,.07f,Up);
+            }
+        }
+        // Dense, connected impact fog conceals the artificial river/lake join.
+        // Keep its horizontal footprint at the foot, not across the whole lake.
+        for(int32 I=-4;I<=4;++I)
+        {
+            // Keep the inner fog boundary outside the radius928m battle lane;
+            // the ship must clear the impact cloud as soon as it levels out.
+            const float R=995.f+SprayRandom.FRandRange(-7.f,7.f);
+            const float Across=I*45.f+SprayRandom.FRandRange(-6.f,6.f);
+            const float Q=FMath::SmoothStep(.58f,.985f,R/1600.f);
+            const float A=UE_PI-.40f*(1.f-Q)+Across/R;
+            Add(FVector(FMath::Cos(A)*R,FMath::Sin(A)*R,-383.f),
+                48.f,FootTag,1.25f,FVector::UpVector);
+        }
+        UE_LOG(LogTemp,Display,TEXT("DC_CALDERA_MIST shoreline=128 radius=40m river_spray=110 radius=37-43m impact_fog=9 radius=48m slope_aligned=1 billboards=0"));
     }
-
-    FVector Eye; FRotator View;
-    APlayerController* Player=GetWorld()->GetFirstPlayerController();
-    if(!Player) { ClearInletMist(); return; }
-    Player->GetPlayerViewPoint(Eye,View);
-    const FTransform Frame=GetArenaTransform();
-    static const float AcrossM[]={-65.f,70.f,-35.f,80.f,-75.f,55.f,-25.f,35.f};
-    static const float WidthM[]={450.f,380.f,520.f,410.f,480.f,390.f,510.f,460.f};
-    for(int32 I=0;I<InletMistCards.Num();++I)
+    const float Gather=FMath::SmoothStep(26.f,42.f,Elapsed);
+    for(ULocalFogVolumeComponent* Fog:InletMistVolumes)
     {
-        UStaticMeshComponent* Card=InletMistCards[I];
-        UMaterialInstanceDynamic* MID=InletMistMIDs[I];
-        if(!Card||!MID||!Card->GetStaticMesh()) { continue; }
-        const float R=FMath::Lerp(.975f,.595f,I/7.f)*Radius;
-        const float Q=FMath::SmoothStep(.58f,.985f,R/Radius);
-        const float Across=AcrossM[I]*100.f+FMath::Sin(Elapsed*.18f+I*1.4f)*550.f;
-        const float A=UE_PI-.40f*(1.f-Q)+Across/R;
-        const float Lift=10000.f+1800.f*FMath::Sin(I*2.1f);
-        const FVector Local(FMath::Cos(A)*R,FMath::Sin(A)*R,-40000.f+40000.f*Q+Lift);
-        const FVector Center=Frame.TransformPosition(Local);
-        FVector Normal=(Eye-Center).GetSafeNormal();
-        if(Normal.IsNearlyZero()) { Normal=-View.Vector(); }
-        // This card's authored face is XY, normal +Z (the same orientation
-        // used by the existing spout skirt). Keep its Y axis visually upright
-        // while its normal follows the actual view, including review cameras.
-        const FVector Upright=FMath::Abs(Normal.Z)>.98f?FVector::ForwardVector:FVector::UpVector;
-        const FQuat Facing=FRotationMatrix::MakeFromZY(Normal,Upright).ToQuat();
-        const FBox Bounds=Card->GetStaticMesh()->GetBoundingBox();
-        const FVector Size=Bounds.GetSize();
-        const float Wide=WidthM[I]*100.f;
-        const FVector Scale(Wide/FMath::Max(1.f,static_cast<float>(Size.X)),
-            Wide*.72f/FMath::Max(1.f,static_cast<float>(Size.Y)),
-            Wide/FMath::Max(1.f,static_cast<float>(Size.X))*.25f);
-        const FVector Origin=Center-Facing.RotateVector(Bounds.GetCenter()*Scale);
-        Card->SetWorldTransform(FTransform(Facing,Origin,Scale));
-        MID->SetScalarParameterValue(TEXT("Fog Density"),Gather*(1.55f+.15f*FMath::Sin(I*1.9f)));
-        Card->SetVisibility(true);
+        if(!Fog) { continue; }
+        if(Fog->ComponentHasTag(SprayTag))
+        {
+            Fog->SetHeightFogExtinction(.07f+.33f*Gather);
+            Fog->SetRadialFogExtinction(.015f+.045f*Gather);
+        }
+        if(Fog->ComponentHasTag(FootTag))
+        {
+            Fog->SetHeightFogExtinction(1.25f+.75f*Gather);
+            Fog->SetRadialFogExtinction(.12f+.22f*Gather);
+        }
+        Fog->SetVisibility(true);
     }
 }
 
 void ADCMaelstrom::ClearInletMist()
 {
-    for(UStaticMeshComponent* Card:InletMistCards)
-    { if(Card) { Card->SetVisibility(false); } }
+    for(ULocalFogVolumeComponent* Fog:InletMistVolumes) { if(Fog) { Fog->SetVisibility(false); } }
+    if(PreviousCalderaFogBudget>=0)
+    {
+        if(IConsoleVariable* Budget=IConsoleManager::Get().FindConsoleVariable(TEXT("r.LocalFogVolume.TileMaxInstanceCount")))
+            { if(Budget->GetInt()==AppliedCalderaFogBudget) { Budget->SetWithCurrentPriority(PreviousCalderaFogBudget); } }
+        PreviousCalderaFogBudget=-1;
+    }
 }

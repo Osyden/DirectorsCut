@@ -1,68 +1,95 @@
 # Caldera lake - 15 November
 
-The user's latest direction replaces the spiral bowl and perimeter falls with a large lake, ordinary waves and one foaming downhill inlet from the tunnel. The complete rocky rim remains. The ship descends once, then circles on level water. Bank boulders, light shoreline mist and gathering mist behind the descending ship support this simpler layout. Boss polish remains deferred.
+**Current revision:** the inlet banks are part of the connected cliff mesh, with original fracture relief restored on the dry shoulders in `IntegratedBanksFractured`. The smooth first integrated banks were rejected in native review. The detached procedural embankment, stretched one-row lower wall and large mist cards from checkpoint **`a368e8f` are superseded**. Their screenshots and successful build/exit checks remain historical evidence, not acceptance of this revision. Root owns final native review and STATUS.
 
 ## Current assembly
 
-The lake is at **-400 m**, with nominal crater radius **1,600 m**. The 440 m wide inlet follows `angle=pi-.40*(1-smoothstep(.58,.985,R/Radius))`, descending from height 0 near radius 1,576 m to lake height at radius 928 m. Both the water strip and excavated corridor now use that same polar cross-section.
+The user requested a large caldera lake with ordinary waves, one foaming downhill inlet, fitted rocky banks and shallow local mist. Lake mean height is **-400 m**; nominal crater radius is **1,600 m**. The 440 m wide inlet uses `angle=pi-.40*(1-smoothstep(.58,.985,R/Radius))`, reaching lake height at radius 928 m from height 0 near radius 1,576 m.
 
-The route reaches radius 928 m over encounter seconds **-8 to 32**, then holds it. Orbital velocity eases in during seconds 24-32 and settles at `.009 rad/s` (**8.35 m/s**). A 33.4 m tangential lead avoids stopping at the join. There is no further spiral descent or final throat. Route integration: `50d48ee`; initial entry-cut integration: `9a70929`.
+The ship descends over encounter seconds **-8 to 32**, then stays on radius 928 m. Angular speed eases in during seconds 24-32 and settles at `.009 rad/s` (**8.35 m/s**); a 33.4 m tangential lead avoids stopping at the join. The route and lake height are unchanged by this bank revision. There is no further spiral descent or final throat; boss balance remains unfinished.
 
-The initial `CalderaEntry` mesh was an intermediate: it cut the upper rim but left much of the slope unsupported, and 955 original toe columns ended above the new lake. The final `CalderaSubmergedToe` extends terminal row 0 to at most **-445 m**, retaining upper faces, XY, connectivity and UVs. Runtime `DCMaelstromInlet.cpp` adds the missing connected landform: a bed beneath the cataract, irregular banks and submerged flanks/foot, plus **68** locally installed Nordic scan accents at **0.85-1.65x** scale with buried source aprons. These are bank accents, not stacked cliff courses.
+`generate_caldera_integrated_banks.py` remaps the original inlet-sector grid into a broad asymmetric apron, blending into existing side and upper cliff vertices. The previous abrupt toe drop is distributed over 220 lower rows. Upper rows 248 onward and triangle connectivity remain unchanged; altered lower UVs follow the new surface. `BuildInletBed()` runs after validated `BuildCliffPreview()`: the installed `integrated_inlet_banks` marker only skips the old standalone wedge when `CliffPreviewMesh && bCompleteCliffArena` confirms the integrated mesh is active. It uses **56 actual surface anchors** for modestly scaled, partly buried Nordic bank accents.
 
-The cataract's slope mask now fades to zero at the flat foot, sharing the lake's exact wave coordinates there. Only the overlap *below* radius `.58*Radius` sinks under the lake. This removes the mismatched flow/shader join; the calm lake has wind drift rather than vortex mapping. Rebuild with the **water-only** material script below.
+`fracture_caldera_integrated_banks.py` restores pre-cut geological radial and vertical residuals on those supported shoulders: radial addition capped at 18 m, vertical addition at -12/+20 m, with a shallow shared-vertex bevel. It changes 150,959 vertices while keeping the wet ±220 m corridor and all upper rows 248 onward bitwise unchanged. A local 10 m taper resolves nine inverted triangles; only 830 vertices receive more than 1% attenuation. This preserves the connected supporting apron rather than restoring the old suspended river or adding detached rock layers.
 
-There are **16 light shoreline fog volumes**, sampled from the 32 final toe anchors, and **8 slope mist volumes** gathering over encounter seconds **26-42**, after the ship descends. Eight soft EasyFog cards add visible drifting mist above the slope; two smaller foot volumes cover the contact. Near mist takes priority within the renderer's 32-volume budget. The ending uses four local fog banks and a matched camera fade from ride seconds **440-457**: engulf before the scene handoff, clear into open sea afterward. Exit state resets on seeks; the old exposure white flash is suppressed, including direct late seeks. Old perimeter waterfall bundles are disabled.
+The water mesh and bed use matching polar cross-sections. The shader reconstructs that same curved river from arena XY, advects foam downhill along its surface and retains ordinary lake-wave coordinates at the zero-slope join. Only the overlap below radius `.58*Radius` sinks beneath the lake. Rebuild just the water material with `make_maelstrom_water_only.py`.
 
-## Final local assets
+Lower cliffs and banks now use physically scaled owned rock through **`cliff_physical_material.py`**, applied after a clean upper-atlas graph rebuild by `import_cliff_geology.py`. Helper v2 cools the warm rock palette and combines measured scan-depth normals with restrained 8-30 m joint/facet normals. The upper unique geology remains above the 0-45 m arena-height blend. This avoids stretching a narrow retained UV strip down the tall cliff extension; shading does not alter source geometry or vendor pixels.
 
-The final source is `E:/Projects/DirectorsCut/Crater-Workers/Complete-Water/Saved/CompleteCliffRing/CalderaSubmergedToe/candidate.npz`, SHA-256 **`e4d85d005c5a0d47885ead72b5216242bbc810d332c08d5ba52be35c74e2d5e1`**.
+There are **128 shoreline volumes with 40 m radius**, centred at Z=-399 m over actual final-surface intersections with Z=-400 m, **110 staggered river spray volumes with 37-43 m radius**, and **nine connected impact-fog volumes with 48 m radius** across the foot. The denser foot fog follows the user's request to obscure the waterfall bottom. Spray local Z aligns with the water surface normal to avoid horizontal fog bands; the former giant cards are removed. This is 247 scene volumes, or 251 including four ending-fog volumes, within the stage-scoped budget of 256. Budget changes use `SetWithCurrentPriority` and restore without priority escalation. Ending fog covers ride seconds **440-457**, with seek-safe fade reset and suppression of the old white exposure flash. Perimeter falls remain disabled.
 
-The final export is `E:/Projects/DirectorsCut/Crater-Workers/Complete-Water/Saved/CompleteCliffRing/CalderaSubmergedToeNative/complete_caldera_submerged.fbx`, SHA-256 **`f574f84779f78677938dda0b38ccd9dfddc97c1cbb4f160e387a10a63bf6e3c0`**. Matching JSON/NPZ and `original_mesh_reference.json.gz` are alongside it. The imported mesh is `/Game/DC/Maelstrom/GeneratedCliffPreview/SM_CliffSector_f574f84779f7`.
+## Frozen source and export
 
-The source retains **863,513 vertices / 1,720,320 triangles**, arena XYZ metres, identity basis and export origin `(-1072,1154,-25)m`. The generator lowers 1,469 terminal vertices; upper rows and UVs are unchanged. The previous `SurfaceRockBounded` source (`a0ef5da4...`) remains the explicit ancestor of the retained surface-paint maps. Those maps are not rebaked geology for the new lower skirt. Actual ruin supports must be regenerated against the final mesh. Owned scans, textures and generated assets remain local and Git-ignored.
+Source: `E:/Projects/DirectorsCut/Crater-Workers/Cliff-Contact/Saved/CompleteCliffRing/IntegratedBanksFractured/candidate.npz`
+SHA-256: **`6eac5bba828f84ef2196f3a6598c23829c503722eb056f7ad59269bd6ab444e7`**.
+
+FBX: `E:/Projects/DirectorsCut/Crater-Workers/Cliff-Contact/Saved/CompleteCliffRing/IntegratedBanksFracturedNative/complete_caldera_banks_fractured.fbx`
+SHA-256: **`264605a859674b1288cc1f8feb7c6a534bb2b46ae9b75997688ddc87d9448640`**.
+
+Matching JSON/NPZ and `original_mesh_reference.json.gz` are beside the FBX. The source retains **863,513 vertices / 1,720,320 triangles**, arena XYZ metres, identity basis and export origin `(-1072,1154,-25)m`. Its manifest supplies `integrated_inlet_banks`, `bank_boulder_anchors_m` and 128 `shore_mist_centers_m` points. Actual ruin support must be regenerated for this source.
+
+The base generator reads historical `CalderaSubmergedToe` (`e4d85d00...`) and its recorded pre-toe `CalderaEntry` parent (`8ce34f7f...`). The final correction reads `IntegratedBanks` (`ac616b7c...`) plus the actual residuals from `SurfaceRockBounded` (`a0ef5da4...`), which also remains the explicit ancestor of retained upper context paint. These are dependencies, not the final runtime mesh. All owned scans and generated assets remain local and Git-ignored.
 
 ## Replay and install
 
-The following names identify frozen outputs. For regeneration choose fresh output folders and propagate them throughout. The first cut's local input remains required; run `Tools/cut_caldera_entry_river.py` from `SurfaceRockBounded` if it is absent. Run Unreal jobs serially with the editor closed.
+Choose fresh output directories for a replay; the paths below identify the frozen deliverable. Keep the parent source bundles available. Run Unreal jobs serially with the editor closed.
 
 ```powershell
 $dcRoot = 'E:/Projects/DirectorsCut/Maelstrom-Saturday'
 $cliffRoot = 'E:/Projects/DirectorsCut/Crater-Workers/Cliff-Contact'
 $waterRoot = 'E:/Projects/DirectorsCut/Crater-Workers/Complete-Water'
+$flowRoot = 'E:/Projects/DirectorsCut/Crater-Workers/Flow-Seams'
 $py = 'E:/Utilities/Blender/5.3/python/bin/python.exe'
 $blender = 'E:/Utilities/Blender/blender.exe'
 $ue = 'E:/Utilities/UE_5.8/Engine/Binaries/Win64/UnrealEditor-Cmd.exe'
-$mesh = "$waterRoot/Saved/CompleteCliffRing/CalderaSubmergedToe/candidate.npz"
-$fbx = "$waterRoot/Saved/CompleteCliffRing/CalderaSubmergedToeNative/complete_caldera_submerged.fbx"
-$sidecar = "$waterRoot/Saved/CompleteCliffRing/CalderaSubmergedToeNative/complete_caldera_submerged.json"
-$reference = "$waterRoot/Saved/CompleteCliffRing/CalderaSubmergedToeNative/original_mesh_reference.json.gz"
+$mesh = "$cliffRoot/Saved/CompleteCliffRing/IntegratedBanksFractured/candidate.npz"
+$fbx = "$cliffRoot/Saved/CompleteCliffRing/IntegratedBanksFracturedNative/complete_caldera_banks_fractured.fbx"
+$sidecar = "$cliffRoot/Saved/CompleteCliffRing/IntegratedBanksFracturedNative/complete_caldera_banks_fractured.json"
+$reference = "$cliffRoot/Saved/CompleteCliffRing/IntegratedBanksFracturedNative/original_mesh_reference.json.gz"
 
-& $py "$dcRoot/Tools/extend_caldera_cliff_toe.py" --source "$cliffRoot/Saved/CompleteCliffRing/CalderaEntry/candidate.npz" --output "$waterRoot/Saved/CompleteCliffRing/CalderaSubmergedToe" --toe-height-m -445 --feather-rows 1
+& $py "$dcRoot/Tools/generate_caldera_integrated_banks.py" --source "$waterRoot/Saved/CompleteCliffRing/CalderaSubmergedToe/candidate.npz" --output "$cliffRoot/Saved/CompleteCliffRing/IntegratedBanks"
+& $py "$dcRoot/Tools/fracture_caldera_integrated_banks.py" --source "$cliffRoot/Saved/CompleteCliffRing/IntegratedBanks/candidate.npz" --rock-source "$cliffRoot/Saved/CompleteCliffRing/SurfaceRockBounded/candidate.npz" --output "$cliffRoot/Saved/CompleteCliffRing/IntegratedBanksFractured"
 & $blender --background --factory-startup --threads 8 --python-exit-code 1 --python "$dcRoot/Tools/export_cliff_surface_fbx.py" -- --input $mesh --output $fbx --normal-angle-deg 60
 & $py "$dcRoot/Tools/audit_cliff_preview_import.py" --prepare $sidecar --output $reference
-
 $env:DC_CLIFF_PREVIEW_FBX = $fbx
-& $ue "$dcRoot/DirectorsCut.uproject" -run=pythonscript "-script=$dcRoot/Tools/import_cliff_landform_preview.py" -unattended -nullrhi -nosplash
+& $ue "$dcRoot/DirectorsCut.uproject" -run=pythonscript "-script=$dcRoot/Tools/import_cliff_landform_preview.py" -unattended -nullrhi -nosplash -DDC=InstalledNoZenLocalFallback
 $env:DC_CLIFF_AUDIT_SOURCE = $reference
-& $ue "$dcRoot/DirectorsCut.uproject" -run=pythonscript "-script=$dcRoot/Tools/audit_cliff_preview_import.py" -EnablePlugins=GeometryScripting -unattended -nullrhi -nosplash
+& $ue "$dcRoot/DirectorsCut.uproject" -run=pythonscript "-script=$dcRoot/Tools/audit_cliff_preview_import.py" -EnablePlugins=GeometryScripting -unattended -nullrhi -nosplash -DDC=InstalledNoZenLocalFallback
 & $py "$dcRoot/Tools/prepare_cliff_preview_surface.py" --sidecar $sidecar --anchors "$dcRoot/Saved/CliffSupportAnchors.json" --saved "$dcRoot/Saved"
-& $ue "$dcRoot/DirectorsCut.uproject" -run=pythonscript "-script=$dcRoot/Tools/make_maelstrom_water_only.py" -unattended -nullrhi -nosplash
+
+$env:DC_CLIFF_GEOLOGY_ATLAS = "$flowRoot/Saved/CliffGeology/FacetedUniqueV3"
+$env:DC_CLIFF_GEOLOGY_CONTEXT = "$dcRoot/Saved/CompleteCliffGeologyRock"
+$env:DC_CLIFF_GEOLOGY_DETAIL = "$cliffRoot/Saved/CliffDetailNormals/NativeMeasuredBC5"
+$env:DC_CLIFF_PHYSICAL_TILE = "$flowRoot/Saved/OwnedCliffProjection/vfmjadufa/Tile"
+& $ue "$dcRoot/DirectorsCut.uproject" -run=pythonscript "-script=$dcRoot/Tools/import_cliff_geology.py" -unattended -nullrhi -nosplash -DDC=InstalledNoZenLocalFallback
+& $ue "$dcRoot/DirectorsCut.uproject" -run=pythonscript "-script=$dcRoot/Tools/make_maelstrom_water_only.py" -unattended -nullrhi -nosplash -DDC=InstalledNoZenLocalFallback
 & $py "$dcRoot/Tools/install_complete_maelstrom.py" --project $dcRoot --caldera
 ```
 
-Do **not** run the full `make_maelstrom_materials.py` replay: it would also rebuild independently edited spray/cascade/mist materials. The water-only wrapper rebuilds just `M_MaelstromWater`. Retained rock material inputs are described in the historical [complete-scene note](COMPLETE-SCENE-15NOV.md); its perimeter falls are superseded.
+`import_cliff_geology.py` rebuilds the clean graph and calls the physical helper itself; do not append that helper again to the same graph. Do not run the full `make_maelstrom_materials.py` replay, which would overwrite independently edited spray/cascade/mist materials.
 
-The installer verifies mesh/source audit, actual support binary and retained material ancestry, stages Runtime data, and writes `CompleteArena.json` last with `caldera_lake=true`, `lake_height_m=-400`, `waterfalls=null` and normal-game activation enabled. Caldera installation/launch no longer read, copy or require the obsolete falls JSON; legacy mode still requires it. After validation, `Tools/play_complete_maelstrom.ps1` opens the playable ship view; `-FullRun` starts at the beginning. No isolated preview flag is needed.
+The installer verifies the source audit, support binary and material ancestry, then writes `CompleteArena.json` last. It propagates the integrated-bank flag, actual boulder anchors and shoreline points, and enables the normal caldera game with no old falls JSON dependency. `Play Caldera.cmd` starts before the reveal; `Tools/play_complete_maelstrom.ps1 -FullRun` starts at the beginning. This is a local Unreal game, not a newly cooked standalone release. Copy/regenerate ignored local assets on the integration machine and preserve newer crew HUD/names/voice work when merging.
 
-## Validation and remaining review
+## Validation and review state
 
-CPU source checks report no collapsed native-float triangles, no reversed affected normals and zero angular seam error; all final toe vertices are below -445 m. The route's inverse-angle and velocity-join checks pass. These do not establish visual quality or full dynamic collision safety.
+CPU geometry checks on the fractured source: original connectivity retained, zero angular seam error, zero collapsed native-float triangles or opposite source triangle normals; minimum doubled triangle area 0.5934 m². All **2,365 sampled active descent positions** have terrain beneath them; the navigable **±165 m core** has no sampled rock roof, and centreline water/bed clearance remains **3.676-4.006 m**. Outer shoulders intentionally intersect the ribbon edges. The 128 shoreline points are interpolated on actual source mesh edges at lake level, not copied from the submerged toe. This is sampled evidence, not a full collision or art certification.
 
-Editor and Game builds pass with the lake, inlet, shoreline closure and exit fog. Actual imported geometry and vertex-mask audits pass for the final FBX; the complete arena installer passes and normal gameplay activates it without preview flags. The native normal-game `CalderaFogExitFinal` run captured fog gathering at ride 445, full coverage at 448 and 451 (including the 450 scene switch), clearing at 454, open sea at 458 and a successful backward seek to 275. No fatal errors or failed maelstrom shader compilation. Existing unrelated UDS editor-utility / editor-toolset startup warnings remain.
+`& $py "$dcRoot/Tools/probe_cataract_chart.py"` checks the actual CPU and shader polar river chart over 39,961 samples. Last errors were 0.000122 m radial and 0.000793 m across; the lake/foot wave phase matched. It verifies mapping, not GPU appearance.
 
-`Play Caldera.cmd` opens the local Unreal game at ride 265, before the reveal; `Tools/play_complete_maelstrom.ps1 -FullRun` plays from the beginning. This is not a newly cooked standalone release. Generated cliff/material/runtime content and both owned `LocalScans` folders must be copied or regenerated on the integration machine; Git does not contain those assets. The two scan directories are explicitly included in packaging. Preserve the newer crew HUD/names/voice changes from main when merging this branch.
+The fractured mesh imported, passed the actual source geometry/mask audit and installed successfully. Final Editor/Game builds pass (`BuildCalderaFootClearEditor.log`, `BuildCalderaFootClearGame.log`). Water-only and physical-rock material imports pass; native rendering reports no material compilation failure. The ordinary UDS editor-utility and experimental toolset startup errors remain unrelated existing log noise.
 
-Visual limits: lower cliff extensions stretch the retained rock maps, the inlet remains a broad authored ramp, and boss attacks/placement have not been retuned for the lake. These changes resolve the unsupported geometry and simplify the encounter space; they do not establish AAA visual quality or final boss balance. Frame samples are not a sustained performance benchmark.
+The first native pass exposed smooth banks, sandy material and horizontal white spray bands. Those were revised with restored source relief, measured-depth normal mapping, porous foam and surface-aligned mist. The owner then requested much denser waterfall-bottom fog. Native `CalderaImpactFogFinal` verifies that coverage, but `CalderaShipFinal` caught the ship sitting inside it too long. The impact bank now sits at radius **995 +/-7m**, radius48m, Z=-383m: its inner edge stays outside the nominal radius928m battle lane. `CalderaFootClearShip` confirms a clear battle view at ride321 and340. That frame contains the old boss implementation; the new boss chat is not merged into this checkout.
 
-Final actual captures: [descent](review/caldera-15nov/inlet-descent.png), [inlet mist after descent](review/caldera-15nov/inlet-after-descent.png), [ending fog gathering](review/caldera-15nov/exit-fog-gathering.png), [open sea restored](review/caldera-15nov/open-sea-restored.png). The inlet images use an external inspection camera; the ending images use the playable helm camera. `CalderaMistDelivery` verifies eight loaded EasyFog cards with soft masks and zero emissive; they cover parts of the slope after descent while leaving the central lake readable. Both final build targets pass (`BuildCalderaMistFinal*.log`).
+`CalderaShipFinal` verifies opaque ending fog at ride448, restored open sea at458 and a clear backward seek to275. The subsequent change only moves the nine impact volumes uphill. Its sampled ship frame at321 ran63fps; the external inlet frame ran90fps at1600x900 native. These are individual samples, not long-run performance certification.
+
+Remaining visual work: broader bank faces still look sculpted, the small brown scan accents remain conspicuous, foam is still fairly uniform across the wide ramp, and the dense impact fog has a smooth edge. Do not call this the final reference-quality arena. Improve these locally without reopening the flat-lake/route design. Boss gameplay is assigned to the separate **Caldera boss fight** chat (`Boss-Caldera`); preserve that work and newer main crew code on integration.
+
+The existing `directorscut-crater-visual-iterations` heartbeat was updated and reactivated every30minutes for the current flat-lake design. It must not resume the obsolete spiral,900m-deep basin or previous waterfall bindings. The current checkpoint is a local Unreal game, not a newly cooked release.
+
+## Current native captures
+
+- [Inlet diagnostic overview with dense impact fog](review/caldera-local-mist-15nov/inlet-fog.png): final `CalderaFootClearOverview`, actual ride321. The lower waterfall is obscured; the broad ramp and uniform mist edge still need art refinement.
+- [Normal-game ship view outside the fog](review/caldera-local-mist-15nov/ship-clear.png): final `CalderaFootClearShip`, actual ride321; the old creature is visible because this is not the separate boss branch.
+- [Restored open sea](review/caldera-local-mist-15nov/restored-sea.png): normal-game ride458. Backward seek to275 also cleared the ending fade.
+
+These are unedited native1600x900 screenshots. Both final review processes exited successfully; no new water/cliff material compile failures or fatal errors. No claim of full gameplay balance, long-run performance or final art acceptance.

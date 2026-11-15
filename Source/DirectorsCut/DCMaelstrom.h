@@ -82,9 +82,10 @@ private:
 	UPROPERTY() TArray<TObjectPtr<class ULocalFogVolumeComponent>> CliffImpactMist;
 	void UpdateInletMist();
 	void ClearInletMist();
-	UPROPERTY() TArray<TObjectPtr<class UStaticMeshComponent>> InletMistCards;
-	UPROPERTY() TArray<TObjectPtr<UMaterialInstanceDynamic>> InletMistMIDs;
+	UPROPERTY() TArray<TObjectPtr<class ULocalFogVolumeComponent>> InletMistVolumes;
 	bool bInletMistTried=false;
+	int32 PreviousCalderaFogBudget=-1;
+	int32 AppliedCalderaFogBudget=256;
 	struct FCliffPreviewVolume { TWeakObjectPtr<class AHeterogeneousVolume> Actor; int32 Frames=1; float FPS=12.f; };
 	TArray<FCliffPreviewVolume> CliffPreviewVolumes;
 	bool bCliffPreviewFallsTried=false;

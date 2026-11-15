@@ -178,11 +178,11 @@ void ADCMaelstrom::BeginPlay()
 	}
 	BuildBasin();
 	BuildCataract();
-	BuildInletBed();
 	BuildTerrain();
 	BuildTunnel();
 	BuildLandmarks();
 	BuildCliffPreview();
+	BuildInletBed();
 	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
 	{
 		// UDS also injects a sea-level density field through a volume material. It

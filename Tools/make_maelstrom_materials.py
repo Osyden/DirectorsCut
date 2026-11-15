@@ -245,12 +245,36 @@ q=lerp(q,delta-float2(3.5,1.2)*age,lake);
 q2=lerp(q2,delta-float2(3.5,1.2)*age2,lake);
 angle0*=1-lake; angle1*=1-lake;
 flow=lerp(flow,float2(3.5,1.2),lake);
-// The single inlet owns a slope mask. Both phases meet the lake's exact
-// ordinary-wave coordinates where that mask reaches zero at the flat foot.
+// Match BuildCataract's polar corridor exactly:
+// P=R*(cos(A(R)+Across/R),sin(A(R)+Across/R)). Wrap the angular
+// difference at the inlet's +/-PI crossing before recovering physical across.
 float cataract=lake*saturate(Cataract)*saturate(VC.r);
-q=lerp(q,delta+radial*24.0*age,cataract);
-q2=lerp(q2,delta+radial*24.0*age2,cataract);
-flow=lerp(flow,radial*(-24.0),cataract);
+float riverR=radius;
+float riverU=saturate((riverR/RadiusM-.58)/.405);
+float riverAngle=3.14159265-.40*(1-riverU*riverU*(3-2*riverU));
+float riverDA=.40*6*riverU*(1-riverU)/(.405*RadiusM);
+float angleDifference=atan2(delta.y,delta.x)-riverAngle;
+float riverAcross=atan2(sin(angleDifference),cos(angleDifference))*riverR;
+float2 riverD=radial;
+float2 riverB=float2(-riverD.y,riverD.x);
+float riverTurn=riverR*riverDA-riverAcross/max(riverR,1.0);
+float2 riverDown=normalize(riverD+riverB*riverTurn)*(-1.0);
+flow=lerp(flow,riverDown*30.0,cataract);
+// Integrate physical distance up the 3D river with three-point quadrature.
+// Its static s/t chart advects indefinitely without the old radial stretching.
+float riverLo=RadiusM*.58,riverSpan=max(riverR-riverLo,0.0);
+const float stations[3]={.1127016654,.5,.8872983346};
+const float weights[3]={.2777777778,.4444444444,.2777777778};
+float riverAlong=0;
+[unroll] for(int j=0;j<3;j++) {
+    float rr=riverLo+riverSpan*stations[j];
+    float u=saturate((rr/RadiusM-.58)/.405);
+    float derivative=6*u*(1-u)/(.405*RadiusM);
+    float turn=rr*.40*derivative-riverAcross/max(rr,1.0),grade=400.0*derivative;
+    riverAlong+=weights[j]*sqrt(1+turn*turn+grade*grade)*riverSpan;
+}
+// Ocean wave coordinates are unchanged even on the inlet. Only its foam
+// receives river-chart transport, so the flat foot remains the exact lake.
 """
 
 water = make_material("M_MaelstromWater")
@@ -400,25 +424,42 @@ return lerp(cell/float2(9.0,17.0),float2(p.y/18.0,p.x/65.0),saturate(Tunnel));
         foam_fine_uvs.append(cell_uv)
         foam_inputs["Raft"+str(index)] = texture_sample(water,"FoamPattern",foam_texture,raft_uv,y=100+index*100)
         foam_inputs["Cells"+str(index)] = texture_sample(water,"FoamPattern",foam_texture,cell_uv,y=300+index*100)
+    river_lace_uv=custom(water,NOISE+FLOW+r"""
+float2 st=float2(riverAcross,riverAlong+30.0*T);
+float2 drift=float2(wn.noise(st/float2(18.,31.)+4.7),wn.noise(st/float2(13.,23.)+61.3))-.5;
+return (st+drift*float2(7.,4.))/float2(9.,17.);
+""",FLOAT2,base_inputs,600)
+    foam_inputs["RiverLace"]=(texture_sample(water,"FoamPattern",foam_texture,river_lace_uv,y=650),"R")
+else:
+    foam_inputs["RiverLace"]=scalar(water,"FallbackRiverLace",.30)
 
 foam_code = NOISE + FLOW + r"""
 // Ordinary lake whitecaps come from the installed ocean simulation below.
 // Disable all old ridge, spiral-wake and synthetic breaking-lip populations.
 if(lake>.5) {
     if(cataract<=0.0) { return 0.0; }
-    // Convolve nonperiodic Cartesian foam grain along the inward current.
-    // Finite 2–10m fingers carry air down the ramp without contour rings.
-    float a=0,b=0;
-    [unroll] for(int k=-2;k<=2;k++) {
-        float w=3-abs(k);
-        a+=wn.noise((q+radial*(k*2.0))/2.2+13.7)*w;
-        b+=wn.noise((q2+radial*(k*2.0))/2.2+13.7)*w;
-    }
-    float streak=lerp(a,b,blend)/9.0;
-    float aa=clamp(fwidth(streak)*.6,.025,.18);
-    float fingers=smoothstep(.32-aa,.57+aa,streak);
-    float body=smoothstep(.04,.65,cataract);
-    return saturate(body*(.32+.68*fingers)*Coverage);
+    float2 st=float2(riverAcross,riverAlong+30.0*T);
+    // Bounded cross-stream eddies split and merge the carried foam. Shorter
+    // clumps and fine ragged edges replace the uniform straight brush strokes.
+    float2 drift=float2(wn.noise(st/float2(18.,31.)+4.7),wn.noise(st/float2(13.,23.)+61.3))-.5;
+    float2 stirred=st+drift*float2(7.,4.);
+    float streak=.50*wn.noise(stirred/float2(4.2,10.0)+13.7)
+                +.30*wn.noise(stirred/float2(2.1,3.8)+29.3)
+                +.20*wn.noise(stirred/float2(8.0,16.0)+71.8);
+    float bank=smoothstep(150.0,210.0,abs(riverAcross));
+    float foot=1-smoothstep(.62,.73,riverR/RadiusM);
+    float churn=max(bank,foot*.85);
+    float threshold=lerp(.65,.54,churn);
+    float aa=clamp(fwidth(streak)*.55,.015,.12);
+    float fingers=smoothstep(threshold-aa,threshold+aa,streak);
+    float supply=smoothstep(.015,.22,cataract);
+    // The measured ocean-foam map supplies open pores within each clump,
+    // sampled in the same moving chart. Preserve its mean area when filtered.
+    float laceAA=clamp(fwidth(RiverLace)*.5,.015,.08);
+    float lace=smoothstep(.055-laceAA,.30+laceAA,RiverLace);
+    float pixelM=max(length(ddx(st)),length(ddy(st)));
+    lace=lerp(lace,saturate((RiverLace-.012)*1.93),smoothstep(.30,2.0,pixelM));
+    return saturate(fingers*lace*supply*Coverage);
 }
 float shelf=saturate(Flatten)*(1-smoothstep(1200,3500,length(P.xy*float2(.5,2))));
 float ageFade=lerp(exp(-phase*1.5),exp(-phase2*1.5),blend);
@@ -575,7 +616,7 @@ return saturate((1-(1-raftsCoverage)*(1-front))*Coverage*(1-shelf*.35));
 foam = custom(water, foam_code, FLOAT, foam_inputs)
 source_foam=foam
 if fft_foam:
-    live_foam_inputs={"Fallback":foam,"Live":fft_foam,"Enabled":use_live_fft,"Count":live_count,"Tunnel":tunnel_flow,"Calm":calm_caldera}
+    live_foam_inputs={"Fallback":foam,"Live":fft_foam,"Enabled":use_live_fft,"Count":live_count,"Tunnel":tunnel_flow,"Calm":calm_caldera,"Cataract":cataract_flow,"VC":vc}
     live_foam_code="float detail=0.15;\n"
     if foam_texture:
         live_foam_inputs.update({"C0":foam_inputs["Cells0"],"C1":foam_inputs["Cells1"],"T":time})
@@ -585,7 +626,7 @@ if fft_foam:
     # Crater whitewater is driven by its actual crest/impact/wake sources above;
     # retain the previous overlay only for the separately authored tunnel path.
     # Live FFT normals, displacement and roughness remain independent/unchanged.
-    live_foam_code+="float liveWeight=saturate(Enabled)*step(0.5,Count); if(Calm>.5 && Tunnel<.5) return 1-(1-saturate(Fallback))*(1-saturate(Live)*lerp(.65,1.0,detail)*liveWeight); if(Tunnel<.5) return Fallback; return max(Fallback,saturate(Live)*detail*.08*liveWeight);"
+    live_foam_code+="float liveWeight=saturate(Enabled)*step(0.5,Count); if(Calm>.5 && Tunnel<.5) { float river=saturate(Cataract)*smoothstep(.015,.12,VC.r); float ocean=saturate(Live)*lerp(.65,1.0,detail)*liveWeight*(1-river); return 1-(1-saturate(Fallback))*(1-ocean); } if(Tunnel<.5) return Fallback; return max(Fallback,saturate(Live)*detail*.08*liveWeight);"
     foam=custom(water,live_foam_code,FLOAT,live_foam_inputs,1350)
 color = custom(water, r"""
 float3 body=lerp(float3(0.018,0.065,0.085),float3(0.009,0.034,0.052),saturate(VC.b));

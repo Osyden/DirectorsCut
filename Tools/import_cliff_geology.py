@@ -3,8 +3,9 @@
 DC_CLIFF_GEOLOGY_ATLAS and DC_CLIFF_GEOLOGY_CONTEXT name generated directories.
 Both domains clamp; context uses full-ring UV bounds. The pilot fades by its
 original vertex mask AND UV coverage, so roof/outside UVs never repeat it.
-Optional DC_CLIFF_GEOLOGY_DETAIL names an owned native-scale normal-only tile;
-only this fine detail repeats, with two orientations and bounded slope.
+Optional DC_CLIFF_GEOLOGY_DETAIL names an owned native-scale normal-only tile.
+The lower caldera extension/banks use physical object-space owned rock sampling;
+the unique upper geology is preserved above a 0--45m arena-height transition.
 No geometry, maps, sky, gameplay or vendor source files are changed.
 """
 import json
@@ -17,6 +18,7 @@ import unreal
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from import_owned_cliff_scans import import_task, sha
+from cliff_physical_material import apply_physical_layer
 
 
 def main():
@@ -208,6 +210,7 @@ return normalize(T*dot(T,U)/max(T.z,.001)-U);''', types.CMOT_FLOAT3,
         output(blend, '', prop)
     output(scalar(0.), '', unreal.MaterialProperty.MP_METALLIC)
     output(scalar(.3), '', unreal.MaterialProperty.MP_SPECULAR)
+    physical_mapping = apply_physical_layer(material, project, detail_manifest, rebuilding=True)
     mel.recompile_material(material)
     if not unreal.EditorAssetLibrary.save_loaded_asset(material, only_if_is_dirty=False):
         raise RuntimeError('Could not save geology preview material')
@@ -216,7 +219,8 @@ return normalize(T*dot(T,U)/max(T.z,.001)-U);''', types.CMOT_FLOAT3,
                   atlas_manifest=str(directories['pilot'] / 'tile_manifest.json'), atlas_source=manifests['pilot'],
                   context_manifest=str(directories['context'] / 'tile_manifest.json'), context_source=manifests['context'],
                   textures={domain: {role: tex.get_path_name() for role, tex in roles.items()} for domain, roles in textures.items()},
-                  mapping='Original UV0 attached to arena; both samples clamp; pilot fades by vertexR and UV-domain boundaries',
+                  mapping='Unique upper UV0; physical object/arena-space stochastic triplanar owned rock below rim and on inlet banks',
+                  physical_mapping=physical_mapping,
                   normal='GL maps imported with green flip; restrained regional blend; optional measured detail RNM with 24-degree slope cap and steep-face attenuation',
                   context_uv_min=uv_min, context_uv_max=uv_max,
                   context_runtime_uv_min=runtime_uv_min, context_runtime_uv_max=runtime_uv_max,
