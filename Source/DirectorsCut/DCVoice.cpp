@@ -184,6 +184,7 @@ void ADCVoice::BeginPlay()
 {
 	Super::BeginPlay();
 	FParse::Value(FCommandLine::Get(), TEXT("DCTTSBackend="), TTSBackend);
+	FParse::Value(FCommandLine::Get(), TEXT("DCPhononLifecycleReview="), PhononReviewMode);
 	bUsePhonon = TTSBackend.Equals(TEXT("Phonon"), ESearchCase::IgnoreCase);
 	if (bUsePhonon) { bStreamSpeech = true; }
 	if (FParse::Param(FCommandLine::Get(), TEXT("DCStreamSpeech"))) { bStreamSpeech = true; }
@@ -466,6 +467,7 @@ void ADCVoice::Tick(float DeltaSeconds)
 	}
 	else if (PendingTTS.IsEmpty() && Playing.IsEmpty() && !ActiveCurves) { StartNextLine(); }
 	StartNextConversation();
+	if (TickPhononLifecycleReview()) { return; }
 	if (bSmokeTest)
 	{
 		if (!bSmokeStarted && GetWorld()->GetTimeSeconds() > 5)
@@ -758,7 +760,9 @@ void ADCVoice::Speak(const FString& Speaker, const FString& Text, bool bReport)
 	}
 	else
 	{
-		if (!bSmokeTest && SpeechQueue.CountByPredicate([](const FQueuedLine& Queued) { return Queued.BatchId == 0; }) >= 3)
+		int32 NormalQueued = 0;
+		for (const FQueuedLine& Queued : SpeechQueue) { if (Queued.BatchId == 0) { ++NormalQueued; } }
+		if (!bSmokeTest && NormalQueued >= 3)
 		{
 			for (int32 I = SpeechQueue.Num()-1; I >= 0; --I)
 			{

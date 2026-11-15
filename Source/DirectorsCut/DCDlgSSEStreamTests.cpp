@@ -12,7 +12,7 @@ namespace DCDlgSSEStreamTestsPrivate
         const auto Delta=MakeShared<FJsonObject>(); Delta->SetStringField(TEXT("content"),Text);
         const auto Choice=MakeShared<FJsonObject>(); Choice->SetNumberField(TEXT("index"),0); Choice->SetObjectField(TEXT("delta"),Delta);
         const auto Object=MakeShared<FJsonObject>(); Object->SetArrayField(TEXT("choices"),{MakeShared<FJsonValueObject>(Choice)});
-        FString Json; FJsonSerializer::Serialize(Object.ToSharedRef(),TJsonWriterFactory<>::Create(&Json));
+        FString Json; FJsonSerializer::Serialize(Object,TJsonWriterFactory<>::Create(&Json));
         // SSE data is one line, independently of the JSON writer's pretty-print mode.
         Json.ReplaceInline(TEXT("\r"),TEXT("")); Json.ReplaceInline(TEXT("\n"),TEXT(""));
         return TEXT("data: ")+Json+TEXT("\n\n");

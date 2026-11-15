@@ -131,6 +131,11 @@ protected:
 	bool TryPhonon(const FString& Speaker, const FString& Text, int32 BatchId);
 	UPROPERTY(Transient) TObjectPtr<UDCPhononSpeech> PhononSpeech;
 	bool bUsePhonon = false, bActivePhonon = false;
+	FString PhononReviewMode;
+	int32 PhononReviewStage = 0;
+	double PhononReviewStarted = 0;
+	bool bPhononReviewSawFreshPlayback = false;
+	bool TickPhononLifecycleReview();
 	void StartReadySpeech();
 	void QueueSynthesisFailure(const FString& Speaker, const FString& Text, int32 BatchId);
 	bool TryACE(const FString& Speaker, const FString& Path, double Duration);

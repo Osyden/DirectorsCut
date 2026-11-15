@@ -28,8 +28,8 @@ void ADCVoice::InitializePhonon()
     FParse::Value(FCommandLine::Get(), TEXT("DCPhononVoices="), Voices);
     PhononSpeech = NewObject<UDCPhononSpeech>(this);
     PhononSpeech->RegisterComponent();
-    const bool bLaunched = PhononSpeech->Initialize(Python, Script, Model, Voices);
-    UE_LOG(LogDC, Display, TEXT("TTS_BACKEND selected=Phonon31M launched=%d device=CPU threads=4"), bLaunched);
+    const bool bProcessLaunched = PhononSpeech->Initialize(Python, Script, Model, Voices);
+    UE_LOG(LogDC, Display, TEXT("TTS_BACKEND selected=Phonon31M launched=%d device=CPU threads=4"), bProcessLaunched);
 }
 
 bool ADCVoice::TryPhonon(const FString& Speaker, const FString& Text, int32 BatchId)
@@ -41,8 +41,8 @@ bool ADCVoice::TryPhonon(const FString& Speaker, const FString& Text, int32 Batc
         for (ADCCrewMember* Member : Crew->GetCrew())
         {
             if (!Member || Member->CrewName != Speaker) { continue; }
-            TInlineComponentArray<UChildActorComponent*> Children(Member);
-            for (UChildActorComponent* Child : Children)
+            TInlineComponentArray<UChildActorComponent*> VisualChildren(Member);
+            for (UChildActorComponent* Child : VisualChildren)
             {
                 if (Child->GetName() == TEXT("PirateAppearance")) { Avatar = Child->GetChildActor(); break; }
             }
