@@ -85,9 +85,15 @@ def main():
         value=tex;pin='R' if role=='roughness' else ''
         if role=='albedo':
             value=node(unreal.MaterialExpressionMultiply);link(tex,'',value,'A');link(scale,'',value,'B')
-        blend=node(unreal.MaterialExpressionLinearInterpolate)
-        link(background,'',blend,'A');link(value,pin,blend,'B');link(mask,'R',blend,'Alpha')
-        prop(blend,'',property_name)
+        if role=='normal':
+            blend=node(unreal.MaterialExpressionLinearInterpolate)
+            link(background,'',blend,'A');link(value,pin,blend,'B');link(mask,'R',blend,'Alpha')
+            prop(blend,'',property_name)
+        else:
+            # The complete mesh supplies source-chart UV0, including a radial
+            # continuation across the roof. Keep actual stone color/roughness
+            # there and outside the pilot instead of a bare constant-gray lid.
+            prop(value,pin,property_name)
     prop(scalar(0.),'',unreal.MaterialProperty.MP_METALLIC)
     prop(scalar(.35),'',unreal.MaterialProperty.MP_SPECULAR)
     mel.recompile_material(material)
@@ -97,7 +103,7 @@ def main():
                 atlas_manifest=str((args.atlas/'tile_manifest.json').resolve()),atlas_source=manifest,
                 mapping='Exact geometry UV0, vertexR blend; no extra texture scale or phase',
                 normal='Projected fine GL normal; imported green flip; full measured relief stays in geometry',
-                outside_pilot='Neutral rough stone fallback, flat normal; vertexR=0',runtime_opt_in='DCCliffPreviewScan')
+                outside_pilot='Same scan-derived color/roughness on supplied UV0; vertexR attenuates fine normal only',runtime_opt_in='DCCliffPreviewScan')
     (saved/'OwnedCliffAtlasImport.json').write_text(json.dumps(report,indent=2))
     unreal.log_warning('DC_OWNED_CLIFF_ATLAS '+json.dumps(report))
 
