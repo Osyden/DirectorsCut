@@ -31,4 +31,6 @@ namespace DCRuins
 	AActor* SpawnCrag(UWorld* World, float Radius, float Height);
 	/** A whole sanctuary on a stepped platform: temple, colonnaded forecourt, arch, statues. Scale 1 = about 150 m across. */
 	AActor* SpawnComplex(UWorld* World, float Scale, int32 Seed);
+	/** Fixed masonry shore supporting city creatures, with a submerged foundation. */
+	AActor* SpawnBank(UWorld* World, float Length, float Width, float Bottom, float Top);
 }

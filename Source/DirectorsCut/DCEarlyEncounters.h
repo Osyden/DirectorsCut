@@ -27,7 +27,7 @@ private:
 		FVector EyeLocal[2] = {};
 		FVector DeckTarget = FVector::ZeroVector;
 		float X = 0.f, SeaY = 0.f, Side = 1.f, Age = 0.f, Exposure = 0.f, Clock = 0.f;
-		float Size = 1.f, InitialWait = 8.f, HoldX = 3500.f;
+		float Size = 1.f, InitialWait = 8.f, HoldX = 3500.f, FootHeight = 0.f;
 		int32 Stage = 0; // approach, charge, attack, cooldown, defeated
 		bool bStatue = false, bImpact = false, bAnnounced = false, bGroupLeader = true;
 	};

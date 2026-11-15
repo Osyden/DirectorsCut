@@ -1,5 +1,7 @@
 #include "DCEarlyEncounters.h"
 #include "DCFogCreatureMotion.h"
+#include "DCFogRouteLayout.h"
+#include "Engine/SkeletalMesh.h"
 #include "DCCombatCue.h"
 #include "DCCombatCuePolicy.h"
 #include "Animation/AnimSingleNodeInstance.h"
@@ -28,8 +30,8 @@
 
 namespace
 {
-	constexpr float GroupTimes[] = {90.f, 132.f, 178.f};
-	constexpr float StatueTimes[] = {112.f, 158.f, 208.f};
+	using DCFogRouteLayout::GroupTimes;
+	using DCFogRouteLayout::StatueTimes;
 	UAnimSequence* Anim(const TCHAR* Name)
 	{
 		return LoadObject<UAnimSequence>(nullptr, *FString::Printf(TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/%s.%s"), Name, Name), nullptr, LOAD_NoWarn | LOAD_Quiet);
@@ -164,8 +166,8 @@ void ADCEarlyEncounters::SpawnGroup(int32 Group)
 {
 	USkeletalMesh* Mesh = LoadObject<USkeletalMesh>(nullptr, TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Skins/Tier2/Elemental/Meshes/Rampage_Elemental.Rampage_Elemental"), nullptr, LOAD_NoWarn | LOAD_Quiet);
 	if (!Mesh) { UE_LOG(LogDC, Warning, TEXT("Early encounters: Rampage mesh unavailable")); return; }
-	const float Side = Group == 1 ? 1.f : -1.f;
-	const int32 Count = Group == 2 ? 3 : 2;
+	const float Side = DCFogRouteLayout::GroupSide(Group);
+	const int32 Count = DCFogRouteLayout::GroupSize(Group);
 	for (int32 I = 0; I < Count; ++I)
 	{
 		FActorSpawnParameters Params;
@@ -180,13 +182,16 @@ void ADCEarlyEncounters::SpawnGroup(int32 Group)
 		G.Body = Body; G.Size = 10.f + I * .8f; G.Side = Side;
 		G.X = 23500.f + I * 3800.f;
 		G.HoldX = 3000.f + I * 4600.f;
-		G.SeaY = Treadmill->GetLaneOffset() + Side * (9000.f + I * 650.f);
+		G.SeaY = Side * (Treadmill->GetCityBankY() + I * 650.f);
+		// Imported reference geometry, excluding optional culling-bound extensions.
+		G.FootHeight = (Mesh->GetImportedBounds().Origin.Z - Mesh->GetImportedBounds().BoxExtent.Z) * G.Size;
 		G.InitialWait = 8.f + I * 2.8f;
 		G.bGroupLeader = I == 0;
 		Body->SetActorScale3D(FVector(G.Size));
 		G.GaitPhase = I * .23f;
 		UpdateCreaturePose(G, 0.f, 0.f, 0.f);
 		G.Target = MakeTarget(FVector(G.X, G.SeaY, Director->SeaLevelZ + G.Size * 175.f), 1050.f, 3.f);
+		UE_LOG(LogDC, Display, TEXT("City walker support side=%.0f y=%.0f sole=%.1f bankTop=%.0f"), Side,G.SeaY,G.FootHeight,DCFogRouteLayout::BankTop);
 		Threats.Add(G);
 	}
 	UE_LOG(LogDC, Display, TEXT("Encounter group %d: %d creatures on %s at %.1f"), Group + 1, Count, Side < 0 ? TEXT("port") : TEXT("starboard"), Director->RideTime);
@@ -196,12 +201,13 @@ void ADCEarlyEncounters::SpawnStatue(int32 Index)
 {
 	FThreat S;
 	S.bStatue = true; S.Side = Index % 2 == 0 ? 1.f : -1.f; S.Size = 3600.f;
-	S.X = 26000.f; S.SeaY = Treadmill->GetLaneOffset() + S.Side * 6800.f;
+	S.X = 26000.f; S.SeaY = S.Side * Treadmill->GetCityBankY();
 	S.InitialWait = 5.f;
 	AActor* Body = DCRuins::Available() ? DCRuins::SpawnColossus(GetWorld(), S.Size)
 		: DCHazards::SpawnSentinel(GetWorld(), S.Size, true, FLinearColor(.075f, .085f, .085f));
 	if (!Body) { return; }
 	S.Body = Body;
+	S.FootHeight = Body->GetComponentsBoundingBox(true).Min.Z;
 	for (int32 Eye = 0; Eye < 2; ++Eye)
 	{
 		// Use the actual statue mesh bounds, including its authored pivot and plinth.
@@ -353,7 +359,7 @@ void ADCEarlyEncounters::TickThreat(FThreat& T, float Dt)
 	if (T.bStatue || T.Age > 34.f || T.Stage == 4) { T.X -= Speed * Dt; }
 	else { T.X = FMath::FInterpConstantTo(T.X, T.HoldX, Dt, T.X > T.HoldX + 1800.f ? Speed : Speed * .25f); }
 	const float GroundSpeed = DCFogCreatureMotion::GroundSpeed(Speed, PreviousX, T.X, Dt);
-	const FVector Local(T.X, T.SeaY - Treadmill->GetLaneOffset(), Director->SeaLevelZ + Director->SeaRise(T.SeaY) - Director->SeaRise(Treadmill->GetLaneOffset()) - (T.bStatue ? 150.f : 260.f));
+	const FVector Local(T.X, T.SeaY - Treadmill->GetLaneOffset(), Director->SeaLevelZ + DCFogRouteLayout::BankTop - Director->SeaRise(Treadmill->GetLaneOffset()) - T.FootHeight);
 	const float Facing = T.bStatue ? (T.Side < 0.f ? -90.f : 90.f) : FVector(-Local.X, -Local.Y, 0).Rotation().Yaw;
 	Body->SetActorLocationAndRotation(Director->GetWorldRock().TransformPosition(Local), FRotator(0, Facing + (T.bStatue ? 0.f : -90.f), 0));
 	const bool bFogConcealed = Director->RideTime < 72.f || Local.X < Director->CloudTunnelFarX;

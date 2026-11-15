@@ -1,4 +1,5 @@
 #include "DCTreadmill.h"
+#include "DCFogRouteLayout.h"
 #include "DCBossFireball.h"
 #include "DCCityObstacleLayout.h"
 #include "DCObstacleWaterContact.h"
@@ -102,6 +103,16 @@ void ADCTreadmill::Register(AActor* Actor, const FVector& Base, float Radius, bo
 	FDCWorldObject& Obj = Objects.AddDefaulted_GetRef();
 	Obj.Actor = Actor;
 	Obj.Base = Base;
+	if (Actor->ActorHasTag(TEXT("DCRuinArchitecture")) && Radius > 1.f)
+	{
+		// A centre outside the route is not sufficient: 500m colonnades rotate
+		// across it, and temple platforms extend far beyond their 20m radius hint.
+		Actor->SetActorLocationAndRotation(FVector::ZeroVector, FRotator(0, Yaw, 0));
+		const FBox Bounds = Actor->GetComponentsBoundingBox(true);
+		const float Inner = DCFogRouteLayout::SceneryEdge(GetCityClearEdge());
+		Obj.Base.Y = DCFogRouteLayout::FitSide(Base.Y, Bounds.Min.Y, Bounds.Max.Y, Inner);
+		UE_LOG(LogDC, Display, TEXT("City clearance %s y=%.0f->%.0f inner=%.0f boundsY=%.0f..%.0f"), *Actor->GetName(), Base.Y, Obj.Base.Y, Inner, Bounds.Min.Y, Bounds.Max.Y);
+	}
 	Obj.Radius = Radius;
 	Obj.bHostile = bHostile;
 	Obj.Health = Health;
@@ -178,6 +189,7 @@ void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
 			const float Radius = FMath::FRandRange(900.f, 2200.f);
 			AActor* Rock = DCHazards::SpawnRock(World, Radius, FMath::FRandRange(3000.f, 9000.f), bHell, Stone);
 			if (bHell) { DCHazards::SetGlow(Rock, Ember); }
+			else if (Rock) { Rock->Tags.Add(TEXT("DCRuinArchitecture")); }
 			Register(Rock, Base, Radius, false, 1.f, FMath::FRandRange(0.f, 360.f), false);
 		}
 	}
@@ -410,7 +422,13 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 		// hung in the air over lower water: a great flat slab seen from the deck. Owner, 13 Nov.)
 		// Gameplay rocks and columns are seabed anchors, never wave followers.
 		// Only their contact wash samples the instantaneous water surface.
-		if (Director->TroughRise > 0.f && !Actor->ActorHasTag(TEXT("DCCityObstacle")))
+		if (Actor->ActorHasTag(TEXT("DCRuinArchitecture")) || Actor->ActorHasTag(TEXT("DCCityBank")))
+		{
+			// Fixed seabed/masonry datum. Only subtract the ship's frame height;
+			// lifting a wide plinth at its centre made its inboard edge float.
+			Local.Z -= Director->SeaRise(LaneOffset);
+		}
+		else if (Director->TroughRise > 0.f && !Actor->ActorHasTag(TEXT("DCCityObstacle")))
 		{
 			const float Mid = Local.Y + LaneOffset;
 			// (Tried setting a wide ruin at the height of the sea at its edge nearest the channel, to stop its
@@ -1223,6 +1241,14 @@ void ADCTreadmill::SpawnOutliers()
 	Register(DCRuins::SpawnColonnade(World, 5, 8000.f), FVector(72000.f, 12500.f, SeaZ - 200.f), 2000.f, false, 1.f, -20.f, false);
 }
 
+float ADCTreadmill::GetCityClearEdge() const
+{
+	const float HelmLimit = FMath::Max(LaneLimit, Director ? Director->TroughHalfWidth : 9000.f);
+	return DCFogRouteLayout::ClearEdge(HelmLimit,ShipHalfLength,ShipHalfWidth);
+}
+
+float ADCTreadmill::GetCityBankY() const { return DCFogRouteLayout::BankCentre(GetCityClearEdge()); }
+
 void ADCTreadmill::SpawnAtlantis()
 {
 	// The drowned city, laid out once along the two or three kilometres the ship covers in the fog.
@@ -1233,6 +1259,20 @@ void ADCTreadmill::SpawnAtlantis()
 	const float SeaZ = Director ? Director->SeaLevelZ : 0.f;
 	const FLinearColor Stone(0.085f, 0.1f, 0.11f);
 	const bool bRuins = DCRuins::Available();
+	if (bRuins)
+	{
+		UE_LOG(LogDC,Display,TEXT("City corridor clearEdge=%.0f bankCentre=%.0f bankWidth=%.0f hull=%.0fx%.0f helmLimit=%.0f"),GetCityClearEdge(),GetCityBankY(),DCFogRouteLayout::BankWidth,ShipHalfLength,ShipHalfWidth,FMath::Max(LaneLimit,Director->TroughHalfWidth));
+		// Continuous banks cover every encounter's travel, including the full
+		// approach and departure. Sections are fixed scenery, never enemy followers.
+		for (int32 Section=0; Section<10; ++Section)
+		{
+			for (float Side : {-1.f,1.f})
+			{
+				AActor* Bank = DCRuins::SpawnBank(World,40000.f,DCFogRouteLayout::BankWidth,DCFogRouteLayout::BankBottom,DCFogRouteLayout::BankTop);
+				Register(Bank,FVector(20000.f+Section*40000.f,Side*GetCityBankY(),SeaZ),2000.f,false,1.f,0.f,false);
+			}
+		}
+	}
 
 	struct FSentinel { float X, Y, Height; bool bTrident; };
 	const FSentinel Sentinels[] = {

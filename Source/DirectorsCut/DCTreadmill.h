@@ -70,6 +70,8 @@ public:
 	bool bSteerForced = false;
 	float GetSteer() const { return Steer; }
 	float GetLaneOffset() const { return LaneOffset; }
+	float GetCityClearEdge() const;
+	float GetCityBankY() const;
 	/** How fast the ship is crossing the sea sideways as a fraction of full helm (-1 port .. 1 starboard): she gathers way into a turn and carries it out of one. */
 	float GetTurn() const { return DCSteering::VisualTurn({LaneOffset,LaneVelocity,LaneAcceleration},CurrentDrift,LaneSpeed); }
 	float GetLateralVelocity() const { return LaneVelocity + CurrentDrift; }

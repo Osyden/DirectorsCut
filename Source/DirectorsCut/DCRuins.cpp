@@ -63,6 +63,7 @@ bool DCRuins::Available()
 AActor* DCRuins::SpawnColossus(UWorld* World, float Height)
 {
 	AActor* A = RuinActor(World);
+	A->Tags.Add(TEXT("DCRuinArchitecture"));
 	// A stack of masonry for a plinth, then the pedestal, then the figure: about 21 m at scale 1.
 	RuinPiece(A, TEXT("Stone_blocks/SM_Stone_blocks_04_block_01"), FVector(0.f, 0.f, -300.f), 0.f, FVector(3.2f, 3.f, 3.f));
 	RuinPiece(A, TEXT("Arch/SM_Pedestal_01"), FVector(0.f, 0.f, 200.f), 0.f, FVector(1.6f, 0.9f, 1.4f));
@@ -74,6 +75,7 @@ AActor* DCRuins::SpawnColossus(UWorld* World, float Height)
 AActor* DCRuins::SpawnColonnade(UWorld* World, int32 Segments, float Height)
 {
 	AActor* A = RuinActor(World);
+	A->Tags.Add(TEXT("DCRuinArchitecture"));
 	static const TCHAR* Kinds[] = { TEXT("Columns/SM_Colonnade_01"), TEXT("Columns/SM_Colonnade_02"), TEXT("Columns/SM_Colonnade_03"), TEXT("Columns/SM_Colonnade_05") };
 	const float Step = 1230.f;
 	const float Start = -Step * (Segments - 1) * 0.5f;
@@ -103,13 +105,13 @@ namespace
 	 * whole size, as these bases were first built, drew its face out a hundredfold: from the deck a
 	 * temple's base was a smooth streaked sheet (owner, 13 Nov: "deformed band"). One component, many instances.
 	 */
-	void RuinFloor(AActor* Actor, const FVector& Where, float W, float D, float High)
+	void RuinFloor(AActor* Actor, const FVector& Where, float W, float D, float High, float TileScale = 1.6f)
 	{
 		UStaticMesh* M = RuinMesh(TEXT("Stone_blocks/SM_Stone_blocks_04_block_01"));
 		if (!M) { return; }
 		const FBox Box = M->GetBoundingBox();
 		const FVector Size = Box.GetSize();
-		const float K = 1.6f;   // each block a little over life size before the structure's own scale
+		const float K = TileScale; // Bank blocks are coarser than temple paving, with bounded instance counts.
 		const int32 NX = FMath::Max(1, FMath::RoundToInt32(W / (Size.X * K))), NY = FMath::Max(1, FMath::RoundToInt32(D / (Size.Y * K)));
 		const FVector S(W / NX / Size.X, D / NY / Size.Y, High / Size.Z);
 		// What the hull feels is one unseen block of the whole size (as before); the many blocks are only looked at.
@@ -151,6 +153,7 @@ namespace
 AActor* DCRuins::SpawnTemple(UWorld* World, float Scale)
 {
 	AActor* A = RuinActor(World);
+	A->Tags.Add(TEXT("DCRuinArchitecture"));
 	const float Step = 1230.f;
 	// Stepped base of big blocks, wider than the building.
 	for (int32 s = 0; s < 3; ++s)
@@ -182,6 +185,7 @@ AActor* DCRuins::SpawnTemple(UWorld* World, float Scale)
 AActor* DCRuins::SpawnArch(UWorld* World, int32 Variant, float Scale)
 {
 	AActor* A = RuinActor(World);
+	A->Tags.Add(TEXT("DCRuinArchitecture"));
 	static const TCHAR* Kinds[] = { TEXT("Arch/SM_Arch_01"), TEXT("Arch/SM_Arch_02"), TEXT("Arch/SM_Arch_03"), TEXT("Arch/SM_Arch_04") };
 	RuinPiece(A, Kinds[FMath::Clamp(Variant, 1, 4) - 1], FVector(0.f, 0.f, -150.f));
 	A->SetActorScale3D(FVector(Scale));
@@ -248,6 +252,7 @@ AActor* DCRuins::SpawnComplex(UWorld* World, float Scale, int32 Seed)
 	// walled by colonnades, a monumental arch at the front and statues along the approach. About
 	// 110 m wide and 150 m deep at scale 1, facing along its own +X.
 	AActor* A = RuinActor(World);
+	A->Tags.Add(TEXT("DCRuinArchitecture"));
 	FRandomStream Rng(Seed);
 	for (int32 s = 0; s < 3; ++s)
 	{
@@ -304,5 +309,15 @@ AActor* DCRuins::SpawnComplex(UWorld* World, float Scale, int32 Seed)
 		RuinPiece(A, Debris[Rng.RandRange(0, 3)], FVector(FMath::Cos(Ang) * 8200.f, FMath::Sin(Ang) * 6300.f, -450.f), Rng.FRandRange(0.f, 360.f), FVector(Rng.FRandRange(1.f, 1.8f)), Rng.FRandRange(-10.f, 10.f));
 	}
 	A->SetActorScale3D(FVector(Scale));
+	return A;
+}
+
+AActor* DCRuins::SpawnBank(UWorld* World, float Length, float Width, float Bottom, float Top)
+{
+	AActor* A = RuinActor(World);
+	A->Tags.Add(TEXT("DCCityBank"));
+	// The collision proxy and visible instanced blocks share this exact rectangle.
+	// Deep foundations stay submerged even in troughs; the walking surface is fixed.
+	RuinFloor(A, FVector(0, 0, Bottom), Length, Width, Top-Bottom, 8.f);
 	return A;
 }
