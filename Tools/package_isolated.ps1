@@ -18,6 +18,7 @@ $running = Get-CimInstance Win32_Process | Where-Object {
     $_.Name -in @('UnrealEditor.exe','UnrealEditor-Cmd.exe') -and $_.CommandLine -and $_.CommandLine.Contains($project)
 }
 if ($running) { throw 'The selected runtime is busy. Finish its playtest/cook first.' }
+& (Join-Path $PSScriptRoot 'patch_drw_legacy_calls.ps1') -EngineRoot $EngineRoot
 function Get-SourceManifest {
     $files = @($project)
     foreach ($area in @('Source','Config')) {
