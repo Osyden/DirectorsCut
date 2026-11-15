@@ -10,6 +10,7 @@ Only wave coordinates change. Shore/depth/mask/stitch geometry stays ship-stage 
 from pathlib import Path
 import hashlib
 import json
+import re
 import shutil
 import sys
 
@@ -64,6 +65,7 @@ for rel,row in manifest['files'].items():
 collection=unreal.load_asset('/Game/DC/Materials/MPC_Sea')
 if not collection: raise RuntimeError('MPC_Sea missing')
 audit=[]
+reroute_declarations={}
 
 def inputs(fn,node):
     return dict(zip(mel.get_material_expression_input_names(node),mel.get_inputs_for_material_function_expression(fn,node)))
@@ -82,6 +84,37 @@ def trough_node(fn):
     node.set_editor_property('collection',collection);node.set_editor_property('parameter_name','Trough')
     return node
 
+def reroute_declaration(fn,node):
+    # Declaration is not editor-readable in UE 5.8 and has no reflected getter.
+    # Named usages also expose no ordinary input pin. Export the serialized
+    # reference through the public exporter API instead of assuming unshifted UVs.
+    key=node.get_path_name()
+    if key in reroute_declarations: return reroute_declarations[key]
+    destination=EVIDENCE/'reroutes'/(fn.get_name()+'_'+node.get_name()+'.t3d')
+    destination.parent.mkdir(parents=True,exist_ok=True)
+    task=unreal.AssetExportTask()
+    task.set_editor_property('object',node)
+    task.set_editor_property('exporter',unreal.ObjectExporterT3D())
+    task.set_editor_property('filename',str(destination))
+    task.set_editor_property('automated',True)
+    task.set_editor_property('prompt',False)
+    task.set_editor_property('replace_identical',True)
+    if not unreal.Exporter.run_asset_export_task(task):
+        raise RuntimeError('Cannot export named reroute: '+key)
+    raw=destination.read_bytes()
+    serialized=raw.decode('utf-16' if raw.startswith((b'\xff\xfe',b'\xfe\xff')) else 'utf-8-sig')
+    match=re.search(r'^\s*Declaration=(.+)$',serialized,re.MULTILINE)
+    if not match:
+        raise RuntimeError('Named reroute has no serialized Declaration: '+key)
+    reference=match.group(1).strip()
+    candidates=[n for n in mel.get_material_function_expressions(fn)
+        if isinstance(n,unreal.MaterialExpressionNamedRerouteDeclaration)
+        and re.search(r'(?<![\w])'+re.escape(n.get_name())+r'(?![\w])',reference)]
+    if len(candidates)!=1:
+        raise RuntimeError('Cannot uniquely resolve named reroute '+key+': '+reference)
+    reroute_declarations[key]=candidates[0]
+    return candidates[0]
+
 def uses_shifted_uv(fn,node,visited=None):
     if not node: return False
     visited=visited or set()
@@ -91,7 +124,7 @@ def uses_shifted_uv(fn,node,visited=None):
         called=node.get_editor_property('material_function')
         if called and called.get_name()=='MF_GetUV': return True
     if isinstance(node,unreal.MaterialExpressionNamedRerouteUsage):
-        declaration=node.get_editor_property('declaration')
+        declaration=reroute_declaration(fn,node)
         if declaration and uses_shifted_uv(fn,declaration,visited): return True
     return any(uses_shifted_uv(fn,parent,visited) for parent in inputs(fn,node).values())
 
