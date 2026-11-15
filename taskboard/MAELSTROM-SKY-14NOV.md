@@ -6,6 +6,14 @@ Opt-in flag `-DCMaelSunNeutral` changes only the finale's UDS `Sun Light Color` 
 
 Source inspection and `git diff --check` only; no build, editor or GPU launch was performed, per coordination. The sky source matched the integration branch before this small change. The integration owner will cherry-pick the diagnostic and run fixed matched captures. This is an A/B control, not a validated replacement lighting preset.
 
+### Remaining warmth: read-only runtime diagnostic
+
+The matched `CliffG2Falls` / `CliffG2Neutral` images remain broadly ochre after the neutral-property test. This does not identify whether UDS applies another sun colour/temperature multiplier, whether atmospheric attenuation is dominant, or whether a captured skylight or post-process source contributes. Do not compensate the proven grey-green cliff albedo. The explicit director grade has neutral channel gains at this stage's `Mist=0`, but that does not exclude other post-process sources.
+
+Add `-DCMaelLightingDiagnostics` alongside `-DCMaelSunNeutral` for the next coordinated capture. It logs three `MAEL_LIGHT` samples about two seconds apart per stage entry, after stage lighting updates: the active sun's actual linear RGB, enabled temperature/Kelvin and temperature RGB, energy before atmosphere, CPU ground-transmittance/energy estimates, registered visible skylights with source/cubemap/realtime state, and candidate post-process volumes/camera blends with colour override bits, LUT and custom blendables. It neither recaptures the skylight nor changes any rendering settings. The atmospheric estimate is at planet-top ground, not the exact camera/pixel; PP entries are source settings, not the final blended grade. Skylight metadata alone cannot prove the captured irradiance is stale.
+
+Interpretation: a warm live sun RGB despite a white UDS property points to UDS modulation; enabled temperature with a low blue multiplier identifies an additional direct-light tint; neutral pre-atmosphere energy with strongly blue-attenuating transmission points to atmosphere; neutral direct-light estimates require examining skylight/PP sources next. No additional colour correction is selected until these runtime values are known. Installed UE 5.8 headers/source were checked for the logging APIs; no build, editor or GPU run was performed for this diagnostic commit.
+
 This pass follows fa6b9c6 and preserves the selected bank anchors, wind, sun opening, sun direction and review camera. The clouds remain an animated, ray-marched three-dimensional density field. No photographic skybox or cellular erosion texture is used.
 
 ## Shape and lighting changes

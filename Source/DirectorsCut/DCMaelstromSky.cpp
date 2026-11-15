@@ -6,6 +6,13 @@
 #include "UObject/UnrealType.h"
 #include "Components/VolumetricCloudComponent.h"
 #include "Components/DirectionalLightComponent.h"
+#include "Components/SkyLightComponent.h"
+#include "Components/SkyAtmosphereComponent.h"
+#include "Camera/PlayerCameraManager.h"
+#include "GameFramework/PlayerController.h"
+#include "Engine/World.h"
+#include "Engine/TextureCube.h"
+#include "Interfaces/Interface_PostProcessVolume.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "HAL/IConsoleManager.h"
 #include "Materials/Material.h"
@@ -124,6 +131,8 @@ void ADCMaelstromAtmosphere::CaptureSky()
 		if (It->GetClass()->GetName() == TEXT("Ultra_Dynamic_Sky_C")) { StageSky = *It; break; }
 	}
 	if (!StageSky.IsValid()) { return; }
+	LightingDiagnosticSamples = 0;
+	NextLightingDiagnosticTime = 0.0;
 	// Kilometres: keep the underside safely above the 3.2 km arena. A thick
 	// layer and varied floor produce sculpted masses instead of a low flat lid.
 	SetSkyNumber(TEXT("Bottom Altitude"), 1.65);
@@ -264,6 +273,93 @@ void ADCMaelstromAtmosphere::UpdateSkyVolume()
 		{ SkyCloudMID->SetScalarParameterValue(TEXT("Clock"), Director->RideTime); }
 		if (UDirectionalLightComponent* Sun = FindSun())
 		{ SkyCloudMID->SetVectorParameterValue(TEXT("ToSun"), FLinearColor(-Sun->GetForwardVector())); }
+		if (SavedSun.Component.IsValid() && FParse::Param(FCommandLine::Get(), TEXT("DCMaelLightingDiagnostics"))
+			&& LightingDiagnosticSamples < 3 && GetWorld()->GetTimeSeconds() >= NextLightingDiagnosticTime)
+		{
+			++LightingDiagnosticSamples;
+			NextLightingDiagnosticTime = GetWorld()->GetTimeSeconds() + 2.0;
+			LogLightingDiagnostics();
+		}
+	}
+}
+
+void ADCMaelstromAtmosphere::LogLightingDiagnostics()
+{
+	// Read-only CPU diagnostics after stage lighting is applied. No recapture or
+	// renderer overrides; repeat after entry so UDS's subsequent updates are visible.
+	UDirectionalLightComponent* Sun = FindSun();
+	if (!Sun) { return; }
+	const FLinearColor Energy = Sun->GetColoredLightBrightness();
+	UE_LOG(LogDC, Log, TEXT("MAEL_LIGHT sample=%d sun=%s rgb=%s useTemperature=%d kelvin=%.0f temperatureRGB=%s energyBeforeAtmosphere=%s perPixelTransmittance=%d"),
+		LightingDiagnosticSamples, *Sun->GetPathName(), *Sun->GetLightColor().ToString(), Sun->bUseTemperature,
+		Sun->Temperature, *Sun->GetColorTemperature().ToString(), *Energy.ToString(), Sun->bPerPixelAtmosphereTransmittance);
+	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
+	{
+		TInlineComponentArray<USkyAtmosphereComponent*> Atmospheres(*It);
+		for (USkyAtmosphereComponent* Atmosphere : Atmospheres)
+		{
+			if (!Atmosphere->IsRegistered() || !Atmosphere->IsVisible() || Atmosphere->bHiddenInGame) { continue; }
+			// Engine estimate at planet-top ground, not the view's per-pixel result.
+			const FLinearColor Transmission = Atmosphere->GetAtmosphereTransmitanceOnGroundAtPlanetTop(Sun);
+			UE_LOG(LogDC, Log, TEXT("MAEL_LIGHT atmosphere=%s groundTransmissionEstimate=%s groundEnergyEstimate=%s"),
+				*Atmosphere->GetPathName(), *Transmission.ToString(), *(Energy * Transmission).ToString());
+		}
+		TInlineComponentArray<USkyLightComponent*> Fills(*It);
+		for (USkyLightComponent* Fill : Fills)
+		{
+			if (!Fill->IsRegistered() || !Fill->IsVisible() || Fill->bHiddenInGame || !Fill->bAffectsWorld) { continue; }
+			UE_LOG(LogDC, Log, TEXT("MAEL_LIGHT skylight=%s intensity=%.3f rgb=%s realtime=%d sourceType=%d cubemap=%s cloudAO=%d"),
+				*Fill->GetPathName(), Fill->Intensity, *Fill->GetLightColor().ToString(), Fill->bRealTimeCapture,
+				static_cast<int32>(Fill->SourceType.GetValue()), *GetPathNameSafe(Fill->Cubemap.Get()), Fill->bCloudAmbientOcclusion);
+		}
+	}
+	// Log candidate grading sources and override bits, not a claimed final blend.
+	auto LogGrade = [](const FString& Name, const FPostProcessSettings& P, float Weight)
+	{
+		UE_LOG(LogDC, Log, TEXT("MAEL_LIGHT gradeSource=%s weight=%.3f temperatureType=%d/%d whiteTemp=%d/%.0f whiteTint=%d/%.3f sceneTint=%d/%s LUT=%d/%s LUTIntensity=%.3f"),
+			*Name, Weight, P.bOverride_TemperatureType, static_cast<int32>(P.TemperatureType.GetValue()),
+			P.bOverride_WhiteTemp, P.WhiteTemp, P.bOverride_WhiteTint, P.WhiteTint,
+			P.bOverride_SceneColorTint, *P.SceneColorTint.ToString(), P.bOverride_ColorGradingLUT,
+			*GetPathNameSafe(P.ColorGradingLUT.Get()), P.ColorGradingIntensity);
+		UE_LOG(LogDC, Log, TEXT("MAEL_LIGHT gradeSource=%s gain=%d/%s midGain=%d/%s shadowGain=%d/%s highlightGain=%d/%s gamma=%d/%s offset=%d/%s"),
+			*Name, P.bOverride_ColorGain, *P.ColorGain.ToString(), P.bOverride_ColorGainMidtones, *P.ColorGainMidtones.ToString(),
+			P.bOverride_ColorGainShadows, *P.ColorGainShadows.ToString(), P.bOverride_ColorGainHighlights, *P.ColorGainHighlights.ToString(),
+			P.bOverride_ColorGamma, *P.ColorGamma.ToString(), P.bOverride_ColorOffset, *P.ColorOffset.ToString());
+		for (const FWeightedBlendable& Blend : P.WeightedBlendables.Array)
+		{
+			if (Blend.Weight > 0.f && Blend.Object)
+			{ UE_LOG(LogDC, Log, TEXT("MAEL_LIGHT gradeSource=%s blendable=%s weight=%.3f"), *Name, *Blend.Object->GetPathName(), Blend.Weight); }
+		}
+	};
+	APlayerController* Player = GetWorld()->GetFirstPlayerController();
+	APlayerCameraManager* Camera = Player ? Player->PlayerCameraManager.Get() : nullptr;
+	if (Camera)
+	{
+		const FMinimalViewInfo& View = Camera->GetCameraCacheView();
+		LogGrade(TEXT("CameraCache"), View.PostProcessSettings, View.PostProcessBlendWeight);
+		const TArray<FPostProcessSettings>* Blends = nullptr;
+		const TArray<float>* Weights = nullptr;
+		Camera->GetCachedPostProcessBlends(Blends, Weights);
+		if (Blends && Weights)
+		{
+			for (int32 I = 0; I < FMath::Min(Blends->Num(), Weights->Num()); ++I)
+			{ LogGrade(FString::Printf(TEXT("CameraBlend%d"), I), (*Blends)[I], (*Weights)[I]); }
+		}
+	}
+	int32 Index = 0;
+	for (IInterface_PostProcessVolume& Volume : GetWorld()->GetPostProcessVolumeIterator())
+	{
+		const FPostProcessVolumeProperties Properties = Volume.GetProperties();
+		if (!Properties.bIsEnabled || !Properties.Settings || Properties.BlendWeight <= 0.f) { continue; }
+		float Distance = -1.f;
+		if (Camera && !Properties.bIsUnbound) { Volume.EncompassesPoint(Camera->GetCameraLocation(), 0.f, &Distance); }
+		FString Name = FString::Printf(TEXT("Volume%d"), Index++);
+#if DEBUG_POST_PROCESS_VOLUME_ENABLE
+		Name = Volume.GetDebugName();
+#endif
+		UE_LOG(LogDC, Log, TEXT("MAEL_LIGHT volume=%s priority=%.2f unbound=%d cameraDistance=%.1f blendRadius=%.1f"),
+			*Name, Properties.Priority, Properties.bIsUnbound, Distance, Properties.BlendRadius);
+		LogGrade(Name, *Properties.Settings, Properties.BlendWeight);
 	}
 }
 
