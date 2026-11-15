@@ -69,3 +69,20 @@ Independent final check:26,426 vertices,52,872 triangles, **one connected closed
 The numerical repair is narrow and verified against the preserved `LargeMass` precursor. It had one triangle of area9.949349e-11 m². The cleanup qualifies only a triangle below1e-10 m² whose shortest edge is at most0.001 m; it does not lower the quality gate. Exactly one0.000392924383 m edge was collapsed: its two endpoints were replaced by their midpoint, one vertex and two triangles removed, with an endpoint movement of approximately0.1965 mm. No other vertices changed at1 micrometre comparison precision. The cleaned minimum triangle area is6.486266e-8 m². This repair is a numerical sliver collapse, not geological smoothing or general decimation.
 
 Actual `LargeMassReview/wall_fractured.png` and `oblique_fractured.png` show the pre-cleanup geometry; the single sub-millimetre repair does not justify claiming a separate visual improvement. These images have meaningfully larger quiet faces and fewer uniform rubble pieces than CurvedSkin. They are useful structural progress, but the rectangular transition into the untouched smooth shell, pristine planes and some deep narrow cuts still need art refinement. This is a saved offline candidate, not accepted final cliff art or an Unreal integration.
+
+## Fin diagnosis before the transition revision
+
+The LargeMassClean construction unconditionally added four points at12 m vertical depth to every retained hull. Independent measurements of the actual source memberships show134 of155 retained clusters already have at least four original members more than0.5 m inside the graded7 m core;145 have at least one. This is strong evidence that most hulls do not need a new long rear extension, though a robust contact criterion should also require spatial spread.
+
+Two distinct causes coexist.27 retained original clouds have a smallest PCA span below1 m;26 have a smallest/largest span ratio below0.1. Separately,22 retained hulls acquire an anchor extension over6 m, up to11.1766 m.325 of620 fixed-depth anchor endpoints move upward, since the12 m target is shallower than their original positions. These counts diagnose the construction; they do not claim every thin source cluster is visible in the final mesh.
+
+Examples in source crop coordinates:
+
+| Cluster | Centre XYZ metres | Principal spans metres | Core contacts deeper than0.5 m | Maximum downward anchor extension |
+| --- | --- | --- | --- | --- |
+|84|(-2.91,2.96,0.41)|10.50 ×3.51 ×0.314|3|5.36 m|
+|93|(2.05,5.38,4.83)|7.90 ×4.21 ×0.414|1|7.05 m|
+|100|(5.10,1.25,-2.25)|7.24 ×4.11 ×0.416|0|6.92 m|
+|167|(25.75,-11.35,-13.72)|9.10 ×1.21 ×0.886|1|11.18 m|
+
+Thin cluster35 is a useful counterexample: every member is already buried inside the core. A blanket thinness filter would remove invisible valid geometry unnecessarily. The bounded correction should retain original naturally connected hulls, detach unsupported exposed thin fragments, and permit only short downward joins to the actual local core. It should never pull anchors upward or grow long artificial wedge faces merely to force connectivity. Measurements are retained in ignored `Saved/WeatheredAudit/large_mass_fins.json`; this diagnosis is not itself visual acceptance of the upcoming revision.
