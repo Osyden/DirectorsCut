@@ -1,8 +1,8 @@
 """Offline authored radial compression of a real eroded parent, not erosion.
 
 The measured shoreline is joined to the selected parent through a declared
-six-metre apron. Main-face vertices preserve source U/Z and sample the original
-ABD/ADC height surface; V alone is compressed by a strictly increasing map.
+six-metre apron. Optional physical source-height smoothing is explicitly authored,
+not erosion. After that filter, U/Z remain fixed during monotone V compression.
 No runtime terrain, foundation, material or water assets are changed.
 """
 import argparse
@@ -20,6 +20,38 @@ def sha(path):
 def load(path):
     with np.load(path, allow_pickle=False) as z:
         return {k: z[k].copy() for k in z.files}
+
+
+def physical_height_lowpass(height, valid, fixed, cell_m, sigma_m):
+    """Normalized Gaussian in source metres, support ceil(3 sigma / cell).
+
+    Invalid padding contributes neither height nor weight. Array edges repeat
+    their nearest sample; fixed historical baselevels are restored afterwards.
+    This is authored morphology smoothing, not conservative sediment transport.
+    """
+    if sigma_m == 0:
+        return height.copy(), dict(sigma_m=0.,support_radius_m=0.,enabled=False)
+    radius=int(np.ceil(3.*sigma_m/cell_m))
+    offsets=np.arange(-radius,radius+1)*cell_m
+    kernel=np.exp(-.5*(offsets/sigma_m)**2); kernel/=kernel.sum()
+    def separable(field):
+        result=field.copy()
+        for axis in (0,1):
+            pads=[(0,0),(0,0)];pads[axis]=(radius,radius)
+            padded=np.pad(result,pads,mode='edge')
+            result=np.apply_along_axis(lambda x:np.convolve(x,kernel,mode='valid'),axis,padded)
+        return result
+    weight=separable(valid.astype(float))
+    filtered=separable(np.where(valid,height,0.))/np.maximum(weight,1.e-30)
+    filtered=np.where(valid & ~fixed,filtered,height)
+    if not np.isfinite(filtered).all():raise ValueError('Nonfinite source filter')
+    delta=filtered[valid]-height[valid]
+    return filtered,dict(enabled=True,sigma_m=float(sigma_m),support_radius_m=float(radius*cell_m),
+        kernel_samples=len(kernel),kernel_weights=kernel.tolist(),normalization='valid-domain normalized separable convolution',
+        boundary='nearest sample extension; historical fixed baselevels restored',
+        authored_height_change_range_m=[float(delta.min()),float(delta.max())],
+        authored_absolute_height_change_p50_p90_p99_m=np.percentile(abs(delta),[50,90,99]).tolist(),
+        fixed_height_bitwise_preserved=bool(np.array_equal(filtered[fixed],height[fixed])))
 
 
 def grid_triangles(rows, cols):
@@ -68,11 +100,14 @@ def main():
     parser.add_argument('--crest-compression',type=float,default=.35)
     parser.add_argument('--join-width',type=float,default=6.)
     parser.add_argument('--envelope-slope',type=float,default=2.)
+    parser.add_argument('--source-smoothing-sigma',type=float,default=0.,help='Authored Gaussian height smoothing in source metres; support 3 sigma. Zero retains original source.')
     args=parser.parse_args()
     if args.output.exists() or 'saved' not in [v.lower() for v in args.output.resolve().parts]:
         parser.error('Use a new ignored Saved directory')
     if min(args.toe_compression,args.crest_compression,args.join_width,args.envelope_slope)<=0:
         parser.error('Compression and join parameters must be positive')
+    if not np.isfinite(args.source_smoothing_sigma) or args.source_smoothing_sigma<0:
+        parser.error('Source smoothing sigma must be finite and nonnegative')
     parent=load(args.parent); shore=load(args.shore_reference)
     origin=parent['frame_origin_world_m'].astype(float)
     basis=np.stack([parent['basis_u_world'],parent['basis_v_world'],parent['basis_z_world']],axis=1)
@@ -84,7 +119,10 @@ def main():
     cell=float(parent['cell_size_m']); cols=np.rint(uu/cell).astype(int)
     if not np.allclose(uu/cell,cols,atol=1.e-12) or not np.allclose(np.diff(uu),cell):
         raise ValueError('Source-aligned, equally spaced shore controls required')
-    height=parent['height_m'].astype(float); source_top=(height.shape[0]-1)*cell
+    original_height=parent['height_m'].astype(float)
+    height,filter_info=physical_height_lowpass(original_height,parent['heightfield_valid_mask']>0,
+        parent.get('baselevel_mask',np.zeros_like(original_height))>0,cell,args.source_smoothing_sigma)
+    source_top=(height.shape[0]-1)*cell
     gap=height[:,cols]+args.z_offset-sz[None,:]
     roots=[]; counts=[]
     for i in range(len(uu)):
@@ -107,13 +145,13 @@ def main():
     V=sv[None,:]+args.join_width+radial
     toe_gap=Z[0]-sz
     if toe_gap.min()<-1.e-8: raise ValueError('Selected parent toe is below measured shore')
-    # Exact original source U/Z is retained throughout the main face. The regular
+    # U/Z of the explicitly filtered source is retained during compression. The regular
     # parameter-grid retessellation approximates original interior triangle edges;
     # source barycentrics for EVERY main-face vertex are provided, not hidden.
     main=np.stack((U,V,Z),axis=-1)
     baseline_main=np.stack((U,source_v-600.,Z),axis=-1)
     # Lower overlap and waterline copied from the already verified finite-water
-    # reference. The 0..join_width strip is the only newly authored height field.
+    # reference. The 0..join_width strip is a separate authored contact join.
     fractions=np.array([0.,1./3,2./3])[:,None]
     join_v=sv[None,:]+args.join_width*fractions
     join_z=sz[None,:]+toe_gap[None,:]*fractions
@@ -136,33 +174,38 @@ def main():
                   source_main_radial_span_m=[float((source_top-start).min()),float((source_top-start).max())],
                   authored_main_radial_span_m=[float(radial[-1].min()),float(radial[-1].max())],
                   shoreline_control_error_m=0.,baseline=baseline_checks)
+    original_sample=np.sum(original_height.ravel()[indices]*weights,axis=-1)+args.z_offset
+    checks['main_face_height_change_from_original_range_m']=[float((Z-original_sample).min()),float((Z-original_sample).max())]
+    checks['source_filter']=filter_info
     refmeta=json.loads(str(shore['metadata_json']))
     metadata=dict(schema='directorscut.compressed_escarpment.v1',source_kind='authored_radially_compressed_historical_parent',
         parent_path=str(args.parent.resolve()),parent_sha256=sha(args.parent),
         shore_reference_path=str(args.shore_reference.resolve()),shore_reference_sha256=sha(args.shore_reference),
         generator_sha256=sha(__file__),units='absolute arena metres',physical_tangential_width_m=float(uu[-1]-uu[0]),
-        mapping='Vnew=shoreV+joinWidth+(1100-C)*(a*s+(b-a)*s^3/3), s=(Vsource-C)/(1100-C); U/Z unchanged in main face',
+        mapping='Vnew=shoreV+joinWidth+(sourceTop-C)*(a*s+(b-a)*s^3/3), s=(Vsource-C)/(sourceTop-C); U/Z fixed AFTER explicitly authored source-height filter',
         contour='Lipschitz majorant of last per-column upward crossings; explicit authored join, not a connected natural contour',
         parameters=dict(z_offset_m=args.z_offset,toe_compression=args.toe_compression,crest_compression=args.crest_compression,
-                        join_width_m=args.join_width,envelope_source_slope=args.envelope_slope),
-        source_reconstruction='Original ABD/ADC barycentrics at main-face vertices. Parameter-grid retessellation; interior triangle edges are approximated.',
+                        join_width_m=args.join_width,envelope_source_slope=args.envelope_slope,source_smoothing_sigma_m=args.source_smoothing_sigma),
+        source_height_filter=filter_info,source_height_preserved=args.source_smoothing_sigma==0.,
+        source_reconstruction='Original-grid ABD/ADC barycentrics applied to saved authored_parent_height_m after declared filter. Parameter-grid retessellation; interior triangle edges are approximated.',
         source_contour_branches=True,shore_join_authored=True,radial_deformation_authored=True,
         new_erosion_simulated=False,vertical_exaggeration=False,tangential_scaling=False,
         water_mesh_path=refmeta['water_mesh_path'],water_mesh_sha256=refmeta['water_mesh_sha256'],
         water_query_path=refmeta['water_query_path'],water_query_sha256=refmeta['water_query_sha256'],
         metrics=checks,temple_support_preserved=False,old_outer_seams_preserved=False,
         entire_route_verified=False,runtime_integrated=False,visual_accepted=False,
-        limitations='Authored radial compression changes historical drainage slopes and distances. 6m shore join replaces unavailable continuous source contour. No overhang or exact original-triangle interior preservation claim. Static sampled water reference; no animated-water collision proof.')
+        limitations='Authored source-height smoothing and radial compression alter historical geology; not physical erosion. 6m shore join replaces unavailable continuous source contour. No overhang or exact original-triangle interior preservation claim. Static sampled water reference; no animated-water collision proof.')
     args.output.mkdir(parents=True)
     common=dict(frame_origin_world_m=origin,basis_u_world=basis[:,0],basis_v_world=basis[:,1],basis_z_world=basis[:,2])
     contact={k:shore[k] for k in ('contact_uv_m','contact_water_height_m','lower_overlap_uv_m','lower_overlap_ground_height_m','lower_water_height_m','lower_water_triangle_index','lower_water_barycentric') if k in shore}
     np.savez_compressed(args.output/'candidate.npz',vertices_m=origin+flat@basis.T,triangles=triangles,face_kind=kinds,
         main_vertex_start=np.int64(4*len(uu)),main_source_grid_indices=indices.reshape(-1,3),
         main_source_barycentric=weights.reshape(-1,3),main_source_uv_m=np.stack((U,source_v),axis=-1).reshape(-1,2),
+        authored_parent_height_m=height,main_original_source_height_m=original_sample.reshape(-1),
         source_crossing_v_m=roots,authored_source_envelope_v_m=start,metadata_json=np.asarray(json.dumps(metadata)),**common,**contact)
     np.savez_compressed(args.output/'baseline.npz',vertices_m=origin+baseline_chart@basis.T,triangles=baseline_triangles,
         metadata_json=np.asarray(json.dumps(dict(metadata,source_kind='uncompressed_historical_parent_selection',
-        comparison_note='Same selected main-face source vertices, rigid V-600/Z-55 only; no authored shore apron. Cameras may frame compressed target.'))),**common)
+        comparison_note='Same selected source vertices after declared height filtering, before V compression; rigid V-600/Z-55 placement, no shore apron. Cameras may frame compressed target.'))),**common)
     (args.output/'manifest.json').write_text(json.dumps(metadata,indent=2),encoding='utf-8')
     shutil.copyfile(__file__,args.output/Path(__file__).name)
     print(json.dumps(checks,indent=2),flush=True)
