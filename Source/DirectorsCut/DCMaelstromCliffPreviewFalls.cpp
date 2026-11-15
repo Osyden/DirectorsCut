@@ -40,12 +40,12 @@ bool FallPreviewHash(const FString& Hash)
 
 void ADCMaelstrom::UpdateCliffPreviewFalls()
 {
-    if(!FParse::Param(FCommandLine::Get(),TEXT("DCCliffPreviewFall"))||!CliffPreviewMesh||!bActive||Elapsed<0.f)
+    if((!bCompleteCliffArena&&!FParse::Param(FCommandLine::Get(),TEXT("DCCliffPreviewFall")))||!CliffPreviewMesh||!bActive||Elapsed<0.f)
     { ClearCliffPreviewFalls(); return; }
     if(!bCliffPreviewFallsTried)
     {
         bCliffPreviewFallsTried=true;
-        const FString Saved=FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir());
+        const FString Saved=FPaths::ConvertRelativePathToFull(CliffArenaDataDirectory.IsEmpty()?FPaths::ProjectSavedDir():CliffArenaDataDirectory);
         TSharedPtr<FJsonObject> Data,Active,Sidecar;
         FString Schema,ExpectedFBX,ExpectedSource,ActiveFBX,SidecarPath,ActualSource;
         if(!ReadFallPreview(Saved/TEXT("CliffPreviewWaterfall.json"),Data)
@@ -54,8 +54,11 @@ void ADCMaelstrom::UpdateCliffPreviewFalls()
             ||!Data->TryGetStringField(TEXT("cliff_fbx_sha256"),ExpectedFBX)||!FallPreviewHash(ExpectedFBX)
             ||!Data->TryGetStringField(TEXT("source_candidate_sha256"),ExpectedSource)||!FallPreviewHash(ExpectedSource)
             ||!Active->TryGetStringField(TEXT("source_sha256"),ActiveFBX)||ExpectedFBX!=ActiveFBX
-            ||!Active->TryGetStringField(TEXT("export_sidecar"),SidecarPath)||!ReadFallPreview(SidecarPath,Sidecar)
-            ||!Sidecar->TryGetStringField(TEXT("input_sha256"),ActualSource)||ActualSource!=ExpectedSource)
+            ||!(bCompleteCliffArena
+                ? Active->TryGetStringField(TEXT("source_candidate_sha256"),ActualSource)
+                : (Active->TryGetStringField(TEXT("export_sidecar"),SidecarPath)&&ReadFallPreview(SidecarPath,Sidecar)
+                    &&Sidecar->TryGetStringField(TEXT("input_sha256"),ActualSource)))
+            ||ActualSource!=ExpectedSource)
         {
             UE_LOG(LogTemp,Warning,TEXT("DC_CLIFF_PREVIEW_FALL rejected missing/stale active FBX or source candidate contract")); return;
         }

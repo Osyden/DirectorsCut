@@ -26,7 +26,8 @@ source = Path(os.environ['DC_CLIFF_FALL_DIR']).resolve()
 saved = Path(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_saved_dir()))
 attachment = read(source/'attachment.json')
 profile = read(source/'waterfall_profile.json')
-cache = read(source/'Volumes'/'manifest.json')
+mesh_spray = attachment.get('volume_mode') == 'fitted_mesh_spray'
+cache = None if mesh_spray else read(source/'Volumes'/'manifest.json')
 active = read(saved/'CliffLandformPreviewImport.json')
 sidecar = read(active['export_sidecar'])
 if attachment['schema'] != 'directorscut.compressed_waterfall_attachment.v1':
@@ -38,9 +39,9 @@ if sha(attachment['source_path']) != candidate_hash or sidecar.get('input_sha256
     raise RuntimeError('Fall is not fitted to the active original cliff candidate')
 if profile['source_mesh_sha256'] != candidate_hash or profile['profile_sha1'] != attachment['profile_sha1']:
     raise RuntimeError('Profile/attachment mismatch')
-if cache.get('fitted_profile', {}).get('profile_sha1') != profile['profile_sha1']:
+if not mesh_spray and cache.get('fitted_profile', {}).get('profile_sha1') != profile['profile_sha1']:
     raise RuntimeError('VDB cache does not belong to this fitted profile')
-if cache['frame_count'] != 48 or cache['fps'] != 12. or cache['duration_seconds'] != 4.:
+if not mesh_spray and (cache['frame_count'] != 48 or cache['fps'] != 12. or cache['duration_seconds'] != 4.):
     raise RuntimeError('Expected original48-frame12fps four-second loop')
 for axis in ('frame_origin_arena_m','basis_u_arena','basis_v_arena','basis_z_arena'):
     values=attachment[axis]
@@ -49,7 +50,7 @@ for axis in ('frame_origin_arena_m','basis_u_arena','basis_v_arena','basis_z_are
 
 # Reuse the tested native SVT importer and physical extinction conversion.
 materials_only=os.environ.get('DC_CLIFF_FALL_MATERIALS_ONLY','0')=='1'
-if not materials_only:
+if not materials_only and not mesh_spray:
     old = {k:os.environ.get(k) for k in ('DC_WATERFALL_DIR','DC_WATERFALL_MATERIALS_ONLY')}
     try:
         os.environ['DC_WATERFALL_DIR']=str(source/'Volumes')
@@ -59,8 +60,8 @@ if not materials_only:
         for key,value in old.items():
             if value is None: os.environ.pop(key,None)
             else: os.environ[key]=value
-volume_import = read(saved/'ProceduralWaterfallImport.json')
-if volume_import['fitted_profile']['profile_sha1'] != profile['profile_sha1']:
+volume_import = dict(volumes=[]) if mesh_spray else read(saved/'ProceduralWaterfallImport.json')
+if not mesh_spray and volume_import['fitted_profile']['profile_sha1'] != profile['profile_sha1']:
     raise RuntimeError('Imported volume report has stale profile')
 
 ROOT='/Game/DC/Maelstrom/GeneratedCliffPreview/Falls'
@@ -277,6 +278,8 @@ report=dict(schema='directorscut.cliff_preview_waterfall.v1',cliff_fbx_sha256=ac
     aerated_veil=dict(enabled='AeratedVeil' in seen,vertex_contract='A=optical depth; G=fan width metres/64; B=breakup progression; R unused',
         opacity='1-exp(-tau*resolved_branching_ligaments); no diffuse alpha floor; 2.5m scene-depth contact fade',advection_speed_m_s=float(attachment.get('aerated_veil',{}).get('advection_speed_m_s',38.)),
         advection_speed_source='attachment' if 'advection_speed_m_s' in attachment.get('aerated_veil',{}) else 'authored appearance default'),
+    volume_mode=attachment.get('volume_mode','native_svt'),outlets=attachment.get('outlets',[]),
+    water_source=attachment.get('water_source',{}),
     runtime_integrated=False,visual_accepted=False)
 (saved/'CliffPreviewWaterfall.json').write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')
 unreal.log_warning('DC_CLIFF_PREVIEW_FALL_IMPORT '+json.dumps(report))
