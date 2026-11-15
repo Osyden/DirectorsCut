@@ -60,6 +60,7 @@ $required = @(
     'DC/Maps/L_Ride.umap',
     'DC/Music/TheFog.uasset',
     'DC/Music/TheCaldera.uasset',
+    'DC/Music/TheAtlanteanAdventure.uasset',
     'DC/UI/T_AtlanteanOdysseyLogo.uasset',
     'DC/UI/T_AtlanteanOdysseyLogoV2.uasset',
     'DC/UI/T_AtlanteanMenuPanel.uasset',

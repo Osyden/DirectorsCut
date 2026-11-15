@@ -74,9 +74,10 @@ ADCAudio::ADCAudio()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+	MenuMusic = CreateDefaultSubobject<UAudioComponent>(TEXT("MenuMusic"));
 	FogMusic = CreateDefaultSubobject<UAudioComponent>(TEXT("FogMusic"));
 	CalderaMusic = CreateDefaultSubobject<UAudioComponent>(TEXT("CalderaMusic"));
-	for (UAudioComponent* C : {FogMusic.Get(), CalderaMusic.Get()})
+	for (UAudioComponent* C : {MenuMusic.Get(), FogMusic.Get(), CalderaMusic.Get()})
 	{
 		C->SetupAttachment(RootComponent);
 		C->bAutoActivate = false;
@@ -114,6 +115,7 @@ void ADCAudio::BeginPlay()
 {
 	Super::BeginPlay();
 	Director = ADCRideDirector::Get(this);
+	MenuMusic->SetSound(LoadObject<USoundBase>(nullptr, TEXT("/Game/DC/Music/TheAtlanteanAdventure.TheAtlanteanAdventure")));
 	FogMusic->SetSound(LoadObject<USoundBase>(nullptr, TEXT("/Game/DC/Music/TheFog.TheFog")));
 	CalderaMusic->SetSound(LoadObject<USoundBase>(nullptr, TEXT("/Game/DC/Music/TheCaldera.TheCaldera")));
 	bMusicReview = FParse::Param(FCommandLine::Get(), TEXT("DCMusicReview"));
@@ -340,6 +342,48 @@ void ADCAudio::OnLightning()
 	PendingThunder.Add(FPlatformTime::Seconds() + FMath::FRandRange(0.15f, 2.2f));
 }
 
+void ADCAudio::FadeMenuMusicOut()
+{
+	if (!bMenuMusicStarted || bMenuMusicFading) { return; }
+	bMenuMusicFading=true;
+	MenuMusicFadeAt=FPlatformTime::Seconds();
+	MenuMusic->FadeOut(.30f,0.f);
+	UE_LOG(LogDC,Log,TEXT("MENU_MUSIC_FADE seconds=0.30 playing=%d ride=%.2f"),MenuMusic->IsPlaying(),Director?Director->RideTime:0.f);
+}
+
+void ADCAudio::TickMenuMusic(bool bMenu)
+{
+	if (bMenu)
+	{
+		if (!bMenuMusicStarted || bMenuMusicFading)
+		{
+			MenuMusic->Stop(); // A re-entry cancels an old fade before restarting.
+			bMenuMusicStarted=true; bMenuMusicFading=false;
+			MenuMusic->SetVolumeMultiplier(FMath::Max(0.f,MenuMusicVolume*MasterVolume));
+			if (MenuMusic->Sound)
+			{
+				MenuMusic->Play();
+				UE_LOG(LogDC,Log,TEXT("MENU_MUSIC_START track=TheAtlanteanAdventure gain=%.4f playing=%d"),MenuMusic->VolumeMultiplier,MenuMusic->IsPlaying());
+			}
+			else { UE_LOG(LogDC,Error,TEXT("MENU_MUSIC_UNAVAILABLE TheAtlanteanAdventure")); }
+		}
+		return;
+	}
+	FadeMenuMusicOut(); // Also covers non-button transitions out of the menu.
+	if (bMenuMusicFading && FPlatformTime::Seconds()-MenuMusicFadeAt>=.30)
+	{
+		MenuMusic->Stop(); // Explicit upper bound, independent of voyage time scale.
+		bMenuMusicStarted=false; bMenuMusicFading=false;
+		UE_LOG(LogDC,Log,TEXT("MENU_MUSIC_STOP fadeElapsed=%.3f playing=%d"),FPlatformTime::Seconds()-MenuMusicFadeAt,MenuMusic->IsPlaying());
+	}
+}
+
+void ADCAudio::EndPlay(const EEndPlayReason::Type Reason)
+{
+	MenuMusic->Stop();
+	Super::EndPlay(Reason);
+}
+
 void ADCAudio::TickMusic(float DeltaSeconds)
 {
 	// BeginPlay order is not guaranteed: the director removes the optional hell
@@ -356,6 +400,7 @@ void ADCAudio::TickMusic(float DeltaSeconds)
 	}
 	const ADCGameMode* Game = GetWorld()->GetAuthGameMode<ADCGameMode>();
 	const bool bMenu = Game && Game->IsAwaitingStart();
+	TickMenuMusic(bMenu);
 	const float Time = Director->RideTime;
 	const bool bSeek = LastMusicRideTime >= 0.f &&
 		(Time < LastMusicRideTime - .1f || Time - LastMusicRideTime > DeltaSeconds * Director->TimeScale + 1.f);
@@ -403,8 +448,8 @@ void ADCAudio::TickMusic(float DeltaSeconds)
 	if (bMusicReview && GetWorld()->GetTimeSeconds() >= NextMusicReviewTime)
 	{
 		NextMusicReviewTime = GetWorld()->GetTimeSeconds() + 1.f;
-		UE_LOG(LogDC, Log, TEXT("MUSIC_MIX ride=%.2f menu=%d speechDuck=%.3f fogPlaying=%d fogGain=%.4f calderaPlaying=%d calderaGain=%.4f"),
-			Time, bMenu, SpeechDuck, FogMusic->IsPlaying(), FogMusic->VolumeMultiplier, CalderaMusic->IsPlaying(), CalderaMusic->VolumeMultiplier);
+		UE_LOG(LogDC, Log, TEXT("MUSIC_MIX ride=%.2f menu=%d speechDuck=%.3f fogPlaying=%d fogGain=%.4f calderaPlaying=%d calderaGain=%.4f menuPlaying=%d menuFading=%d"),
+			Time, bMenu, SpeechDuck, FogMusic->IsPlaying(), FogMusic->VolumeMultiplier, CalderaMusic->IsPlaying(), CalderaMusic->VolumeMultiplier,MenuMusic->IsPlaying(),bMenuMusicFading);
 	}
 }
 

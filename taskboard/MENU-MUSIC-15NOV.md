@@ -1,0 +1,11 @@
+# Main-menu adventure music - 15 Nov
+
+Owner: voice_audio, `codex/menu-adventure-music`, based on main `29ccbf3`. Root owns the matching immediate StartVoyage call in DCMenu.cpp; this commit supplies ADCAudio::FadeMenuMusicOut(). No engine/editor/import/GPU jobs were run here.
+
+The supplied ../Music/The Atlantean Adventure.mp3 is decoded unchanged to stereo48kHz16-bit WAV. Duration224.48s; source SHA256 df0609e8f6735b2dd599d90940a603a32c40fd07739518b442c20b130b78130f. Prepared file: E:/Projects/DirectorsCut/Menu-Adventure-Music/Saved/MusicImport/TheAtlanteanAdventure.wav (43,100,382bytes). Decoder: E:/Projects/DirectorsCut/DirectorsCut/Saved/MusicTools/imageio_ffmpeg/binaries/ffmpeg-win-x86_64-v9.0.2.exe.
+
+The imported /Game/DC/Music/TheAtlanteanAdventure loops as a UI/nonspatial music sound. Default menu gain0.26 (0.4 times master0.65), slightly above voyage0.208. Start Game calls the immediate public fade API; Tick also detects non-button menu exits. Audio FadeOut begins immediately and lasts0.30s, with a real-time explicit Stop bound on the next tick. Re-entry stops any old fade and restarts from zero; actor teardown stops playback. Fog starts on the existing1.5s entrance ramp, caldera starts224, descent0.4368 and speech duck0.052 remain unchanged.
+
+Selective preparation: `Tools/prepare_music.py --ffmpeg <absolute decoder path> --asset TheAtlanteanAdventure`. It preserves other manifest entries. Selective import: set process environment DC_MUSIC_ASSETS=TheAtlanteanAdventure, then run Tools/import_music.py via the existing Unreal Python commandlet. Only the selected asset is imported; preflight now requires it. Root must copy the prepared WAV into main Saved/MusicImport before import, then clear the environment selection afterward.
+
+Checks: WAV format/duration and source hash verified; both Python scripts AST-parse; source guards confirm0.30s fade,224s transition and2.1 descent multiplier; git diff --check passes. Native menu/start/restart review remains with root after import. Expected logs: MENU_MUSIC_START gain0.2600 playing1 while awaiting start; MENU_MUSIC_FADE seconds0.30 alongside MAIN_MENU start; MENU_MUSIC_STOP playing0 about0.30s later. MUSIC_MIX adds menuPlaying/menuFading while keeping existing fields. Loop seam has not been auditioned; this uses the supplied complete master unchanged.

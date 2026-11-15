@@ -23,12 +23,16 @@ public:
 	ADCAudio();
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
+	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
 
 	UPROPERTY(EditAnywhere) float MasterVolume = 0.65f;
 	UPROPERTY(EditAnywhere) float AmbienceVolume = 0.55f;
 	UPROPERTY(EditAnywhere) float BellVolume = 1.f;
 	/** Quiet stereo score; also follows MasterVolume and crew speech ducking. */
 	UPROPERTY(EditAnywhere) float MusicVolume = .32f;
+	UPROPERTY(EditAnywhere) float MenuMusicVolume = .4f;
+	/** Called directly by Start Game; audio-thread fade starts before voyage setup. */
+	void FadeMenuMusicOut();
 	float GetSpeechDuck() const { return SpeechDuck; }
 	/** A restrained cannonball water contact, without thunder or hull-crash layers. */
 	void CannonSplash(const FVector& Where);
@@ -74,6 +78,11 @@ protected:
 	void OnShipHit(float Amount);
 	void TickBell(float DeltaSeconds);
 	void TickMusic(float DeltaSeconds);
+	void TickMenuMusic(bool bMenu);
+	UPROPERTY() TObjectPtr<UAudioComponent> MenuMusic;
+	bool bMenuMusicStarted=false;
+	bool bMenuMusicFading=false;
+	double MenuMusicFadeAt=0.0;
 	UPROPERTY() TObjectPtr<UAudioComponent> FogMusic;
 	UPROPERTY() TObjectPtr<UAudioComponent> CalderaMusic;
 	float MusicTransitionTime = 224.f;
