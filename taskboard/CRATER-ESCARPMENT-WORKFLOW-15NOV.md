@@ -2,7 +2,17 @@
 
 Branch: `codex/maelstrom-saturday`. **Normal gameplay geometry remains unchanged; the current full-ring candidate is available only in the opt-in native preview. The visual target is not met.** Preserve the3.2km crater,900m depth and existing steering route; clouds/sky remain owned by the separate chat, boss deferred.
 
-## Current work, 15 November 06:55
+## Current work, 15 November 07:22
+
+Active native source is now `Cliff-Contact/Saved/StructuralWholeFace/JointedFExterior/full_ring_candidate.npz`, sourceSHA `a3ec491c5faf3fd3fdbdf7f907cce21b802535a47bdfaab264664e08d3d2e826`. Export/reference bundle is `Cliff-Contact/Saved/JointedHeadlandNative`, FBX `42ba5fa822e2b5ebb8d8e006bc1ad494748d2bcb1d47cfb28731c148dc99fafb`. Source/import audit and actual50-ruin support pass; native `Saved/SceneReview/JointedHeadlandFirst` includes backseek/ending restoration. Camera665m, local target(-56.71,-59.9222,-10)m, azimuth39.624deg reflects new export origin(-1083,1147,-25)m.
+
+[Actual jointed headland](review/cliff-native-15nov/jointed-headland-first.png) replaces the clay across the visible pilot, but still reads as clean similar-sized plates with obvious smooth margins. Geometry worker is adding a few larger connected buttresses and irregular margins while coordinating protected new waterfall locations. Material worker owns the isolated cliff material's repeating slate problem. Do not switch algorithms again or simply add more similar blocks. Sparse and dense native-sized prop coverage were both rejected as attached rubble; they remain opt-in diagnostics only.
+
+[Actual H2 aerated fans](review/cliff-native-15nov/aerated-fans-h2.png) confirm lower spreading; upper jets remain too uniform. `Fitted-Waterfall/Saved/CompressedWaterfall/RockH2AeratedFansTangent` is bound ONLY to oldH2. A new real fit to final jointed triangles is in progress. Initial fan render accidentally omitted the mesh because runtime expected exactly3material slots; fixed for3or4slots, with a warning if the core fails. Current complete image has core=1/volumes=2.
+
+Water foam source script now preserves brighter finite raft interiors, removes the crater's low-opacity liveFFT blanket, and has a current-aligned finger candidate pending native judgment. Source-only actual review confirms the remaining large white island is occupancy, not sun reflection. Do not globally boost coverage. Native sky preset `DCMaelSunNeutral`+`DCMaelSunGroundBalance` uses the sky chat's gentler45% measured correction;85% was too blue. Defaults/cloud composition unchanged. Root owns all native GPU/build/import work; boss/main/package remain deferred.
+
+## Previous checkpoint, 15 November 06:55
 
 Current opt-in import is `Cliff-Contact/Saved/RockButtressNativeH2/rock_headland_h2.fbx`, a full ring with one wider fractured headland. It remains visually rejected: broad clay-like surfaces, thin black clefts and a jagged wedge on the skyline. Three unequal waterfall outlets across32.2m are bound to that surface, but their dense SVT cores still look like pipes. Actual native frames are in `Saved/SceneReview/CliffH2Three`, the continuous400m view in `CliffH2Motion400`, and the scan-material comparison in `CliffH2Scan`. A clean build/import is not visual approval.
 

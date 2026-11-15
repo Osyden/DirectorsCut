@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 15 Nov 07:22 Codex: whole rocky headland and aerated falls in native review
+
+- Replaced the pilot's soft exposed face with a connected jointed rock mass. [Actual native frame](review/cliff-native-15nov/jointed-headland-first.png) is structurally clearer but still too uniform/clean; larger buttresses, irregular margins and better stone shading remain active work. All50 current ruin groups bind to actual triangles; seek/ending restoration passes. Normal gameplay terrain remains unchanged.
+- [Aerated waterfall fans](review/cliff-native-15nov/aerated-fans-h2.png) now spread below their narrow upper jets. These are the oldH2 contacts; the worker is fitting unequal outlets to the new headland before a combined review. Runtime now handles the fourth translucent material correctly.
+- [White foam rafts](review/cliff-native-15nov/foam-rafts-player.png) replace uniformly diluted powder. Removed the separate flat-ocean gray foam blanket from the crater, preserving wave detail/tunnel behavior; current-aligned fingers are being reviewed to replace isolated white islands. Sky chat supplied opt-in sunlight balance. No claim of reference quality, main integration or a packaged release. [Current workflow and artifacts](CRATER-ESCARPMENT-WORKFLOW-15NOV.md).
+
 ## 15 Nov Codex: full-ring cliff pilot in native review; still below visual target
 
 - The500m eroded-cliff pilot is joined to the full3.2km crater in an opt-in preview. Actual player/sector views, source-mesh verification and seek/ending restoration ran. Normal gameplay terrain and the separate chat's sky/cloud work remain unchanged.
