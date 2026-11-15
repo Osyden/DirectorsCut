@@ -1,4 +1,6 @@
 #include "DCEarlyEncounters.h"
+#include "DCEarlyEncounterPolicy.h"
+#include "DCBossMarkerPolicy.h"
 #include "DCFogCreatureMotion.h"
 #include "DCFogRouteLayout.h"
 #include "Engine/SkeletalMesh.h"
@@ -21,6 +23,11 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
+#include "Engine/Engine.h"
+#include "Engine/Canvas.h"
+#include "GameFramework/HUD.h"
+#include "GameFramework/PlayerController.h"
+#include "Camera/PlayerCameraManager.h"
 #include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -91,6 +98,12 @@ ADCEarlyEncounters::ADCEarlyEncounters()
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 }
 
+void ADCEarlyEncounters::BeginPlay()
+{
+	Super::BeginPlay();
+	HUDHandle=AHUD::OnHUDPostRender.AddUObject(this,&ADCEarlyEncounters::DrawStatueTarget);
+}
+
 ADCEarlyEncounters* ADCEarlyEncounters::Get(const UObject* Context)
 {
 	if (UWorld* World = Context ? Context->GetWorld() : nullptr)
@@ -98,6 +111,18 @@ ADCEarlyEncounters* ADCEarlyEncounters::Get(const UObject* Context)
 		for (TActorIterator<ADCEarlyEncounters> It(World); It; ++It) { return *It; }
 	}
 	return nullptr;
+}
+
+bool ADCEarlyEncounters::GetReviewStatueTarget(EDCSide Side,FVector& Out) const
+{
+	for(const FThreat& T:Threats)
+	{
+		if((T.Side<0?EDCSide::Port:EDCSide::Starboard)!=Side) { continue; }
+		if(DCEarlyEncounterPolicy::ShowStatueMarker(T.bStatue,T.Target.IsValid(),
+			!T.Body.IsValid() || T.Body->IsHidden(),T.bCanShoot,T.Stage))
+		{ Out=T.Target->GetActorLocation(); return true; }
+	}
+	return false;
 }
 
 AActor* ADCEarlyEncounters::MakeTarget(const FVector& Position, float Radius, float Health)
@@ -204,7 +229,9 @@ void ADCEarlyEncounters::SpawnStatue(int32 Index)
 	FThreat S;
 	S.bStatue = true; S.Side = Index % 2 == 0 ? 1.f : -1.f; S.Size = 3600.f;
 	S.X = 26000.f; S.SeaY = S.Side * Treadmill->GetCityBankY();
-	S.InitialWait = 5.f;
+	// Four individual cannon hits need time for recognition, three reloads
+	// and shell flight while the monument remains in the broadside arc.
+	S.InitialWait = DCEarlyEncounterPolicy::StatueFirstExposure;
 	AActor* Body = DCRuins::Available() ? DCRuins::SpawnColossus(GetWorld(), S.Size)
 		: DCHazards::SpawnSentinel(GetWorld(), S.Size, true, FLinearColor(.075f, .085f, .085f));
 	if (!Body) { return; }
@@ -234,7 +261,7 @@ void ADCEarlyEncounters::SpawnStatue(int32 Index)
 		UStaticMeshComponent* Beam = Shape(Body, TEXT("/Engine/BasicShapes/Cylinder.Cylinder"), FLinearColor(8.f, 2.8f, .22f));
 		Beam->SetVisibility(false); S.Beams.Add(Beam);
 	}
-	S.Target = MakeTarget(FVector(S.X, S.SeaY, Director->SeaLevelZ + S.Size * .8f), 1500.f, 3.f);
+	S.Target = MakeTarget(FVector(S.X, S.SeaY, Director->SeaLevelZ + S.Size * .8f), 1500.f, DCEarlyEncounterPolicy::StatueHealth);
 	Threats.Add(S);
 	UE_LOG(LogDC, Display, TEXT("Sentinel %d placed on %s at %.1f"), Index + 1, S.Side < 0 ? TEXT("port") : TEXT("starboard"), Director->RideTime);
 }
@@ -331,7 +358,7 @@ void ADCEarlyEncounters::UpdateAlert(FThreat& T, bool bConcealed)
 			Head = Bounds.Origin + FVector(0, 0, Bounds.BoxExtent.Z + 150.f);
 		}
 		else { Head = Body->GetActorTransform().TransformPosition((T.EyeLocal[0] + T.EyeLocal[1]) * .5f) + FVector(0, 0, 650.f); }
-		Cue->ShowAlert(Head, T.bStatue ? 350.f : 220.f, FMath::Clamp(T.Clock / (T.bStatue ? 3.5f : 3.f), 0.f, 1.f), T.Age, bVisible);
+		Cue->ShowAlert(Head, T.bStatue ? 350.f : 220.f, FMath::Clamp(T.Clock / (T.bStatue ? DCEarlyEncounterPolicy::StatueCharge : DCEarlyEncounterPolicy::CreatureCharge), 0.f, 1.f), T.Age, bVisible);
 	}
 }
 
@@ -402,6 +429,7 @@ void ADCEarlyEncounters::TickThreat(FThreat& T, float Dt)
 	const FVector AimDelta = T.Target.IsValid() ? T.Target->GetActorLocation() - Guns->GetMuzzle(PlayerGun) : FVector::ZeroVector;
 	const bool bCanShoot = !bFogConcealed && AimDelta.Z < AimDelta.Size2D() * .55f
 		&& Guns->HasClearShot(PlayerGun, T.Target.Get());
+	T.bCanShoot=bCanShoot;
 	// A target passing behind masonry cannot keep burning the deck through it.
 	// An already released fireball remains a physical, visible incoming threat.
 	if (!bCanShoot && (T.Stage == 1 || (T.bStatue && T.Stage == 2)))
@@ -426,11 +454,11 @@ void ADCEarlyEncounters::TickThreat(FThreat& T, float Dt)
 			UE_LOG(LogDC, Display, TEXT("Encounter firing window: %s %s distance=%.0f at %.1f"), T.bStatue ? TEXT("sentinel") : TEXT("creature"), T.Side < 0 ? TEXT("port") : TEXT("starboard"), T.Target->GetActorLocation().Size(), Director->RideTime);
 		}
 	}
-	if (T.Stage == 0 && T.Exposure >= T.InitialWait && bCanShoot && AttackSpacing <= 0.f)
+	if (DCEarlyEncounterPolicy::CanBeginCharge(T.Stage,T.Exposure,T.InitialWait,bCanShoot,AttackSpacing))
 	{
 		if (Troubles->FindIgnitionPoint(ImpactCount + FMath::RoundToInt(T.SeaY / 100.f), T.DeckTarget))
 		{
-			T.Stage = 1; T.Clock = 0.f; T.bImpact = false; AttackSpacing = 4.f;
+			T.Stage = 1; T.Clock = 0.f; T.bImpact = false; AttackSpacing = DCEarlyEncounterPolicy::ChargeSpacing;
 			T.Marker = MakeMarker(T.DeckTarget);
 			if (!T.bStatue) { T.Charge = MakeFireball(Hand(T)); }
 			UE_LOG(LogDC, Display, TEXT("Encounter charge: %s exposure=%.1f at %.1f"), T.bStatue ? TEXT("sentinel") : TEXT("creature"), T.Exposure, Director->RideTime);
@@ -448,11 +476,11 @@ void ADCEarlyEncounters::TickThreat(FThreat& T, float Dt)
 	{
 		if (Eye.IsValid())
 		{
-			const float Charge = T.Stage == 1 ? FMath::Clamp(T.Clock / 3.5f, 0.f, 1.f) : (T.Stage == 2 ? 1.f : .06f);
+			const float Charge = T.Stage == 1 ? FMath::Clamp(T.Clock / DCEarlyEncounterPolicy::StatueCharge, 0.f, 1.f) : (T.Stage == 2 ? 1.f : .06f);
 			if (UMaterialInstanceDynamic* MID = Cast<UMaterialInstanceDynamic>(Eye->GetMaterial(0))) { MID->SetVectorParameterValue(TEXT("Color"), FLinearColor(1.f, .34f, .035f) * (.35f + Charge * 7.f)); }
 		}
 	}
-	if (T.Stage == 1 && T.Clock >= (T.bStatue ? 3.5f : 3.f))
+	if (T.Stage == 1 && T.Clock >= (T.bStatue ? DCEarlyEncounterPolicy::StatueCharge : DCEarlyEncounterPolicy::CreatureCharge))
 	{
 		T.Stage = 2; T.Clock = 0.f;
 		if (!T.bStatue)
@@ -509,7 +537,64 @@ void ADCEarlyEncounters::Clear()
 
 void ADCEarlyEncounters::EndPlay(const EEndPlayReason::Type Reason)
 {
+	AHUD::OnHUDPostRender.Remove(HUDHandle);
 	Clear(); Super::EndPlay(Reason);
+}
+
+void ADCEarlyEncounters::DrawStatueTarget(AHUD* HUD,UCanvas* Canvas)
+{
+	if(!HUD || HUD->GetWorld()!=GetWorld() || !Canvas || !GEngine || !Director
+		|| Director->GetPhase()!=EDCPhase::Fog || FParse::Param(FCommandLine::Get(),TEXT("DCNoHUD"))) { return; }
+	const FThreat* Selected=nullptr;
+	for(const FThreat& T:Threats)
+	{
+		if(!DCEarlyEncounterPolicy::ShowStatueMarker(T.bStatue,T.Target.IsValid(),
+			!T.Body.IsValid() || T.Body->IsHidden(),T.bCanShoot,T.Stage)) { continue; }
+		if(!Selected || (T.Stage==1 && Selected->Stage!=1)
+			|| (T.Stage==Selected->Stage && FMath::Abs(T.X)<FMath::Abs(Selected->X))) { Selected=&T; }
+	}
+	APlayerController* PC=HUD->GetOwningPlayerController();
+	if(!Selected || !PC || !PC->PlayerCameraManager) { return; }
+	const FThreat& T=*Selected;
+	const FVector Point=T.Target->GetActorLocation(); // Exact hittable eye target, not the raised arm/bounds top.
+	FVector2D Screen;
+	const bool Projected=PC->ProjectWorldLocationToScreen(Point,Screen);
+	if(!Projected)
+	{
+		const FVector Delta=Point-PC->PlayerCameraManager->GetCameraLocation();
+		const FRotationMatrix View(PC->PlayerCameraManager->GetCameraRotation());
+		Screen=FVector2D(FVector::DotProduct(Delta,View.GetUnitAxis(EAxis::Y))<0?-100.f:Canvas->SizeX+100.f,Canvas->SizeY*.45f);
+	}
+	const float S=FMath::Clamp(Canvas->SizeY/900.f,.7f,1.5f);
+	const auto P=DCBossMarkerPolicy::Place(Screen.X,Screen.Y,Projected,Canvas->SizeX,Canvas->SizeY,S);
+	const FLinearColor Color=T.Stage==1 || T.Stage==2 ? FLinearColor(1.f,.62f,.2f) : FLinearColor(.90f,.86f,.60f);
+	auto Line=[&](float AX,float AY,float BX,float BY)
+	{
+		HUD->DrawLine(AX,AY,BX,BY,FLinearColor(.012f,.022f,.03f),5.f*S);
+		HUD->DrawLine(AX,AY,BX,BY,Color,2.f*S);
+	};
+	const float R=23.f*S;
+	for(int SX:{-1,1}) for(int SY:{-1,1})
+	{
+		Line(P.X+SX*R,P.Y+SY*R,P.X+SX*(R-9*S),P.Y+SY*R);
+		Line(P.X+SX*R,P.Y+SY*R,P.X+SX*R,P.Y+SY*(R-9*S));
+	}
+	if(P.AtEdge)
+	{
+		const FVector2D D=(Screen-FVector2D(P.X,P.Y)).GetSafeNormal(),Side(-D.Y,D.X);
+		const FVector2D Tip=FVector2D(P.X,P.Y)+D*(16*S),Tail=FVector2D(P.X,P.Y)-D*(7*S);
+		Line(Tip.X,Tip.Y,Tail.X+Side.X*11*S,Tail.Y+Side.Y*11*S);
+		Line(Tip.X,Tip.Y,Tail.X-Side.X*11*S,Tail.Y-Side.Y*11*S);
+	}
+	Line(P.X,P.Y-R,P.LabelX+14*S,P.LabelY+60*S);
+	HUD->DrawRect(FLinearColor(.012f,.022f,.03f,.94f),P.LabelX,P.LabelY,288*S,66*S);
+	HUD->DrawRect(Color,P.LabelX,P.LabelY,4*S,66*S);
+	const FString Title=FString::Printf(TEXT("%s STATUE - SHOOT EYES"),T.Side<0?TEXT("PORT"):TEXT("STARBOARD"));
+	FString Detail=TEXT("Silence it before its eyes fire");
+	if(T.Stage==1) { Detail=FString::Printf(TEXT("BEAM IN %.1fs - KEEP FIRING"),FMath::Max(0.f,DCEarlyEncounterPolicy::StatueCharge-T.Clock)); }
+	else if(T.Stage==2) { Detail=TEXT("BEAM ACTIVE - SHOOT THE EYES"); }
+	HUD->DrawText(Title,Color,P.LabelX+13*S,P.LabelY+9*S,GEngine->GetSmallFont(),1.15f*S);
+	HUD->DrawText(Detail,FLinearColor::White,P.LabelX+13*S,P.LabelY+35*S,GEngine->GetSmallFont(),1.04f*S);
 }
 
 FString ADCEarlyEncounters::GetThreatText() const
@@ -537,7 +622,7 @@ void ADCEarlyEncounters::Tick(float DeltaSeconds)
 	if (!Director || !Treadmill || !Guns || !Troubles) { return; }
 #if !UE_BUILD_SHIPPING
 	if (FParse::Param(FCommandLine::Get(), TEXT("DCEarlyVerify"))) { TickVerification(DeltaSeconds); }
-	if (FParse::Param(FCommandLine::Get(), TEXT("DCEncounterVerify"))) { TickEncounterVerification(); }
+	if (FParse::Param(FCommandLine::Get(), TEXT("DCEncounterVerify")) || FParse::Param(FCommandLine::Get(), TEXT("DCStatueVerify"))) { TickEncounterVerification(); }
 #endif
 	const float T = Director->RideTime;
 	if (LastRideTime >= 0.f && (T < LastRideTime - .5f || T > LastRideTime + 3.f)) { Clear(); NextGroup = NextStatue = 0; AttackSpacing = 0.f; }

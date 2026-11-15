@@ -19,6 +19,6 @@ inline float FitSide(float RequestedY, float MinY, float MaxY, float Clear)
 { return RequestedY < 0.f ? std::min(RequestedY, -Clear-MaxY) : std::max(RequestedY, Clear-MinY); }
 constexpr float GroupTimes[] = {90.f,126.f,162.f,198.f};
 constexpr float StatueTimes[] = {105.f,139.f,173.f,211.f};
-inline int GroupSize(int Group) { return Group==2 ? 3 : 2; }
+inline int GroupSize(int /*Group*/) { return 3; }
 inline float GroupSide(int Group) { return Group%2==0 ? -1.f : 1.f; }
 }

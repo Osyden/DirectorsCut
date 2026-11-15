@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "DCTypes.h"
 #include "DCEarlyEncounters.generated.h"
 
 /** Readable bank encounters. Owns its actors, warnings and impacts only during the city. */
@@ -11,10 +12,12 @@ class ADCEarlyEncounters : public AActor
 	GENERATED_BODY()
 public:
 	ADCEarlyEncounters();
+	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
 	static ADCEarlyEncounters* Get(const UObject* Context);
 	FString GetThreatText() const;
+	bool GetReviewStatueTarget(EDCSide Side,FVector& Out) const;
 
 private:
 	struct FThreat
@@ -29,7 +32,7 @@ private:
 		float X = 0.f, SeaY = 0.f, Side = 1.f, Age = 0.f, Exposure = 0.f, Clock = 0.f;
 		float Size = 1.f, InitialWait = 8.f, HoldX = 3500.f, FootHeight = 0.f;
 		int32 Stage = 0; // approach, charge, attack, cooldown, defeated
-		bool bStatue = false, bImpact = false, bAnnounced = false, bGroupLeader = true;
+		bool bStatue = false, bImpact = false, bAnnounced = false, bGroupLeader = true, bCanShoot = false;
 	};
 	struct FProjectile
 	{
@@ -46,6 +49,8 @@ private:
 	UPROPERTY() TObjectPtr<class ADCTroubles> Troubles;
 	int32 NextGroup = 0, NextStatue = 0, ImpactCount = 0;
 	float LastRideTime = -1.f, AttackSpacing = 0.f;
+	FDelegateHandle HUDHandle;
+	void DrawStatueTarget(class AHUD* HUD, class UCanvas* Canvas);
 	void SpawnGroup(int32 Group);
 	void SpawnStatue(int32 Index);
 	void TickThreat(FThreat& Threat, float DeltaSeconds);

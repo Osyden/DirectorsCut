@@ -1,4 +1,5 @@
 #include "DCEarlyEncounters.h"
+#include "DCEarlyEncounterPolicy.h"
 #include "DCPlayer.h"
 #include "DCRideDirector.h"
 #include "DCTroubles.h"
@@ -10,20 +11,23 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Misc/Paths.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "UnrealClient.h"
 
 #if !UE_BUILD_SHIPPING
 void ADCEarlyEncounters::TickEncounterVerification()
 {
+	const bool StatueReview=FParse::Param(FCommandLine::Get(),TEXT("DCStatueVerify"));
 	// The captain's actual gun, reload and ballistic collision path must stop an
 	// approaching attacker. Other threats are deliberately left to complete attacks.
-	if (VerifyStage == 0 && !Threats.IsEmpty() && Threats[0].Target.IsValid())
+	if (VerifyStage == 0)
 	{
-		FThreat& T = Threats[0];
-		const int32 Gun = Guns->GetPlayerGun(EDCSide::Port);
-		if (Guns->CanAimGun(Gun, T.Target->GetActorLocation()))
+		for(FThreat& T:Threats)
 		{
-			VerifyEnemy = T.Body; VerifyStage = 1;
+			if(T.bStatue!=StatueReview || !T.Target.IsValid()) { continue; }
+			const int32 Gun=Guns->GetPlayerGun(T.Side<0?EDCSide::Port:EDCSide::Starboard);
+			if(Guns->HasClearShot(Gun,T.Target.Get())) { VerifyEnemy=T.Body; VerifyStage=1; break; }
 		}
 	}
 	if (VerifyStage == 1 && VerifyEnemy.IsValid())
@@ -31,11 +35,12 @@ void ADCEarlyEncounters::TickEncounterVerification()
 		for (FThreat& T : Threats)
 		{
 			if (T.Body != VerifyEnemy || !T.Target.IsValid()) { continue; }
-			const int32 Gun = Guns->GetPlayerGun(EDCSide::Port);
+			const EDCSide Side=T.Side<0?EDCSide::Port:EDCSide::Starboard;
+			const int32 Gun = Guns->GetPlayerGun(Side);
 			const FVector Point = T.Target->GetActorLocation();
 			const FVector View = Director->DeckToWorld(Guns->GetGunStation(Gun) + FVector(0.f, 80.f, 250.f));
 			FVector Aim;
-			if (Guns->ResolveAim(EDCSide::Port, View, (Point - View).GetSafeNormal(), Aim) && Guns->FireGun(Gun, Aim, true)) { ++VerifyShots; }
+			if (Guns->ResolveAim(Side, View, (Point - View).GetSafeNormal(), Aim) && Guns->FireGun(Gun, Aim, true)) { ++VerifyShots; }
 		}
 	}
 	// A particular statue may correctly lose its firing window behind masonry.
@@ -48,8 +53,9 @@ void ADCEarlyEncounters::TickEncounterVerification()
 			bVerifyFailed |= !bPassed;
 			UE_LOG(LogDC, Display, TEXT("ENCOUNTER VERIFY %s: %s"), bPassed ? TEXT("PASS") : TEXT("FAIL"), What);
 		};
-		Check(bVerifyInterrupted, TEXT("captain cannon kills a moving creature before its attack releases"));
-		Check(VerifyShots >= 3 && VerifyShots <= 4, TEXT("three-health target needs three hits with at most one missed shot"));
+		Check(bVerifyInterrupted, StatueReview?TEXT("captain cannon silences a statue before its beam releases"):TEXT("captain cannon kills a moving creature before its attack releases"));
+		const int32 Hits=StatueReview?int32(DCEarlyEncounterPolicy::StatueHealth):3;
+		Check(VerifyShots >= Hits && VerifyShots <= Hits+1, StatueReview?TEXT("four-health statue needs four hits with at most one missed shot"):TEXT("three-health target needs three hits with at most one missed shot"));
 		Check(VerifyFireballImpacts > 0, TEXT("ignored creatures deliver visible projectiles to the deck"));
 		Check(VerifyBeamImpacts > 0, TEXT("ignored statue warms up and ignites a deck point"));
 		Check(Troubles->NumFires() <= Troubles->MaxFires, TEXT("overlapping attacks respect the deck fire cap"));
