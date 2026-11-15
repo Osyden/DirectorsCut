@@ -1,5 +1,7 @@
 #include "DCTreadmill.h"
 #include "DCBossFireball.h"
+#include "DCCityObstacleLayout.h"
+#include "DCObstacleWaterContact.h"
 #include "Components/LocalFogVolumeComponent.h"
 #include "DCFogBank.h"
 #include "DCFogCardFader.h"
@@ -87,6 +89,16 @@ void ADCTreadmill::SpawnObject(bool bHostile, const FVector& Base, const FVector
 void ADCTreadmill::Register(AActor* Actor, const FVector& Base, float Radius, bool bHostile, float Health, float Yaw, bool bSolid)
 {
 	if (!Actor) { return; }
+	if(Actor->ActorHasTag(TEXT("DCCityObstacle")))
+	{
+		// Radius was only a gameplay hint; fallen masonry could extend well
+		// outside it. Fit the entire rendered cluster before planning its lane.
+		FVector Origin,Extent; Actor->GetActorBounds(false,Origin,Extent);
+		const float Footprint=FVector2D(Extent).Size()+FVector2D(Origin-Actor->GetActorLocation()).Size();
+		if(Footprint>DCCityObstacleLayout::MaximumFootprint)
+		{ Actor->SetActorScale3D(Actor->GetActorScale3D()*(DCCityObstacleLayout::MaximumFootprint/Footprint)); }
+		Radius=FMath::Min(Footprint,DCCityObstacleLayout::MaximumFootprint);
+	}
 	FDCWorldObject& Obj = Objects.AddDefaulted_GetRef();
 	Obj.Actor = Actor;
 	Obj.Base = Base;
@@ -96,6 +108,7 @@ void ADCTreadmill::Register(AActor* Actor, const FVector& Base, float Radius, bo
 	Obj.Yaw = Yaw;
 	Obj.bSolid = bSolid;
 	Actor->SetActorLocation(Obj.Base);
+	if(Actor->ActorHasTag(TEXT("DCPillarObstacle"))) { UDCObstacleWaterContact::Attach(Actor); }
 }
 
 void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
@@ -103,7 +116,7 @@ void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
 	float ObstacleEvery = 0.f, HostileEvery = 0.f, SceneryEvery = 0.f;
 	switch (Phase)
 	{
-	case EDCPhase::Fog: ObstacleEvery = 8.f; HostileEvery = bGhostShips ? 16.f : 0.f; SceneryEvery = 15.f; break;
+	case EDCPhase::Fog: ObstacleEvery = DCCityObstacleLayout::Interval; HostileEvery = bGhostShips ? 16.f : 0.f; SceneryEvery = 15.f; break;
 	case EDCPhase::Hell: ObstacleEvery = 3.5f; HostileEvery = 9.f; SceneryEvery = 5.f; break;
 	default: break; // the kraken owns the maelstrom
 	}
@@ -116,20 +129,28 @@ void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
 	// Obstacles: in the lane, must be steered around.
 	if (ObstacleEvery > 0.f && (ObstacleTimer -= DeltaSeconds) <= 0.f)
 	{
-		ObstacleTimer = ObstacleEvery * FMath::FRandRange(0.7f, 1.3f);
-		// Sea space: add the lane offset so they land near the ship's present course.
-		const FVector Base(SpawnDistance, LaneOffset + FMath::FRandRange(-2500.f, 2500.f), SeaZ);
-		if (bHell || FMath::FRand() < 0.6f)
+		ObstacleTimer = ObstacleEvery * (bHell?FMath::FRandRange(.7f,1.3f):FMath::FRandRange(.9f,1.1f));
+		// A readable alternating route, fixed in sea space. Do not repeatedly
+		// seed tight clusters on whichever lane the player is trying to escape to.
+		const float Side=DCCityObstacleLayout::Side(CityObstacleSerial++);
+		const float SeaY=bHell ? LaneOffset+FMath::FRandRange(-2500.f,2500.f)
+			: Side*FMath::FRandRange(DCCityObstacleLayout::MinimumSide,DCCityObstacleLayout::MaximumSide);
+		const FVector Base(SpawnDistance,SeaY,SeaZ-(bHell?0.f:DCCityObstacleLayout::Submergence));
+		const bool bPillarReview=FParse::Param(FCommandLine::Get(),TEXT("DCPillarReview"));
+		if (bHell || (!bPillarReview && FMath::FRand() < 0.6f))
 		{
 			const float Radius = FMath::FRandRange(350.f, 750.f);
 			AActor* Rock = (!bHell && DCRuins::Available()) ? DCRuins::SpawnCrag(World, Radius, FMath::FRandRange(1500.f, 3200.f)) : DCHazards::SpawnRock(World, Radius, FMath::FRandRange(1500.f, 4200.f), bHell, Stone);
 			if (bHell) { DCHazards::SetGlow(Rock, Ember); }
+			else if(Rock) { Rock->Tags.Add(TEXT("DCCityObstacle")); }
 			Register(Rock, Base, Radius, false, 1.f, FMath::FRandRange(0.f, 360.f), true);
 		}
 		else
 		{
-			const float Scale = FMath::FRandRange(0.7f, 1.15f);
-			Register(DCRuins::Available() ? DCRuins::SpawnBrokenColumns(World, 1000.f * Scale) : DCHazards::SpawnRuin(World, Scale, Stone), Base, 1000.f * Scale, false, 1.f, FMath::FRandRange(-25.f, 25.f), true);
+			const float Scale = FMath::FRandRange(.55f,.75f);
+			AActor* Columns=DCRuins::Available()?DCRuins::SpawnBrokenColumns(World,1000.f*Scale):DCHazards::SpawnRuin(World,Scale,Stone);
+			if(Columns) { Columns->Tags.Add(TEXT("DCCityObstacle")); Columns->Tags.Add(TEXT("DCPillarObstacle")); }
+			Register(Columns,Base,1000.f*Scale,false,1.f,FMath::FRandRange(-25.f,25.f),true);
 		}
 	}
 
@@ -379,7 +400,9 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 		// A wide ruin stands across the slope: it is set at the height of the sea at its edge nearest the
 		// channel, so its far side is drowned deeper. (Set at the height under its middle, its near edge
 		// hung in the air over lower water: a great flat slab seen from the deck. Owner, 13 Nov.)
-		if (Director->TroughRise > 0.f)
+		// Gameplay rocks and columns are seabed anchors, never wave followers.
+		// Only their contact wash samples the instantaneous water surface.
+		if (Director->TroughRise > 0.f && !Actor->ActorHasTag(TEXT("DCCityObstacle")))
 		{
 			const float Mid = Local.Y + LaneOffset;
 			// (Tried setting a wide ruin at the height of the sea at its edge nearest the channel, to stop its

@@ -111,6 +111,7 @@ protected:
 	void SpawnForPhase(EDCPhase Phase, float DeltaSeconds);
 	void Register(AActor* Actor, const FVector& Base, float Radius, bool bHostile, float Health, float Yaw, bool bSolid);
 	float SceneryTimer = 3.f;
+	int32 CityObstacleSerial = 0;
 	void SpawnAtlantis();
 	bool bAtlantisBuilt = false;
 	/** The drowned city is built in the first seconds of the voyage, further off by the distance still to
