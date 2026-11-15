@@ -449,15 +449,15 @@ if(Tunnel>.5) {
     return saturate(oldBody*oldLace*Coverage*(1-shelf*.35));
 }
 """
-# Evaluate complete populations before phase crossfade. Thresholding a blend of
-# unrelated source/noise phases changes their topology instead of transporting
-# either population. Previously the 9x17m DRW raft samples were unused entirely,
-# leaving narrow warped sine lips multiplied by 1.5m cells: hooked white glyphs.
+# Advected populations receive an area budget, not a grey opacity multiplier.
+# Fading every raft by source strength, an independent cell map and phase weight
+# made the photographed foam read as powder. Keep source-driven finite patches
+# opaque where resolved; phase exchange changes their occupied area instead.
 foam_code += r"""
 struct SourceFoamRaft {
  float coverage(float2 p,float3 source,float3 currentSource,float vertexFresh,
-                float lip,float phaseAge,float available,float raft,float cells,
-                float footprint,float shelfGuard) {
+                float lip,float phaseAge,float phaseWeight,float available,float raft,
+                float shelfGuard) {
   WaterNoise field;
   float ageDecay=exp(-phaseAge*1.5);
   float wake=max(currentSource.b*.60,source.b*ageDecay)*available;
@@ -474,42 +474,46 @@ struct SourceFoamRaft {
   float agedStrength=1-exp(-2*aged);
   float sourceStrength=1-(1-saturate(fresh)*.85)*(1-agedStrength);
 
-  // Real installed foam red defines coherent rafts, with metre-sized edges
-  // inside a 9x17m advected tile. The source atlas still controls WHERE foam can
-  // exist; this texture is never an additive coating over the complete bowl.
+  // A 23m envelope makes coherent finite fields inside the actual source/wake.
+  // Cubic remapping approximates the value-noise rank distribution. The .30
+  // area budget replaces the former packet*cell attenuation (measured .28),
+  // rather than increasing global coverage or coating source-free water.
   float2 warp=float2(field.noise(p*.031),field.noise(p*.027+41.7))-.5;
-  float massVariation=field.noise((p+warp*8)/13.0+5.1);
-  float packetAA=clamp(fwidth(massVariation)*.6,.025,.14);
-  float packet=smoothstep(.42-packetAA,.62+packetAA,massVariation);
+  float massVariation=field.noise((p+warp*8)/23.0+5.1);
+  float rank=massVariation*massVariation*(3-2*massVariation);
+  float areaBudget=.30*sourceStrength*saturate(phaseWeight);
+  float packetAA=clamp(fwidth(rank)*.5,.008,.18);
+  float packet=(1-smoothstep(areaBudget-packetAA,areaBudget+packetAA,rank))
+      *smoothstep(0,.008,areaBudget);
+
+  // One photographed 9x17m raft map already contains fine lace. Multiplying a
+  // second independent 1.5m version broke its connected white interior. Keep
+  // that fine map for normals/tunnel only, not a second basin alpha mask.
   float raftAA=clamp(fwidth(raft)*.5,.015,.05);
   float raftMask=smoothstep(.055-raftAA,.30+raftAA,raft);
-  // Explicit gaps survive even a saturated source. The13m finite packet
-  // envelope also remains resolved when tiny cells inside the DRW map mip out.
-  // No additive population or constant white floor exists outside the sources.
-  float body=sourceStrength*packet*raftMask;
-
-  // Fine lace modifies only those finite rafts. At a subpixel cell footprint,
-  // average the mip-filtered red coverage instead of forcing a constant white
-  // floor or thresholding a filtered value back into isolated bright specks.
-  float cellAA=clamp(fwidth(cells)*.5,.035,.18);
-  float resolvedLace=smoothstep(.11-cellAA,.11+cellAA,cells);
-  float resolved=1-smoothstep(.18,.75,footprint);
-  float cellCoverage=lerp(saturate(cells*2.0),resolvedLace,resolved);
-  return body*cellCoverage;
+  // Actual installed linear-red mean .298755; resolved raft coverage .5529.
+  // Thresholding its fully filtered mean almost to1 inflated distant coverage.
+  // This bounded linear estimate tends to .5534 at that mip, preserving area.
+  float filteredRaft=saturate((raft-.012)*1.93);
+  float footprint=max(length(ddx(p)),length(ddy(p)));
+  float resolved=1-smoothstep(.30,2.0,footprint);
+  return packet*lerp(filteredRaft,raftMask,resolved);
  }
 };SourceFoamRaft rafts;
 """
 if foam_texture:
-    foam_code += "float raft0=Raft0.r,raft1=Raft1.r,cell0=Cells0.r,cell1=Cells1.r;\n"
+    foam_code += "float raft0=Raft0.r,raft1=Raft1.r;\n"
 else:
-    foam_code += "float raft0=wn.fbm(q/13),raft1=wn.fbm(q2/13),cell0=wn.noise(q/1.5)*.35,cell1=wn.noise(q2/1.5)*.35;\n"
+    foam_code += "float raft0=wn.fbm(q/13),raft1=wn.fbm(q2/13);\n"
 foam_code += r"""
 float available=saturate(SourceAvailable);
 float coverage0=rafts.coverage(q,Source0,ImpactSource,VC.r,movingLip0,phase,
-    available,raft0,cell0,pixelMeters,shelf);
+    1-blend,available,raft0,shelf);
 float coverage1=rafts.coverage(q2,Source1,ImpactSource,VC.r,movingLip1,phase2,
-    available,raft1,cell1,pixelMeters,shelf);
-return saturate(lerp(coverage0,coverage1,blend)*Coverage*(1-shelf*.35));
+    blend,available,raft1,shelf);
+// The two phases carry separate area budgets: combine covered area, rather
+// than turning every opaque raft half-grey at the middle of the flow cycle.
+return saturate((1-(1-coverage0)*(1-coverage1))*Coverage*(1-shelf*.35));
 """
 foam = custom(water, foam_code, FLOAT, foam_inputs)
 source_foam=foam
