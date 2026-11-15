@@ -583,13 +583,21 @@ float ADCTreadmill::ChooseClearLane(float Lookahead) const
 {
 	float Best = LaneOffset;
 	float BestCost = TNumericLimits<float>::Max();
+	bool bBestBlocked = true;
 	// In the trough she cannot hold a lane much beyond three quarters of the way to its edge.
 	const float Reach = (Director && Director->TroughRise > 1.f) ? LaneLimit * 0.7f : LaneLimit;
 	for (float Candidate = -LaneLimit; Candidate <= LaneLimit; Candidate += 250.f)
 	{
 		if (FMath::Abs(Candidate) > Reach) { continue; }
 		const float Cost = ScoreLane(Candidate, Lookahead);
-		if (Cost < BestCost) { BestCost = Cost; Best = Candidate; }
+		const int32 Lane = FMath::RoundToInt32((Candidate + LaneLimit) / 250.f);
+		const bool bBlocked = LanePathImpact.IsValidIndex(Lane) && LanePathImpact[Lane] >= 0.f;
+		// Circular scenery envelopes are a preference, not proof of collision.
+		// Their accumulated cost must not outweigh an actually clear swept route.
+		if ((bBestBlocked && !bBlocked) || (bBestBlocked == bBlocked && Cost < BestCost))
+		{
+			BestCost = Cost; Best = Candidate; bBestBlocked = bBlocked;
+		}
 	}
 	return Best;
 }
@@ -1042,7 +1050,9 @@ void ADCTreadmill::TickStrikes(float DeltaSeconds)
 			const float TargetStone = StoneAhead.IsValidIndex(TargetIndex) ? StoneAhead[TargetIndex] : -1.f;
 			const float TargetPath = LanePathImpact.IsValidIndex(TargetIndex) ? LanePathImpact[TargetIndex] : -1.f;
 			const bool bUrgent = (TargetStone >= 0.f && TargetStone < 4500.f) || (TargetPath >= 0.f && TargetPath < 1.8f);
-			const bool bBetter = ScoreLane(Candidate, 17000.f) + .6f < ScoreLane(AvoidanceLane, 17000.f);
+			const int32 CandidateIndex = FMath::RoundToInt((Candidate + LaneLimit) / 250.f);
+			const bool bSafer = TargetPath >= 0.f && LanePathImpact.IsValidIndex(CandidateIndex) && LanePathImpact[CandidateIndex] < 0.f;
+			const bool bBetter = bSafer || ScoreLane(Candidate, 17000.f) + .6f < ScoreLane(AvoidanceLane, 17000.f);
 			const bool bDifferent = FMath::Abs(Candidate - AvoidanceLane) > 125.f;
 			if (!bHasAvoidance || (bDifferent && bBetter && (bUrgent || (AvoidanceHold <= 0.f && AvoidanceCandidateTime >= .8f))))
 			{
@@ -1101,6 +1111,24 @@ void ADCTreadmill::TickStrikes(float DeltaSeconds)
 		const float TargetPath = LanePathImpact.IsValidIndex(TargetIndex) ? LanePathImpact[TargetIndex] : -1.f;
 		UE_LOG(LogDC, Log, TEXT("Navigation: obstacle=%.0f target=%.0f lane=%.0f velocity=%.0f assist=%.0f helm=%.2f manual=%d t=%.1f committed=%d hold=%.1f targetStone=%.0f pathHit=%.2f pathMs=%.3f"),
 			StoneDistance, Target, LaneOffset, GetLateralVelocity(), CurrentDrift, Steer, bPlayerHelm || bSteerForced, Director->RideTime, bHasAvoidance, AvoidanceHold, TargetStone, TargetPath, LanePathMilliseconds);
+		if (TargetPath >= 0.f && FParse::Param(FCommandLine::Get(), TEXT("DCNavCandidates")))
+		{
+			float ClearLane = 0.f, ClearCost = TNumericLimits<float>::Max();
+			int32 ClearCount = 0;
+			const float Reach = Director->TroughRise > 1.f ? LaneLimit * .7f : LaneLimit;
+			for (int32 I = 0; I < LanePathImpact.Num(); ++I)
+			{
+				const float Lane = -LaneLimit + I * 250.f;
+				if (FMath::Abs(Lane) > Reach || LanePathImpact[I] >= 0.f) { continue; }
+				++ClearCount;
+				const float Cost = ScoreLane(Lane, 17000.f);
+				if (Cost < ClearCost) { ClearCost = Cost; ClearLane = Lane; }
+			}
+			const float Best = ChooseClearLane(17000.f);
+			UE_LOG(LogDC, Log, TEXT("Navigation alternatives: held=%.0f heldCost=%.2f heldHit=%.2f best=%.0f bestCost=%.2f clear=%.0f clearCost=%.2f clearCount=%d t=%.1f"),
+				Target, ScoreLane(Target, 17000.f), TargetPath, Best, ScoreLane(Best, 17000.f), ClearLane,
+				ClearCount ? ClearCost : -1.f, ClearCount, Director->RideTime);
+		}
 	}
 
 	// Feelers at the waterline, in the ship's resting place (she lies at the origin, bow to +X): out

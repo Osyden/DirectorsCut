@@ -1,0 +1,47 @@
+{
+  "window": [
+    60,
+    240
+  ],
+  "samples": 327,
+  "stone_contacts": [],
+  "strong_helm_reversals": [
+    137.5,
+    192.1,
+    201.2,
+    223.5
+  ],
+  "successive_reversals_within_4s": [],
+  "large_target_changes": [
+    77.0,
+    94.9,
+    137.5,
+    147.6,
+    150.2,
+    192.1,
+    201.2,
+    209.8,
+    223.5,
+    231.5
+  ],
+  "sampled_path_probe_ms": {
+    "samples": 327,
+    "mean": 0.962,
+    "p95": 1.326,
+    "max": 1.899,
+    "scope": "Most recent complete probe at each navigation log sample, not a frame-time benchmark."
+  },
+  "capture_states": [
+    "Capture state: hull=100.0 score=0 fires=0 rigging=0 at 100.0",
+    "Capture state: hull=97.8 score=200 fires=1 rigging=0 at 125.0",
+    "Capture state: hull=95.8 score=400 fires=1 rigging=0 at 150.0",
+    "Capture state: hull=92.7 score=600 fires=1 rigging=0 at 175.0",
+    "Capture state: hull=91.2 score=700 fires=0 rigging=0 at 200.0",
+    "Capture state: hull=89.7 score=700 fires=1 rigging=0 at 205.0",
+    "Capture state: hull=87.7 score=800 fires=2 rigging=0 at 210.0",
+    "Capture state: hull=83.6 score=1000 fires=2 rigging=0 at 236.0",
+    "Capture state: hull=83.1 score=1000 fires=2 rigging=0 at 239.0",
+    "Capture state: hull=82.4 score=1000 fires=0 rigging=0 at 246.0"
+  ],
+  "interpretation": "Different random obstacle layouts are not a controlled A/B. Inspect reversals and captures; legitimate avoidance also reverses helm."
+}

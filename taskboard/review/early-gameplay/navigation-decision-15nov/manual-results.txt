@@ -1,0 +1,41 @@
+[2026.11.15-07.32.51:629][  1]LogDC: Lane 0 cm, moving 0 cm/s, helm 0.00, sea rise here 0 cm, slope 0.000, at 90.4 s
+[2026.11.15-07.32.53:030][  4]LogDC: Lane 0 cm, moving 0 cm/s, helm 0.00, sea rise here 0 cm, slope 0.000, at 91.0 s
+[2026.11.15-07.32.53:536][ 22]LogDC: Lane 0 cm, moving 0 cm/s, helm 0.00, sea rise here 0 cm, slope 0.000, at 91.5 s
+[2026.11.15-07.32.54:046][ 70]LogDC: Lane 0 cm, moving 0 cm/s, helm 0.00, sea rise here 0 cm, slope 0.000, at 92.0 s
+[2026.11.15-07.32.54:547][119]LogDC: Lane 0 cm, moving 0 cm/s, helm 0.00, sea rise here 0 cm, slope 0.000, at 92.5 s
+[2026.11.15-07.32.55:052][170]LogDC: Lane 0 cm, moving 0 cm/s, helm 0.00, sea rise here 0 cm, slope 0.000, at 93.0 s
+[2026.11.15-07.32.55:558][222]LogDC: Lane 142 cm, moving 511 cm/s, helm 0.70, sea rise here 1 cm, slope 0.011, at 93.5 s
+[2026.11.15-07.32.56:063][273]LogDC: Lane 463 cm, moving 720 cm/s, helm 0.70, sea rise here 8 cm, slope 0.036, at 94.0 s
+[2026.11.15-07.32.56:117][275]LogDC: Auto shot shot_0094.png at ride time 94.0, 97 fps (game 34.3 ms, render 11.8 ms, gpu 6.6 ms)
+[2026.11.15-07.32.56:117][275]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 94.0
+[2026.11.15-07.32.56:660][280]LogDC: Lane 867 cm, moving 802 cm/s, helm 0.70, sea rise here 29 cm, slope 0.064, at 94.5 s
+[2026.11.15-07.32.57:162][324]LogDC: Lane 1262 cm, moving 765 cm/s, helm 0.70, sea rise here 59 cm, slope 0.088, at 95.0 s
+[2026.11.15-07.32.57:673][369]LogDC: Lane 1639 cm, moving 715 cm/s, helm 0.70, sea rise here 96 cm, slope 0.109, at 95.5 s
+[2026.11.15-07.32.58:177][416]LogDC: Lane 1988 cm, moving 665 cm/s, helm 0.70, sea rise here 137 cm, slope 0.126, at 96.0 s
+[2026.11.15-07.32.58:682][463]LogDC: Lane 2311 cm, moving 621 cm/s, helm 0.70, sea rise here 180 cm, slope 0.140, at 96.5 s
+[2026.11.15-07.32.59:181][510]LogDC: Lane 2611 cm, moving 522 cm/s, helm -0.70, sea rise here 224 cm, slope 0.151, at 97.0 s
+[2026.11.15-07.32.59:682][559]LogDC: Lane 2566 cm, moving -536 cm/s, helm -0.70, sea rise here 217 cm, slope 0.149, at 97.5 s
+[2026.11.15-07.33.00:183][604]LogDC: Auto shot shot_0098.png at ride time 98.0, 88 fps (game 11.9 ms, render 11.5 ms, gpu 7.1 ms)
+[2026.11.15-07.33.00:183][604]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 98.0
+[2026.11.15-07.33.00:185][604]LogDC: Lane 2166 cm, moving -982 cm/s, helm -0.70, sea rise here 160 cm, slope 0.134, at 98.0 s
+[2026.11.15-07.33.00:695][631]LogDC: Lane 1607 cm, moving -1149 cm/s, helm -0.70, sea rise here 93 cm, slope 0.108, at 98.5 s
+[2026.11.15-07.33.01:206][667]LogDC: Lane 1011 cm, moving -1168 cm/s, helm -0.70, sea rise here 39 cm, slope 0.073, at 99.0 s
+[2026.11.15-07.33.01:720][703]LogDC: Lane 421 cm, moving -1118 cm/s, helm -0.70, sea rise here 7 cm, slope 0.033, at 99.6 s
+[2026.11.15-07.33.02:229][735]LogDC: Lane -126 cm, moving -1033 cm/s, helm -0.70, sea rise here 1 cm, slope -0.010, at 100.1 s
+[2026.11.15-07.33.02:732][766]LogDC: Lane -621 cm, moving -935 cm/s, helm -0.70, sea rise here 15 cm, slope -0.047, at 100.6 s
+[2026.11.15-07.33.03:244][801]LogDC: Lane -1070 cm, moving -737 cm/s, helm 0.00, sea rise here 43 cm, slope -0.077, at 101.1 s
+[2026.11.15-07.33.03:758][836]LogDC: Lane -1283 cm, moving -181 cm/s, helm 0.00, sea rise here 61 cm, slope -0.090, at 101.6 s
+[2026.11.15-07.33.04:176][865]LogDC: Auto shot shot_0102.png at ride time 102.0, 72 fps (game 11.0 ms, render 13.1 ms, gpu 6.3 ms)
+[2026.11.15-07.33.04:176][865]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 102.0
+[2026.11.15-07.33.04:315][866]LogDC: Lane -1296 cm, moving 80 cm/s, helm 0.00, sea rise here 62 cm, slope -0.090, at 102.2 s
+[2026.11.15-07.33.04:827][904]LogDC: Lane -1228 cm, moving 169 cm/s, helm 0.00, sea rise here 56 cm, slope -0.086, at 102.7 s
+[2026.11.15-07.33.05:329][945]LogDC: Lane -1134 cm, moving 199 cm/s, helm 0.00, sea rise here 48 cm, slope -0.081, at 103.2 s
+[2026.11.15-07.33.05:839][986]LogDC: Lane -1031 cm, moving 203 cm/s, helm 0.00, sea rise here 40 cm, slope -0.074, at 103.7 s
+[2026.11.15-07.33.06:348][ 29]LogDC: Lane -929 cm, moving 195 cm/s, helm 0.00, sea rise here 33 cm, slope -0.068, at 104.2 s
+[2026.11.15-07.33.06:852][ 71]LogDC: Lane -834 cm, moving 182 cm/s, helm 0.00, sea rise here 27 cm, slope -0.062, at 104.7 s
+[2026.11.15-07.33.07:361][116]LogDC: Lane -745 cm, moving 167 cm/s, helm 0.00, sea rise here 21 cm, slope -0.056, at 105.2 s
+[2026.11.15-07.33.07:873][157]LogDC: Lane -664 cm, moving 151 cm/s, helm 0.00, sea rise here 17 cm, slope -0.050, at 105.7 s
+[2026.11.15-07.33.08:186][181]LogDC: Auto shot shot_0106.png at ride time 106.0, 77 fps (game 9.6 ms, render 12.9 ms, gpu 8.7 ms)
+[2026.11.15-07.33.08:186][181]LogDC: Capture state: hull=100.0 score=100 fires=0 rigging=0 at 106.0
+[2026.11.15-07.33.08:376][186]LogDC: Lane -592 cm, moving 137 cm/s, helm 0.00, sea rise here 14 cm, slope -0.045, at 106.2 s
+[2026.11.15-07.33.08:877][224]LogDC: Lane -527 cm, moving 123 cm/s, helm 0.00, sea rise here 11 cm, slope -0.040, at 106.7 s

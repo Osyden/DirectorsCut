@@ -1,7 +1,7 @@
 # Uses a separately built runtime project; never saves or changes content assets.
 param(
     [Parameter(Mandatory=$true)][string]$ProjectPath,
-    [ValidateSet('rag','cannons','encounters','statue','city','fogband','crew','default','exit','navigation','bow','bowclose','bowstorm','bowstormclose','bowdeck','bowrough','bowroughclose','bowparticles','bowdetail','bowroughdeck','bowlookdown','bowtransition','manual')][string]$Case = 'encounters',
+    [ValidateSet('rag','cannons','encounters','statue','city','fogband','crew','default','exit','navigation','navigationroute','bow','bowclose','bowstorm','bowstormclose','bowdeck','bowrough','bowroughclose','bowparticles','bowdetail','bowroughdeck','bowlookdown','bowtransition','manual')][string]$Case = 'encounters',
     [string]$EngineRoot = 'E:\Utilities\UE_5.8',
     [string]$OutputPath = ''
 )
@@ -24,6 +24,7 @@ $options = switch ($Case) {
     'default' { '-DCRunThrough -DCAutoShots=100,110,125,175,235 -DCLaneLog -DCCurrentLog -DCGunLog' }
     'exit' { '-DCRunThrough -DCAutoShots=210,225,230,234,236,239,242,246 -DCLaneLog -DCCurrentLog' }
     'navigation' { '-DCNavigationVerify -DCRunThrough' }
+    'navigationroute' { '-DCRunThrough -DCAutoShots=100,125,150,175,200,205,210,236,239,246 -DCLaneLog -DCCurrentLog -DCNavCandidates' }
     'bow' { '-DCStartAt=20 -DCRunThrough -DCShipView -DCOrbit=145,5 -DCAutoShots=23,25,28,32' }
     'bowclose' { '-DCStartAt=20 -DCRunThrough -DCAutoShots=23,25,28,32 -DCShotCam=3200,-1000,650,-18,132' }
     'bowstorm' { '-DCStartAt=45 -DCRunThrough -DCShipView -DCOrbit=145,5 -DCAutoShots=50,53,56,59 -DCBowLog' }
@@ -50,7 +51,7 @@ if (!$run.WaitForExit(420000)) {
 $shots = Join-Path $projectFolder 'Saved\Screenshots\Auto'
 Get-ChildItem -LiteralPath $shots -Filter 'shot_*.png' | Where-Object { $_.LastWriteTime -ge $started } | Copy-Item -Destination $output
 $lines = Get-Content -LiteralPath $log
-$lines | Select-String 'LogDC:.*(VERIFY|VERIFICATION|Rag contact:|Encounter |Sentinel |Hull struck|Navigation:|Navigation plan:|Bow |Auto shot|Capture state:)' | ForEach-Object { $_.Line } | Set-Content -LiteralPath (Join-Path $output 'results.txt')
+$lines | Select-String 'LogDC:.*(VERIFY|VERIFICATION|Rag contact:|Encounter |Sentinel |Hull struck|Navigation:|Navigation plan:|Navigation alternatives:|Bow |Auto shot|Capture state:)' | ForEach-Object { $_.Line } | Set-Content -LiteralPath (Join-Path $output 'results.txt')
 if ($run.ExitCode -ne 0 -or $lines -match 'VERIFICATION FAILED|VERIFY FAIL') { throw "Review failed; inspect $log." }
 if ($Case -in @('rag','cannons','encounters','navigation') -and !($lines -match 'VERIFICATION PASSED')) { throw 'The verification did not reach its success marker.' }
 Write-Output "Review completed: $output. Inspect the screenshots before accepting visual quality."

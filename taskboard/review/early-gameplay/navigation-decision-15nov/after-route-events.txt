@@ -1,0 +1,58 @@
+[2026.11.15-07.29.32:745][244]LogDC: Navigation plan: 0 -> 0 urgent=0 clearance=-1 at 74.5
+[2026.11.15-07.29.33:249][297]LogDC: Navigation alternatives: held=0 heldCost=169.59 heldHit=5.97 best=1000 bestCost=0.55 clear=1000 clearCost=0.55 clearCount=33 t=75.0
+[2026.11.15-07.29.33:753][352]LogDC: Navigation alternatives: held=0 heldCost=170.79 heldHit=5.56 best=1000 bestCost=0.55 clear=1000 clearCost=0.55 clearCount=31 t=75.5
+[2026.11.15-07.29.34:261][407]LogDC: Navigation alternatives: held=0 heldCost=172.93 heldHit=4.94 best=1000 bestCost=0.55 clear=1000 clearCost=0.55 clearCount=31 t=76.0
+[2026.11.15-07.29.34:766][454]LogDC: Navigation alternatives: held=0 heldCost=174.59 heldHit=4.53 best=1000 bestCost=0.55 clear=1000 clearCost=0.55 clearCount=31 t=76.5
+[2026.11.15-07.29.35:206][499]LogDC: Navigation plan: 0 -> 1000 urgent=0 clearance=8512 at 76.9
+[2026.11.15-07.29.52:988][247]LogDC: Navigation plan: 1000 -> -500 urgent=0 clearance=15958 at 94.7
+[2026.11.15-07.29.58:284][759]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 100.0
+[2026.11.15-07.30.01:002][976]LogDC: Navigation plan: -500 -> -3250 urgent=0 clearance=15960 at 102.7
+[2026.11.15-07.30.02:330][112]LogDC: Display: Encounter defeated: creature at 104.0
+[2026.11.15-07.30.06:739][564]LogDC: Navigation plan: -3250 -> 1000 urgent=0 clearance=15043 at 108.4
+[2026.11.15-07.30.13:017][125]LogDC: Display: Encounter impact: fireball deck=V(X=409.37, Y=60.00, Z=509.73) fires=0->1 at 114.7
+[2026.11.15-07.30.14:953][287]LogDC: Display: Encounter defeated: creature at 116.6
+[2026.11.15-07.30.15:588][338]LogDC: Navigation plan: 1000 -> 3000 urgent=0 clearance=15094 at 117.3
+[2026.11.15-07.30.23:348][  2]LogDC: Capture state: hull=98.0 score=200 fires=1 rigging=0 at 125.0
+[2026.11.15-07.30.24:499][ 98]LogDC: Navigation plan: 3000 -> 3500 urgent=0 clearance=14951 at 126.2
+[2026.11.15-07.30.26:633][285]LogDC: Navigation alternatives: held=3500 heldCost=169.82 heldHit=5.97 best=3000 bestCost=31.44 clear=3000 clearCost=31.44 clearCount=5 t=128.3
+[2026.11.15-07.30.27:143][332]LogDC: Navigation alternatives: held=3500 heldCost=171.07 heldHit=5.56 best=1500 bestCost=128.98 clear=1500 clearCost=128.98 clearCount=2 t=128.8
+[2026.11.15-07.30.27:643][377]LogDC: Navigation alternatives: held=3500 heldCost=173.09 heldHit=4.94 best=-1000 bestCost=2.18 clear=-1000 clearCost=2.18 clearCount=21 t=129.3
+[2026.11.15-07.30.27:645][377]LogDC: Display: Encounter defeated: sentinel at 129.3
+[2026.11.15-07.30.28:147][421]LogDC: Navigation alternatives: held=3500 heldCost=174.85 heldHit=4.53 best=750 bestCost=1.30 clear=750 clearCost=1.30 clearCount=21 t=129.8
+[2026.11.15-07.30.28:421][446]LogDC: Navigation plan: 3500 -> 750 urgent=0 clearance=-1 at 130.1
+[2026.11.15-07.30.33:782][942]LogDC: Navigation plan: 750 -> -2750 urgent=0 clearance=-1 at 135.4
+[2026.11.15-07.30.37:279][267]LogDC: Navigation plan: -2750 -> -3500 urgent=0 clearance=11863 at 138.9
+[2026.11.15-07.30.44:774][740]LogDC: Display: Encounter defeated: creature at 146.4
+[2026.11.15-07.30.47:539][912]LogDC: Navigation plan: -3500 -> -3000 urgent=0 clearance=15730 at 149.2
+[2026.11.15-07.30.48:355][958]LogDC: Capture state: hull=96.0 score=400 fires=1 rigging=0 at 150.0
+[2026.11.15-07.30.49:998][ 37]LogDC: Navigation plan: -3000 -> -2750 urgent=0 clearance=12510 at 151.7
+[2026.11.15-07.30.53:903][268]LogDC: Display: Encounter impact: fireball deck=V(X=139.37, Y=-120.00, Z=471.88) fires=0->1 at 155.6
+[2026.11.15-07.30.53:972][271]LogDC: Display: Encounter defeated: creature at 155.6
+[2026.11.15-07.31.07:573][ 25]LogDC: Navigation plan: -2750 -> -500 urgent=0 clearance=15503 at 169.2
+[2026.11.15-07.31.12:139][355]LogDC: Display: Encounter defeated: sentinel at 173.8
+[2026.11.15-07.31.13:351][465]LogDC: Capture state: hull=92.8 score=600 fires=1 rigging=0 at 175.0
+[2026.11.15-07.31.28:396][914]LogDC: Display: Encounter defeated: creature at 190.1
+[2026.11.15-07.31.29:165][994]LogDC: Navigation plan: -500 -> 750 urgent=0 clearance=15413 at 190.8
+[2026.11.15-07.31.36:892][776]LogDC: Navigation plan: 750 -> 1250 urgent=0 clearance=13372 at 198.6
+[2026.11.15-07.31.37:742][866]LogDC: Navigation alternatives: held=1250 heldCost=170.80 heldHit=5.65 best=1250 bestCost=170.80 clear=0 clearCost=-1.00 clearCount=0 t=199.4
+[2026.11.15-07.31.37:799][872]LogDC: Display: Encounter defeated: creature at 199.5
+[2026.11.15-07.31.38:244][922]LogDC: Navigation alternatives: held=1250 heldCost=172.05 heldHit=5.25 best=1250 bestCost=172.05 clear=0 clearCost=-1.00 clearCount=0 t=199.9
+[2026.11.15-07.31.38:341][933]LogDC: Capture state: hull=91.2 score=800 fires=0 rigging=0 at 200.0
+[2026.11.15-07.31.38:750][967]LogDC: Navigation alternatives: held=1250 heldCost=174.36 heldHit=4.64 best=1250 bestCost=174.36 clear=0 clearCost=-1.00 clearCount=0 t=200.4
+[2026.11.15-07.31.39:219][ 14]LogDC: Display: Encounter impact: fireball deck=V(X=-1257.75, Y=-170.00, Z=627.13) fires=0->1 at 200.9
+[2026.11.15-07.31.39:257][ 18]LogDC: Navigation alternatives: held=1250 heldCost=176.18 heldHit=4.24 best=1250 bestCost=176.18 clear=0 clearCost=-1.00 clearCount=0 t=200.9
+[2026.11.15-07.31.39:760][ 63]LogDC: Navigation alternatives: held=1250 heldCost=179.62 heldHit=3.62 best=1250 bestCost=179.62 clear=0 clearCost=-1.00 clearCount=0 t=201.4
+[2026.11.15-07.31.40:266][110]LogDC: Navigation alternatives: held=1250 heldCost=182.48 heldHit=3.22 best=1250 bestCost=182.48 clear=0 clearCost=-1.00 clearCount=0 t=201.9
+[2026.11.15-07.31.40:773][157]LogDC: Navigation alternatives: held=1250 heldCost=188.15 heldHit=2.60 best=-3000 bestCost=2.22 clear=-3000 clearCost=2.22 clearCount=4 t=202.4
+[2026.11.15-07.31.41:183][196]LogDC: Navigation plan: 1250 -> -3000 urgent=0 clearance=5785 at 202.8
+[2026.11.15-07.31.43:347][405]LogDC: Capture state: hull=89.7 score=800 fires=1 rigging=0 at 205.0
+[2026.11.15-07.31.43:878][444]LogDC: Display: Encounter impact: fireball deck=V(X=-190.63, Y=140.00, Z=471.88) fires=1->2 at 205.5
+[2026.11.15-07.31.46:991][728]LogDC: Display: Encounter defeated: creature at 208.7
+[2026.11.15-07.31.48:352][856]LogDC: Capture state: hull=87.7 score=900 fires=2 rigging=0 at 210.0
+[2026.11.15-07.31.57:448][746]LogDC: Navigation plan: -3000 -> -3500 urgent=0 clearance=15935 at 219.1
+[2026.11.15-07.32.00:718][ 81]LogDC: Navigation plan: -3500 -> 500 urgent=0 clearance=-1 at 222.4
+[2026.11.15-07.32.02:654][269]LogDC: Display: Encounter defeated: sentinel at 224.3
+[2026.11.15-07.32.09:748][992]LogDC: Navigation plan: 500 -> 0 urgent=0 clearance=-1 at 231.4
+[2026.11.15-07.32.14:350][485]LogDC: Capture state: hull=83.6 score=1000 fires=2 rigging=0 at 236.0
+[2026.11.15-07.32.17:343][777]LogDC: Capture state: hull=83.1 score=1000 fires=2 rigging=0 at 239.0
+[2026.11.15-07.32.24:348][505]LogDC: Capture state: hull=82.4 score=1000 fires=0 rigging=0 at 246.0

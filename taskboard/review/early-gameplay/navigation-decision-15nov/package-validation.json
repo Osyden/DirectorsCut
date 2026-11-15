@@ -1,0 +1,57 @@
+{
+  "package_path": "E:\\Projects\\DirectorsCut\\Builds\\2026-11-15_0735_early-polish",
+  "package_build_seconds": 87.89,
+  "source_manifest_paths_verified": 80,
+  "source_manifest_sha256": "49ECBFF7162B214A11DF97129B515FC68D2EA48D1DD4331E23B0D0D879B4889B",
+  "executable_sha256": "FA6590A56B76498F5197DF0DD44C399F0EE7C26F2533B637B015A09235488D77",
+  "cases": [
+    {
+      "case": "navigation",
+      "checks_passed": 10,
+      "checks_failed": 0,
+      "fatal_ensure_assertion_blueprint_matches": 0,
+      "normal_exit_markers": 1,
+      "pirate_cast_bindings": 4
+    },
+    {
+      "case": "rag",
+      "checks_passed": 38,
+      "checks_failed": 0,
+      "fatal_ensure_assertion_blueprint_matches": 0,
+      "normal_exit_markers": 1,
+      "pirate_cast_bindings": 4
+    },
+    {
+      "case": "bow",
+      "checks_passed": 0,
+      "checks_failed": 0,
+      "fatal_ensure_assertion_blueprint_matches": 0,
+      "normal_exit_markers": 1,
+      "pirate_cast_bindings": 4
+    },
+    {
+      "case": "route",
+      "checks_passed": 0,
+      "checks_failed": 0,
+      "fatal_ensure_assertion_blueprint_matches": 0,
+      "normal_exit_markers": 1,
+      "pirate_cast_bindings": 4
+    }
+  ],
+  "route_creatures_defeated": 7,
+  "route_statues_defeated": 3,
+  "route_fireball_impacts": 3,
+  "route_beam_impacts": 0,
+  "status": "Gameplay checks passed; bow spray visual parity is unresolved. Prior main launcher is retained.",
+  "warnings": [
+    "Existing engine LineSetComponentMaterial startup warning",
+    "Existing sky/weather editor-helper Accessed None warnings and legacy pawn-controller messages",
+    "Optional profiler and graphics-plugin startup warnings"
+  ],
+  "limits": [
+    "Cooked bow sprites simulate with expected counts/sizes/alpha but the reviewed close frames do not reproduce the editor spray",
+    "No new missing cloud or hair solver warnings found",
+    "No audio, voice or clean-machine test",
+    "Random route layouts do not establish a comparative collision or difficulty improvement"
+  ]
+}

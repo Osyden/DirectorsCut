@@ -2,7 +2,7 @@
 param(
     [Parameter(Mandatory=$true)][string]$ExecutablePath,
     [Parameter(Mandatory=$true)][string]$OutputPath,
-    [ValidateSet('rag','encounters','bow','fog','route')][string]$Case = 'rag'
+    [ValidateSet('rag','encounters','navigation','bow','fog','route')][string]$Case = 'rag'
 )
 $ErrorActionPreference = 'Stop'
 $exe = (Resolve-Path -LiteralPath $ExecutablePath).Path
@@ -16,6 +16,7 @@ $running = Get-CimInstance Win32_Process -Filter "Name = 'DirectorsCut.exe'" | W
 if ($running) { throw 'This packaged executable is already running.' }
 $options = switch ($Case) {
     'rag' { '-DCEarlyVerify -DCSkipIntro -DCRunThrough -DCTenths -DCAutoShots=2.9,3.1,3.8,4.0,4.7,4.9,5.4,9,12,20' }
+    'navigation' { '-DCNavigationVerify -DCRunThrough' }
     'encounters' { '-DCEncounterVerify -DCStartAt=90 -DCRunThrough -DCOrders=Hold_fire -DCAutoShots=101,108,119,121,123,126,129,135,146,175,208,225,235,236 -DCShotCam=-2200,0,1200,7,55 -DCGunLog' }
     'bow' { '-DCStartAt=90 -DCRunThrough -DCTenths -DCAutoShots=98.6,98.8,99,99.2,100.5,101 -DCShotCam=1700,-600,550,-10,132 -DCBowLog -DCBowParticleAudit' }
     'fog' { '-DCRunThrough -DCOrders=Hold_fire -DCAutoShots=100,110,125 -DCShotCam=-2200,0,1200,5,-55' }
@@ -35,6 +36,6 @@ $lines | Select-String 'LogDC:.*(VERIFY|VERIFICATION|Rag contact:|Encounter |Sen
 $shots = Join-Path $output 'user\Saved\Screenshots\Auto'
 if (Test-Path -LiteralPath $shots) { Get-ChildItem -LiteralPath $shots -Filter 'shot_*.png' | Copy-Item -Destination $output }
 if ($run.ExitCode -ne 0 -or $lines -match 'VERIFICATION FAILED|VERIFY FAIL|Fatal error|Assertion failed|Blueprint Runtime Error') { throw "Packaged review failed; inspect $log" }
-if ($Case -in @('rag','encounters') -and !($lines -match 'VERIFICATION PASSED')) { throw 'Packaged verification did not reach success.' }
-if (!(Get-ChildItem -LiteralPath $output -Filter 'shot_*.png')) { throw 'Review produced no screenshots.' }
+if ($Case -in @('rag','encounters','navigation') -and !($lines -match 'VERIFICATION PASSED')) { throw 'Packaged verification did not reach success.' }
+if ($Case -ne 'navigation' -and !(Get-ChildItem -LiteralPath $output -Filter 'shot_*.png')) { throw 'Review produced no screenshots.' }
 Write-Output "Packaged review completed: $output. Inspect screenshots and missing-asset warnings before accepting. Voice/audio were disabled for this gameplay check."

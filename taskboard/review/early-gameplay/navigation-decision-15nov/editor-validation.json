@@ -1,0 +1,57 @@
+{
+  "baseline_commit": "529689f",
+  "scenario": "Real collision sweeps through a constrained gap, with three conservative rear-scenery steering envelopes",
+  "before_choice_cm": 500,
+  "before_predicted_impact_seconds": 1.78,
+  "before_choice_cost": 179.72,
+  "clear_route_cost": 306.73,
+  "after_choice_cm": -1500,
+  "after_predicted_impact_seconds": -1,
+  "editor_build_seconds": 5.29,
+  "game_build_seconds": 14.83,
+  "matching_runtime_source_config_project_paths": 80,
+  "cases": [
+    {
+      "case": "before-route",
+      "checks_passed": 0,
+      "checks_failed": 0,
+      "fatal_assertion_blueprint_material_failure_matches": 0,
+      "normal_exit_markers": 1
+    },
+    {
+      "case": "before-confirmation",
+      "checks_passed": 8,
+      "checks_failed": 2,
+      "fatal_assertion_blueprint_material_failure_matches": 0,
+      "normal_exit_markers": 1
+    },
+    {
+      "case": "after-verification",
+      "checks_passed": 10,
+      "checks_failed": 0,
+      "fatal_assertion_blueprint_material_failure_matches": 0,
+      "normal_exit_markers": 1
+    },
+    {
+      "case": "after-route",
+      "checks_passed": 0,
+      "checks_failed": 0,
+      "fatal_assertion_blueprint_material_failure_matches": 0,
+      "normal_exit_markers": 1
+    },
+    {
+      "case": "after-manual",
+      "checks_passed": 0,
+      "checks_failed": 0,
+      "fatal_assertion_blueprint_material_failure_matches": 0,
+      "normal_exit_markers": 1
+    }
+  ],
+  "limits": [
+    "The historical 205s collision was not reproduced; no claim that its exact cause is fixed",
+    "Natural layouts differ; before and after route screenshots are not controlled A/B evidence",
+    "Both natural routes finished with zero stone contacts; changed hull/score timing is not a performance or difficulty claim",
+    "Manual sequence validates steering response only; its sought-in interval logged no obstacle assistance",
+    "Forecast remains approximate with a six-second horizon; no guarantee of collision-free navigation"
+  ]
+}

@@ -51,6 +51,40 @@ void ADCTreadmill::VerifyNavigation()
 		TEXT("planner chooses a reachable port route around both stones"));
 	UE_LOG(LogDC, Display, TEXT("NAVIGATION VERIFY METRICS chosen=%.0f pathMs=%.3f"), Chosen, LanePathMilliseconds);
 
+	// Nearby ruin clusters have conservative circular steering envelopes. They
+	// can overlap a destination even though the moving hull passes them before
+	// turning into that lane. Confirm that several such penalties cannot outweigh
+	// a real impending collision when a swept route through the gap is clear.
+	const float SavedLimit = LaneLimit;
+	LaneLimit = 2000.f;
+	const int32 SavedObjects = Objects.Num();
+	TArray<AStaticMeshActor*> RearStones;
+	for (int32 I = 0; I < 3; ++I)
+	{
+		const FVector Position(-1800.f + I * 200.f, -1700.f - I * 650.f, Z);
+		AStaticMeshActor* Stone = Pillar(Position.X, Position.Y);
+		RearStones.Add(Stone);
+		FDCWorldObject& Scenery = Objects.AddDefaulted_GetRef();
+		Scenery.Actor = Stone; Scenery.Base = Position; Scenery.Radius = 1000.f;
+		Scenery.bFeelable = true;
+	}
+	UpdateLanePaths();
+	Check(ForecastLaneImpact(-1500.f) < 0.f && ForecastLaneImpact(0.f) >= 0.f,
+		TEXT("rear scenery envelopes leave a swept port escape from the blocked course"));
+	const float EnvelopeChoice = ChooseClearLane(17000.f);
+	Check(ForecastLaneImpact(EnvelopeChoice) < 0.f,
+		TEXT("clear swept route takes priority over accumulated scenery-envelope costs"));
+	UE_LOG(LogDC, Display, TEXT("NAVIGATION VERIFY ENVELOPES chosen=%.0f hit=%.2f cost=%.2f clearCost=%.2f"),
+		EnvelopeChoice, ForecastLaneImpact(EnvelopeChoice), ScoreLane(EnvelopeChoice, 17000.f), ScoreLane(-1500.f, 17000.f));
+	AvoidanceLane = 0.f; bHasAvoidance = true; AvoidanceHold = 0.f;
+	AvoidanceCandidateTime = 0.f; StoneLookTimer = 0.f;
+	for (int32 Probe = 0; Probe < 6; ++Probe) { TickStrikes(.2f); }
+	Check(FindClearLane(17000.f) < 0.f && ForecastLaneImpact(FindClearLane(17000.f)) < 0.f,
+		TEXT("committed crew course accepts the safer route despite its higher envelope cost"));
+	for (AStaticMeshActor* Stone : RearStones) { Stone->Destroy(); }
+	Objects.SetNum(SavedObjects);
+	LaneLimit = SavedLimit;
+
 	// A crew destination across the obstacle previously overrode the physical
 	// contact side and shouldered the hull further into the stone.
 	CrossingStone->SetActorLocation(FVector(1460.f, 400.f, Z));
