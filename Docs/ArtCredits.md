@@ -5,7 +5,7 @@ Verified against current main source, installed assets, project integration reco
 ## Requested team credits
 
 - **Director:** Eva Jobse
-- **Developers:** GPT-6 Astra, Claude Fable5.2, Qwen3.8 27B
+- **Developers:** GPT-6 Astra, Claude Fable 5.2, Qwen 3.8 27B
 - **Special thanks:** Epic Games, NVIDIA
 
 The developer names above preserve the owner's requested wording.

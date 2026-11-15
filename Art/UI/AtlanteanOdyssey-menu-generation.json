@@ -1,0 +1,18 @@
+{
+  "tool": "built-in image_gen",
+  "reference": "User-supplied teal/gold Atlantean Odyssey menu reference, 15 November 2026",
+  "assets": [
+    {
+      "file": "AtlanteanOdyssey-logo-v2.png",
+      "transparent": true,
+      "prompt": "Generate a NEW finished transparent title-logo asset for a videogame, using the attached menu ONLY as a visual style reference. Exact text on two lines: ATLANTEAN / ODYSSEY. Elegant slender monumental classical Roman serif capitals, subtle hand-cut antique polished gold, refined rather than chunky. Beautiful flowing initial A, thin golden trident rising from a semicircular celestial navigation dial above lettering, tiny silhouetted sunken Greek temples in the dial, two restrained curling gold wave flourishes below. Match the reference logo's airy high-end proportion and exquisite gold linework. Wide composition aspect about 2:1, logo fills canvas with comfortable padding, clean crisp edges, readable at 440px wide. TRUE transparent background, no colored backing, no ship, no menu, no buttons, no other wording, no watermark.",
+      "final_edit_prompt": "EDIT this exact logo. Preserve the exact ATLANTEAN ODYSSEY lettering, golden trident, fine navigational semicircle, tiny temples and bottom wave flourish. CRITICAL: REMOVE ALL the beige/cream/white/gold atmospheric haze and backdrop behind and around the lettering and emblem. Remove every outer glow and every diffuse shadow. This must be an extremely clean true transparent cutout of ONLY the solid gold lettering and gold ornamental lines, with transparent empty holes between letters and behind the compass dial and temples. No filled disc, no filled rectangle, no cloud of light. The final transparent logo will be overlaid on very dark navy, so any pale haze would be visibly wrong. Sharp antialiased boundaries, no halo."
+    },
+    {
+      "file": "AtlanteanOdyssey-menu-panel.png",
+      "transparent": false,
+      "prompt": "Generate one production videogame UI BACKGROUND ART PANEL, portrait aspect 3:5. Use attached menu ONLY as visual style reference for its LEFT decorative panel. Deep dark petrol-blue ancient stone and subtle fine marble cracks, luxurious muted golden engraved Greek meander running along the far right edge in a gentle sweeping curve, faint ornamental boundary at far left, exquisitely etched flowing ocean waves and a weathered Poseidon profile carved in dark blue stone ONLY in the lower-left bottom 20 percent. Large central and upper 78 percent must be quiet almost-black navy teal with extremely subtle texture, unobstructed to place a logo and four buttons later. This is ONLY the background art: absolutely NO text, NO letters, NO title, NO logo, NO buttons, NO ship, NO landscape, NO UI mockup. Edge-to-edge dark textured panel, restrained antique gold, no large bright areas, intricate beautiful bottom embellishment matching reference."
+    }
+  ],
+  "font": {"file": "Content/DC/UI/Fonts/Cinzel.ttf", "source": "https://github.com/google/fonts/tree/main/ofl/cinzel", "license": "SIL Open Font License 1.1, adjacent OFL.txt"}
+}

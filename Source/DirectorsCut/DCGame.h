@@ -66,6 +66,8 @@ public:
 protected:
 	void ShowMainMenu();
 	void TickMainMenu(float DeltaSeconds);
+	void SetMenuInfoPage(int32 Page);
+	int32 MenuInfoPage = 0;
 	bool bAwaitingStart = false;
 	bool bMenuCaptured = false;
 	float MenuAge = 0.f;

@@ -11,10 +11,10 @@
 #include "Widgets/Layout/SScaleBox.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SBorder.h"
+#include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Text/STextBlock.h"
-#include "Widgets/SNullWidget.h"
 #include "Widgets/SOverlay.h"
 #include "Widgets/Images/SImage.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
@@ -27,108 +27,126 @@
 #include "Misc/App.h"
 #include "UnrealClient.h"
 
+void ADCGameMode::SetMenuInfoPage(int32 Page)
+{
+    MenuInfoPage=MenuInfoPage==Page?0:Page;
+    if(MainMenuWidget.IsValid()) { MainMenuWidget->Invalidate(EInvalidateWidgetReason::Layout); }
+    UE_LOG(LogDC,Log,TEXT("MAIN_MENU panel=%d ride=%.2f"),MenuInfoPage,Director?Director->RideTime:-1.f);
+}
+
 void ADCGameMode::ShowMainMenu()
 {
-    if (!Director || !GetWorld()->GetGameViewport()) { bAwaitingStart=false; return; }
-    Director->Seek(0.f);
-    Director->TimeScale=0.f;
+    if(!Director || !GetWorld()->GetGameViewport()) { bAwaitingStart=false; return; }
+    Director->Seek(0.f); Director->TimeScale=0.f; MenuInfoPage=0;
     APlayerController* PC=GetWorld()->GetFirstPlayerController();
-    if (!PC) { return; }
-    PC->SetIgnoreMoveInput(true);
-    PC->SetIgnoreLookInput(true);
-    PC->bShowMouseCursor=true;
-    const FVector Position(-6200.f,-10800.f,4100.f);
-    // Look slightly off the ship's centre: keep the complete vessel beside the menu.
-    const FVector LookAt(2000.f,-1700.f,1800.f);
+    if(!PC) { return; }
+    PC->SetIgnoreMoveInput(true); PC->SetIgnoreLookInput(true); PC->bShowMouseCursor=true;
+    const FVector Position(-6200.f,-10800.f,4100.f), LookAt(2000.f,-1700.f,1800.f);
     MenuCamera=GetWorld()->SpawnActor<ACameraActor>(Position,(LookAt-Position).Rotation());
     MenuCamera->GetCameraComponent()->SetFieldOfView(58.f);
     MenuCamera->GetCameraComponent()->bConstrainAspectRatio=false;
     PC->SetViewTarget(MenuCamera);
-    const FLinearColor Cream(.92f,.91f,.84f), Gold(.85f,.64f,.29f), Muted(.48f,.66f,.68f);
-    auto Text=[](const TCHAR* Line,int Size,FLinearColor Color) {
+    const FLinearColor Cream(.93f,.87f,.70f), Gold(.72f,.49f,.20f), Muted(.46f,.64f,.65f);
+    auto Body=[](const TCHAR* Line,int Size,FLinearColor Color) {
         return SNew(STextBlock).Text(FText::FromString(Line)).Font(FCoreStyle::GetDefaultFontStyle("Regular",Size))
             .ColorAndOpacity(Color).AutoWrapText(true);
     };
-    static TStrongObjectPtr<UTexture2D> Logo(LoadObject<UTexture2D>(nullptr,TEXT("/Game/DC/UI/T_AtlanteanOdysseyLogo.T_AtlanteanOdysseyLogo")));
-    static FSlateBrush LogoBrush;
-    if (Logo.IsValid()) { LogoBrush.SetResourceObject(Logo.Get()); LogoBrush.ImageSize=FVector2D(500,250); }
-    static const FSlateRoundedBoxBrush Panel(FLinearColor(.008f,.025f,.031f,.94f),8.f);
+    auto Title=[](const TCHAR* Line,int Size,FLinearColor Color) {
+        return SNew(STextBlock).Text(FText::FromString(Line))
+            .Font(FSlateFontInfo(FPaths::ProjectContentDir()/TEXT("DC/UI/Fonts/Cinzel.ttf"),Size))
+            .ColorAndOpacity(Color).Justification(ETextJustify::Center);
+    };
+    static TStrongObjectPtr<UTexture2D> Logo(LoadObject<UTexture2D>(nullptr,TEXT("/Game/DC/UI/T_AtlanteanOdysseyLogoV2.T_AtlanteanOdysseyLogoV2")));
+    static TStrongObjectPtr<UTexture2D> Backdrop(LoadObject<UTexture2D>(nullptr,TEXT("/Game/DC/UI/T_AtlanteanMenuPanel.T_AtlanteanMenuPanel")));
+    static FSlateBrush LogoBrush,BackdropBrush;
+    if(Logo.IsValid()) { LogoBrush.SetResourceObject(Logo.Get()); LogoBrush.ImageSize=FVector2D(420,210); }
+    if(Backdrop.IsValid()) { BackdropBrush.SetResourceObject(Backdrop.Get()); BackdropBrush.ImageSize=FVector2D(500,720); }
+    static const FSlateRoundedBoxBrush InfoPanel(FLinearColor(.004f,.017f,.022f,.97f),2.f,FLinearColor(.44f,.30f,.13f),1.f);
+    static const FSlateRoundedBoxBrush Divider(FLinearColor(.49f,.32f,.13f),0.f);
     static const FButtonStyle Primary=FButtonStyle()
-        .SetNormal(FSlateRoundedBoxBrush(FLinearColor(.72f,.49f,.17f),3.f))
-        .SetHovered(FSlateRoundedBoxBrush(FLinearColor(.95f,.73f,.34f),3.f))
-        .SetPressed(FSlateRoundedBoxBrush(FLinearColor(.56f,.35f,.09f),3.f));
+        .SetNormal(FSlateRoundedBoxBrush(FLinearColor(.10f,.065f,.027f,.95f),2.f,FLinearColor(.78f,.53f,.20f),2.f))
+        .SetHovered(FSlateRoundedBoxBrush(FLinearColor(.24f,.14f,.045f,.98f),2.f,FLinearColor(1.f,.77f,.38f),2.f))
+        .SetPressed(FSlateRoundedBoxBrush(FLinearColor(.05f,.035f,.015f),2.f,FLinearColor(.85f,.62f,.28f),2.f));
     static const FButtonStyle Secondary=FButtonStyle()
-        .SetNormal(FSlateRoundedBoxBrush(FLinearColor(.015f,.07f,.08f,.85f),3.f))
-        .SetHovered(FSlateRoundedBoxBrush(FLinearColor(.03f,.16f,.18f,.95f),3.f))
-        .SetPressed(FSlateRoundedBoxBrush(FLinearColor(.01f,.04f,.05f,.95f),3.f));
+        .SetNormal(FSlateRoundedBoxBrush(FLinearColor(.005f,.025f,.031f,.9f),2.f,FLinearColor(.45f,.29f,.10f),1.f))
+        .SetHovered(FSlateRoundedBoxBrush(FLinearColor(.022f,.075f,.08f,.96f),2.f,FLinearColor(.88f,.65f,.28f),1.5f))
+        .SetPressed(FSlateRoundedBoxBrush(FLinearColor(.012f,.04f,.045f),2.f,FLinearColor(.85f,.62f,.28f),1.5f));
     TWeakObjectPtr<ADCGameMode> Weak(this);
     TSharedPtr<SButton> StartButton;
-    TSharedPtr<SBorder> Instructions;
-    SAssignNew(Instructions,SBorder).BorderImage(&Panel).Padding(30).Visibility(EVisibility::Collapsed)
-    [
-        SNew(SVerticalBox)
-        +SVerticalBox::Slot().AutoHeight()[Text(TEXT("THE CAPTAIN'S HANDBOOK"),24,Gold)]
-        +SVerticalBox::Slot().AutoHeight().Padding(0,16,0,5)[Text(TEXT("EXPLORE THE SHIP"),13,Muted)]
-        +SVerticalBox::Slot().AutoHeight()[Text(TEXT("WASD  Move     Mouse  Look\nShift  Sprint     Space  Jump\nE  Take or leave a station"),17,Cream)]
-        +SVerticalBox::Slot().AutoHeight().Padding(0,16,0,5)[Text(TEXT("SAIL & FIGHT"),13,Muted)]
-        +SVerticalBox::Slot().AutoHeight()[Text(TEXT("At the wheel: A / D to steer, C for a clear view.\nAt a cannon: mouse to aim, left click to fire.\nSteer around obstacles or shoot them. Break a raised tentacle at its glowing joint. Fire into the Kraken's mouth before it releases fireballs."),17,Cream)]
-        +SVerticalBox::Slot().AutoHeight().Padding(0,16,0,5)[Text(TEXT("COMMAND YOUR CREW"),13,Muted)]
-        +SVerticalBox::Slot().AutoHeight()[Text(TEXT("Hold V to speak, or Enter to type an order.\n\"Rex, take the helm\"\n\"Duncan, man the port guns\"\n\"Ruby, put out the fire\"\n\"Ruby, repair the rigging\""),17,Cream)]
-        +SVerticalBox::Slot().AutoHeight().Padding(0,12,0,0)[Text(TEXT("1 / 2 / 3  Port / starboard / steady\n4 / 5  Port / starboard guns    6  Hold fire\nT  Ship view    F5  DLSS    F6  Frame generation\nEsc  Quit    R  Sail again after the ending"),14,Muted)]
-    ];
-    if(FParse::Param(FCommandLine::Get(),TEXT("DCMenuShowHelp"))) { Instructions->SetVisibility(EVisibility::Visible); }
-    TWeakPtr<SBorder> WeakInstructions=Instructions;
+    auto Help=SNew(SVerticalBox)
+        +SVerticalBox::Slot().AutoHeight()[Title(TEXT("HOW TO PLAY"),27,Gold)]
+        +SVerticalBox::Slot().AutoHeight().Padding(0,14,0,22)[Body(TEXT("Captain the Ship. Direct the Crew. Survive the Storm"),18,Cream)]
+        +SVerticalBox::Slot().AutoHeight().Padding(0,0,0,6)[Body(TEXT("TAKE COMMAND"),12,Gold)]
+        +SVerticalBox::Slot().AutoHeight()[Body(TEXT("WASD  Move  -  Mouse  Look\nE  -  Take / Leave Station\nAt the wheel: A/D to steer the ship\nAt a cannon: mouse to aim, left click to fire\nT  -  Toggle camera to ship view"),17,Cream)]
+        +SVerticalBox::Slot().AutoHeight().Padding(0,22,0,6)[Body(TEXT("DIRECT YOUR CREW"),12,Gold)]
+        +SVerticalBox::Slot().AutoHeight()[Body(TEXT("Hold V to speak and give an order\n\"Rex, take the helm!\"\n\"Duncan, man the port guns!\"\n\"Ruby, put out the fires!\""),17,Cream)]
+        +SVerticalBox::Slot().AutoHeight().Padding(0,22,0,6)[Body(TEXT("SURVIVE THE VOYAGE"),12,Gold)]
+        +SVerticalBox::Slot().AutoHeight()[Body(TEXT("Steer clear of obstacles.\nShoot enemy creatures with the cannons.\nPut out fires and repair rigging."),17,Cream)];
+    auto Credits=SNew(SVerticalBox)
+        +SVerticalBox::Slot().AutoHeight()[Title(TEXT("CREDITS"),27,Gold)]
+        +SVerticalBox::Slot().AutoHeight().Padding(0,10,0,17)[Body(TEXT("Atlantean Odyssey - 2026 Epic Game MegaJam"),17,Cream)]
+        +SVerticalBox::Slot().AutoHeight()[Body(TEXT("DIRECTOR"),11,Gold)]
+        +SVerticalBox::Slot().AutoHeight().Padding(0,3,0,12)[Body(TEXT("Eva Jobse"),18,Cream)]
+        +SVerticalBox::Slot().AutoHeight()[Body(TEXT("DEVELOPERS"),11,Gold)]
+        +SVerticalBox::Slot().AutoHeight().Padding(0,3,0,14)[Body(TEXT("GPT-6 Astra, Claude Fable 5.2, Qwen 3.8 27B"),17,Cream)]
+        +SVerticalBox::Slot().AutoHeight().Padding(0,0,0,6)[Body(TEXT("ART & ASSET PACKS"),11,Gold)]
+        +SVerticalBox::Slot().AutoHeight()[Body(TEXT("Brigantine Ship  -  MainStore\nDynamic Real Water  -  Natural Level Game Studio\nUltra Dynamic Sky & Weather  -  Everett Gunther\nModular Ancient Ruins  -  archafizov\nKraken  -  PROTOFACTOR INC\nClaw Kaiju Monster  -  HuyKhoi2407\nMHC: Pirates  -  Quang Phan\nEasy Fog  -  William Faucher\nClouds Tunnel Vdb Effects Pack Loop  -  one.studio2\nNordic coastal cliff scans  -  Quixel Megascans\nParagon: Rampage, MetaHuman & engine art  -  Epic Games"),14,Cream)]
+        +SVerticalBox::Slot().AutoHeight().Padding(0,16,0,5)[Body(TEXT("THANKS TO"),11,Gold)]
+        +SVerticalBox::Slot().AutoHeight()[Body(TEXT("Epic Games, NVIDIA"),18,Cream)]
+        +SVerticalBox::Slot().AutoHeight().Padding(0,16,0,5)[Body(TEXT("AUDIO & TYPE"),11,Gold)]
+        +SVerticalBox::Slot().AutoHeight()[Body(TEXT("Sonniss: Just Sound Effects, 344 Audio, InMotionAudio, Jake Fielding, Epic Stock Media, SoundBits.\nCinzel: The Cinzel Project Authors (SIL Open Font License)."),12,Muted)];
     MainMenuWidget=SNew(SScaleBox).Stretch(EStretch::ScaleToFit)
-    [
-        SNew(SBox).WidthOverride(1280.f).HeightOverride(720.f)
-        [
-            SNew(SOverlay)
-            +SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Center).Padding(42,24)
-            [
-                SNew(SBox).WidthOverride(490)
-                [
-                    SNew(SBorder).BorderImage(&Panel).Padding(FMargin(26,30))
-                    [
-                        SNew(SVerticalBox)
-                        +SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
-                        [SNew(SBox).WidthOverride(438).HeightOverride(220)[SNew(SImage).Image(&LogoBrush)]]
-                        +SVerticalBox::Slot().AutoHeight().Padding(12,20,12,6)
-                        [Text(TEXT("Captain the ship.\nCommand your crew."),18,Cream)]
-                        +SVerticalBox::Slot().AutoHeight().Padding(12,0,12,28)
-                        [Text(TEXT("Beyond the storm, a lost world awaits."),16,Muted)]
-                        +SVerticalBox::Slot().AutoHeight()
-                        [
-                            SAssignNew(StartButton,SButton).ButtonStyle(&Primary).HAlign(HAlign_Center).ContentPadding(FMargin(24,15))
-                            .OnClicked_Lambda([Weak]() { if(Weak.IsValid()) { Weak->StartVoyage(); } return FReply::Handled(); })
-                            [Text(TEXT("BEGIN ODYSSEY"),21,FLinearColor(.018f,.035f,.038f))]
-                        ]
-                        +SVerticalBox::Slot().AutoHeight().Padding(0,10,0,0)
-                        [
-                            SNew(SHorizontalBox)
-                            +SHorizontalBox::Slot().FillWidth(3.f).Padding(0,0,5,0)
-                            [SNew(SButton).ButtonStyle(&Secondary).HAlign(HAlign_Center).ContentPadding(FMargin(12,12))
-                                .OnClicked_Lambda([WeakInstructions]() { if(auto Info=WeakInstructions.Pin()) {
-                                    Info->SetVisibility(Info->GetVisibility()==EVisibility::Visible?EVisibility::Collapsed:EVisibility::Visible);
-                                } return FReply::Handled(); })[Text(TEXT("HOW TO SAIL"),15,Cream)]]
-                            +SHorizontalBox::Slot().FillWidth(1.f).Padding(5,0,0,0)
-                            [SNew(SButton).ButtonStyle(&Secondary).HAlign(HAlign_Center).ContentPadding(FMargin(12,12))
-                                .OnClicked_Lambda([Weak]() { if(Weak.IsValid()) { UKismetSystemLibrary::QuitGame(Weak.Get(),Weak->GetWorld()->GetFirstPlayerController(),EQuitPreference::Quit,false); } return FReply::Handled(); })
-                                [Text(TEXT("QUIT"),15,Muted)]]
-                        ]
-                        +SVerticalBox::Slot().AutoHeight().Padding(12,22,12,0)
-                        [Text(TEXT("WASD  Explore    E  Take a station    Hold V  Speak"),12,Muted)]
+    [SNew(SBox).WidthOverride(1280).HeightOverride(720)
+        [SNew(SOverlay)
+            +SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Fill)
+            [SNew(SBox).WidthOverride(500)[SNew(SImage).Image(&BackdropBrush)]]
+            +SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Top).Padding(25,26,0,0)
+            [SNew(SBox).WidthOverride(425)
+                [SNew(SVerticalBox)
+                    +SVerticalBox::Slot().AutoHeight()[SNew(SBox).HeightOverride(214)[SNew(SImage).Image(&LogoBrush)]]
+                    +SVerticalBox::Slot().AutoHeight().Padding(30,22,30,14)[SNew(SBox).HeightOverride(1)[SNew(SImage).Image(&Divider)]]
+                    +SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
+                    [SNew(STextBlock).Text(FText::FromString(TEXT("Captain a ship into myth and storm.")))
+                        .Font(FCoreStyle::GetDefaultFontStyle("Italic",15)).ColorAndOpacity(Cream)]
+                    +SVerticalBox::Slot().AutoHeight().Padding(48,15,48,22)[SNew(SBox).HeightOverride(1)[SNew(SImage).Image(&Divider)]]
+                    +SVerticalBox::Slot().AutoHeight().Padding(24,0,24,12)
+                    [SNew(SBox).HeightOverride(58)[SAssignNew(StartButton,SButton).ButtonStyle(&Primary).HAlign(HAlign_Center).VAlign(VAlign_Center)
+                        .OnClicked_Lambda([Weak](){if(Weak.IsValid()){Weak->StartVoyage();}return FReply::Handled();})
+                        [Title(TEXT("START GAME"),25,Cream)]]]
+                    +SVerticalBox::Slot().AutoHeight().Padding(45,0,45,11)
+                    [SNew(SBox).HeightOverride(47)[SNew(SButton).ButtonStyle(&Secondary).HAlign(HAlign_Center).VAlign(VAlign_Center)
+                        .OnClicked_Lambda([Weak](){if(Weak.IsValid()){Weak->SetMenuInfoPage(1);}return FReply::Handled();})
+                        [Title(TEXT("HOW TO PLAY"),21,Cream)]]]
+                    +SVerticalBox::Slot().AutoHeight().Padding(45,0,45,11)
+                    [SNew(SBox).HeightOverride(47)[SNew(SButton).ButtonStyle(&Secondary).HAlign(HAlign_Center).VAlign(VAlign_Center)
+                        .OnClicked_Lambda([Weak](){if(Weak.IsValid()){Weak->SetMenuInfoPage(2);}return FReply::Handled();})
+                        [Title(TEXT("CREDITS"),21,Cream)]]]
+                    +SVerticalBox::Slot().AutoHeight().Padding(45,0,45,0)
+                    [SNew(SBox).HeightOverride(47)[SNew(SButton).ButtonStyle(&Secondary).HAlign(HAlign_Center).VAlign(VAlign_Center)
+                        .OnClicked_Lambda([Weak](){if(Weak.IsValid()){UKismetSystemLibrary::QuitGame(Weak.Get(),Weak->GetWorld()->GetFirstPlayerController(),EQuitPreference::Quit,false);}return FReply::Handled();})
+                        [Title(TEXT("QUIT"),21,Cream)]]]
+                ]
+            ]
+            +SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Center).Padding(0,30,30,30)
+            [SNew(SBox).WidthOverride(690).HeightOverride(660)
+                .Visibility_Lambda([Weak](){return Weak.IsValid() && Weak->MenuInfoPage!=0?EVisibility::Visible:EVisibility::Collapsed;})
+                [SNew(SBorder).BorderImage(&InfoPanel).Padding(FMargin(32,25))
+                    [SNew(SOverlay)
+                        +SOverlay::Slot()[SNew(SScrollBox).Visibility_Lambda([Weak](){return Weak.IsValid() && Weak->MenuInfoPage==1?EVisibility::Visible:EVisibility::Collapsed;})
+                            +SScrollBox::Slot()[Help]]
+                        +SOverlay::Slot()[SNew(SScrollBox).Visibility_Lambda([Weak](){return Weak.IsValid() && Weak->MenuInfoPage==2?EVisibility::Visible:EVisibility::Collapsed;})
+                            +SScrollBox::Slot()[Credits]]
                     ]
                 ]
             ]
-            +SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Center).Padding(24)
-            [SNew(SBox).WidthOverride(620)[Instructions.ToSharedRef()]]
-            +SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Bottom).Padding(32,18)
-            [SNew(SBox).WidthOverride(260)[Text(TEXT("A voyage into the unknown"),13,Cream)]]
         ]
     ];
+    if(FParse::Param(FCommandLine::Get(),TEXT("DCMenuShowHelp"))) { SetMenuInfoPage(1); }
+    if(FParse::Param(FCommandLine::Get(),TEXT("DCMenuShowCredits"))) { SetMenuInfoPage(2); }
+    MainMenuWidget->ForceVolatile(true);
     GetWorld()->GetGameViewport()->AddViewportWidgetContent(MainMenuWidget.ToSharedRef(),100);
     PC->SetInputMode(FInputModeUIOnly().SetWidgetToFocus(StartButton).SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock));
-    UE_LOG(LogDC,Log,TEXT("MAIN_MENU shown; voyage held at open sea"));
+    UE_LOG(LogDC,Log,TEXT("MAIN_MENU shown; voyage held at open sea; buttons=4"));
 }
 
 void ADCGameMode::TickMainMenu(float DeltaSeconds)
@@ -155,6 +173,13 @@ void ADCGameMode::TickMainMenu(float DeltaSeconds)
         UE_LOG(LogDC,Log,TEXT("MAIN_MENU motion at %.2f ride=%.2f heave=%.3f slope=%.4f,%.4f"),MenuAge,Director?Director->RideTime:-1.f,ShipHeave,ShipSlope.X,ShipSlope.Y);
     }
     float AutoStart=0;
+    if(FParse::Param(FCommandLine::Get(),TEXT("DCMenuReviewPanels"))) {
+        if(PreviousMenuAge<12.f && MenuAge>=12.f) { SetMenuInfoPage(1); }
+        if(PreviousMenuAge<13.f && MenuAge>=13.f) { FScreenshotRequest::RequestScreenshot(FPaths::ProjectSavedDir()/TEXT("Screenshots/MainMenuHelp.png"),true,false); }
+        if(PreviousMenuAge<18.f && MenuAge>=18.f) { SetMenuInfoPage(2); }
+        if(PreviousMenuAge<19.f && MenuAge>=19.f) { FScreenshotRequest::RequestScreenshot(FPaths::ProjectSavedDir()/TEXT("Screenshots/MainMenuCredits.png"),true,false); }
+        if(PreviousMenuAge<24.f && MenuAge>=24.f) { SetMenuInfoPage(2); }
+    }
     if(FParse::Value(FCommandLine::Get(),TEXT("DCMenuAutoStart="),AutoStart) && AutoStart>0 && MenuAge>=AutoStart) { StartVoyage(); }
 }
 
