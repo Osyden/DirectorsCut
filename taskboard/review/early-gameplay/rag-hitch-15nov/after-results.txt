@@ -1,0 +1,65 @@
+[2026.11.15-06.27.05:646][  2]LogDC: Bow spray waterline: x=1216 halfwidth=78
+[2026.11.15-06.27.05:646][  2]LogDC: Bow wash: tuned 2 live water materials; shared assets unchanged
+[2026.11.15-06.27.07:101][103]LogDC: Display: EARLY VERIFY PASS: duplicate impacts do not stack fires at one deck point
+[2026.11.15-06.27.07:101][103]LogDC: Display: EARLY VERIFY PASS: fresh fire needs three swats
+[2026.11.15-06.27.07:101][103]LogDC: Display: EARLY VERIFY PASS: out of reach swat does no work
+[2026.11.15-06.27.07:927][157]LogDC: Display: EARLY VERIFY PASS: player begins a real rag swing within reach
+[2026.11.15-06.27.08:032][161]LogDC: Auto shot shot_00029.png at ride time 2.9, 98 fps (game 11.0 ms, render 22.6 ms, gpu 6.9 ms)
+[2026.11.15-06.27.08:032][161]LogDC: Capture state: hull=99.9 score=0 fires=1 rigging=0 at 2.9
+[2026.11.15-06.27.08:515][162]LogDC: Rag contact: remaining=2 at V(X=-190.63, Y=140.00, Z=471.88)
+[2026.11.15-06.27.08:515][162]LogDC: Display: EARLY VERIFY PASS: rag contacts retain partial suppression
+[2026.11.15-06.27.08:515][162]LogDC: Display: EARLY VERIFY PASS: partial swat awards no completion score
+[2026.11.15-06.27.08:515][162]LogDC: Display: EARLY VERIFY PASS: confirmed partial contact displays feedback
+[2026.11.15-06.27.08:521][163]LogDC: Auto shot shot_00031.png at ride time 3.4, 94 fps (game 157.8 ms, render 51.4 ms, gpu 7.0 ms)
+[2026.11.15-06.27.08:521][163]LogDC: Capture state: hull=99.9 score=0 fires=1 rigging=0 at 3.4
+[2026.11.15-06.27.08:974][204]LogDC: Auto shot shot_00038.png at ride time 3.8, 119 fps (game 7.8 ms, render 8.1 ms, gpu 6.6 ms)
+[2026.11.15-06.27.08:974][204]LogDC: Capture state: hull=99.9 score=0 fires=1 rigging=0 at 3.8
+[2026.11.15-06.27.09:068][205]LogDC: Display: EARLY VERIFY PASS: player begins a real rag swing within reach
+[2026.11.15-06.27.09:177][219]LogDC: Auto shot shot_00040.png at ride time 4.0, 120 fps (game 7.4 ms, render 9.1 ms, gpu 6.5 ms)
+[2026.11.15-06.27.09:177][219]LogDC: Capture state: hull=99.9 score=0 fires=1 rigging=0 at 4.0
+[2026.11.15-06.27.09:305][224]LogDC: Rag contact: remaining=1 at V(X=-190.63, Y=140.00, Z=471.88)
+[2026.11.15-06.27.09:469][244]LogDC: Display: EARLY VERIFY PASS: rag contacts retain partial suppression
+[2026.11.15-06.27.09:469][244]LogDC: Display: EARLY VERIFY PASS: partial swat awards no completion score
+[2026.11.15-06.27.09:469][244]LogDC: Display: EARLY VERIFY PASS: confirmed partial contact displays feedback
+[2026.11.15-06.27.09:871][294]LogDC: Auto shot shot_00047.png at ride time 4.7, 126 fps (game 7.0 ms, render 8.3 ms, gpu 6.8 ms)
+[2026.11.15-06.27.09:871][294]LogDC: Capture state: hull=99.8 score=0 fires=1 rigging=0 at 4.7
+[2026.11.15-06.27.09:975][296]LogDC: Display: EARLY VERIFY PASS: player begins a real rag swing within reach
+[2026.11.15-06.27.10:076][309]LogDC: Auto shot shot_00049.png at ride time 4.9, 123 fps (game 8.3 ms, render 7.9 ms, gpu 6.4 ms)
+[2026.11.15-06.27.10:077][309]LogDC: Capture state: hull=99.8 score=0 fires=1 rigging=0 at 4.9
+[2026.11.15-06.27.10:212][315]LogDC: Rag contact: remaining=0 at V(X=-190.63, Y=140.00, Z=471.88)
+[2026.11.15-06.27.10:384][335]LogDC: Display: EARLY VERIFY PASS: third animated rag contact extinguishes fire
+[2026.11.15-06.27.10:384][335]LogDC: Display: EARLY VERIFY PASS: extinguishing awards exactly one score increment
+[2026.11.15-06.27.10:384][335]LogDC: Display: EARLY VERIFY PASS: completed fire cannot be scored again
+[2026.11.15-06.27.10:384][335]LogDC: Display: EARLY VERIFY PASS: confirmed final contact displays completion feedback
+[2026.11.15-06.27.10:569][359]LogDC: Auto shot shot_00054.png at ride time 5.4, 125 fps (game 7.5 ms, render 8.4 ms, gpu 6.8 ms)
+[2026.11.15-06.27.10:569][359]LogDC: Capture state: hull=99.8 score=50 fires=0 rigging=0 at 5.4
+[2026.11.15-06.27.14:169][806]LogDC: Auto shot shot_00090.png at ride time 9.0, 134 fps (game 6.7 ms, render 7.5 ms, gpu 5.7 ms)
+[2026.11.15-06.27.14:169][806]LogDC: Capture state: hull=99.8 score=50 fires=0 rigging=0 at 9.0
+[2026.11.15-06.27.14:257][807]LogDC: Display: EARLY VERIFY PASS: extinguished fire effect cleans up after smoke fades
+[2026.11.15-06.27.14:257][807]LogDC: Display: EARLY VERIFY PASS: crew bucket extinguish still completes a fire
+[2026.11.15-06.27.14:459][832]LogDC: Display: EARLY VERIFY PASS: look-away case starts a real swing
+[2026.11.15-06.27.15:225][930]LogDC: Display: EARLY VERIFY PASS: turning away before contact does no work and gives no hit feedback
+[2026.11.15-06.27.15:427][956]LogDC: Display: EARLY VERIFY PASS: station cancellation case starts a real swing
+[2026.11.15-06.27.15:428][956]LogDC: Display: EARLY VERIFY PASS: cancellation case enters the actual helm
+[2026.11.15-06.27.16:127][ 48]LogDC: Display: EARLY VERIFY PASS: interrupted swing cannot resume after leaving a station
+[2026.11.15-06.27.16:127][ 48]LogDC: Display: EARLY VERIFY PASS: retreat case starts a real swing
+[2026.11.15-06.27.16:829][133]LogDC: Display: EARLY VERIFY PASS: leaving reach before contact does no work and gives no hit feedback
+[2026.11.15-06.27.16:829][133]LogDC: Display: EARLY VERIFY PASS: all interrupted and missed swings award no score
+[2026.11.15-06.27.17:034][158]LogDC: Display: EARLY VERIFY PASS: crew completion case starts a real swing
+[2026.11.15-06.27.17:034][158]LogDC: Display: EARLY VERIFY PASS: crew can complete the fire before rag contact
+[2026.11.15-06.27.17:172][176]LogDC: Auto shot shot_00120.png at ride time 12.0, 126 fps (game 7.1 ms, render 8.2 ms, gpu 7.2 ms)
+[2026.11.15-06.27.17:172][176]LogDC: Capture state: hull=99.6 score=150 fires=0 rigging=0 at 12.0
+[2026.11.15-06.27.17:737][240]LogDC: Display: EARLY VERIFY PASS: crew completion gives no false player hit or duplicate score
+[2026.11.15-06.27.17:940][267]LogDC: Display: EARLY VERIFY PASS: delayed-frame case begins a real swing
+[2026.11.15-06.27.17:941][267]LogDC: Rag contact: remaining=2 at V(X=-190.63, Y=140.00, Z=471.88)
+[2026.11.15-06.27.17:941][267]LogDC: Display: EARLY VERIFY PASS: delayed frame resolves one contact even after the visual swing ends
+[2026.11.15-06.27.18:144][281]LogDC: Display: EARLY VERIFY PASS: following frames cannot repeat the delayed contact
+[2026.11.15-06.27.18:144][281]LogDC: Display: EARLY VERIFY PASS: second delayed-frame swing begins
+[2026.11.15-06.27.18:144][281]LogDC: Rag contact: remaining=1 at V(X=-190.63, Y=140.00, Z=471.88)
+[2026.11.15-06.27.18:144][281]LogDC: Display: EARLY VERIFY PASS: second delayed contact preserves partial suppression
+[2026.11.15-06.27.18:346][307]LogDC: Display: EARLY VERIFY PASS: third delayed-frame swing begins
+[2026.11.15-06.27.18:347][307]LogDC: Rag contact: remaining=0 at V(X=-190.63, Y=140.00, Z=471.88)
+[2026.11.15-06.27.18:347][307]LogDC: Display: EARLY VERIFY PASS: third delayed contact extinguishes and scores exactly once
+[2026.11.15-06.27.18:549][332]LogDC: Display: EARLY VERIFY PASS: delayed cancellation case begins a real swing
+[2026.11.15-06.27.18:550][332]LogDC: Display: EARLY VERIFY PASS: a delayed frame cannot revive a cancelled swing
+[2026.11.15-06.27.18:550][332]LogDC: Display: EARLY GAMEPLAY VERIFICATION PASSED

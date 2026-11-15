@@ -57,7 +57,7 @@ protected:
 	UPROPERTY() TObjectPtr<class UStaticMeshComponent> RagHand;
 	UPROPERTY() TObjectPtr<class UStaticMeshComponent> RagSleeve;
 	float SwatAge = 10.f;
-	bool bSwatContact = false;
+	bool bSwatContact = true; // No pending contact until an input starts a swing.
 	FVector SwatTarget = FVector::ZeroVector;
 	FString FireFeedback;
 	float FireFeedbackTime = 0.f;

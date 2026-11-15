@@ -142,7 +142,9 @@ void ADCPlayerCharacter::TickRag(float DeltaSeconds)
 	if (Rag) { Rag->SetVisibility(bVisible); }
 	if (RagHand) { RagHand->SetVisibility(bVisible, true); }
 	if (RagSleeve) { RagSleeve->SetVisibility(bVisible); }
-	if (!bVisible || !Rag) { return; }
+	// Contact belongs to the input stroke, not its visible animation window.
+	// A delayed frame can cross contact and recovery together; consume the
+	// pending hit once, with the same facing/range and cancellation checks.
 	if (!bSwatContact && SwatAge >= .23f)
 	{
 		bSwatContact = true;
@@ -165,6 +167,7 @@ void ADCPlayerCharacter::TickRag(float DeltaSeconds)
 			}
 		}
 	}
+	if (!bVisible || !Rag) { return; }
 
 	// A short backswing, a fast downward stroke, then a soft recovery. The fabric
 	// trails the grip and folds across a grid; it is never a single rigid card.

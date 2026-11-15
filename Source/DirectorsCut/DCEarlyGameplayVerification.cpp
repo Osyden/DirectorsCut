@@ -9,6 +9,8 @@
 #include "EngineUtils.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
+#include "Misc/Paths.h"
+#include "UnrealClient.h"
 
 #if !UE_BUILD_SHIPPING
 void ADCEarlyEncounters::TickEncounterVerification()
@@ -83,6 +85,14 @@ void ADCEarlyEncounters::TickVerification(float DeltaSeconds)
 		Captain->SetActorLocation(Stand, false, nullptr, ETeleportType::TeleportPhysics);
 		Captain->GetCharacterMovement()->StopMovementImmediately();
 		PC->SetControlRotation((Director->DeckToWorld(VerifyFire) - (Stand + FVector(0, 0, 64))).Rotation());
+	};
+	auto DelayedContact = [Captain]()
+	{
+		// Wind up just short of contact, then delay one player frame by 400 ms.
+		// Both contact and the visual end fall inside that frame. Use the public
+		// player tick without changing world time or global frame-rate settings.
+		Captain->Tick(.225f);
+		Captain->Tick(.4f);
 	};
 	if (VerifyStage == 0 && GetWorld()->GetTimeSeconds() > 2.f)
 	{
@@ -181,8 +191,51 @@ void ADCEarlyEncounters::TickVerification(float DeltaSeconds)
 	else if (VerifyStage == 15 && VerifyClock > .7f)
 	{
 		Check(Troubles->NumFires() == 0 && Captain->GetFireFeedback().IsEmpty() && Director->Score == VerifyScore + 50, TEXT("crew completion gives no false player hit or duplicate score"));
+		Troubles->StartFire(VerifyFire);
+		VerifyScore = Director->Score;
+		FaceFire(); VerifyStage = 16; VerifyClock = 0.f;
+	}
+	else if (VerifyStage == 16 && VerifyClock > .2f)
+	{
+		Check(Captain->TrySwatFire(), TEXT("delayed-frame case begins a real swing"));
+		DelayedContact();
+		Check(Troubles->SwatsRemaining(VerifyFire) == 2 && Director->Score == VerifyScore
+			&& Captain->GetFireFeedback().StartsWith(TEXT("FIRE WEAKENED")), TEXT("delayed frame resolves one contact even after the visual swing ends"));
+		FScreenshotRequest::RequestScreenshot(FPaths::ProjectSavedDir() / TEXT("Screenshots/Auto/shot_hitch_contact.png"), true, false);
+		VerifyStage = 17; VerifyClock = 0.f;
+	}
+	else if (VerifyStage == 17 && VerifyClock > .2f)
+	{
+		Check(Troubles->SwatsRemaining(VerifyFire) == 2 && Director->Score == VerifyScore, TEXT("following frames cannot repeat the delayed contact"));
+		Check(Captain->TrySwatFire(), TEXT("second delayed-frame swing begins"));
+		DelayedContact();
+		Check(Troubles->SwatsRemaining(VerifyFire) == 1 && Director->Score == VerifyScore, TEXT("second delayed contact preserves partial suppression"));
+		VerifyStage = 18; VerifyClock = 0.f;
+	}
+	else if (VerifyStage == 18 && VerifyClock > .2f)
+	{
+		Check(Captain->TrySwatFire(), TEXT("third delayed-frame swing begins"));
+		DelayedContact();
+		Check(Troubles->NumFires() == 0 && Director->Score == VerifyScore + 50
+			&& Captain->GetFireFeedback() == TEXT("FIRE OUT   +50"), TEXT("third delayed contact extinguishes and scores exactly once"));
+		// Give the cancellation case its own baseline even when the prior check fails.
+		Troubles->ExtinguishNear(VerifyFire);
+		Troubles->StartFire(VerifyFire);
+		VerifyScore = Director->Score;
+		FaceFire(); VerifyStage = 19; VerifyClock = 0.f;
+	}
+	else if (VerifyStage == 19 && VerifyClock > .2f)
+	{
+		Check(Captain->TrySwatFire(), TEXT("delayed cancellation case begins a real swing"));
+		Captain->DebugTakeStation(EDCStationType::Helm, EDCSide::None);
+		Captain->DebugTakeStation(EDCStationType::None, EDCSide::None);
+		FaceFire();
+		DelayedContact();
+		Check(Troubles->SwatsRemaining(VerifyFire) == 3 && Captain->GetFireFeedback().IsEmpty()
+			&& Director->Score == VerifyScore, TEXT("a delayed frame cannot revive a cancelled swing"));
+		Troubles->ExtinguishNear(VerifyFire);
 		UE_LOG(LogDC, Display, TEXT("EARLY GAMEPLAY VERIFICATION %s"), bVerifyFailed ? TEXT("FAILED") : TEXT("PASSED"));
-		VerifyStage = 16;
+		VerifyStage = 20;
 		FPlatformMisc::RequestExitWithStatus(false, bVerifyFailed ? 1 : 0);
 	}
 }

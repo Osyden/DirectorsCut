@@ -1,0 +1,26 @@
+{
+  "baseline": "5a39d5d production code with new regression harness",
+  "scenario": "Real captain Tick: 225 ms wind-up followed by a 400 ms player frame, crossing contact and animation end",
+  "before": {
+    "passed": 34,
+    "failed": 4
+  },
+  "after": {
+    "passed": 38,
+    "failed": 0,
+    "process_exit": 0
+  },
+  "editor_build_seconds": 10.51,
+  "game_build_seconds": 20.05,
+  "packaged_execution": false,
+  "reviewed_images": [
+    "before-delayed-contact.png",
+    "after-delayed-contact.png"
+  ],
+  "limitations": [
+    "Animation can still skip frames during stalls",
+    "Existing VSM non-Nanite queue warning visible in after capture",
+    "Existing editor-plugin Python startup and ship controller messages remain",
+    "Previously accepted c6708cc package has not been replaced"
+  ]
+}
