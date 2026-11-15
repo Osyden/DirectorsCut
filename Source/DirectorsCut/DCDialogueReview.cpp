@@ -62,6 +62,10 @@ void ADCDialogueReviewGameMode::BeginPlay()
     Order(TEXT("man_port_guns"),TEXT("Duncan, take charge of the port battery."),TEXT("Duncan"),A::Man,S::Cannons,D::Port);
     Order(TEXT("man_starboard_guns"),TEXT("Ruby, get on the starboard cannons."),TEXT("Ruby"),A::Man,S::Cannons,D::Starboard);
     Order(TEXT("extinguish"),TEXT("Ruby, douse those flames on deck."),TEXT("Ruby"),A::Extinguish,S::Fire,D::None);
+    Order(TEXT("fire_kill"),TEXT("Rex, kill those fires."),TEXT("Rex"),A::Extinguish,S::Fire,D::None);
+    Order(TEXT("fire_get"),TEXT("Rex, get the flames."),TEXT("Rex"),A::Extinguish,S::Fire,D::None);
+    Order(TEXT("fire_put_split"),TEXT("Duncan, put that fire out."),TEXT("Duncan"),A::Extinguish,S::Fire,D::None);
+    Order(TEXT("fire_deal"),TEXT("Ruby, please deal with those blazes on deck."),TEXT("Ruby"),A::Extinguish,S::Fire,D::None);
     Order(TEXT("repair"),TEXT("Ruby, get the damaged sails repaired."),TEXT("Ruby"),A::Repair,S::Rigging,D::None);
     Order(TEXT("report"),TEXT("Rex, how much damage has the hull taken?"),TEXT("Rex"),A::Report,S::None,D::None);
     Order(TEXT("not_an_order"),TEXT("Good morning. Lovely weather today."),TEXT(""),A::None,S::None,D::None);

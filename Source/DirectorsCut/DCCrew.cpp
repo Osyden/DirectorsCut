@@ -1,5 +1,6 @@
 #include "DCCrew.h"
 #include "DCSpeech.h"
+#include "DCConversationPolicy.h"
 #include "DCTreadmill.h"
 #include "DCRideDirector.h"
 #include "DCVoice.h"
@@ -47,16 +48,17 @@ FDCIntent DCIntentParser::Parse(const FString& InText, const TArray<FString>& Cr
 	TArray<FString> Tokens;
 	Normalized.ParseIntoArrayWS(Tokens);
 	const FString T = TEXT(" ") + FString::Join(Tokens, TEXT(" ")) + TEXT(" ");
+	I.CrewName = DCConversationPolicy::AddressedCrew(InText);
 
 	for (const FString& Name : CrewNames)
 	{
-		if (T.Contains(TEXT(" ") + Name.ToLower() + TEXT(" "))) { I.CrewName = Name; break; }
+		if (I.CrewName.IsEmpty() && T.Contains(TEXT(" ") + Name.ToLower() + TEXT(" "))) { I.CrewName = Name; break; }
 	}
 
 	if (HasAny(T, { TEXT("starboard"), TEXT(" right") })) { I.Side = EDCSide::Starboard; }
 	else if (HasAny(T, { TEXT(" port"), TEXT("larboard"), TEXT(" left") })) { I.Side = EDCSide::Port; }
 
-	const bool bExtinguish = HasAny(T, { TEXT("put out"), TEXT("extinguish"), TEXT("douse"), TEXT("bucket"), TEXT("swat"), TEXT("smother"), TEXT("flames"), TEXT("burning"), TEXT("on fire") });
+	const bool bExtinguish = DCConversationPolicy::IsFireOrder(InText) || HasAny(T, { TEXT("put out"), TEXT("extinguish"), TEXT("douse"), TEXT("bucket"), TEXT("swat"), TEXT("smother"), TEXT("flames"), TEXT("burning"), TEXT("on fire") });
 	const bool bHelmWord = HasAny(T, { TEXT("helm"), TEXT("wheel"), TEXT("steer"), TEXT("rudder") });
 	const bool bGunWord = HasAny(T, { TEXT("cannon"), TEXT("cannons"), TEXT("gun"), TEXT("guns"), TEXT("battery"), TEXT("broadside") });
 	const bool bRigWord = HasAny(T, { TEXT("sail"), TEXT("sails"), TEXT("rigging"), TEXT("rope"), TEXT("ropes"), TEXT("mast"), TEXT("repair"), TEXT("mend"), TEXT("fix") });
@@ -67,13 +69,14 @@ FDCIntent DCIntentParser::Parse(const FString& InText, const TArray<FString>& Cr
 	{
 		I.Action = EDCAction::Report; I.Side = EDCSide::None;
 	}
-	else if (HasAny(T, { TEXT("hold fire"), TEXT("cease"), TEXT("stop firing"), TEXT("hold your fire"), TEXT("do not fire"), TEXT("do not shoot") }))
+	else if (HasAny(T, { TEXT("hold fire"), TEXT("cease"), TEXT("stop firing"), TEXT("stop shooting"), TEXT("hold your fire"),
+		TEXT("not fire"), TEXT("not firing"), TEXT("not shoot"), TEXT("not shooting") }))
 	{
 		I.Station = EDCStationType::Cannons; I.Action = EDCAction::HoldFire;
 	}
 	else if (bExtinguish)
 	{
-		I.Station = EDCStationType::Fire; I.Action = EDCAction::Extinguish;
+		I.Station = EDCStationType::Fire; I.Action = EDCAction::Extinguish; I.Side = EDCSide::None;
 	}
 	else if (HasAny(T, { TEXT("fire at will") }))
 	{
@@ -496,7 +499,7 @@ FString UDCCrewSubsystem::ExecuteOrder(const FString& Text)
 	// grammar is the instant fallback when it is not running or cannot make sense of the words.
 	ADCVoice* Voice = ADCVoice::Get(this);
 	// Short, clear orders (a helm call in a hurry) go straight through; anything wordier goes to the model.
-	const bool bQuick = Intent.bValid && Text.Len() < 30;
+	const bool bQuick = Intent.bValid && (Text.Len() < 30 || DCConversationPolicy::IsFireOrder(Text));
 	if (Voice && Voice->IsLLMReady() && !bQuick)
 	{
 		Voice->ResolveOrder(DCSpeech::NormalizeCrewAddress(Text)); // answers a moment later

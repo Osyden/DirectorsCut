@@ -47,7 +47,7 @@ FString DCConversationPolicy::AddressedCrew(const FString& Text)
     return Index==INDEX_NONE ? FString() : DCSpeech::CanonicalCrewName(Tokens[Index]);
 }
 
-bool DCConversationPolicy::IsConversation(const FString& Text)
+static FString CommandBody(const FString& Text, bool& bMindRequest)
 {
     using namespace DCConversationPolicyPrivate;
     TArray<FString> Tokens=Words(Text);
@@ -55,7 +55,7 @@ bool DCConversationPolicy::IsConversation(const FString& Text)
     if (Address!=INDEX_NONE) { Tokens.RemoveAt(0,Address+1); }
     else if (Tokens.Num() && (Tokens[0]==TEXT("hey") || Tokens[0]==TEXT("hello") || Tokens[0]==TEXT("hi"))) { Tokens.RemoveAt(0); }
     FString Body=FString::Join(Tokens,TEXT(" "));
-    bool bMindRequest=false;
+    bMindRequest=false;
     // Remove only leading request wrappers; never search arbitrary prose for verbs.
     const TCHAR* Wrappers[]={TEXT("would you be so kind as to"),TEXT("would you mind"),TEXT("could you please"),
         TEXT("can you please"),TEXT("would you please"),TEXT("will you please"),TEXT("i need you to"),
@@ -73,7 +73,53 @@ bool DCConversationPolicy::IsConversation(const FString& Text)
         }
         if (!bRemoved) { break; }
     }
+    return Body;
+}
+
+bool DCConversationPolicy::IsFireOrder(const FString& Text)
+{
+    using namespace DCConversationPolicyPrivate;
+    bool bMindRequest=false;
+    const FString Body=CommandBody(Text,bMindRequest);
+    // Require a direct request whose object is the hazard, not a question, story,
+    // negation or a request to fire guns. Plurals matter for Whisper's transcripts.
+    const TCHAR* Verbs[]={TEXT("put out"),TEXT("putting out"),TEXT("extinguish"),TEXT("extinguishing"),
+        TEXT("douse"),TEXT("dousing"),TEXT("smother"),TEXT("smothering"),TEXT("swat"),TEXT("swatting"),TEXT("kill"),TEXT("killing"),
+        TEXT("fight"),TEXT("fighting"),TEXT("tackle"),TEXT("handle"),TEXT("deal with"),TEXT("take care of"),
+        TEXT("beat out"),TEXT("stamp out"),TEXT("get rid of"),TEXT("get"),TEXT("put")};
+    for (const TCHAR* Verb:Verbs)
+    {
+        if (!Starts(Body,Verb)) { continue; }
+        const FString VerbText(Verb);
+        if (VerbText.EndsWith(TEXT("ing")) || VerbText==TEXT("putting out"))
+        {
+            if (!bMindRequest) { continue; }
+        }
+        FString Object=Body.Mid(VerbText.Len()).TrimStart();
+        TArray<FString> Parts; Object.ParseIntoArrayWS(Parts);
+        int32 Index=0;
+        while (Parts.IsValidIndex(Index) && (Parts[Index]==TEXT("the") || Parts[Index]==TEXT("that") ||
+            Parts[Index]==TEXT("this") || Parts[Index]==TEXT("those") || Parts[Index]==TEXT("these") ||
+            Parts[Index]==TEXT("all") || Parts[Index]==TEXT("deck") || Parts[Index]==TEXT("remaining"))) { ++Index; }
+        if (!Parts.IsValidIndex(Index)) { continue; }
+        const FString& Hazard=Parts[Index];
+        if (Hazard!=TEXT("fire") && Hazard!=TEXT("fires") && Hazard!=TEXT("flame") && Hazard!=TEXT("flames") &&
+            Hazard!=TEXT("blaze") && Hazard!=TEXT("blazes")) { continue; }
+        if (VerbText==TEXT("put") && !Has(Object,TEXT("out"))) { continue; }
+        if (Has(Object,TEXT("story")) || Has(Object,TEXT("stories")) || Has(Object,TEXT("report")) ||
+            Has(Object,TEXT("information")) || Has(Object,TEXT("at will"))) { continue; }
+        return true;
+    }
+    return false;
+}
+
+bool DCConversationPolicy::IsConversation(const FString& Text)
+{
+    using namespace DCConversationPolicyPrivate;
+    bool bMindRequest=false;
+    const FString Body=CommandBody(Text,bMindRequest);
     if (Body.IsEmpty()) { return true; }
+    if (IsFireOrder(Text)) { return false; }
     // Explicit legacy status requests and urgent hazard alerts remain actionable.
     if (Body==TEXT("how are we doing") || Body==TEXT("how is the ship") || Body==TEXT("how is the hull") ||
         Body==TEXT("the deck is on fire") || Body==TEXT("the ship is on fire")) { return false; }

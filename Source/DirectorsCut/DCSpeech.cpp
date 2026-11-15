@@ -27,7 +27,8 @@ FString DCSpeech::NormalizeCrewAddress(const FString& Text)
     const FString Verb = Trimmed.Mid(Next, NextEnd-Next).ToLower();
     const TCHAR* Commands[] = {TEXT("take"),TEXT("man"),TEXT("get"),TEXT("go"),TEXT("hard"),TEXT("turn"),
         TEXT("steady"),TEXT("hold"),TEXT("fire"),TEXT("shoot"),TEXT("stop"),TEXT("cease"),TEXT("put"),
-        TEXT("douse"),TEXT("extinguish"),TEXT("repair"),TEXT("mend"),TEXT("fix"),TEXT("report"),TEXT("status"),
+        TEXT("douse"),TEXT("extinguish"),TEXT("smother"),TEXT("swat"),TEXT("kill"),TEXT("fight"),TEXT("tackle"),TEXT("handle"),
+        TEXT("deal"),TEXT("beat"),TEXT("stamp"),TEXT("repair"),TEXT("mend"),TEXT("fix"),TEXT("report"),TEXT("status"),
         TEXT("do"),TEXT("don"),TEXT("please"),TEXT("port"),TEXT("starboard"),TEXT("left"),TEXT("right")};
     for (const TCHAR* Command : Commands)
     {

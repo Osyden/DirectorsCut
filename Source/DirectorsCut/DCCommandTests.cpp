@@ -1,5 +1,6 @@
 #include "DCCrew.h"
 #include "DCSpeech.h"
+#include "DCConversationPolicy.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
@@ -49,6 +50,9 @@ bool FDCCommandCoverage::RunTest(const FString&)
         {TEXT("stop firing starboard"), A::HoldFire,S::Cannons,D::Starboard,TEXT("")},
         {TEXT("Duncan, don't fire"), A::HoldFire,S::Cannons,D::None,TEXT("Duncan")},
         {TEXT("do not shoot"), A::HoldFire,S::Cannons,D::None,TEXT("")},
+        {TEXT("Duncan, stop shooting"), A::HoldFire,S::Cannons,D::None,TEXT("Duncan")},
+        {TEXT("Could you not fire?"), A::HoldFire,S::Cannons,D::None,TEXT("")},
+        {TEXT("Would you mind not firing?"), A::HoldFire,S::Cannons,D::None,TEXT("")},
         {TEXT("Ruby put out the fire"), A::Extinguish,S::Fire,D::None,TEXT("Ruby")},
         {TEXT("extinguish the flames"), A::Extinguish,S::Fire,D::None,TEXT("")},
         {TEXT("douse that fire"), A::Extinguish,S::Fire,D::None,TEXT("")},
@@ -74,6 +78,10 @@ bool FDCCommandCoverage::RunTest(const FString&)
         TestEqual(FString(Case.Text) + TEXT(" side"), int32(Intent.Side), int32(Case.Side));
         TestEqual(FString(Case.Text) + TEXT(" crew"), Intent.CrewName, FString(Case.Crew));
         TestEqual(FString(Case.Text) + TEXT(" valid"), Intent.bValid, Case.Action != A::None);
+        if (Case.Action != A::None)
+        {
+            TestFalse(FString(Case.Text) + TEXT(" reaches command execution"), DCConversationPolicy::IsConversation(Case.Text));
+        }
     }
     TestEqual(TEXT("Wrecks as scenery is not a crew address"), DCSpeech::NormalizeCrewAddress(TEXT("wrecks ahead")), FString(TEXT("wrecks ahead")));
     TestEqual(TEXT("No name substitution inside prose"), DCSpeech::NormalizeCrewAddress(TEXT("there are wrecks ahead")), FString(TEXT("there are wrecks ahead")));

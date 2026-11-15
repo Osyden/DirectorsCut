@@ -1,7 +1,40 @@
 #include "DCConversationPolicy.h"
+#include "DCCrew.h"
 #include "Misc/AutomationTest.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDCFireOrderRouting,"DirectorsCut.Dialogue.FireOrderRouting",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FDCFireOrderRouting::RunTest(const FString&)
+{
+    const TCHAR* Orders[]={TEXT("Rex, kill that fire"),TEXT("Rex, kill those fires."),TEXT("Rex, kill this fire."),
+        TEXT("Rex, get the flames."),TEXT("Rex, get the fire."),TEXT("Rex, put that fire out"),
+        TEXT("Rex, put those fires out"),TEXT("Rex, fight the fires"),TEXT("Rex, deal with that blaze"),
+        TEXT("Rex, take care of the flames"),TEXT("Rex, handle those fires"),TEXT("Rex, smother the flames"),
+        TEXT("Rex, beat out the flames"),TEXT("Rex, stamp out the fire"),TEXT("Rex, get rid of those fires"),
+        TEXT("Hey Wrecks, kill the fire"),TEXT("Recks, tackle that blaze"),
+        TEXT("Rex, could you please put those fires out on the port side?"),
+        TEXT("Rex, would you mind killing those fires?"),TEXT("Rex, would you mind putting out the flames?")};
+    for (const TCHAR* Text:Orders)
+    {
+        TestTrue(FString(Text)+TEXT(" explicit fire request"),DCConversationPolicy::IsFireOrder(Text));
+        TestFalse(FString(Text)+TEXT(" not conversation"),DCConversationPolicy::IsConversation(Text));
+        const FDCIntent Intent=DCIntentParser::Parse(Text,{TEXT("Rex"),TEXT("Duncan"),TEXT("Ruby")});
+        TestTrue(FString(Text)+TEXT(" valid"),Intent.bValid);
+        TestEqual(FString(Text)+TEXT(" crew"),Intent.CrewName,FString(TEXT("Rex")));
+        TestEqual(FString(Text)+TEXT(" action"),int32(Intent.Action),int32(EDCAction::Extinguish));
+        TestEqual(FString(Text)+TEXT(" station"),int32(Intent.Station),int32(EDCStationType::Fire));
+        TestEqual(FString(Text)+TEXT(" side"),int32(Intent.Side),int32(EDCSide::None));
+    }
+    const TCHAR* NotFire[]={TEXT("Rex, fire at will"),TEXT("Rex, hold fire"),TEXT("Rex, get the cannons firing"),
+        TEXT("Rex, tell me how to kill that fire"),TEXT("Rex, how do you put those fires out?"),
+        TEXT("Rex, don't kill that fire"),TEXT("Rex, do not put out the flames"),TEXT("Rex, stop shooting"),
+        TEXT("Rex, get me information about fires"),TEXT("Rex, get the fire report"),
+        TEXT("Rex, killing fires is hard"),TEXT("Rex, putting out fires is tiring"),TEXT("Rex, report on the fire")};
+    for (const TCHAR* Text:NotFire) { TestFalse(FString(Text)+TEXT(" not extinguish override"),DCConversationPolicy::IsFireOrder(Text)); }
+    return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDCConversationRouting,"DirectorsCut.Dialogue.ConversationRouting",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 bool FDCConversationRouting::RunTest(const FString&)
