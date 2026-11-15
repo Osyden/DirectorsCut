@@ -2,7 +2,7 @@
 
 | Task | Status | Owner | Done when |
 | --- | --- | --- | --- |
-| Ruby hair lighting recurrence | Candidate queued; visual/performance acceptance pending human release | Root, codex/ruby-hair-local-lights | [Investigation and queued correction](RUBY-HAIR-RECURRENCE-15NOV.md). Complete lantern shadow coverage and deck-fire strand shadows; hair material unchanged. |
+| Ruby hair lighting recurrence | Candidate queued; visual/performance acceptance pending human release | Root, codex/ruby-hair-local-lights | [Investigation and queued correction](RUBY-HAIR-RECURRENCE-15NOV.md). Complete lantern shadow coverage; fire lighting and hair material unchanged. |
 | Credits fit on one page | Source fix queued; user still playtesting, no build/GPU jobs | Root, codex/credits-one-page: DCMenu.cpp credits only | [Fix and pending visual check](CREDITS-ONE-PAGE-15NOV.md). All names retained, no credits scrolling. |
 | Crew follow-up playable | 22:36 accepted and selected; GPU reserved for human | Root | [Build and exact checks](CREW-FOLLOWUP-BUILD-15NOV.md). Menu music, AI wheel, swat correction and latest credits. Trailer and further polish paused. |
 | Credits AI labels and acknowledgements | Included and visually checked in 22:36 follow-up | Butler/credits chat, `codex/credits-ai-15nov`; DCMenu.cpp credits only | [Changes and validation](CREDITS-AI-15NOV.md). Requested AI names/thanks updated; credits scroll. No package or upload. |
