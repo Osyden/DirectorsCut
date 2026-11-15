@@ -54,11 +54,14 @@ if ([Math]::Abs($Steer) -le 1) { $arguments += ('-DCMaelstromSteer={0}' -f $Stee
 if (!$Sound) { $arguments += '-nosound' }
 if ($NoFFT) { $arguments += '-DCMaelstromNoFFT' }
 $reviewProcess = Start-Process $editorFile -ArgumentList $arguments -WindowStyle Hidden -PassThru
+# Retain the native handle while the process is alive so ExitCode remains
+# available after a quick offscreen review finishes.
+$reviewHandle = $reviewProcess.Handle
 Write-Output ('Review process {0}. Screenshots: {1}/Saved/Screenshots/Auto; log: {2}' -f $reviewProcess.Id, $projectRoot, $logFile)
 
 if ($Wait) {
     $reviewProcess.WaitForExit()
-    if ($reviewProcess.ExitCode -ne 0) { throw "Review failed; inspect $logFile" }
+    if ($null -eq $reviewProcess.ExitCode -or $reviewProcess.ExitCode -ne 0) { throw "Review exit status '$($reviewProcess.ExitCode)'; inspect $logFile" }
     if (Select-String -LiteralPath $logFile -Pattern 'Failed to compile Material.*Maelstrom|Material.*GeneratedCliffPreview.*missing usage flag|MAEL_SKY compile:|Fatal error:|Assertion failed:' -Quiet) {
         throw "Maelstrom material validation failed; captures may show a fallback material. Inspect $logFile"
     }

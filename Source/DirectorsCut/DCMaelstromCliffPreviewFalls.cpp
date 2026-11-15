@@ -76,7 +76,8 @@ void ADCMaelstrom::UpdateCliffPreviewFalls()
             {
                 if(UStaticMesh* Mesh=LoadObject<UStaticMesh>(nullptr,*Asset))
                 {
-                    if(Mesh->GetStaticMaterials().Num()==3)
+                    const int32 MaterialCount=Mesh->GetStaticMaterials().Num();
+                    if(MaterialCount==3||MaterialCount==4)
                     {
                         CliffPreviewFallCore=NewObject<UStaticMeshComponent>(this,TEXT("CliffPreviewFallCore"));
                         CliffPreviewFallCore->SetupAttachment(Arena);
@@ -88,12 +89,14 @@ void ADCMaelstrom::UpdateCliffPreviewFalls()
                         const FVector ImportedY=-V,OriginCm=Origin*100.;
                         FMatrix Placement=FMatrix::Identity; Placement.SetAxes(&U,&ImportedY,&Z,&OriginCm);
                         CliffPreviewFallCore->SetRelativeTransform(FTransform(Placement));
-                        for(int32 I=0;I<3;++I) { CliffPreviewFallCore->CreateAndSetMaterialInstanceDynamic(I); }
+                        for(int32 I=0;I<MaterialCount;++I) { CliffPreviewFallCore->CreateAndSetMaterialInstanceDynamic(I); }
                         CliffPreviewFallCore->RegisterComponent();
                     }
                 }
             }
         }
+        if(!CliffPreviewFallCore)
+        { UE_LOG(LogTemp,Warning,TEXT("DC_CLIFF_PREVIEW_FALL core rejected; volume-only capture is not the complete waterfall")); }
         const TArray<TSharedPtr<FJsonValue>>* Volumes=nullptr;
         if(Data->TryGetArrayField(TEXT("volumes"),Volumes)&&Volumes->Num()<=8)
         {

@@ -125,7 +125,7 @@ float fine=lerp(.5,field.evaluate(p/float2(.65,2.7)+float2(-9.7,13.1)).x,fineFad
 float modulation=clamp(.85+.25*large+.10*(fine-.5),.8,1.15);
 float alpha=1-exp(-saturate(Tau)*modulation);
 return float3(alpha,large,saturate(Color.b));
-''',unreal.CustomMaterialOutputType.CMOT_FLOAT3,{'UV':uv,'T':time,'Color':(color,'RGB'),'Tau':(color,'A')})
+''',unreal.CustomMaterialOutputType.CMOT_FLOAT3,{'UV':uv,'T':time,'Color':color,'Tau':(color,'A')})
         output(custom('return lerp(float3(.61,.69,.71),float3(.74,.79,.79),State.b);',
             unreal.CustomMaterialOutputType.CMOT_FLOAT3,{'State':state}),unreal.MaterialProperty.MP_BASE_COLOR)
         output(custom('return State.r;',unreal.CustomMaterialOutputType.CMOT_FLOAT1,{'State':state}),unreal.MaterialProperty.MP_OPACITY)
