@@ -8,7 +8,7 @@ Requested behavior: natural conversation about the scene, weather, ship, crew, a
 
 Mechanics: fires are smothered by swatting with a rag. Rigging repairs happen at marked repair lines on deck. No instructions to fetch buckets or climb aloft.
 
-Status: implementation in progress; no runtime validation claimed.
+Status: integrated and validated on the current Qwen/llama.cpp path; next Windows package is owned by integration root. See the final validation record below. No alternative-model result is claimed.
 
 Implementation ready for integration; no engine build/runtime validation has been run in this checkout.
 
@@ -35,3 +35,16 @@ Validation owned by integration root:
 5. The review covers character backstory, follow-up memory, another crew member's appearance, player appearance, live duties, fog, weather/scene and ship/fire mechanics. It asserts unchanged order count, real generated replies and A2F start/end, and clears history at scene change. Missing entry seam intentionally fails immediately.
 
 The taskboard README claim is local coordination only and is deliberately excluded from the source commit to avoid overwriting concurrent integration work.
+
+## Final validation, 20:34 on 15 November
+
+- Source commits: `63ac1ec`, navigation/wind grounding `a0affde`, and identity/scene separation `33e2d8a`, all integrated by root. Root applied the DCCrew entry seam and renamed the test's local Orders array to CommandCases to resolve a Unity-build shadowing error.
+- Combined editor build passes. Eight native automation suites pass, including both new conversation suites and existing command/response regressions (`Saved/FourthAutomation.log` in main).
+- Final current-prompt Qwen/llama.cpp native review: **8/8 generated conversations**, unchanged order counts, scene-memory reset, actual completed speech and positive Audio2Face animation/audio samples for every line. Report: main `Saved/FourthPlaytest/ConversationLlama/answers.json`, completed at20:34:47.
+- Manual review confirms the final run answers cast/player appearance, actual wheel/port/starboard duties, fog and recorded weather, ship condition and rag-swatting fire mechanics. Some personal/comparative wording remains loose; this is a reviewed sample, not a guarantee against all model errors.
+- Earlier tests caught bad advice to approach banks, an invented wind condition, and an outfit/scene mix-up. The focused context changes address those observed errors. Final gameplay facts do not reproduce them. Prior reports are preserved under this worktree's `Saved/ConversationBaseline/`.
+- Qwen generation latency in the final run: median **510.62ms**, maximum **689.72ms**. Request-to-speech onset: median **13.36s**, maximum **15.65s**, including Piper and the existing fully buffered Audio2Face path. Changing the language model alone will not remove this audio buffering delay.
+- ACE/Qwen completed an earlier8/8 speech/face pipeline run, but its last identity/scene prompt correction has not yet received a fresh complete ACE-backend review. The shipped default remains Qwen/llama.cpp; Audio2Face remains active for faces.
+- Human microphone/environmental recognition and the next packaged executable are not covered by this native input-path review. Integration root owns the package and final voyage checks. No GPU job was launched from this isolated checkout.
+
+The requested separate Gemma/Bolt GGUF comparison is prepared in [MODEL-COMPARISON-15NOV.md](MODEL-COMPARISON-15NOV.md); the models have not been switched or benchmarked. Its downloader was rejected before execution, so the required local artifacts remain unavailable.
