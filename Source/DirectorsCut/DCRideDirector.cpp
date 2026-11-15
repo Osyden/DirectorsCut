@@ -674,10 +674,10 @@ void ADCRideDirector::AddLamp(const FVector& Location)
 	Lamp->SetVolumetricScatteringIntensity(0.45f);
 	Lamp->SetSourceRadius(12.f);
 	Lamp->SetIntensity(0.f);
-	// Shadow the paired midmast lanterns: their unoccluded backlight made
-	// Ruby's hair glow through itself. Keep the distant lights inexpensive.
+	// Crew move between stations: every lantern can become a close backlight.
+	// Shadow all four so hair occlusion does not depend on their deck position.
 	// Optional per-lantern review override uses bits0..3.
-	int32 ShadowReviewMask = 6;
+	int32 ShadowReviewMask = 15;
 	FParse::Value(FCommandLine::Get(), TEXT("DCShadowLamps="), ShadowReviewMask);
 	const bool bReviewShadows = (ShadowReviewMask & (1 << Lamps.Num())) != 0;
 	Lamp->SetCastShadows(bReviewShadows);

@@ -75,6 +75,9 @@ ADCDeckFireEffect::ADCDeckFireEffect()
 	Light->SetSourceRadius(30.f);
 	Light->SetSoftSourceRadius(45.f);
 	Light->SetCastShadows(true);
+	// Swatting brings the crew's hair close to the flame. Ordinary geometry
+	// shadows alone do not provide strand self-shadowing for this local light.
+	Light->bCastDeepShadow = true;
 	// A nearby fire should warm the deck, not bleach a whole bank of city fog.
 	Light->SetVolumetricScatteringIntensity(.08f);
 }
