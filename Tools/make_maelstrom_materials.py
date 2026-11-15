@@ -455,7 +455,7 @@ if(Tunnel>.5) {
 # opaque where resolved; phase exchange changes their occupied area instead.
 foam_code += r"""
 struct SourceFoamRaft {
- float coverage(float2 p,float3 source,float3 currentSource,float vertexFresh,
+ float coverage(float2 p,float2 direction,float3 source,float3 currentSource,float vertexFresh,
                 float lip,float phaseAge,float phaseWeight,float available,float raft,
                 float shelfGuard) {
   WaterNoise field;
@@ -474,16 +474,31 @@ struct SourceFoamRaft {
   float agedStrength=1-exp(-2*aged);
   float sourceStrength=1-(1-saturate(fresh)*.85)*(1-agedStrength);
 
-  // A 23m envelope makes coherent finite fields inside the actual source/wake.
-  // Cubic remapping approximates the value-noise rank distribution. The .30
-  // area budget replaces the former packet*cell attenuation (measured .28),
-  // rather than increasing global coverage or coating source-free water.
-  float2 warp=float2(field.noise(p*.031),field.noise(p*.027+41.7))-.5;
-  float massVariation=field.noise((p+warp*8)/23.0+5.1);
+  // Convolve Cartesian noise along the transported local current. This makes
+  // finite fingers, not23m isotropic islands. Sampling offsets never project an
+  // absolute position onto its own polar tangent (which collapses into rings).
+  // Fresh heads use~18m support/2.8m grain; aged trails spread to~36m/4.2m.
+  float trailShare=saturate(aged/(fresh+aged+.001));
+  float stepM=lerp(3.,6.,trailShare),grainM=lerp(2.8,4.2,trailShare);
+  float mass=0,forward=0,backward=0;
+  [unroll] for(int k=-3;k<=3;k++) {
+    float value=field.noise((p+direction*(k*stepM))/grainM+5.1);
+    mass+=value*(4-abs(k));
+    if(k>0) forward+=value; else if(k<0) backward+=value;
+  }
+  // Restore variance lost by the seven-sample triangular convolution. The
+  // unchanged .30 area budget still controls coverage, not a global white lift.
+  float massVariation=saturate(.5+(mass/16.-.5)*2.15);
   float rank=massVariation*massVariation*(3-2*massVariation);
   float areaBudget=.30*sourceStrength*saturate(phaseWeight);
   float packetAA=clamp(fwidth(rank)*.5,.008,.18);
-  float packet=(1-smoothstep(areaBudget-packetAA,areaBudget+packetAA,rank))
+  // Only exiting/downstream aged edges get a soft~5m trailing transition.
+  // Its rank-space width is bounded; packet interiors remain bright, and the
+  // zero-source gate cannot create diffuse powder outside the source atlas.
+  float rankAlong=6*massVariation*(1-massVariation)*2.15*(forward-backward)/(16*stepM);
+  float tailFeather=clamp(max(rankAlong,0)*5*trailShare,0,.10);
+  float edgeAA=packetAA+tailFeather*.5;
+  float packet=(1-smoothstep(areaBudget-edgeAA,areaBudget+edgeAA,rank))
       *smoothstep(0,.008,areaBudget);
 
   // One photographed 9x17m raft map already contains fine lace. Multiplying a
@@ -507,9 +522,13 @@ else:
     foam_code += "float raft0=wn.fbm(q/13),raft1=wn.fbm(q2/13);\n"
 foam_code += r"""
 float available=saturate(SourceAvailable);
-float coverage0=rafts.coverage(q,Source0,ImpactSource,VC.r,movingLip0,phase,
+float2 direction0=normalize(float2(cos(angle0)*flow.x-sin(angle0)*flow.y,
+    sin(angle0)*flow.x+cos(angle0)*flow.y)+float2(.001,0));
+float2 direction1=normalize(float2(cos(angle1)*flow.x-sin(angle1)*flow.y,
+    sin(angle1)*flow.x+cos(angle1)*flow.y)+float2(.001,0));
+float coverage0=rafts.coverage(q,direction0,Source0,ImpactSource,VC.r,movingLip0,phase,
     1-blend,available,raft0,shelf);
-float coverage1=rafts.coverage(q2,Source1,ImpactSource,VC.r,movingLip1,phase2,
+float coverage1=rafts.coverage(q2,direction1,Source1,ImpactSource,VC.r,movingLip1,phase2,
     blend,available,raft1,shelf);
 // The two phases carry separate area budgets: combine covered area, rather
 // than turning every opaque raft half-grey at the middle of the flow cycle.
