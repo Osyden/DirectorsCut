@@ -239,6 +239,12 @@ float2 basinQ2=float2(cos(angle1)*delta.x-sin(angle1)*delta.y,
 // Keep the independent straight entrance/tunnel mapping exactly as before.
 float2 q=lerp(basinQ,delta-flow*age,saturate(Tunnel));
 float2 q2=lerp(basinQ2,delta-flow*age2,saturate(Tunnel));
+float lake=saturate(Calm)*(1-saturate(Tunnel));
+// A lake has wind drift, not the ship route's vortex or synthetic banks.
+q=lerp(q,delta-float2(3.5,1.2)*age,lake);
+q2=lerp(q2,delta-float2(3.5,1.2)*age2,lake);
+angle0*=1-lake; angle1*=1-lake;
+flow=lerp(flow,float2(3.5,1.2),lake);
 """
 
 water = make_material("M_MaelstromWater")
@@ -266,7 +272,8 @@ foam_coverage = scalar(water, "FoamCoverage", 1.1)
 overflow_foam = scalar(water, "OverflowFoam", 0.0)
 hull_flatten = scalar(water, "HullFlatten", 0.0)
 sea_level = scalar(water, "SeaLevel", 230.0)
-base_inputs = {"UV": uv, "VC": vc, "P": position, "T": time, "Center": center, "Flow": flow, "Tunnel": tunnel_flow, "Handedness":flow_handedness,"RadiusM":basin_radius}
+calm_caldera=scalar(water,"CalmCaldera",0.0)
+base_inputs = {"UV": uv, "VC": vc, "P": position, "T": time, "Center": center, "Flow": flow, "Tunnel": tunnel_flow, "Handedness":flow_handedness,"RadiusM":basin_radius,"Calm":calm_caldera}
 
 # Runtime bridge replaces these array references with the live grid's private
 # render targets and copies its MPC values. No paid shader implementation is
@@ -388,6 +395,9 @@ return lerp(cell/float2(9.0,17.0),float2(p.y/18.0,p.x/65.0),saturate(Tunnel));
         foam_inputs["Cells"+str(index)] = texture_sample(water,"FoamPattern",foam_texture,cell_uv,y=300+index*100)
 
 foam_code = NOISE + FLOW + r"""
+// Ordinary lake whitecaps come from the installed ocean simulation below.
+// Disable all old ridge, spiral-wake and synthetic breaking-lip populations.
+if(lake>.5) { return 0.0; }
 float shelf=saturate(Flatten)*(1-smoothstep(1200,3500,length(P.xy*float2(.5,2))));
 float ageFade=lerp(exp(-phase*1.5),exp(-phase2*1.5),blend);
 float transported=lerp(Source0.r,Source1.r,blend);
@@ -543,7 +553,7 @@ return saturate((1-(1-raftsCoverage)*(1-front))*Coverage*(1-shelf*.35));
 foam = custom(water, foam_code, FLOAT, foam_inputs)
 source_foam=foam
 if fft_foam:
-    live_foam_inputs={"Fallback":foam,"Live":fft_foam,"Enabled":use_live_fft,"Count":live_count,"Tunnel":tunnel_flow}
+    live_foam_inputs={"Fallback":foam,"Live":fft_foam,"Enabled":use_live_fft,"Count":live_count,"Tunnel":tunnel_flow,"Calm":calm_caldera}
     live_foam_code="float detail=0.15;\n"
     if foam_texture:
         live_foam_inputs.update({"C0":foam_inputs["Cells0"],"C1":foam_inputs["Cells1"],"T":time})
@@ -553,7 +563,7 @@ if fft_foam:
     # Crater whitewater is driven by its actual crest/impact/wake sources above;
     # retain the previous overlay only for the separately authored tunnel path.
     # Live FFT normals, displacement and roughness remain independent/unchanged.
-    live_foam_code+="if(Tunnel<.5) return Fallback; float liveWeight=saturate(Enabled)*step(0.5,Count); return max(Fallback,saturate(Live)*detail*.08*liveWeight);"
+    live_foam_code+="float liveWeight=saturate(Enabled)*step(0.5,Count); if(Calm>.5 && Tunnel<.5) return saturate(Live)*lerp(.65,1.0,detail)*liveWeight; if(Tunnel<.5) return Fallback; return max(Fallback,saturate(Live)*detail*.08*liveWeight);"
     foam=custom(water,live_foam_code,FLOAT,live_foam_inputs,1350)
 color = custom(water, r"""
 float3 body=lerp(float3(0.018,0.065,0.085),float3(0.009,0.034,0.052),saturate(VC.b));
@@ -614,11 +624,14 @@ float nearHull=smoothstep(1200.0,4000.0,length(P.xy*float2(.5,2)));
 float distanceM=length(P-Cam)*0.01;
 // Retain each phase's covector until after the flow-map chain rule. Averaging
 // the q/q2 derivatives first loses their different rotations and stretches.
-float amplitude=min(max(Amp,0.0),650.0)*0.01;
+float amplitude=lerp(min(max(Amp,0.0),650.0),85.0,lake)*0.01;
 float fftWeight=waveBlend.fft(length(P-Cam),Enabled,Count);
+fftWeight=lerp(fftWeight,saturate(Enabled)*step(.5,Count),lake);
 float swellWeight=Tunnel<.5 ? waveBlend.swell(fftWeight) : 1.;
+swellWeight=lerp(swellWeight,1-fftWeight,lake);
 float3 swell0=wn.wave_field(q,T),swell1=wn.wave_field(q2,T);
 float4 breaker0=wn.breaking_field(q,T),breaker1=wn.breaking_field(q2,T);
+breaker0*=1-lake; breaker1*=1-lake;
 float2 slope0=-swell0.yz*amplitude*swellWeight;
 float2 slope1=-swell1.yz*amplitude*swellWeight;
 slope0-=breaker0.yz*(1-saturate(Tunnel));
@@ -717,18 +730,22 @@ if fft_surface:
     shelf_base=custom(water,shelf_base_code,FLOAT3,{"VN":vertex_normal,"P":position,"Flatten":hull_flatten,"Level":sea_level},1450)
     final_normal=custom(water,WAVE_BLEND+r"""
 float weight=waveBlend.fft(length(P-Cam),Enabled,Count);
+float lake=saturate(Calm)*(1-saturate(Tunnel));
+weight=lerp(weight,saturate(Enabled)*step(.5,Count),lake);
 [branch] if (weight < 0.001) { return Fallback; }
 float3 base=normalize(Base);
 float distanceM=length(P-Cam)*0.01;
 float strength=lerp(0.65,0.16,smoothstep(180.0,1600.0,distanceM));
+strength=lerp(strength,1.0,lake);
 float3 flat=normalize(lerp(float3(0,0,1),Surface.xyz,strength));
 float3 axis=float3(-base.y,base.x,0);
 float3 curved=flat+cross(axis,flat)+cross(axis,cross(axis,flat))/max(1.0+base.z,0.01);
 // The basin fallback already includes the exact rendered swell attenuation.
 // Do not attenuate it again or use a different coefficient from the WPO.
 float3 live=normalize(curved+(Fallback-base)*lerp(1.,.65,saturate(Tunnel)));
+live=normalize(lerp(live,curved,lake));
 return normalize(lerp(Fallback,live,weight));
-""",FLOAT3,{"Fallback":final_normal,"Base":shelf_base,"Surface":fft_surface,"P":position,"Cam":camera,"Enabled":use_live_fft,"Count":live_count,"Tunnel":tunnel_flow},1500)
+""",FLOAT3,{"Fallback":final_normal,"Base":shelf_base,"Surface":fft_surface,"P":position,"Cam":camera,"Enabled":use_live_fft,"Count":live_count,"Tunnel":tunnel_flow,"Calm":calm_caldera},1500)
 output(final_normal,unreal.MaterialProperty.MP_NORMAL)
 
 # Geometric displacement is bounded to WaveHeight (max 650cm), with the same
@@ -739,13 +756,13 @@ float nearHull=smoothstep(1200.0,4000.0,length(P.xy*float2(.5,2)));
 float flatten=saturate(Flatten)*(1.0-smoothstep(1200.0,3500.0,length(P.xy*float2(0.5,2.0))));
 float3 waveNormal=normalize(lerp(VN,float3(0,0,1),flatten));
 float resolved=1-smoothstep(120000.0,350000.0,length(P-Cam));
-float3 wave=waveNormal*h*min(max(Amp,0),650.0)*nearHull*resolved;
+float3 wave=waveNormal*h*lerp(min(max(Amp,0),650.0),85.0,lake)*nearHull*resolved;
 """
 wpo_inputs=dict(base_inputs,VN=vertex_normal,VT=vertex_tangent,Amp=wave_height,Flatten=hull_flatten,Level=sea_level,Cam=camera)
 if fft_displacement:
     wpo_inputs.update(Live=fft_displacement,Enabled=use_live_fft,Count=live_count)
     wpo_code+=r"""
-float3 d=Live*.65;
+float3 d=Live*lerp(.65,1.0,lake);
 // Smooth bounds prevent a malformed render target from folding the bowl or
 // pushing the water through the deck. The hull safety ellipse remains exact.
 d.xy=d.xy/(1+abs(d.xy)/150.0);
@@ -753,7 +770,8 @@ d.z=d.z/(1+abs(d.z)/400.0);
 float3 axis=float3(-waveNormal.y,waveNormal.x,0);
 float3 curved=d+cross(axis,d)+cross(axis,cross(axis,d))/max(1+waveNormal.z,.01);
 float liveWeight=Tunnel<.5 ? waveBlend.fft(length(P-Cam),Enabled,Count) : saturate(Enabled)*step(.5,Count);
-wave=wave*waveBlend.swell(liveWeight)+curved*nearHull*resolved*liveWeight;
+liveWeight=lerp(liveWeight,saturate(Enabled)*step(.5,Count),lake);
+wave=wave*lerp(waveBlend.swell(liveWeight),1-liveWeight,lake)+curved*nearHull*lerp(resolved,1.,lake)*liveWeight;
 """
 wpo_code+=r"""
 float4 breaker=lerp(wn.breaking_field(q,T),wn.breaking_field(q2,T),blend);
@@ -764,7 +782,7 @@ float3 bitangent=cross(waveNormal,tangent);
 float2 lateral=breaker.yz*130.0;
 lateral=lateral/(1+abs(lateral)/120.0);
 wave+=(waveNormal*breaker.x*100.0+tangent*lateral.x+bitangent*lateral.y)
-    *nearHull*resolved*(1-saturate(Tunnel));
+    *nearHull*resolved*(1-saturate(Tunnel))*(1-lake);
 // A fresh foam source is not a rigid patch. The old vertex-red cutoff stopped
 // geometry on every CPU crest while its shading waves kept moving. Hull safety
 // remains nearHull; preserve the separate tunnel's previous cutoff unchanged.
