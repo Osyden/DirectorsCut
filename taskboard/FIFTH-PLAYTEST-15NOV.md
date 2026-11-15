@@ -45,3 +45,11 @@ Selected-backend progress: native chunker caught an empty-prefix FString edge ca
 ## Added menu track
 
 User requested The Atlantean Adventure as menu music, fading immediately at Start Game. Source487910a plus direct StartVoyage hook5bd5dfb adds a looping0.26-gain menu component and0.30-second audio-thread fade. The supplied224.48-second stereo master is prepared unchanged; import and native start/restart checks are pending the serialized engine lane. See [menu music](MENU-MUSIC-15NOV.md).
+
+## Frozen native acceptance, 22:05
+
+All required native checks now pass. The first reload probe found an actual world-leak assertion;70baed0 drains the old world's native speech and game-thread cleanup before actor destruction/GC. The unchanged reload probe subsequently passed, including new-world Ruby speech. Cancel, exit during speech and producer failure/recovery also pass. No unsafe lease release or GC suppression was used.
+
+User requested smoother spoken replies in the coordinated NPC chat. Runtime394f9c9 gives each bounded Phonon reply one continuous utterance while retaining progressive PCM/A2F. Saved/PhononNatural/conversation.json passes8/8 replies, exactly8 speech/face sessions, and playback before native input completion in all8. Warm onset2.100–2.233s, cold4.400s; no claim of instant speech or second-machine validation.
+
+Menu music was imported and passes actual start/fade/restart: two menu starts, two immediate0.30s fades, stopped after0.300/0.306s; TheFog starts fresh both times. Source frozen. Trailer chat has the explicitly reserved five-minute capture slot from22:05:47, then root owns fresh packaging and packaged cold Gemma/Phonon tests.20:48 playable remains selected until that acceptance. Native trailer helper is opt-in only and included by coordinated request.
