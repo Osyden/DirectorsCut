@@ -82,6 +82,7 @@ protected:
 	int32 RoutePoint = 0;
 	float RouteRetry = 0.f;
 	float WalkingSpeed = 0.f;
+	bool bDeckGrounded = false;
 	float MoveSpeed = 180.f;
 	EDCAction HelmOrder = EDCAction::Steady;
 	float HelmOrderTimeLeft = 0.f;
@@ -137,5 +138,6 @@ protected:
 	UPROPERTY() TArray<TObjectPtr<ADCCrewMember>> Crew;
 	FDCCrewNavigation Navigation;
 	bool bNavigationAttempted = false;
+	double NextNavigationAttempt = 0;
 	bool EnsureNavigation();
 };

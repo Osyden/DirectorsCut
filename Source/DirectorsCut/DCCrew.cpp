@@ -258,12 +258,22 @@ void ADCCrewMember::Tick(float DeltaSeconds)
 	{
 		DeckPos = Deck.InverseTransformPosition(GetActorLocation());
 		DeckRot = FRotator(0.f, (Deck.GetRotation().Inverse()*GetActorQuat()).Rotator().Yaw, 0.f);
+		bDeckGrounded=false;
+		WalkRoute.Reset(); RouteTarget=FVector(FLT_MAX);
+	}
+	// SpawnCrew precedes Super::StartPlay; asynchronous ship collision may not
+	// exist at that point. Retry initial placement when the deck becomes queryable.
+	if (!bDeckGrounded)
+	{
 		if (auto* Crew=GetWorld()->GetSubsystem<UDCCrewSubsystem>())
 		{
 			FVector Feet;
-			if (Crew->ProjectToDeck(DeckPos-FVector(0,0,90),Feet)) { DeckPos=Feet+FVector(0,0,90); }
+			if (Crew->ProjectToDeck(DeckPos-FVector(0,0,90),Feet))
+			{
+				DeckPos=Feet+FVector(0,0,90); bDeckGrounded=true;
+				UE_LOG(LogDC,Log,TEXT("CREW_GROUNDED name=%s feet=%s"),*CrewName,*Feet.ToCompactString());
+			}
 		}
-		WalkRoute.Reset(); RouteTarget=FVector(FLT_MAX);
 	}
 	TickCrew(DeltaSeconds);
 	SetActorLocationAndRotation(Deck.TransformPosition(DeckPos), Deck.GetRotation() * DeckRot.Quaternion());
@@ -709,11 +719,15 @@ bool ADCCrewMember::MoveToward(const FVector& Target, float DeltaSeconds)
 bool UDCCrewSubsystem::EnsureNavigation()
 {
 	if (bNavigationAttempted) { return !Navigation.Nodes.IsEmpty(); }
+	if (!GetWorld()->HasBegunPlay()) { return false; }
 	auto* Director=ADCRideDirector::Get(this);
 	if (!Director || !Director->ShipActor) { return false; }
-	bNavigationAttempted=true;
+	const double Now=GetWorld()->GetRealTimeSeconds();
+	if (Now<NextNavigationAttempt) { return false; }
+	NextNavigationAttempt=Now+.5;
 	const double Started=FPlatformTime::Seconds();
 	const bool Built=Navigation.Build(Director);
+	bNavigationAttempted=Built; // An empty early query is retryable, never permanent.
 	UE_LOG(LogDC,Log,TEXT("CREW_DECK_GRAPH nodes=%d ready=%d buildMs=%.1f"),Navigation.Nodes.Num(),Built,(FPlatformTime::Seconds()-Started)*1000.0);
 	if (Built && FParse::Param(FCommandLine::Get(),TEXT("DCCrewRouteVerify")))
 	{

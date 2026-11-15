@@ -3,6 +3,9 @@
 #include "Components/PrimitiveComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Engine/World.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include <initializer_list>
 
 namespace
@@ -17,15 +20,20 @@ namespace
 		UPrimitiveComponent* Hull = nullptr;
 		TArray<UPrimitiveComponent*> Parts;
 		FCollisionQueryParams Query { FName(TEXT("CrewDeckNavigation")), true };
+		mutable int32 FloorMiss=0, FloorLowHigh=0, FloorSlope=0, FloorPassed=0;
+		mutable int32 SolidRejected=0, SupportRejected=0, BodyRejected=0;
+		mutable TMap<FString,int32> LineBlockers;
 
 		bool Floor(float X, float Y, FVector& Feet) const
 		{
 			FHitResult Hit;
 			// The brigantine's upper deck is about 500 cm, quarterdeck about 700.
 			// Query its actual triangles, not Visibility-channel props or the gun deck.
-			if (!Hull->LineTraceComponent(Hit, Deck.TransformPosition(FVector(X,Y,1050)), Deck.TransformPosition(FVector(X,Y,420)), Query)) { return false; }
+			if (!Hull->LineTraceComponent(Hit, Deck.TransformPosition(FVector(X,Y,1050)), Deck.TransformPosition(FVector(X,Y,420)), Query)) { ++FloorMiss; return false; }
 			Feet = Deck.InverseTransformPosition(Hit.ImpactPoint);
-			return Feet.Z >= 440.f && Feet.Z <= 850.f && Deck.InverseTransformVectorNoScale(Hit.ImpactNormal).Z > .65f;
+			if (Feet.Z<440.f || Feet.Z>850.f) { ++FloorLowHigh; return false; }
+			if (Deck.InverseTransformVectorNoScale(Hit.ImpactNormal).Z<=.65f) { ++FloorSlope; return false; }
+			++FloorPassed; return true;
 		}
 
 		bool ClearLine(const FVector& A, const FVector& B) const
@@ -36,7 +44,7 @@ namespace
 			{
 				if (!Part->Bounds.GetBox().Intersect(Segment.ExpandBy(1.f))) { continue; }
 				FHitResult Hit;
-				if (Part->LineTraceComponent(Hit, Start, End, Query)) { return false; }
+				if (Part->LineTraceComponent(Hit, Start, End, Query)) { ++LineBlockers.FindOrAdd(Part->GetName()); return false; }
 			}
 			return true;
 		}
@@ -51,12 +59,12 @@ namespace
 				// inside them, where a surface ray could start behind every triangle.
 				const FBox Box=Part->CalcBounds(Part->GetComponentTransform()*Deck.Inverse()).GetBox();
 				if (Feet.Z+170.f>Box.Min.Z && Feet.Z+25.f<Box.Max.Z &&
-					Feet.X>Box.Min.X-CrewBodyRadius && Feet.X<Box.Max.X+CrewBodyRadius && Feet.Y>Box.Min.Y-CrewBodyRadius && Feet.Y<Box.Max.Y+CrewBodyRadius) { return false; }
+					Feet.X>Box.Min.X-CrewBodyRadius && Feet.X<Box.Max.X+CrewBodyRadius && Feet.Y>Box.Min.Y-CrewBodyRadius && Feet.Y<Box.Max.Y+CrewBodyRadius) { ++SolidRejected; return false; }
 			}
 			for (const FVector2D Offset : { FVector2D(CrewBodyRadius,0), FVector2D(-CrewBodyRadius,0), FVector2D(0,CrewBodyRadius), FVector2D(0,-CrewBodyRadius) })
 			{
 				FVector Edge;
-				if (!Floor(Feet.X+Offset.X, Feet.Y+Offset.Y, Edge) || FMath::Abs(Edge.Z-Feet.Z)>MaxStep) { return false; }
+				if (!Floor(Feet.X+Offset.X, Feet.Y+Offset.Y, Edge) || FMath::Abs(Edge.Z-Feet.Z)>MaxStep) { ++SupportRejected; return false; }
 			}
 			// Shoulder-width clearance excludes masts, cabin walls, wheels and gun
 			// carriages even when their tops are not part of the floor mesh.
@@ -64,9 +72,10 @@ namespace
 			{
 				const FVector At = Feet + FVector(0,0,Height);
 				if (!ClearLine(At-FVector(CrewBodyRadius,0,0),At+FVector(CrewBodyRadius,0,0)) ||
-					!ClearLine(At-FVector(0,CrewBodyRadius,0),At+FVector(0,CrewBodyRadius,0))) { return false; }
+					!ClearLine(At-FVector(0,CrewBodyRadius,0),At+FVector(0,CrewBodyRadius,0))) { ++BodyRejected; return false; }
 			}
-			return ClearLine(Feet+FVector(0,0,55), Feet+FVector(0,0,180));
+			if (!ClearLine(Feet+FVector(0,0,55), Feet+FVector(0,0,180))) { ++BodyRejected; return false; }
+			return true;
 		}
 
 		bool Connected(const FVector& A, const FVector& B) const
@@ -126,6 +135,20 @@ bool FDCCrewNavigation::Build(ADCRideDirector* Director)
 			if (Offset.X && Offset.Y && (!Grid.Contains(Pair.Key+FIntPoint(Offset.X,0)) || !Grid.Contains(Pair.Key+FIntPoint(0,Offset.Y)))) { continue; }
 			if (!Sampler.Connected(Nodes[Pair.Value].Feet,Nodes[*Other].Feet)) { continue; }
 			Nodes[Pair.Value].Links.Add(*Other); Nodes[*Other].Links.Add(Pair.Value);
+		}
+	}
+	UE_LOG(LogDC,Log,TEXT("CREW_DECK_SAMPLES hull=%s physics=%d collision=%d floorPass=%d miss=%d range=%d slope=%d solid=%d support=%d body=%d nodes=%d"),
+		*Sampler.Hull->GetName(),Sampler.Hull->IsPhysicsStateCreated(),int32(Sampler.Hull->GetCollisionEnabled()),Sampler.FloorPassed,Sampler.FloorMiss,Sampler.FloorLowHigh,Sampler.FloorSlope,Sampler.SolidRejected,Sampler.SupportRejected,Sampler.BodyRejected,Nodes.Num());
+	if (Nodes.IsEmpty() || FParse::Param(FCommandLine::Get(),TEXT("DCCrewRouteVerify")))
+	{
+		for (const auto& Blocker : Sampler.LineBlockers) { UE_LOG(LogDC,Log,TEXT("CREW_DECK_BLOCKER component=%s count=%d"),*Blocker.Key,Blocker.Value); }
+		for (const FVector2D XY : { FVector2D(-1040,0),FVector2D(-460,-90),FVector2D(40,80),FVector2D(211,-153),FVector2D(505,121) })
+		{
+			const FVector From=Sampler.Deck.TransformPosition(FVector(XY.X,XY.Y,1050)), To=Sampler.Deck.TransformPosition(FVector(XY.X,XY.Y,200));
+			FHitResult Direct, WorldHit;
+			const bool HasDirect=Sampler.Hull->LineTraceComponent(Direct,From,To,Sampler.Query);
+			const bool HasWorld=Director->GetWorld()->LineTraceSingleByObjectType(WorldHit,From,To,FCollisionObjectQueryParams(FCollisionObjectQueryParams::AllObjects),Sampler.Query);
+			UE_LOG(LogDC,Log,TEXT("CREW_DECK_PROBE xy=%.0f,%.0f hull=%d hullZ=%.1f normalZ=%.2f world=%d part=%s worldZ=%.1f"),XY.X,XY.Y,HasDirect,Direct.ImpactPoint.Z,Direct.ImpactNormal.Z,HasWorld,*GetNameSafe(WorldHit.GetComponent()),WorldHit.ImpactPoint.Z);
 		}
 	}
 	return !Nodes.IsEmpty();
