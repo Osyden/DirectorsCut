@@ -467,18 +467,26 @@ struct SourceFoamRaft {
   // The animated geometric lips are a subordinate renewal source. Their
   // .975..999 warped-sine isolines must not draw opaque hooks over clear water.
   fresh=max(fresh,lip*.18)*(1-shelfGuard*.65);
-  float concentration=saturate(max(max(wake*.85,impact*.95),max(transported,fresh)));
+  float aged=saturate(max(max(wake*.85,impact*.95),transported));
+  // Source strength and spatial occupancy are separate. A concentration of1
+  // used to defeat every threshold (maximum .71), repainting whole crests;
+  // concentrations below .13 lost their downstream wake altogether.
+  float agedStrength=1-exp(-2*aged);
+  float sourceStrength=1-(1-saturate(fresh)*.85)*(1-agedStrength);
 
   // Real installed foam red defines coherent rafts, with metre-sized edges
   // inside a 9x17m advected tile. The source atlas still controls WHERE foam can
   // exist; this texture is never an additive coating over the complete bowl.
   float2 warp=float2(field.noise(p*.031),field.noise(p*.027+41.7))-.5;
-  float raftField=smoothstep(.025,.36,raft);
   float massVariation=field.noise((p+warp*8)/13.0+5.1);
-  float threshold=.13+.58*(1-saturate(.72*raftField+.28*massVariation));
-  float edgeAA=clamp(fwidth(threshold)*.65,.025,.20);
-  float body=smoothstep(threshold-edgeAA,threshold+edgeAA,concentration)
-      *smoothstep(0,.04,concentration);
+  float packetAA=clamp(fwidth(massVariation)*.6,.025,.14);
+  float packet=smoothstep(.42-packetAA,.62+packetAA,massVariation);
+  float raftAA=clamp(fwidth(raft)*.5,.015,.05);
+  float raftMask=smoothstep(.055-raftAA,.30+raftAA,raft);
+  // Explicit gaps survive even a saturated source. The13m finite packet
+  // envelope also remains resolved when tiny cells inside the DRW map mip out.
+  // No additive population or constant white floor exists outside the sources.
+  float body=sourceStrength*packet*raftMask;
 
   // Fine lace modifies only those finite rafts. At a subpixel cell footprint,
   // average the mip-filtered red coverage instead of forcing a constant white
@@ -487,9 +495,7 @@ struct SourceFoamRaft {
   float resolvedLace=smoothstep(.11-cellAA,.11+cellAA,cells);
   float resolved=1-smoothstep(.18,.75,footprint);
   float cellCoverage=lerp(saturate(cells*2.0),resolvedLace,resolved);
-  float denseInterior=smoothstep(.45,.90,concentration)*body;
-  float lace=lerp(cellCoverage,.38+.62*cellCoverage,denseInterior*.65);
-  return body*lace;
+  return body*cellCoverage;
  }
 };SourceFoamRaft rafts;
 """
