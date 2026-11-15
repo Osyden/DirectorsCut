@@ -34,6 +34,9 @@ native scale, signed triplanar projection, co-registered rotated offset samples,
 source colour and roughness, and physical-footprint normal filtering. It leaves
 the default material/clay unchanged. Intended for geometry without registered
 raw scan displacement; no unverified drainage/vertex masks are interpreted.
+DC_CLIFF_ALBEDO_SCALE adjusts only candidate brightness (default1); it preserves
+source chromaticity. DC_CLIFF_FITTED_WETNESS=1 adds an authored spray-proximity
+response from the active source-matched waterfall trajectories.
 """
 import json
 import os
@@ -271,6 +274,9 @@ def create_material():
     if candidate not in ('0', '1'):
         raise RuntimeError('DC_CLIFF_SCAN_CANDIDATE must be0 or1')
     candidate = candidate == '1'
+    albedo_scale = float(os.environ.get('DC_CLIFF_ALBEDO_SCALE','1')) if candidate else 1.
+    if not 0.05 <= albedo_scale <= 2.:
+        raise RuntimeError('Candidate albedo scale must be finite and within .05..2')
     material_name = 'M_CliffScanSurface' if candidate else 'M_CliffRock'
     material_path = ROOT + '/' + material_name
     assign = os.environ.get("DC_CLIFF_PREVIEW_ASSIGN", "0")
@@ -483,7 +489,7 @@ float3 z=tile.sampleMap(Albedo,AlbedoSampler,float2(p.x*s.z,-p.y)).rgb;
 // cavities, unverified wetness or procedural colour camouflage.
 return saturate((x*w.x+y*w.y+z*w.z)*max(AlbedoScale,0));
 """, types.CMOT_FLOAT3, {'P':position,'N':normal,'Albedo':scan_nodes['D'],
-            'TileMetres':scan_tile_size,'AlbedoScale':parameter('AlbedoScale',1.)})
+            'TileMetres':scan_tile_size,'AlbedoScale':parameter('AlbedoScale',albedo_scale)})
     fitted_wet = None
     fitted_wet_report = None
     if candidate and os.environ.get('DC_CLIFF_FITTED_WETNESS','0') == '1':
@@ -630,9 +636,10 @@ return clamp(dot(float3(x,y,z),w),.52,.94);
                   scan_sampling=scan_sampling if preset=='scan' else None,
                   scan_projection=scan_projection if preset=='scan' else None,
                   scan_cell_rotation_degrees=[-25.78310078,25.78310078] if candidate else None,
-                  albedo_response='Unmodified source chromaticity; achromatic AlbedoScale1' if candidate else 'Existing preset response',
+                  albedo_response='Source chromaticity preserved; authored achromatic brightness scale' if candidate else 'Existing preset response',
+                  albedo_scale=albedo_scale if candidate else None,
                   fitted_wet_rock=fitted_wet_report,
-                  drainage_response='None: current whole-face geometry has no verified transport masks' if candidate else 'Existing preset response',
+                  drainage_response=('Fitted spray proximity only; no historical drainage masks' if fitted_wet_report else 'None: current whole-face geometry has no verified transport masks') if candidate else 'Existing preset response',
                   scan_coordinates=('Signed local triplanar, shared D/N/R offsets; DX gradients transformed by exact signed UV axes' if scan_projection=='triplanar' else 'Source-chart U/Z, native physical tile, top projection blend; DX normal mapped back to source axes') if preset=='scan' else None,
                   slate_sampling='Three-offset triangular blend per local triplanar projection; same albedo/normal offsets, explicit continuous UV mip gradients' if preset=='slate' else None,
                   roughness_bounds=[.52 if preset=='scan' else .53,.94], emissive=False, displacement=False,

@@ -97,6 +97,7 @@ def main():
     if material is None:
         material = unreal.AssetToolsHelpers.get_asset_tools().create_asset(name, args.destination, unreal.Material, unreal.MaterialFactoryNew())
         material.set_editor_property('used_with_nanite', True)
+        material.set_editor_property('used_with_instanced_static_meshes', True)
         material.set_editor_property('tangent_space_normal', True)
         material.set_editor_property('two_sided', bool(material_source.get('doubleSided', False)))
 
@@ -124,7 +125,9 @@ def main():
                               unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
             uv = node(unreal.MaterialExpressionTextureCoordinate)
             uv.coordinate_index = maps[role]['uv']
-            link(uv, '', n, 'Coordinates')
+            # MaterialEditingLibrary compares shortened graph-pin names.
+            # The first texture-sample input is its UV coordinate input.
+            link(uv, '', n, '')
             return n
 
         def scaled(a, output, value):

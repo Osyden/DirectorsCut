@@ -72,7 +72,9 @@ def main():
     def color(value):
         a=node(unreal.MaterialExpressionConstant3Vector);a.constant=unreal.LinearColor(*value,1.);return a
     mask=node(unreal.MaterialExpressionVertexColor)
-    scale=node(unreal.MaterialExpressionScalarParameter);scale.parameter_name='AlbedoScale';scale.default_value=1.
+    scale=node(unreal.MaterialExpressionScalarParameter)
+    scale.set_editor_property('parameter_name','AlbedoScale')
+    scale.set_editor_property('default_value',1.)
     for role,property_name,background in [('albedo',unreal.MaterialProperty.MP_BASE_COLOR,color((.20,.21,.205))),
                                           ('roughness',unreal.MaterialProperty.MP_ROUGHNESS,scalar(.88)),
                                           ('normal',unreal.MaterialProperty.MP_NORMAL,color((0.,0.,1.)))]:

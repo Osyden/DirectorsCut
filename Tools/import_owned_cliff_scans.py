@@ -154,6 +154,7 @@ def main():
     if material is None:
         material = tools.create_asset(material_name, args.destination, unreal.Material, unreal.MaterialFactoryNew())
         material.set_editor_property('used_with_nanite', True)
+        material.set_editor_property('used_with_instanced_static_meshes', True)
         material.set_editor_property('tangent_space_normal', True)
         material.set_editor_property('two_sided', False)
         for index, (role, prop) in enumerate((('albedo', unreal.MaterialProperty.MP_BASE_COLOR),

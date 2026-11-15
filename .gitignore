@@ -46,6 +46,8 @@ Content/UltraDynamicSky/
 Content/__ExternalActors__/
 Content/__ExternalObjects__/
 Content/Fab/
+# Owned Fab scan sources and imported materials stay local.
+Content/LocalScans/
 # Regenerated from purchased Kaiju source textures; never publish these assets.
 /Content/DC/Maelstrom/LeviathanSkin/
 
