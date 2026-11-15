@@ -16,7 +16,27 @@ Run with the installed Blender Python (NumPy; no Blender or GPU process needed):
 & 'E:/Utilities/Blender/5.3/python/bin/python.exe' 'Tools/bake_unique_owned_cliff.py' --source 'E:/Projects/DirectorsCut/Crater-Workers/Flow-Seams/Saved/OwnedCliffProjection/vfmjadufa/Tile' --output 'E:/Projects/DirectorsCut/Crater-Workers/Flow-Seams/Saved/OwnedCliffProjection/vfmjadufa/UniquePilotReplay'
 ```
 
-The measured input tile is an explicit ignored dependency, SHA256 `3c98018f3b8cf02e5e51e897ee7fe927c1d8ac6209e12621e249fe16c010c714` for `tile.npz`. It was ray-projected from owned Massive Nordic Coastal Cliff `vfmjadufa`, X −7.2..3.45 m/Z 3..10.35 m, using actual mesh UVs and original 8K maps. A 25% periodic overlap was applied jointly to the original small tile. The original projection recipes remain in `Saved/project_owned_cliff_faces.py` and `Saved/bake_owned_cliff_tile.py`; this new CLI does not silently regenerate that measured input from a different source.
+The measured input tile is an explicit ignored dependency, SHA256 `3c98018f3b8cf02e5e51e897ee7fe927c1d8ac6209e12621e249fe16c010c714` for `tile.npz`. It was ray-projected from owned Massive Nordic Coastal Cliff `vfmjadufa`, X −7.2..3.45 m/Z 3..10.35 m, using actual mesh UVs and original 8K maps. A 25% periodic overlap was applied jointly to the original small tile. The complete extraction source is now preserved in `Tools/trim_owned_cliff_faces.py`, `Tools/project_owned_cliff_faces.py` and `Tools/bake_owned_cliff_tile.py`; the unique-atlas CLI does not silently substitute a different source.
+
+### Rebuild the measured input from owned Fab files
+
+The extraction recipes were promoted without regenerating assets during native review. They preserve the actual algorithm/settings; only input/output roots became environment parameters. Use the same Blender 5.3 build for the closest numerical replay. Full raw-to-tile replay after promotion has **not** been rerun; the verified bitwise replay below concerns the unique-atlas stage.
+
+```powershell
+$env:DC_OWNED_CLIFF_CACHE = 'C:/ProgramData/Epic/EpicGamesLauncher/VaultCache/FabLibrary'
+$env:DC_OWNED_CLIFF_WORK = 'E:/Projects/DirectorsCut/Crater-Workers/Flow-Seams/Saved/OwnedScanSources'
+& 'E:/Utilities/Blender/blender.exe' --background --factory-startup --threads 8 --python Tools/trim_owned_cliff_faces.py
+& 'E:/Utilities/Blender/blender.exe' --background --factory-startup --threads 8 --python Tools/project_owned_cliff_faces.py
+& 'E:/Utilities/Blender/blender.exe' --background --factory-startup --threads 8 --python Tools/bake_owned_cliff_tile.py
+& 'E:/Utilities/Blender/5.3/python/bin/python.exe' Tools/bake_unique_owned_cliff.py --source "$env:DC_OWNED_CLIFF_WORK/OwnedCliffProjection/vfmjadufa/Tile" --output "$env:DC_OWNED_CLIFF_WORK/OwnedCliffProjection/vfmjadufa/UniquePilot"
+```
+
+Required owned source folders relative to `DC_OWNED_CLIFF_CACHE`:
+
+- `Huge_Nordic_Coastal_Cliff-85318909/fbx/raw/huge_nordic_coastal_clif_extracted/`, raw FBX SHA256 `53074843a337b74a510b85579ca343e5828f6da07d457dc0660f2f6a7075e553`.
+- `Massive_Nordic_Coastal_Cliff-93b50c63/fbx/raw/massive_nordic_coastal_c_extracted/`, raw FBX SHA256 `4064086b0780ed204cba8a2fca978e3aa901897fac90657d6b23e81619165de3`.
+
+Each folder contains its original `<name>_Raw.fbx` and `<name>_Raw_8K_{BaseColor,Normal,Roughness}.jpg`. The final tile uses **Massive**; the preserved diagnostic projection also outputs Huge. Source normals are DirectX. The projected normal atlas is explicitly converted to the new physical X/Z basis and OpenGL convention, then imported into UE with green inversion. The first stage removes only bottom-22%-incident geometry in an ignored derivative; it never edits the owned raw FBX. There are no outcrop instances in the continuous-cliff result.
 
 Original unique output: `Saved/OwnedCliffProjection/vfmjadufa/UniquePilot/`. The manifest records source paths/hashes, physical dimensions and amplitudes. Derived TGA files use bottom-left origin, +V toward source +Z. Depth texels have the same centres. The full-pilot geometry samples the finite field; there is no geometry-side repeating 8 m UV lookup.
 
