@@ -19,9 +19,14 @@ private:
     enum class EStage : uint8 { Ready, Drain, Ask, Generate, Speak, Done };
     EStage Stage = EStage::Ready;
     int32 CaseIndex = 0, OrdersBefore = 0;
+    int32 BatchBefore = 0, ExpectedBatch = 0, CaseEpoch = 0;
     double Started = 0, StageStarted = 0, GeneratedMs = 0;
+    double QuestionStarted = 0, FirstChunkAt = 0, FirstTTSAt = 0, FirstSpeechAt = 0;
     bool bSawPlayback = false;
+    bool bCaseStreaming = false, bChunkBeforeGeneration = false, bSpeechBeforeGeneration = false;
+    bool bSawTTSLookahead = false, bPlaybackBeforeSendCompleted = false;
     FString Reply, Context, OutputPath;
     TArray<TSharedPtr<class FJsonValue>> Results;
     void Finish(const FString& Error);
+    void ObserveSpeech();
 };

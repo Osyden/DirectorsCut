@@ -1,4 +1,5 @@
 #include "DCACEDialogue.h"
+#include "DCDlgSSEStream.h"
 #include "DCTypes.h"
 #include "Misc/Paths.h"
 
@@ -20,6 +21,7 @@ void UDCACEDialogue::Initialize(const FString& ModelPath)
 {
     OnResponseComplete.AddUniqueDynamic(this, &UDCACEDialogue::Received);
     OnLLMError.AddUniqueDynamic(this, &UDCACEDialogue::Failed);
+    OnTokenStreamed.AddUniqueDynamic(this, &UDCACEDialogue::Streamed);
     ModelFileOverride.FilePath = FPaths::ConvertRelativePathToFull(ModelPath);
     if (!FPaths::FileExists(ModelFileOverride.FilePath))
     {
@@ -31,7 +33,7 @@ void UDCACEDialogue::Initialize(const FString& ModelPath)
 }
 
 void UDCACEDialogue::Submit(const FString& System, const FString& User, float Temperature, float Timeout,
-    TFunction<void(bool, const FString&)> Completion)
+    TFunction<void(bool, const FString&)> Completion, TFunction<void(const FString&)> Progress)
 {
     if (bStopped || !IsLLMReady() || Pending.Num() >= 4)
     {
@@ -44,6 +46,7 @@ void UDCACEDialogue::Submit(const FString& System, const FString& User, float Te
     Request.Temperature = Temperature;
     Request.Deadline = FPlatformTime::Seconds() + FMath::Max(.1f, Timeout);
     Request.Completion = MoveTemp(Completion);
+    Request.Progress = MoveTemp(Progress);
     Pending.Add(MoveTemp(Request));
     StartNext();
 }
@@ -56,6 +59,7 @@ void UDCACEDialogue::StartNext()
     SystemPrompt = Active->System;
     ResetConversation();
     InferenceDefaults.Temperature = Active->Temperature;
+    InferenceDefaults.EnableStreaming = true;
     RefreshInferenceOptions();
     SendMessageWithOptions(Active->User, nullptr, SystemPrompt);
 }
@@ -76,16 +80,41 @@ void UDCACEDialogue::TickComponent(float DeltaTime, ELevelTick TickType, FActorC
     for (auto& Completion : Expired) { Completion(false, FString()); }
     if (Active.IsSet() && Active->Completion && Active->Deadline <= Now)
     {
-        auto Completion = MoveTemp(Active->Completion);
         UE_LOG(LogDC, Warning, TEXT("Dialogue: ACE request timed out; retaining busy context until inference completes"));
-        Completion(false, FString());
+        ExpireActive();
     }
     StartNext();
 }
 
-void UDCACEDialogue::Received(const FString& Text, ULLMChatMessage*)
+void UDCACEDialogue::ExpireActive()
 {
     if (!Active.IsSet()) { return; }
+    auto Completion=MoveTemp(Active->Completion);
+    Active->Progress=nullptr;
+    if (!bStopped && Completion) { Completion(false,FString()); }
+}
+
+void UDCACEDialogue::Streamed(const FString&, const FString& PartialText)
+{
+    check(IsInGameThread());
+    if (bStopped || !Active.IsSet() || !Active->Completion || !Active->Progress) { return; }
+    if (Active->Deadline<=FPlatformTime::Seconds() || PartialText.Len()>FDCDlgSSEStream::MaxTextCharacters)
+    { ExpireActive(); return; }
+    if (PartialText.IsEmpty() || PartialText==Active->LastProgress) { return; }
+    Active->LastProgress=PartialText;
+    // The callback may cancel the active request; keep its callable alive locally.
+    auto Progress=Active->Progress;
+    Progress(PartialText);
+}
+
+void UDCACEDialogue::Received(const FString& Text, ULLMChatMessage*)
+{
+    check(IsInGameThread());
+    if (!Active.IsSet()) { return; }
+    if (Active->Deadline<=FPlatformTime::Seconds()) { ExpireActive(); }
+    // A final native response can contain a suffix not observed in token callbacks.
+    // Deliver it before completion, once, while cancellation can still suppress both.
+    Streamed(FString(),Text);
     auto Completion = MoveTemp(Active->Completion);
     Active.Reset();
     if (!bStopped && Completion) { Completion(!Text.IsEmpty(), Text); }
@@ -104,7 +133,7 @@ void UDCACEDialogue::CancelPending()
 {
     Pending.Empty();
     // The plugin has no chat-abort API. Keep the context/chat alive and suppress its late result.
-    if (Active.IsSet()) { Active->Completion = nullptr; }
+    if (Active.IsSet()) { Active->Completion = nullptr; Active->Progress = nullptr; }
 }
 
 void UDCACEDialogue::EndPlay(const EEndPlayReason::Type Reason)

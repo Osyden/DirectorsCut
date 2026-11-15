@@ -1,6 +1,7 @@
 #include "DCVoice.h"
 #include "DCConversationContext.h"
 #include "DCConversationPolicy.h"
+#include "DCStreamedSpeechPolicy.h"
 #include "DCCrew.h"
 #include "Engine/World.h"
 
@@ -48,7 +49,8 @@ void ADCVoice::QueueConversation(const FString& Text, bool bShowCaptain)
 void ADCVoice::StartNextConversation()
 {
     if (bConversationPending || ConversationQueue.IsEmpty() || bEnding || IsMenuOpen() ||
-        !PendingTTS.IsEmpty() || !SpeechQueue.IsEmpty() || IsSpeaking() || ActiveCurves) { return; }
+        !PendingTTS.IsEmpty() || !SpeechQueue.IsEmpty() || !ReadySpeech.IsEmpty() || StreamingBatch.Id ||
+        FPlatformTime::Seconds() < SilentSpeechUntil || IsSpeaking() || ActiveCurves) { return; }
     FConversationQuestion Question = MoveTemp(ConversationQueue[0]);
     ConversationQueue.RemoveAt(0);
     if (FPlatformTime::Seconds() - Question.QueuedAt > 30.0)
@@ -82,22 +84,43 @@ void ADCVoice::StartNextConversation()
     bConversationPending = true;
     const double Started = FPlatformTime::Seconds();
     TWeakObjectPtr<ADCVoice> Weak(this);
+    const int32 BatchId = bStreamSpeech ? BeginSpeechBatch(Question.Speaker) : 0;
+    if (BatchId) { StreamingBatch.User = Question.Text.Left(350); }
+    const TSharedRef<DCStreamedSpeechPolicy::FChunker> Chunker = MakeShared<DCStreamedSpeechPolicy::FChunker>();
+    TFunction<void(const FString&)> Progress;
+    if (bStreamSpeech)
+    {
+        Progress = [Weak, Epoch, Serial, BatchId, Chunker](const FString& Partial)
+        {
+            ADCVoice* Voice = Weak.Get();
+            if (!Voice || Voice->bEnding) { return; }
+            Voice->SynchronizeScene();
+            if (Serial != Voice->ConversationSerial || Epoch != Voice->SpeechEpoch || Voice->IsMenuOpen()) { return; }
+            for (const FString& Chunk : Chunker->Push(Partial)) { Voice->QueueSpeechChunk(BatchId, Chunk); }
+        };
+    }
     UE_LOG(LogDC, Display, TEXT("CONVERSATION_REQUEST speaker=%s backend=%s scene=%s context_chars=%d"),
         *Question.Speaker, *DialogueBackend, *DCConversationContext::SceneKey(this), System.Len()+User.Len());
     RequestDialogue(System, User, 96, .65f, false, 6.f,
-        [Weak, Question, Epoch, Serial, Started](bool bOK, const FString& Raw)
+        [Weak, Question, Epoch, Serial, Started, BatchId, Chunker](bool bOK, const FString& Raw)
     {
         ADCVoice* Voice = Weak.Get();
         if (!Voice || Voice->bEnding) { return; }
         Voice->SynchronizeScene();
         if (Serial != Voice->ConversationSerial || Epoch != Voice->SpeechEpoch) { return; }
         Voice->bConversationPending = false;
-        if (Voice->IsMenuOpen()) { return; }
-        const FString Reply = bOK ? DCConversationPolicy::CleanReply(Raw) : FString();
+        if (Voice->IsMenuOpen()) { Voice->FinalizeSpeechBatch(BatchId, FString(), false); return; }
+        const bool bHealthyBatch = !BatchId || (Voice->StreamingBatch.Id == BatchId && !Voice->StreamingBatch.bFailed);
+        if (BatchId && bOK && bHealthyBatch)
+        {
+            for (const FString& Chunk : Chunker->Push(Raw, true)) { Voice->QueueSpeechChunk(BatchId, Chunk); }
+        }
+        const FString Reply = bOK && bHealthyBatch && (!BatchId || !Chunker->WasRejected()) ? DCConversationPolicy::CleanReply(Raw) : FString();
         if (Reply.IsEmpty())
         {
             UE_LOG(LogDC, Warning, TEXT("CONVERSATION_FAILED speaker=%s callback=%d elapsed_ms=%.0f"),
                 *Question.Speaker, bOK, (FPlatformTime::Seconds()-Started)*1000.0);
+            Voice->FinalizeSpeechBatch(BatchId, FString(), false);
             Voice->FinishLine(Question.Speaker, TEXT("Lost my train of thought, Captain. Ask me again."));
         }
         else
@@ -107,8 +130,13 @@ void ADCVoice::StartNextConversation()
             while (History.Num()>3) { History.RemoveAt(0); }
             UE_LOG(LogDC, Display, TEXT("CONVERSATION_REPLY speaker=%s elapsed_ms=%.0f text=%s"),
                 *Question.Speaker, (FPlatformTime::Seconds()-Started)*1000.0, *Reply);
-            Voice->FinishLine(Question.Speaker, Reply);
+            if (BatchId)
+            {
+                Voice->FinalizeSpeechBatch(BatchId, Reply, true);
+                if (auto* Crew = Voice->GetWorld()->GetSubsystem<UDCCrewSubsystem>()) { Crew->Say(Question.Speaker, Reply); }
+            }
+            else { Voice->FinishLine(Question.Speaker, Reply); }
         }
         Voice->StartNextConversation();
-    });
+    }, MoveTemp(Progress));
 }

@@ -12,6 +12,8 @@ class USoundWaveProcedural;
 class UACEAudioCurveSourceComponent;
 class UAsyncActionAnimateCharacter;
 class UDCACEDialogue;
+class IHttpRequest;
+class UDCACESpeechCallback;
 
 /**
  * The voice loop: microphone -> speech-to-text -> order, and crew line -> (LLM) -> text-to-speech.
@@ -29,6 +31,8 @@ class ADCVoice : public AActor
 	friend class ADCDialogueReviewGameMode;
 	friend class UDCACEIntegrationReview;
 	friend class UDCConversationReview;
+	friend class UDCACESpeechCallback;
+	friend class FDCStreamedSpeechLifecycleTest;
 
 public:
 	ADCVoice();
@@ -74,6 +78,9 @@ public:
 	UPROPERTY(Config, EditAnywhere) float LLMTimeout = 1.5f;
 	/** Uses a separate CUDA context; shared graphics contexts remain blocked. */
 	UPROPERTY(Config, EditAnywhere) bool bUseACE = true;
+	/** Isolated candidate: text chunks, one-ahead synthesis and bounded A2F prebuffer. */
+	UPROPERTY(Config, EditAnywhere) bool bStreamSpeech = false;
+	UPROPERTY(Config, EditAnywhere) float StreamPrebufferSeconds = 1.f;
 	UPROPERTY(Config, EditAnywhere) FName ACEProvider = TEXT("LocalA2F-Mark-AR");
 	UPROPERTY(Config, EditAnywhere) FString FinchVoice = TEXT("en_GB-vctk-medium.onnx");
 	UPROPERTY(Config, EditAnywhere) int32 FinchSpeakerId = 95; // VCTK p226
@@ -96,7 +103,10 @@ protected:
 	void ResetConversationState();
 	void InitializeDialogueBackend();
 	void RequestDialogue(const FString& System, const FString& User, int32 MaxTokens, float Temperature,
-		bool bJson, float Timeout, TFunction<void(bool, const FString&)> Completion);
+		bool bJson, float Timeout, TFunction<void(bool, const FString&)> Completion,
+		TFunction<void(const FString&)> Progress = nullptr);
+	TArray<TSharedPtr<IHttpRequest, ESPMode::ThreadSafe>> StreamingDialogueRequests;
+	void CancelStreamingDialogueRequests();
 	UPROPERTY(Transient) TObjectPtr<UDCACEDialogue> ACEDialogue;
 	bool bUseACEDialogue = false;
 	FString SidecarDir() const;
@@ -112,17 +122,38 @@ protected:
 	void SynchronizeScene();
 	bool IsMenuOpen() const;
 	void ShowSpeech(const FString& Speaker, const FString& Text, double Duration);
-	void PlayWav(const FString& Speaker, const FString& Path);
+	void PlayWav(const FString& Speaker, const FString& Path, int32 BatchId = 0);
 	void StartNextLine();
+	void StartReadySpeech();
+	void QueueSynthesisFailure(const FString& Speaker, const FString& Text, int32 BatchId);
 	bool TryACE(const FString& Speaker, const FString& Path, double Duration);
 	void ClearACE();
 	UFUNCTION() void ACEStarted();
 	UFUNCTION() void ACEEnded();
 	UFUNCTION() void ACESent(bool bSuccess);
-	struct FQueuedLine { FString Speaker; FString Text; double QueuedAt; bool bReport = false; };
+	struct FQueuedLine { FString Speaker; FString Text; double QueuedAt; bool bReport = false; int32 BatchId = 0; };
 	TArray<FQueuedLine> SpeechQueue;
+	struct FReadySpeech { FString Speaker, Text, Path; double Duration = 0; int32 Epoch = 0, BatchId = 0; };
+	TArray<FReadySpeech> ReadySpeech;
+	double SilentSpeechUntil = 0;
+	struct FSpeechBatch
+	{
+		int32 Id = 0, Queued = 0, Completed = 0, Faces = 0;
+		FString Speaker, Text, User;
+		bool bFinalized = false, bFailed = false;
+	};
+	FSpeechBatch StreamingBatch, LastFinishedBatch;
+	int32 NextSpeechBatchId = 0, ActiveSpeechBatchId = 0;
+	int32 BeginSpeechBatch(const FString& Speaker);
+	void QueueSpeechChunk(int32 BatchId, const FString& Text);
+	void FinalizeSpeechBatch(int32 BatchId, const FString& Text, bool bSuccess);
+	void CompleteSpeechChunk(int32 BatchId, bool bSuccess, bool bFace);
+	void TryFinishSpeechBatch();
 	UPROPERTY() TObjectPtr<UACEAudioCurveSourceComponent> ActiveCurves;
 	UPROPERTY() TObjectPtr<UAsyncActionAnimateCharacter> ActiveACERequest;
+	UPROPERTY() TObjectPtr<UDCACESpeechCallback> ActiveACERelay;
+	int32 ACERequestSerial = 0;
+	uint64 EarliestSpeechStartFrame = 0;
 	FString ActiveSpeaker, ActiveWav;
 	FString ActiveText, SpeakingSpeaker, SpeakingText;
 	double ActiveDuration = 0, SpeechVisibleUntil = 0;
@@ -149,6 +180,7 @@ protected:
 		FString WavPath;
 		double StartTime = 0.0;
 		int32 Epoch = 0;
+		int32 BatchId = 0;
 	};
 	TArray<FPendingTTS> PendingTTS;
 
@@ -156,6 +188,7 @@ protected:
 	{
 		TWeakObjectPtr<UAudioComponent> Component;
 		double EndTime = 0.0;
+		int32 BatchId = 0;
 	};
 	TArray<FPlaying> Playing;
 	UPROPERTY() TArray<TObjectPtr<USoundWaveProcedural>> LiveWaves;

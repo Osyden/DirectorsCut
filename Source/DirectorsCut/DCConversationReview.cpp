@@ -52,6 +52,53 @@ TStatId UDCConversationReview::GetStatId() const
     RETURN_QUICK_DECLARE_CYCLE_STAT(UDCConversationReview, STATGROUP_Tickables);
 }
 
+void UDCConversationReview::ObserveSpeech()
+{
+    using namespace DCConversationReviewPrivate;
+    const double Now=FPlatformTime::Seconds();
+    const FString Speaker=Questions[CaseIndex].Speaker;
+    if (bCaseStreaming)
+    {
+        if (!ExpectedBatch)
+        {
+            // A question can initially wait behind an authored report. Never bind
+            // to the previous question's retained finished-batch record.
+            if (Voice->StreamingBatch.Id>BatchBefore && Voice->StreamingBatch.Speaker==Speaker)
+            { ExpectedBatch=Voice->StreamingBatch.Id; }
+            else if (Voice->LastFinishedBatch.Id>BatchBefore && Voice->LastFinishedBatch.Speaker==Speaker)
+            { ExpectedBatch=Voice->LastFinishedBatch.Id; }
+        }
+        if (!ExpectedBatch) { return; }
+        if (Voice->StreamingBatch.Id==ExpectedBatch && Voice->StreamingBatch.Queued>0)
+        {
+            if (!FirstChunkAt) { FirstChunkAt=Now; }
+            bChunkBeforeGeneration|=Voice->bConversationPending;
+        }
+        bool bMatchingTTS=false;
+        for (const auto& Pending:Voice->PendingTTS) { bMatchingTTS|=Pending.BatchId==ExpectedBatch; }
+        if (bMatchingTTS && !FirstTTSAt) { FirstTTSAt=Now; }
+        const bool bMatchingPlayback=Voice->ActiveSpeechBatchId==ExpectedBatch && Voice->ActiveSpeaker==Speaker &&
+            Voice->ActiveCurves && Voice->bACEStarted && !Voice->bACEEnded;
+        if (bMatchingPlayback)
+        {
+            bSawPlayback=true;
+            if (!FirstSpeechAt) { FirstSpeechAt=Now; }
+            bSpeechBeforeGeneration|=Voice->bConversationPending;
+            bPlaybackBeforeSendCompleted|=!Voice->bACESent;
+            bSawTTSLookahead|=bMatchingTTS;
+            for (const auto& Ready:Voice->ReadySpeech) { bSawTTSLookahead|=Ready.BatchId==ExpectedBatch; }
+        }
+    }
+    else
+    {
+        if (Voice->ActiveSpeaker==Speaker && Voice->ActiveText==Reply && !Reply.IsEmpty() && Voice->ActiveCurves && Voice->bACEStarted)
+        {
+            bSawPlayback=true;
+            if (!FirstSpeechAt) { FirstSpeechAt=Now; }
+        }
+    }
+}
+
 void UDCConversationReview::Tick(float DeltaTime)
 {
     using namespace DCConversationReviewPrivate;
@@ -95,12 +142,26 @@ void UDCConversationReview::Tick(float DeltaTime)
         OrdersBefore=Crew->OrdersGiven;
         Context=DCConversationContext::Build(this,Question.Speaker);
         Reply.Empty(); bSawPlayback=false;
+        BatchBefore=Voice->NextSpeechBatchId; ExpectedBatch=0; CaseEpoch=Voice->SpeechEpoch;
+        bCaseStreaming=Voice->bStreamSpeech;
+        bChunkBeforeGeneration=bSpeechBeforeGeneration=bSawTTSLookahead=bPlaybackBeforeSendCompleted=false;
+        FirstChunkAt=FirstTTSAt=FirstSpeechAt=0; QuestionStarted=Now;
         Stage=EStage::Generate; StageStarted=Now;
         Crew->ExecuteOrder(Question.Text); // Exact shared typed/microphone entry point.
-        if (Crew->OrdersGiven!=OrdersBefore) { Finish(TEXT("Conversation entered command path; missing ExecuteOrder seam")); }
+        if (Crew->OrdersGiven!=OrdersBefore) { Finish(TEXT("Conversation entered command path; missing ExecuteOrder seam")); return; }
+        ObserveSpeech();
         return;
     }
     if (Crew->OrdersGiven!=OrdersBefore) { Finish(TEXT("Conversation changed the order count")); return; }
+    if (Voice->SpeechEpoch!=CaseEpoch) { Finish(TEXT("Review utterance was cancelled or changed scene before completion")); return; }
+    ObserveSpeech();
+    if (bCaseStreaming && ExpectedBatch)
+    {
+        if (ExpectedBatch!=BatchBefore+1) { Finish(TEXT("Unexpected competing speech batch during review")); return; }
+        if ((Voice->StreamingBatch.Id==ExpectedBatch && Voice->StreamingBatch.bFailed) ||
+            (Voice->LastFinishedBatch.Id==ExpectedBatch && Voice->LastFinishedBatch.bFailed))
+        { Finish(TEXT("Streamed speech batch failed; fallback cannot pass")); return; }
+    }
     if (Stage==EStage::Generate)
     {
         const auto* History=Voice->ConversationHistory.Find(Question.Speaker);
@@ -109,6 +170,7 @@ void UDCConversationReview::Tick(float DeltaTime)
             Reply=History->Last().Reply;
             GeneratedMs=(Now-StageStarted)*1000;
             if (Reply.IsEmpty() || Reply!=DCConversationPolicy::CleanReply(Reply)) { Finish(TEXT("Invalid generated spoken response")); return; }
+            ObserveSpeech();
             Stage=EStage::Speak; StageStarted=Now;
         }
         else if (Now-StageStarted>15) { Finish(TEXT("No genuine model response; fallback lines cannot pass")); }
@@ -117,15 +179,54 @@ void UDCConversationReview::Tick(float DeltaTime)
     if (Stage==EStage::Speak)
     {
         if (Now-StageStarted>40) { Finish(TEXT("Generated conversation did not finish speech/lip-sync")); return; }
-        const bool bMatching=Voice->ActiveSpeaker==Question.Speaker && Voice->ActiveText==Reply;
-        if (bMatching && Voice->ActiveCurves && Voice->bACEStarted) { bSawPlayback=true; }
-        if (bMatching && bSawPlayback && Voice->bACESent && Voice->bACEEnded && !Voice->ActiveCurves)
+        bool bCompleted=false;
+        if (bCaseStreaming)
+        {
+            if (ExpectedBatch && Voice->LastFinishedBatch.Id==ExpectedBatch)
+            {
+                const auto& Batch=Voice->LastFinishedBatch;
+                if (Batch.Speaker!=Question.Speaker || Batch.Text!=Reply || !Batch.bFinalized || Batch.bFailed ||
+                    Batch.Queued<=0 || Batch.Completed!=Batch.Queued || Batch.Faces!=Batch.Queued)
+                { Finish(TEXT("Completed batch identity/text/chunk or face counts do not match the generated utterance")); return; }
+                bCompleted=true;
+            }
+        }
+        else
+        {
+            const bool bMatching=Voice->ActiveSpeaker==Question.Speaker && Voice->ActiveText==Reply;
+            bCompleted=bMatching && bSawPlayback && Voice->bACESent && Voice->bACEEnded && !Voice->ActiveCurves;
+        }
+        if (bCompleted)
         {
             TSharedRef<FJsonObject> Row=MakeShared<FJsonObject>();
             Row->SetStringField(TEXT("speaker"),Question.Speaker); Row->SetStringField(TEXT("question"),Question.Text);
             Row->SetStringField(TEXT("answer"),Reply); Row->SetStringField(TEXT("live_context"),Context);
             Row->SetNumberField(TEXT("generation_ms"),GeneratedMs); Row->SetBoolField(TEXT("orders_unchanged"),true);
             Row->SetBoolField(TEXT("a2f_started_and_finished"),true);
+            Row->SetBoolField(TEXT("streaming_enabled"),bCaseStreaming);
+            Row->SetNumberField(TEXT("speech_batch_id"),ExpectedBatch);
+            if (bCaseStreaming)
+            {
+                Row->SetNumberField(TEXT("chunks_queued"),Voice->LastFinishedBatch.Queued);
+                Row->SetNumberField(TEXT("chunks_completed"),Voice->LastFinishedBatch.Completed);
+                Row->SetNumberField(TEXT("chunks_with_faces"),Voice->LastFinishedBatch.Faces);
+                Row->SetBoolField(TEXT("batch_finalized"),Voice->LastFinishedBatch.bFinalized);
+                Row->SetBoolField(TEXT("batch_failed"),Voice->LastFinishedBatch.bFailed);
+            }
+            auto ObservedTime=[&](const TCHAR* Key,double Time)
+            {
+                if (Time>0) { Row->SetNumberField(Key,(Time-QuestionStarted)*1000.0); }
+                else { Row->SetField(Key,MakeShared<FJsonValueNull>()); }
+            };
+            ObservedTime(TEXT("first_chunk_observed_ms"),FirstChunkAt);
+            ObservedTime(TEXT("first_tts_observed_ms"),FirstTTSAt);
+            ObservedTime(TEXT("time_to_speech_observed_ms"),FirstSpeechAt);
+            Row->SetBoolField(TEXT("playback_observed"),bSawPlayback);
+            Row->SetBoolField(TEXT("chunk_before_generation_complete_observed"),bChunkBeforeGeneration);
+            Row->SetBoolField(TEXT("speech_before_generation_complete_observed"),bSpeechBeforeGeneration);
+            Row->SetBoolField(TEXT("tts_lookahead_during_playback_observed"),bSawTTSLookahead);
+            Row->SetBoolField(TEXT("a2f_playback_before_send_completed_observed"),bPlaybackBeforeSendCompleted);
+            Row->SetStringField(TEXT("timing_scope"),TEXT("First state observed on a review tick, measured from question submission; missing observations are null. Overlap flags are observations, not required quality checks."));
             Results.Add(MakeShared<FJsonValueObject>(Row));
             UE_LOG(LogDC,Display,TEXT("CONVERSATION_REVIEW_CASE index=%d speaker=%s orders_unchanged=1 a2f=1 answer=%s"),CaseIndex,Question.Speaker,*Reply);
             ++CaseIndex; Stage=EStage::Ask;
@@ -140,7 +241,7 @@ void UDCConversationReview::Finish(const FString& Error)
     TSharedRef<FJsonObject> Report=MakeShared<FJsonObject>();
     Report->SetBoolField(TEXT("success"),Error.IsEmpty()); Report->SetStringField(TEXT("error"),Error);
     Report->SetStringField(TEXT("backend"),Voice ? Voice->DialogueBackend : TEXT("unknown"));
-    Report->SetStringField(TEXT("scope"),TEXT("Real conversation entry, no order execution, generated speech/A2F and scene-memory reset. Review answers against recorded live context for semantic quality."));
+    Report->SetStringField(TEXT("scope"),TEXT("Real conversation entry, no order execution, generated speech/A2F and scene-memory reset. Streaming validates matching finalized batch text and every chunk's face completion; stable mode validates the whole line. Positive sample logs and answer/context semantic review remain required."));
     Report->SetArrayField(TEXT("results"),Results);
     FString Json; FJsonSerializer::Serialize(Report,TJsonWriterFactory<>::Create(&Json));
     IFileManager::Get().MakeDirectory(*FPaths::GetPath(OutputPath),true);

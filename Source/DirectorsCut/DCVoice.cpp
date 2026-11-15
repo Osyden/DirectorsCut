@@ -1,4 +1,5 @@
 #include "DCVoice.h"
+#include "DCACESpeechCallback.h"
 #include "DCSpeech.h"
 #include "DCACEDialogue.h"
 #include "DCLanguageModelResponse.h"
@@ -143,10 +144,13 @@ void ADCVoice::ShowSpeech(const FString& Speaker, const FString& Text, double Du
 void ADCVoice::ResetPendingSpeech()
 {
 	ResetConversationState();
+	CancelStreamingDialogueRequests();
 	if (ACEDialogue) { ACEDialogue->CancelPending(); }
 	++SpeechEpoch;
 	SpeechQueue.Empty();
 	ClearACE();
+	ReadySpeech.Empty(); StreamingBatch = FSpeechBatch(); LastFinishedBatch = FSpeechBatch();
+	ActiveSpeechBatchId = 0; SilentSpeechUntil = 0;
 	for (FPendingTTS& Pending : PendingTTS)
 	{
 		if (FPlatformProcess::IsProcRunning(Pending.Proc)) { FPlatformProcess::TerminateProc(Pending.Proc, true); }
@@ -178,6 +182,10 @@ void ADCVoice::SynchronizeScene()
 void ADCVoice::BeginPlay()
 {
 	Super::BeginPlay();
+	if (FParse::Param(FCommandLine::Get(), TEXT("DCStreamSpeech"))) { bStreamSpeech = true; }
+	FParse::Value(FCommandLine::Get(), TEXT("DCStreamPrebuffer="), StreamPrebufferSeconds);
+	StreamPrebufferSeconds = FMath::Clamp(StreamPrebufferSeconds, .5f, 2.5f);
+	UE_LOG(LogDC, Display, TEXT("SPEECH_PIPELINE streaming=%d prebuffer=%.2f"), bStreamSpeech, StreamPrebufferSeconds);
 	// ACE 2.5's shared D3D12/CUDA context creation stalled the UE 5.8 voyage's
 	// graphics and compute queues on Blackwell. Use its supported separate-context
 	// path only, and refuse the shared-context command-line override below.
@@ -224,6 +232,9 @@ void ADCVoice::BeginPlay()
 void ADCVoice::EndPlay(const EEndPlayReason::Type Reason)
 {
 	bEnding = true;
+	CancelStreamingDialogueRequests();
+	ResetConversationState();
+	ReadySpeech.Empty(); StreamingBatch = FSpeechBatch(); LastFinishedBatch = FSpeechBatch();
 	SpeechQueue.Empty();
 	ClearACE();
 	for (FPendingTTS& Pending : PendingTTS)
@@ -363,17 +374,19 @@ void ADCVoice::Tick(float DeltaSeconds)
 			FPlatformProcess::CloseProc(P.Proc);
 			if (P.Epoch == SpeechEpoch)
 			{
-				ActiveText = P.Text;
+				if (!bStreamSpeech) { ActiveText = P.Text; }
 				TArray<uint8> Pcm; int32 Rate = 0, Channels = 0;
 				if (bDone && ReadWav(P.WavPath, Pcm, Rate, Channels) && Pcm.Num() > 0 && Rate > 0 && Channels > 0)
 				{
-					if (!TryACE(P.Speaker, P.WavPath, double(Pcm.Num()) / (2.0 * Rate * Channels))) { PlayWav(P.Speaker, P.WavPath); }
+					const double Duration = double(Pcm.Num()) / (2.0 * Rate * Channels);
+					if (bStreamSpeech) { ReadySpeech.Add({P.Speaker, P.Text, P.WavPath, Duration, P.Epoch, P.BatchId}); }
+					else if (!TryACE(P.Speaker, P.WavPath, Duration)) { PlayWav(P.Speaker, P.WavPath); }
 				}
 				else
 				{
 					// Keep the current line readable even if Piper fails. This does not
 					// mark speech active, so the ambience is not ducked for silent text.
-					ShowSpeech(P.Speaker, P.Text, FMath::Clamp(P.Text.Len() * .055, 4.0, 9.0));
+					QueueSynthesisFailure(P.Speaker, P.Text, P.BatchId);
 					UE_LOG(LogDC, Warning, TEXT("Voice: synthesis failed or timed out for %s; displaying subtitle"), *P.Speaker);
 				}
 			}
@@ -393,18 +406,29 @@ void ADCVoice::Tick(float DeltaSeconds)
 				C->Stop();
 				C->DestroyComponent();
 			}
+			CompleteSpeechChunk(Playing[i].BatchId, true, false);
 			Playing.RemoveAt(i);
 		}
 	}
 	if (ActiveCurves && ((bACESent && bACEEnded) || Now > ACEDeadline))
 	{
 		const bool bFallback = !bACEStarted;
+		const int32 BatchId = ActiveSpeechBatchId;
+		const bool bSucceeded = bACEStarted && bACESent && bACEEnded && bUseACE && Now <= ACEDeadline;
 		const FString Speaker = ActiveSpeaker, Path = ActiveWav;
 		if (Now > ACEDeadline) { UE_LOG(LogDC, Warning, TEXT("Voice: ACE playback timed out; disabling ACE for this run")); bUseACE = false; }
 		ClearACE();
-		if (bFallback) { PlayWav(Speaker, Path); }
+		ActiveSpeechBatchId = 0;
+		if (bFallback) { PlayWav(Speaker, Path, BatchId); }
+		else { CompleteSpeechChunk(BatchId, bSucceeded, bSucceeded); }
 	}
-	if (PendingTTS.IsEmpty() && Playing.IsEmpty() && !ActiveCurves) { StartNextLine(); }
+	if (bStreamSpeech)
+	{
+		StartReadySpeech();
+		// Prepare only one subsequent WAV while the current chunk is speaking.
+		if (PendingTTS.IsEmpty() && ReadySpeech.IsEmpty() && Now >= SilentSpeechUntil) { StartNextLine(); }
+	}
+	else if (PendingTTS.IsEmpty() && Playing.IsEmpty() && !ActiveCurves) { StartNextLine(); }
 	StartNextConversation();
 	if (bSmokeTest)
 	{
@@ -415,7 +439,7 @@ void ADCVoice::Tick(float DeltaSeconds)
 			Speak(TEXT("Duncan"), TEXT("Port guns ready. Waiting for your order."));
 			Speak(TEXT("Ruby"), TEXT("The fire is out. Checking the rigging now."));
 		}
-		if (bSmokeStarted && SmokeCompleted.Num() == 3 && PendingTTS.IsEmpty() && Playing.IsEmpty() && !ActiveCurves && SpeechQueue.IsEmpty())
+		if (bSmokeStarted && SmokeCompleted.Num() == 3 && PendingTTS.IsEmpty() && ReadySpeech.IsEmpty() && Playing.IsEmpty() && !ActiveCurves && SpeechQueue.IsEmpty())
 		{
 			++SmokeCycle;
 			UE_LOG(LogDC, Display, TEXT("VOICE_SMOKE_CYCLE mode=%s cycle=%d completed=%d"), bUseACE ? TEXT("ACE") : TEXT("audio"), SmokeCycle, SmokeCompleted.Num());
@@ -428,7 +452,7 @@ void ADCVoice::Tick(float DeltaSeconds)
 			}
 			else { bSmokeStarted = false; SmokeCompleted.Reset(); }
 		}
-		else if ((bSmokeStarted && SpeechQueue.IsEmpty() && PendingTTS.IsEmpty() && Playing.IsEmpty() && !ActiveCurves)
+		else if ((bSmokeStarted && SpeechQueue.IsEmpty() && PendingTTS.IsEmpty() && ReadySpeech.IsEmpty() && Playing.IsEmpty() && !ActiveCurves)
 			|| GetWorld()->GetTimeSeconds() > 45 + 30 * SmokeRepeats)
 		{
 			UE_LOG(LogDC, Error, TEXT("VOICE_SMOKE_FAILED completed=%d"), SmokeCompleted.Num());
@@ -698,14 +722,21 @@ void ADCVoice::Speak(const FString& Speaker, const FString& Text, bool bReport)
 	}
 	else
 	{
-		if (SpeechQueue.Num() >= 3 && !bSmokeTest) { SpeechQueue.RemoveAt(SpeechQueue.Num() - 1); }
+		if (!bSmokeTest && SpeechQueue.CountByPredicate([](const FQueuedLine& Queued) { return Queued.BatchId == 0; }) >= 3)
+		{
+			for (int32 I = SpeechQueue.Num()-1; I >= 0; --I)
+			{
+				if (SpeechQueue[I].BatchId == 0) { SpeechQueue.RemoveAt(I); break; }
+			}
+		}
 		SpeechQueue.Add(Line);
 	}
 }
 
 void ADCVoice::StartNextLine()
 {
-	while (!SpeechQueue.IsEmpty() && !bSmokeTest && FPlatformTime::Seconds() - SpeechQueue[0].QueuedAt > (SpeechQueue[0].bReport ? 6.0 : 12.0))
+	while (!SpeechQueue.IsEmpty() && !bSmokeTest && SpeechQueue[0].BatchId == 0 &&
+		FPlatformTime::Seconds() - SpeechQueue[0].QueuedAt > (SpeechQueue[0].bReport ? 6.0 : 12.0))
 	{
 		UE_LOG(LogDC, Log, TEXT("Voice: expired stale queued line for %s"), *SpeechQueue[0].Speaker);
 		SpeechQueue.RemoveAt(0);
@@ -724,12 +755,12 @@ void ADCVoice::StartNextLine()
 
 	const FString Piper = Dir / TEXT("bin/piper/piper/piper.exe");
 	const FString Model = Dir / TEXT("models/voices") / VoiceFor(Speaker);
-	if (!FPaths::FileExists(Model)) { UE_LOG(LogDC, Warning, TEXT("Voice: missing model for %s: %s"), *Speaker, *Model); ShowSpeech(Speaker, Text, FMath::Clamp(Text.Len() * .055, 4.0, 9.0)); return; }
+	if (!FPaths::FileExists(Model)) { UE_LOG(LogDC, Warning, TEXT("Voice: missing model for %s: %s"), *Speaker, *Model); QueueSynthesisFailure(Speaker, Text, Line.BatchId); return; }
 	const float Pace = Speaker == TEXT("Duncan") ? MarlowLengthScale : Speaker == TEXT("Ruby") ? OdessaLengthScale : FinchLengthScale;
 	const FString Cmd = FString::Printf(TEXT("--model \"%s\" --output_file \"%s\" --speaker %d --length_scale %.3f --noise_scale 0.5 --noise_w %.3f --sentence_silence 0.12 --quiet"),
 		*Model, *WavPath, Speaker == TEXT("Rex") ? FinchSpeakerId : 0, FMath::Clamp(Pace, .75f, 1.3f), Speaker == TEXT("Ruby") ? .333f : .65f);
 	void* ReadPipe = nullptr; void* WritePipe = nullptr;
-	if (!FPlatformProcess::CreatePipe(ReadPipe, WritePipe, true)) { ShowSpeech(Speaker, Text, FMath::Clamp(Text.Len() * .055, 4.0, 9.0)); return; }
+	if (!FPlatformProcess::CreatePipe(ReadPipe, WritePipe, true)) { QueueSynthesisFailure(Speaker, Text, Line.BatchId); return; }
 
 	FPendingTTS P;
 	P.Proc = FPlatformProcess::CreateProc(*Piper, *Cmd, false, true, true, nullptr, 0, nullptr, nullptr, ReadPipe);
@@ -738,15 +769,17 @@ void ADCVoice::StartNextLine()
 	if (!P.Proc.IsValid())
 	{
 		UE_LOG(LogDC, Warning, TEXT("Voice: could not start piper"));
-		ShowSpeech(Speaker, Text, FMath::Clamp(Text.Len() * .055, 4.0, 9.0));
+		QueueSynthesisFailure(Speaker, Text, Line.BatchId);
 		return;
 	}
 	P.Speaker = Speaker;
 	P.Text = Text;
 	P.Epoch = SpeechEpoch;
+	P.BatchId = Line.BatchId;
 	P.WavPath = WavPath;
 	P.StartTime = FPlatformTime::Seconds();
 	PendingTTS.Add(MoveTemp(P));
+	if (bStreamSpeech) { UE_LOG(LogDC, Display, TEXT("SPEECH_STREAM_TTS_STARTED batch=%d active_batch=%d text=%s"), Line.BatchId, ActiveSpeechBatchId, *Text); }
 }
 
 bool ADCVoice::TryACE(const FString& Speaker, const FString& Path, double Duration)
@@ -778,7 +811,7 @@ bool ADCVoice::TryACE(const FString& Speaker, const FString& Path, double Durati
 	ActiveCurves->AttenuationSettings = nullptr;
 	// Short crew replies are buffered while GPU inference runs. Starting with only
 	// 100 ms queued produced gaps under the fog scene's graphics load.
-	ActiveCurves->BufferLengthInSeconds = 60.f;
+	ActiveCurves->BufferLengthInSeconds = bStreamSpeech ? StreamPrebufferSeconds : 60.f;
 	bACEStarted = bACESent = bACEEnded = false;
 	ACEDeadline = FPlatformTime::Seconds() + Duration + 30;
 	ActiveCurves->OnAnimationStarted.AddDynamic(this, &ADCVoice::ACEStarted);
@@ -786,7 +819,11 @@ bool ADCVoice::TryACE(const FString& Speaker, const FString& Path, double Durati
 	ActiveACERequest = UAsyncActionAnimateCharacter::AnimateCharacterFromWavFileAsync(this, Avatar, Path,
 		FAudio2FaceEmotion(), nullptr, ACEProvider);
 	if (!ActiveACERequest) { ClearACE(); return false; }
-	ActiveACERequest->AudioSendCompleted.AddDynamic(this, &ADCVoice::ACESent);
+	ActiveACERelay = NewObject<UDCACESpeechCallback>(this);
+	ActiveACERelay->Voice = this;
+	ActiveACERelay->Epoch = SpeechEpoch;
+	ActiveACERelay->Serial = ++ACERequestSerial;
+	ActiveACERequest->AudioSendCompleted.AddDynamic(ActiveACERelay.Get(), &UDCACESpeechCallback::Sent);
 	ActiveACERequest->Activate();
 	UE_LOG(LogDC, Log, TEXT("Voice: ACE queued %s provider=%s"), *Speaker, *ACEProvider.ToString());
 	return true;
@@ -797,9 +834,13 @@ void ADCVoice::ACEStarted()
 	bACEStarted = true;
 	ShowSpeech(ActiveSpeaker, ActiveText, ActiveDuration);
 	UE_LOG(LogDC, Log, TEXT("Voice: ACE speaking %s"), *ActiveSpeaker);
+	if (bStreamSpeech) { UE_LOG(LogDC, Display, TEXT("SPEECH_STREAM_PLAYBACK_STARTED batch=%d send_complete=%d text=%s"), ActiveSpeechBatchId, bACESent, *ActiveText); }
 }
 void ADCVoice::ACEEnded()
 {
+	// Stop() can broadcast ENDING on a later component tick. It cannot end a new
+	// utterance which has not even started; failed sends terminate in ACESent.
+	if (!bACEStarted) { return; }
 	bACEEnded = true;
 	if (bSmokeTest && bACEStarted) { SmokeCompleted.Add(ActiveSpeaker); }
 	UE_LOG(LogDC, Log, TEXT("Voice: ACE finished %s"), *ActiveSpeaker);
@@ -807,6 +848,7 @@ void ADCVoice::ACEEnded()
 void ADCVoice::ACESent(bool bSuccess)
 {
 	bACESent = true;
+	if (bStreamSpeech) { UE_LOG(LogDC, Display, TEXT("SPEECH_STREAM_AUDIO_SENT batch=%d playing=%d success=%d"), ActiveSpeechBatchId, bACEStarted && !bACEEnded, bSuccess); }
 	if (bSuccess && ActiveCurves) { ActiveCurves->BufferLengthInSeconds = .04f; }
 	if (!bSuccess)
 	{
@@ -817,24 +859,29 @@ void ADCVoice::ACESent(bool bSuccess)
 }
 void ADCVoice::ClearACE()
 {
-	if (ActiveACERequest) { ActiveACERequest->AudioSendCompleted.RemoveDynamic(this, &ADCVoice::ACESent); }
+	++ACERequestSerial;
+	if (ActiveACERequest && ActiveACERelay) { ActiveACERequest->AudioSendCompleted.RemoveDynamic(ActiveACERelay.Get(), &UDCACESpeechCallback::Sent); }
+	ActiveACERelay = nullptr;
 	if (ActiveCurves)
 	{
 		ActiveCurves->OnAnimationStarted.RemoveDynamic(this, &ADCVoice::ACEStarted);
 		ActiveCurves->OnAnimationEnded.RemoveDynamic(this, &ADCVoice::ACEEnded);
 		ActiveCurves->Stop();
+		// Let the old component's ENDING state drain before another streamed clip.
+		EarliestSpeechStartFrame = GFrameCounter + 2;
 	}
 	ActiveCurves = nullptr;
 	ActiveACERequest = nullptr;
 }
 
-void ADCVoice::PlayWav(const FString& Speaker, const FString& Path)
+void ADCVoice::PlayWav(const FString& Speaker, const FString& Path, int32 BatchId)
 {
 	TArray<uint8> Pcm;
 	int32 Rate = 0, Channels = 0;
 	if (!ReadWav(Path, Pcm, Rate, Channels) || Pcm.Num() == 0)
 	{
 		UE_LOG(LogDC, Warning, TEXT("Voice: no audio produced for %s"), *Speaker);
+		CompleteSpeechChunk(BatchId, false, false);
 		return;
 	}
 
@@ -855,11 +902,13 @@ void ADCVoice::PlayWav(const FString& Speaker, const FString& Path)
 		if (bSmokeTest && !bUseACE) { SmokeCompleted.Add(Speaker); }
 		FPlaying P;
 		P.Component = Comp;
+		P.BatchId = BatchId;
 		P.EndTime = FPlatformTime::Seconds() + static_cast<double>(Pcm.Num()) / (2.0 * Channels * Rate) + 0.3;
 		Playing.Add(P);
 		ShowSpeech(Speaker, ActiveText, double(Pcm.Num()) / (2.0 * Channels * Rate));
 		UE_LOG(LogDC, Log, TEXT("Voice: %s speaking (%.1fs of audio)"), *Speaker, static_cast<double>(Pcm.Num()) / (2.0 * Channels * Rate));
 	}
+	else { CompleteSpeechChunk(BatchId, false, false); }
 }
 
 static FAutoConsoleCommandWithWorldAndArgs GDCVoiceTestWav(
