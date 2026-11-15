@@ -869,7 +869,7 @@ void ADCMaelstrom::EmitLandingWash(float Progress, int32 Count, bool bWaterBurst
 		const float Side=I%2 ? 1.f : -1.f;
 		const FVector Start=Deck.TransformPosition(FVector(Along+FMath::FRandRange(-450.f,450.f),Side*FMath::FRandRange(500.f,750.f),Director->SeaLevelZ+300.f));
 		const FVector Velocity=Deck.TransformVectorNoScale(FVector(FMath::FRandRange(-1200.f,-400.f),-Side*FMath::FRandRange(700.f,1300.f),FMath::FRandRange(950.f,1800.f)));
-		ContactParticles.Add({Frame.InverseTransformPosition(Start),Frame.InverseTransformVectorNoScale(Velocity),0.f,FMath::FRandRange(1.2f,2.1f),FMath::FRandRange(90.f,190.f)});
+		ContactParticles.Add({Frame.InverseTransformPosition(Start),Frame.InverseTransformVectorNoScale(Velocity),0.f,FMath::FRandRange(1.2f,2.1f),FMath::FRandRange(90.f,190.f),.4f});
 	}
 	// Authored whitewater droplets give the wash a sharp water core beneath the
 	// softer mist cards; reuse the already-cooked effect, never mutate it.
@@ -879,7 +879,7 @@ void ADCMaelstrom::EmitLandingWash(float Progress, int32 Count, bool bWaterBurst
 		{
 			if (LandingBursts.Num()>=8) { if(auto* Old=LandingBursts[0].Effect.Get()) { Old->DestroyComponent(); } LandingBursts.RemoveAt(0); }
 			const FVector At=Deck.TransformPosition(FVector(Along,Side*520.f,Director->SeaLevelZ+350.f));
-			if (auto* Effect=UGameplayStatics::SpawnEmitterAtLocation(GetWorld(),LandingSplash,At,Deck.Rotator(),FVector(2.6f)))
+			if (auto* Effect=UGameplayStatics::SpawnEmitterAtLocation(GetWorld(),LandingSplash,At,Deck.Rotator(),FVector(Progress>.5f ? 1.6f : 2.6f)))
 			{ Effect->SetCastShadow(false); LandingBursts.Add({Effect,0.f}); }
 		}
 	}
@@ -935,7 +935,7 @@ void ADCMaelstrom::UpdateContacts(float DeltaSeconds)
 		if (Right.IsNearlyZero()) { Right=FVector::RightVector; }
 		const FVector Up = FVector::CrossProduct(Normal, Right);
 		const float Size = P.Size * (1.f + P.Age * .7f);
-		const float Alpha = FMath::SmoothStep(0.f, .08f, P.Age) * (1.f-FMath::SmoothStep(.2f,1.f,P.Age/P.Life));
+		const float Alpha = P.Opacity * FMath::SmoothStep(0.f, .08f, P.Age) * (1.f-FMath::SmoothStep(.2f,1.f,P.Age/P.Life));
 		const int32 Start = V.Num();
 		for (int32 Corner=0; Corner<4; ++Corner)
 		{

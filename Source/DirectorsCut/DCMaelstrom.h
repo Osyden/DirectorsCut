@@ -159,7 +159,7 @@ private:
 	float BreakerHeight(const FVector2D& Point, float* Foam = nullptr) const;
 	TArray<FVector> BreakerSprayPoints;
 	float NextBreakerSpray=0.f;
-	struct FContactParticle { FVector Position, Velocity; float Age, Life, Size; };
+	struct FContactParticle { FVector Position, Velocity; float Age, Life, Size; float Opacity=1.f; };
 	TArray<FContactParticle> ContactParticles;
 	void EmitLandingWash(float Progress, int32 Count, bool bWaterBurst);
 	UPROPERTY() TObjectPtr<class UParticleSystem> LandingSplash;
