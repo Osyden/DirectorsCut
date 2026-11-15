@@ -71,6 +71,10 @@ namespace
 			}
 			for (UPrimitiveComponent* Part : Parts)
 			{
+				// Only individual skeletal fittings have compact solid bounds. The
+				// static SM_Rope-cannon-support spans the deck and must use its real
+				// triangles, not be mistaken for one cannon by a substring match.
+				if (!Cast<USkeletalMeshComponent>(Part)) { continue; }
 				const FString Name=Part->GetName();
 				if (!Name.Contains(TEXT("Cannon")) && !Name.Contains(TEXT("Anchor-support")) && Name!=TEXT("SK_Wheel") && Name!=TEXT("SK_Door_Brigantine")) { continue; }
 				// These compact solid fittings must also reject a sample wholly
