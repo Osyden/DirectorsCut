@@ -152,3 +152,26 @@ result does not prove that the modern sloping coast alone caused the earlier
 failure. It supplies a more promising natural-drainage starting point whose
 physical cliff extraction, surface geology, current coast and foundations
 would still require explicit work and visual review.
+
+### Historical crop at actual crater distances
+
+Root then authorized a scale diagnostic only. Captures are
+`Saved/ImplicitCliffReview/FastscapeParent/UniformHistoricalADistance/`:
+`far_crater_fractured.png` and `opposite_rim_fractured.png`, with matching fresh
+initial-surface controls and `review.json`. These retain the same historical
+crop hash above, original positions, angle-15 clay and no modern water or
+atmosphere. They are not native game screenshots.
+
+The reused 35 mm lens / 36 mm sensor cameras target source-chart
+(250, 258, −54.245886) m. Their locations are respectively
+(250, −1242, −157.559448) m and (250, −2942, −157.559448) m: exact horizontal
+target distances **1,500 m / 3,200 m**, slant distances 1,503.554 m / 3,201.667 m.
+There is no zoom, vertical exaggeration or automatic fit to the new terrain.
+
+At 1.5 km, major spurs and valleys remain readable, but the repeated planar
+wedges and angular skyline are still conspicuous. At 3.2 km, the 500 m sector
+occupies roughly 230 pixels across the 1,440-pixel image; small terrace details
+diminish while broad ridges, valleys and the pointed silhouette remain. The
+diagnostic supports retaining physical feature diminution rather than enlarging
+distant details. It does not promote this pointed historical landform to the
+required low crater rim or certify current support and shoreline integration.
