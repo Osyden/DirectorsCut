@@ -59,6 +59,10 @@ if ($project.Plugins | Where-Object { $_.Name -eq 'LLMPlugin' -and $_.Enabled })
 $required = @(
     'DC/Maps/L_Ride.umap',
     'DC/UI/T_AtlanteanOdysseyLogo.uasset',
+    'DC/UI/T_AtlanteanOdysseyLogoV2.uasset',
+    'DC/UI/T_AtlanteanMenuPanel.uasset',
+    'DC/UI/Fonts/Cinzel.ttf',
+    'DC/UI/Fonts/OFL.txt',
     'DC/Materials/M_StormComposite.uasset',
     'DC/FX/P_PillarWaterContact.uasset',
     'Brigantine/BP/BP_Brigantine.uasset',
