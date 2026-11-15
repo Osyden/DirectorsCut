@@ -28,6 +28,12 @@ Screenshot filenames are seek requests, not exact capture times: the harness adv
 
 The safe next investigation is the cataract's own hull-flatten footprint versus the actual bed and ship envelope. Any bed change must retain bank contacts, the full steering envelope and matching regenerated source/support hashes. No terrain change was made in this patch.
 
+### Actual-triangle diagnosis after the native review
+
+`Saved/CalderaHullBedProbe/report.json` and its sibling `probe.py` reconstruct the production 240x64 water mesh, flatten each vertex, then query its resulting triangles and the accepted source rock triangles. They include the route's arena pitch/yaw/heave. At encounter seconds 5/10/14, the bed protrudes 7.74/10.22/11.03 m above flattened water **inside the recorded HullShip bounding footprint**, and 10.38/13.50/14.89 m outside it. The original sloped water covers the sampled bed by at least 3.99 m.
+
+A tighter ellipse still leaves 6.61-9.68 m exposure inside the footprint and allows water up to world Z=11.25 m there, above the recorded hull maximum Z=10.39 m. Do not ship a mask-only reduction without checking flooding. Keeping the horizontal ship requires deeper upstream navigation-bed clearance; the sampled hull-bottom bound suggests approximately 16.2 m additional lowering for a 1 m margin. That is a starting bound, not a finished geometry prescription: the probe uses a static bounding box, omits dynamic waves/transient jolts, and does not certify exact hull collision or the full steering route. Prefer an underwater-only correction retaining the visible banks, then regenerate/audit all source supports and test actual descent motion.
+
 ## Integration
 
 Cherry-pick only this scoped patch after local visual review. The material is tracked; alternatively regenerate it with `Tools/make_maelstrom_water_only.py` using the normal Unreal commandlet flags and `-DDC=InstalledNoZenLocalFallback`. Do not run the full multi-material builder. Preserve main's packaging shader shim, mandatory caldera texture checks and `r.Material.StripUnusedDefaultTextures=0`.
