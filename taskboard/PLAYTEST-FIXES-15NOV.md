@@ -30,4 +30,16 @@ The front now hands over to the interior atmosphere over 58–62 seconds. This r
 
 Native continuous captures at 50/58/60/64/94/150 seconds passed; 94 and 150 show zero rain/lightning and retained low mist. `Saved/PlaytestFogHandoff.log` records storm audio silence at 94.00. Editor build passes.
 
-The 15:24 package passed menu/Start/restart and early ACE checks, but its full-voyage tests were deliberately interrupted for GPU contention and these new weather changes. It is superseded and was never selected. Replacement packaging and packaged runtime validation are pending. The prior tested launcher remains selected until they pass. Human headphone mix, microphone input and another-machine checks remain final acceptance tasks.
+The 15:24 package passed menu/Start/restart and early ACE checks, but its full-voyage tests were deliberately interrupted for GPU contention and these new weather changes. It is superseded and was never selected. The 15:50 attempt failed immediately on an external UnrealBuildTool mutex; no runtime candidate was produced.
+
+## Selected local playable
+
+Runtime commit `8de1d9eab0b7bfd8977895b01cd7fc701f218c46`, pushed to main. Selected executable: `E:/Projects/DirectorsCut/Builds/2026-11-15_1551_playtest-fixes/Windows/DirectorsCut.exe`. The usual `E:/Projects/DirectorsCut/Play DirectorsCut.cmd` launcher now selects this package. Earlier packages remain available. Distribution stays local; no itch upload.
+
+Build/cook/stage/archive and sidecar staging passed; no material compilation failure. The package contains 606 non-Saved files totalling 16,030,184,952 bytes. Source provenance and build information are in the candidate's `source-manifest.json` and `build-info.json`.
+
+The actual packaged voyage completed normally at 16:01:55 GMT, exit 0. It showed the menu, started, reloaded once, returned to the menu, and played continuously through the 465-second ending capture. All three crew used ACE speech. Bell struck exactly three times. City captures at 94/150 seconds show zero rain/lightning; storm audio stopped at 94.00, returned for the tunnel, and stopped again at 277.00. Landing fired once at 299.15 with damage zero. All six boss attacks were interrupted, two limbs remained severed, boss damage taken was zero and final hull was 44.8%. The bot issued crew orders but did not steer.
+
+Evidence: candidate `Windows/DirectorsCut/Saved/PlaytestFullVoyage.log` and `Saved/Screenshots/Auto`; menu, city, landing and ending images inspected. The run reused the earlier test's resident llama server; executable/model hashes match this package, and that orphan was stopped after validation. No game/GPU process remains owned by root. Normal restart logs include one audio-mix clearing notice and pawn EnableInput/DisableInput ownership messages; they did not prevent the run. No fatal/ensure/GPU-crash marker occurred.
+
+Remaining acceptance: the approaching storm's dark waterline is only partially addressed, as described above; human headphone mix, live microphone input and another-machine checks remain. New ACE dialogue-backend work and isolated inlet-shoulder experiments are not part of this frozen candidate.
