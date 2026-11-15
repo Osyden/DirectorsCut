@@ -216,16 +216,29 @@ void ADCTroubles::UpdateRiggingMarker()
 		}
 	}
 	RiggingArrow->SetWorldLocationAndRotation(Deck.TransformPosition(Station+FVector(0,0,95.f+8.f*FMath::Sin(Clock*3.f))),Deck.GetRotation()*FRotator(180,0,0).Quaternion());
-	RiggingArrow->SetWorldScale3D(FVector(.30f,.30f,.55f));
-	RiggingLabel->SetWorldLocation(Deck.TransformPosition(Station+FVector(0,0,160.f)));
+	RiggingArrow->SetWorldScale3D(FVector(.12f,.12f,.20f));
+	RiggingLabel->SetWorldLocation(Deck.TransformPosition(Station+FVector(0,0,125.f)));
 	float Distance=0.f;
+	bool bReadable=false;
 	if (auto* PC=GetWorld()->GetFirstPlayerController(); PC && PC->PlayerCameraManager)
 	{
-		const FVector Camera=PC->PlayerCameraManager->GetCameraLocation();
+		const auto* Cam=PC->PlayerCameraManager;
+		const FVector Camera=Cam->GetCameraLocation();
 		RiggingLabel->SetWorldRotation((Camera-RiggingLabel->GetComponentLocation()).Rotation());
 		Distance=FVector::Dist(Camera,Deck.TransformPosition(Station))/100.f;
+		// Use the label's actual forward depth, not distance to the repair point:
+		// its raised anchor can pass beside the camera even when the station is
+		// metres away. Keep one title near16px and hide it inside the near view.
+		const float Depth=FVector::DotProduct(RiggingLabel->GetComponentLocation()-Camera,Cam->GetCameraRotation().Vector());
+		int32 Width=0,Height=0; PC->GetViewportSize(Width,Height);
+		const float TanHalfFov=FMath::Tan(FMath::DegreesToRadians(FMath::Clamp(Cam->GetFOVAngle(),30.f,140.f)*.5f));
+		RiggingLabel->SetWorldSize(FMath::Clamp(16.f*2.f*FMath::Max(Depth,0.f)*TanHalfFov/FMath::Max(Width,1),.1f,80.f));
+		bReadable=Depth>40.f && Width>0;
 	}
-	RiggingLabel->SetText(FText::FromString(FString::Printf(TEXT("REPAIR RIGGING  %.0f m\nHold E at the marked lines  %d%%\nOr order: Ruby, repair the rigging"),Distance,FMath::RoundToInt(RiggingProgress*100.f))));
+	RiggingLabel->SetVisibility(bReadable);
+	// Nearby interaction already shows Hold E and progress. Keep the locator
+	// compact so it cannot cover a crew member or compete with that prompt.
+	RiggingLabel->SetText(FText::FromString(FString::Printf(TEXT("REPAIR RIGGING  •  %.0f m"),Distance)));
 }
 
 void ADCTroubles::Tick(float DeltaSeconds)

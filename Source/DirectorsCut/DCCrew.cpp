@@ -877,7 +877,7 @@ void ADCCrewMember::UpdateWorkRag()
 	for (int32 Row=0;Row<5;++Row) for (int32 Col=0;Col<3;++Col)
 	{
 		const float T=Row/4.f, Side=Col-1.f;
-		V.Add(FVector(T*15.f+FMath::Sin(T*8.f-CrewSwatAge*10.f)*T*4.f,Side*(2.f+12.f*T),-T*48.f));
+		V.Add(FVector(T*10.f+FMath::Sin(T*8.f-CrewSwatAge*10.f)*T*3.f,Side*(2.f+7.f*T),-T*30.f));
 		UV.Add(FVector2D(Col/2.f,T));
 	}
 	for (int32 R=0;R<4;++R) for (int32 C=0;C<2;++C)
