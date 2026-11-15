@@ -8,6 +8,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $project = (Resolve-Path -LiteralPath $ProjectPath).Path
 $projectRoot = Split-Path -Parent $project
+& (Join-Path $PSScriptRoot 'verify_release_content.ps1') -ProjectRoot $projectRoot
 $output = [IO.Path]::GetFullPath($OutputPath)
 if (Test-Path -LiteralPath $output) { throw "Output already exists; choose a new candidate folder: $output" }
 foreach ($part in @('bin','models')) {

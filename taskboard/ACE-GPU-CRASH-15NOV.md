@@ -1,3 +1,13 @@
+# Correction: incomplete ACE candidate (15 November, 11:02 GMT)
+
+Do not use the 08:25 `2026-11-15_0825_ace-gpu-safe` package as a playable candidate. It was built from an isolated checkout missing ignored licensed ship, sky, ruins, audio and creature assets. Speech/face checks passed, but the HUD rendered over a black world. The saved 40-second screenshot and runtime missing-package warnings confirm the failure. Earlier claims of full-voyage validation for this candidate were too broad: they established ACE speech/face operation, not a complete rendered voyage or representative rendering load.
+
+The complete combined package is `E:/Projects/DirectorsCut/Builds/2026-11-15_0927_final-polish/Windows/DirectorsCut.exe`. Its core scene was reviewed by the gameplay chat and a fresh 11:01 ACE check shows ship, sea and sky. See its `Saved/ACE/Smoke/20261115_110105_ACE/` evidence. It preserves the current main navigation work; unfinished maelstrom branches remain separate.
+
+`Tools/verify_release_content.ps1` now checks essential dynamic assets and every configured game cook directory before packaging. It accepts main and rejects the incomplete ACE checkout. The voice smoke helper rejects missing core world packages and captures a fresh scene image for visual inspection. Voice completion alone cannot establish release readiness.
+
+---
+
 # ACE workstation hang — 15 November 2026
 
 After receiving this report, the owner explicitly requested continued GPU ACE integration. Separate-context GPU inference is now integrated and enabled in main following repeated editor and standalone-package checks. The implicated shared-context path remains blocked (`-useCIGforAI=0`), with paced inference, serialized replies and bounded tests. See [the integration handoff](ACE-INTEGRATION.md).

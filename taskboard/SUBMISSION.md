@@ -51,7 +51,7 @@ Project work includes the C++ module, ride timeline, procedural geometry/materia
 
 - **Feature used:** NVIDIA DLSS 4.5 for Unreal Engine (plugin v8.7.2, NGX 310.6): DLSS Super Resolution at Quality (67%) is on by default. DLSS Frame Generation is integrated and supported but off by default.
 - **Why:** the ride leans on hardware ray-traced Lumen, volumetric fog and clouds, a displaced ocean and many dynamic lights (lightning, deck fires, lanterns). Rendering at 67% and upscaling with DLSS keeps that affordable.
-- **Also used:** NVIDIA ACE Audio2Face Mark, with local GPU inference in a separate CUDA context. Piper audio drives synchronized mouth/jaw animation on the purchased pirate crew. The packaged 15 Nov ACE candidate passed nine crew lines with DLSS active. Keep final-candidate evidence; [integration record](ACE-INTEGRATION.md).
+- **Also used:** NVIDIA ACE Audio2Face Mark, with local GPU inference in a separate CUDA context. Piper audio drives synchronized mouth/jaw animation on the purchased pirate crew. The complete 09:27 combined package passed a fresh three-crew GPU check and scene inspection. The earlier 08:25 isolated package is rejected because it omitted core world assets. Keep final-candidate evidence; [integration record](ACE-INTEGRATION.md).
 - **Not used:** the NvRTX engine branch (RTXDI, ReSTIR).
 - To verify in a build: the log prints `NVIDIA NGX DLSS supported DLSS-SR=1` and `DLSS requested: super resolution at 67%`.
 
