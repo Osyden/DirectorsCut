@@ -103,7 +103,7 @@ void ADCGameMode::ShowMainMenu()
         +SVerticalBox::Slot().AutoHeight().Padding(0,0,0,5)[Body(TEXT("ART & ASSET PACKS"),11,Gold)]
         +SVerticalBox::Slot().AutoHeight()[Body(TEXT("Brigantine Ship  -  MainStore\nDynamic Real Water  -  Natural Level Game Studio\nUltra Dynamic Sky & Weather  -  Everett Gunther\nModular Ancient Ruins  -  archafizov\nKraken  -  PROTOFACTOR INC\nClaw Kaiju Monster  -  HuyKhoi2407\nMHC: Pirates  -  Quang Phan\nEasy Fog  -  William Faucher\nClouds Tunnel Vdb Effects Pack Loop  -  one.studio2\nNordic coastal cliff scans  -  Quixel Megascans\nParagon: Rampage, MetaHuman & engine art  -  Epic Games"),13,Cream)]
         +SVerticalBox::Slot().AutoHeight().Padding(0,12,0,4)[Body(TEXT("THANKS TO"),11,Gold)]
-        +SVerticalBox::Slot().AutoHeight()[Body(TEXT("Epic Games, NVIDIA, LlamaCPP,\nGeorgi Gerganov"),16,Cream)]
+        +SVerticalBox::Slot().AutoHeight()[Body(TEXT("Epic Games, NVIDIA, LlamaCPP,\nGeorgi Gerganov, Gradium, Laurent Mazare,\nKyutai, NVIDIA ACE / Audio2Face, DLSS"),16,Cream)]
         +SVerticalBox::Slot().AutoHeight().Padding(0,12,0,4)[Body(TEXT("AUDIO & TYPE"),11,Gold)]
         +SVerticalBox::Slot().AutoHeight()[Body(TEXT("Sonniss: Just Sound Effects, 344 Audio, InMotionAudio, Jake Fielding, Epic Stock Media, SoundBits.\nCinzel: The Cinzel Project Authors (SIL Open Font License)."),11,Muted)];
     MainMenuWidget=SNew(SScaleBox).Stretch(EStretch::ScaleToFit)

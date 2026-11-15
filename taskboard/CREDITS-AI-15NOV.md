@@ -6,4 +6,4 @@ User-requested edits in `Source/DirectorsCut/DCMenu.cpp`: Developers becomes AI;
 
 Validation: reviewed the exact source diff and ran `git diff --check`. No native build, GPU review, packaging or upload was performed; the selected playable remains unchanged. Include this source change in the next package and inspect the credits screen there.
 
-Additional acknowledgement candidates found in existing local payload notices: Gradium, Laurent Mazare and Kyutai for Phonon; explicit NVIDIA ACE/Audio2Face and DLSS product names. These were suggested to the user, not added without their selection. Current Phonon-selected staging excludes Piper voices; older Piper notices describe a different backend.
+The user subsequently requested all suggested acknowledgements: Thanks now also includes Gradium, Laurent Mazare, Kyutai, NVIDIA ACE / Audio2Face and DLSS. These follow the existing local payload notices. Current Phonon-selected staging excludes Piper voices; older Piper notices describe a different backend.
