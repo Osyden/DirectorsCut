@@ -17,6 +17,7 @@ struct FDCCrewNavigation
 	bool Ground(ADCRideDirector* Director, FVector& Feet) const;
 	/** Graph-only entry point, also exercised by automation without a world or asset load. */
 	bool FindNodeRoute(int32 Start, int32 Goal, TArray<int32>& Route) const;
+	static bool IsCompactFitting(const FString& Name, bool bSkeletal);
 
 private:
 	int32 Closest(const FVector& Feet, float MaxDistance) const;

@@ -7,6 +7,10 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDCCrewNavigationTest,"DirectorsCut.Crew.DeckRo
 
 bool FDCCrewNavigationTest::RunTest(const FString&)
 {
+	TestFalse(TEXT("Deck-wide static rope assembly is not a solid cannon"),FDCCrewNavigation::IsCompactFitting(TEXT("SM_Rope-cannon-support"),false));
+	TestTrue(TEXT("Individual gun keeps its solid clearance"),FDCCrewNavigation::IsCompactFitting(TEXT("SK_Cannon_2-L9"),true));
+	TestTrue(TEXT("Wheel keeps its solid clearance"),FDCCrewNavigation::IsCompactFitting(TEXT("SK_Wheel"),true));
+	TestFalse(TEXT("Whole-rig mast physics is handled by shaft footprints"),FDCCrewNavigation::IsCompactFitting(TEXT("SK_Mast"),true));
 	FDCCrewNavigation Graph;
 	auto Node=[&](FVector Feet) { FDCCrewNavigation::FNode N; N.Feet=Feet; return Graph.Nodes.Add(MoveTemp(N)); };
 	auto Link=[&](int32 A,int32 B) { Graph.Nodes[A].Links.Add(B); Graph.Nodes[B].Links.Add(A); };
