@@ -57,6 +57,12 @@ def main():
     # Reoriented normal mapping: flat measured relief reproduces the fine map.
     t=measured+np.array([0.,0.,1.]);u=fine*np.array([-1.,-1.,1.])
     result=normalize(t*(np.sum(t*u,axis=-1)/np.maximum(t[:,:,2],1e-8))[:,:,None]-u)
+    # BC5 reconstructs positive Z. Restrict only rare grazing/backfacing RNM
+    # results to 85 degrees while preserving their tangent-plane direction.
+    grazing=result[:,:,2]<np.cos(np.deg2rad(85.))
+    xy=result[grazing,:2]
+    result[grazing,:2]=xy/np.maximum(np.linalg.norm(xy,axis=1),1e-12)[:,None]*np.sin(np.deg2rad(85.))
+    result[grazing,2]=np.cos(np.deg2rad(85.))
     rgb=np.clip(np.rint((result*.5+.5)*255),0,255).astype(np.uint8)
     a.output.mkdir(parents=True)
     path=a.output/'T_NordicFace_NormalGL.tga'
@@ -70,6 +76,7 @@ def main():
         filter='periodic Gaussian high-pass (1-lowpass), slight sampling filter, then physical spectral derivatives',
         normal_format='OpenGL tangent normal; RGB maps XYZ; U=scanX,V=scanZ; bottom-left origin, rows+V',
         blend='reoriented measured-height normal plus original fine source normal; no basecolor',
+        bc5_hemisphere_cap_degrees=85.,capped_pixels=int(grazing.sum()),
         residual_height_range_m=[float(residual.min()),float(residual.max())],
         measured_normal_angle_degrees=np.percentile(np.degrees(np.arccos(measured[:,:,2])),[50,90,99]).tolist(),
         output_normal_angle_degrees=np.percentile(np.degrees(np.arccos(np.clip(result[:,:,2],-1,1))),[50,90,99]).tolist(),
