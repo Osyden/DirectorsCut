@@ -74,7 +74,9 @@ protected:
 	void TickMusic(float DeltaSeconds);
 	UPROPERTY() TObjectPtr<UAudioComponent> FogMusic;
 	UPROPERTY() TObjectPtr<UAudioComponent> CalderaMusic;
-	float MusicTransitionTime = 220.f;
+	float MusicTransitionTime = 222.f;
+	float MusicDescentStartTime = 240.f;
+	float MusicDescentEndTime = 290.f;
 	float LastMusicRideTime = -1.f;
 	float NextMusicReviewTime = 0.f;
 	bool bMusicReview = false;

@@ -121,7 +121,12 @@ void ADCAudio::BeginPlay()
 	{
 		for (const FDCPhaseDef& Phase : Director->Phases)
 		{
-			if (Phase.Phase == EDCPhase::Slide) { MusicTransitionTime = FMath::Max(0.f, Phase.StartTime - 20.f); break; }
+			if (Phase.Phase == EDCPhase::Slide)
+			{
+				MusicDescentStartTime = Phase.StartTime;
+				MusicTransitionTime = FMath::Max(0.f, Phase.StartTime - 18.f);
+			}
+			if (Phase.Phase == EDCPhase::Maelstrom) { MusicDescentEndTime = Phase.StartTime; }
 		}
 		Director->OnLightning.AddUObject(this, &ADCAudio::OnLightning);
 		Director->OnShipHit.AddUObject(this, &ADCAudio::OnShipHit);
@@ -359,11 +364,17 @@ void ADCAudio::TickMusic(float DeltaSeconds)
 		if (bSeek) { UE_LOG(LogDC, Log, TEXT("MUSIC_RESET ride=%.2f"), Time); }
 	}
 	LastMusicRideTime = bMenu ? -1.f : Time;
-	// Four seconds fits the first track's authored 3:44 ending. Keep the sum
-	// of the two gains constant through the handoff, without a loud overlap.
+	// Four-second crossfade; the first track keeps its authored ending while
+	// the second starts18 seconds before entry, per the latest timing request.
 	const float Blend = FMath::Clamp((Time - MusicTransitionTime) / 4.f, 0.f, 1.f);
 	const float EndGain = 1.f - FMath::SmoothStep(Director->GetRideLength() - 10.f, Director->GetRideLength(), Time);
-	const float Gain = FMath::Max(0.f, MusicVolume * MasterVolume) * SpeechDuck * EndGain;
+	// Let the score carry the water tunnel and descent (+3.5dB), easing back
+	// into combat. During speech retain the previous quiet mix exactly.
+	const float Descent = FMath::SmoothStep(MusicDescentStartTime - 4.f, MusicDescentStartTime + 2.f, Time)
+		* (1.f - FMath::SmoothStep(MusicDescentEndTime, MusicDescentEndTime + 6.f, Time));
+	const float SpeechClear = FMath::Clamp((SpeechDuck - .25f) / .75f, 0.f, 1.f);
+	const float DescentGain = FMath::Lerp(1.f, 1.5f, Descent * SpeechClear);
+	const float Gain = FMath::Max(0.f, MusicVolume * MasterVolume) * SpeechDuck * EndGain * DescentGain;
 	UAudioComponent* Components[] = {FogMusic.Get(), CalderaMusic.Get()};
 	const float Envelopes[] = {FMath::Clamp(Time / 1.5f, 0.f, 1.f) * (1.f - Blend), Blend};
 	for (int32 Index = 0; Index < 2; ++Index)
