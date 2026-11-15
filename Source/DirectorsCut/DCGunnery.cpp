@@ -293,8 +293,12 @@ void ADCGunnery::WaterContact(const FVector& Position, bool bSampled)
 			if (auto* Old = WaterBursts[0].Effect.Get()) { Old->DestroyComponent(); }
 			WaterBursts.RemoveAt(0);
 		}
-		auto* Effect = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), WaterImpact, Position + FVector(0,0,35), FRotator::ZeroRotator, FVector(1.4f));
-		if (Effect) { WaterBursts.Add({Effect, 0.f}); }
+		auto* Effect = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), WaterImpact, Position + FVector(0,0,35), FRotator::ZeroRotator, FVector(1.8f));
+		if (Effect)
+		{
+			Effect->SetCastShadow(false);
+			WaterBursts.Add({Effect, 0.f});
+		}
 		else { Splashes.Add({Position, 0.f}); }
 	}
 	else { Splashes.Add({Position, 0.f}); }
@@ -449,8 +453,9 @@ bool ADCGunnery::ResolveAim(EDCSide Side, const FVector& Origin, const FVector& 
 FString ADCGunnery::GetPlayerImpactLabel(EDCSide Side) const
 {
 	const int32 Index = Side == EDCSide::Port ? 0 : 1;
-	if (GetWorld()->GetTimeSeconds() >= ImpactUntil[Index]) { return FString(); }
-	return bImpactHit[Index] ? TEXT("HIT") : TEXT("SPLASH");
+	// A miss is communicated by the water plume itself, never crosshair text.
+	if (Side == EDCSide::None || !bImpactHit[Index] || GetWorld()->GetTimeSeconds() >= ImpactUntil[Index]) { return FString(); }
+	return TEXT("HIT");
 }
 
 int32 ADCGunnery::GetPlayerGun(EDCSide Side) const
@@ -551,7 +556,7 @@ void ADCGunnery::Tick(float DeltaSeconds)
 		FWaterBurst& Burst=WaterBursts[Index]; Burst.Age+=DeltaSeconds;
 		auto* Effect=Burst.Effect.Get();
 		if (!Effect) { WaterBursts.RemoveAtSwap(Index); continue; }
-		if (Burst.Age>=.12f && Effect->IsActive()) { Effect->DeactivateSystem(); }
+		if (Burst.Age>=.20f && Effect->IsActive()) { Effect->DeactivateSystem(); }
 		if (Burst.Age>=1.6f) { Effect->DestroyComponent(); WaterBursts.RemoveAtSwap(Index); }
 	}
 #if !UE_BUILD_SHIPPING
@@ -697,16 +702,24 @@ void ADCGunnery::Tick(float DeltaSeconds)
 		if (bHitTarget || bSplash || S.Life <= 0.f)
 		{
 			// Water misses do not deal area damage to creatures or rocks.
-			if (S.PlayerSide != EDCSide::None && (bHitTarget || bSplash))
+			if (S.PlayerSide != EDCSide::None && bHitTarget)
 			{
 				const int32 Index = S.PlayerSide == EDCSide::Port ? 0 : 1;
 				const float Now = GetWorld()->GetTimeSeconds();
-				bImpactHit[Index] = bHitTarget || (bImpactHit[Index] && Now < ImpactUntil[Index]);
+				bImpactHit[Index] = true;
 				ImpactUntil[Index] = Now + 1.15f;
 			}
 			static const bool bGunLog = FParse::Param(FCommandLine::Get(), TEXT("DCGunLog"));
 			if (bGunLog) { UE_LOG(LogDC, Log, TEXT("Shot ended at %s: hit %d splash %d life %.2f"), *S.Pos.ToCompactString(), bHitTarget, bSplash, S.Life); }
-			if (bSplash && !bHitTarget) { WaterContact(S.Pos, Maelstrom || Water.bSampled); }
+			if (bSplash && !bHitTarget)
+			{
+				// A rising wave can engulf a shot between samples: FirstEntry then
+				// returns the already-submerged start. Render at the waterline, not
+				// inside the opaque water, while leaving the terminal collision alone.
+				FVector Contact=S.Pos;
+				Contact.Z=SurfaceAt(Contact.X,Contact.Y);
+				WaterContact(Contact, Maelstrom || Water.bSampled);
+			}
 			UParticleSystem* Effect = bHitTarget ? (bCreatureHit ? CreatureImpact.Get() : StoneImpact.Get()) : nullptr;
 			if (Effect)
 			{
