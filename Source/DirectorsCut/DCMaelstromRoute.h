@@ -16,27 +16,43 @@ namespace DCMaelstromRoute
         if (FMath::Abs(Offset)>11000.f) { Offset=FMath::Clamp(Offset,-11000.f,11000.f); Velocity*=.25f; }
     }
 
-    inline float Angle(float Seconds)
-    {
-        // The feeding river is already moving tangentially before the reveal.
-        // Decreasing basin angle places the abyss to PORT: a continuous left
-        // turn rather than a stationary drop followed by sideways acceleration.
-        return UE_PI - 0.018f * FMath::Max(0.f, Seconds + 8.f);
-    }
+    constexpr float EntryStartSeconds=-8.f;
+    constexpr float LakeEntrySeconds=32.f;
+    constexpr float LakeRadiusFraction=.58f;
+    constexpr float OrbitAngularSpeed=.009f;
 
     inline float RadialFraction(float Seconds)
     {
-        // Long battle descent, followed by a tightening final approach. The
-        // old route stopped at 66% of the crater radius and never reached its foot.
-        return 0.985f - 0.035f * FMath::SmoothStep(-8.f, 8.f, Seconds)
-            - 0.700f * FMath::SmoothStep(8.f, 165.f, Seconds)
-            - 0.130f * FMath::SmoothStep(165.f, 180.f, Seconds);
+        // One downhill approach, then a level, constant-radius lake orbit.
+        return FMath::Lerp(.985f,LakeRadiusFraction,
+            FMath::SmoothStep(EntryStartSeconds,LakeEntrySeconds,Seconds));
+    }
+
+    inline float Angle(float Seconds)
+    {
+        const float R=RadialFraction(Seconds);
+        const float FeedingAngle=UE_PI-.40f*(1.f-FMath::SmoothStep(LakeRadiusFraction,.985f,R));
+        // Integrate a smooth angular-speed ramp over the final eight seconds.
+        // This 33m tangential lead stays inside the wide cataract and prevents
+        // the ship stopping as the radial descent meets the level lake.
+        const float U=FMath::Clamp((Seconds-24.f)/8.f,0.f,1.f);
+        const float OrbitSeconds=8.f*(U*U*U-.5f*U*U*U*U)+FMath::Max(0.f,Seconds-LakeEntrySeconds);
+        return FeedingAngle-OrbitAngularSpeed*OrbitSeconds;
     }
 
     inline float SecondsAtAngle(float A)
     {
-        const float Delta = FMath::Fmod(UE_PI - A + UE_TWO_PI, UE_TWO_PI);
-        return Delta / 0.018f - 8.f;
+        const float Delta=FMath::Fmod(UE_PI-A+UE_TWO_PI,UE_TWO_PI);
+        const float JoinDelta=UE_PI-Angle(LakeEntrySeconds);
+        if(Delta>=JoinDelta) { return LakeEntrySeconds+(Delta-JoinDelta)/OrbitAngularSpeed; }
+        // The finite entry is monotone but not a linear angular orbit.
+        float Low=EntryStartSeconds,High=LakeEntrySeconds;
+        for(int32 I=0;I<22;++I)
+        {
+            const float Mid=(Low+High)*.5f;
+            if(UE_PI-Angle(Mid)<Delta) { Low=Mid; } else { High=Mid; }
+        }
+        return (Low+High)*.5f;
     }
 
     inline FVector2D Point(float Seconds, float Radius, float Offset = 0.f)
@@ -63,23 +79,16 @@ namespace DCMaelstromRoute
         return FMath::Clamp(FMath::FindDeltaAngleDegrees(CenterYaw, TravelYaw), -12.f, 12.f);
     }
 
-    // Geometry and steering share this width, including the narrowing throat.
+    // The battle stays on the lake; there is no narrowing final throat.
     inline float WidthScale(float Seconds)
     {
-        return 1.f-.40f*FMath::SmoothStep(125.f,180.f,Seconds);
+        return 1.f;
     }
 
     inline float BankedHeight(float Across, float Seconds)
     {
-        const float Width=WidthScale(Seconds);
-        const float X=Across/Width;
-        const float Variation=1.f+.16f*FMath::Sin(Seconds*.061f)+.09f*FMath::Sin(Seconds*.143f+1.2f);
-        // Broad asymmetric hydraulic cross-section, not two raised rails.
-        // The inner spill is low enough to retain the view into the abyss.
-        const float Outer=2400.f*Variation*FMath::Exp(-FMath::Square((X-14500.f)/6500.f));
-        const float Inner=320.f*(1.f+.2f*FMath::Sin(Seconds*.09f))*FMath::Exp(-FMath::Square((X+8500.f)/3800.f));
-        const float AtCenter=2400.f*Variation*FMath::Exp(-FMath::Square(14500.f/6500.f))
-            +320.f*(1.f+.2f*FMath::Sin(Seconds*.09f))*FMath::Exp(-FMath::Square(8500.f/3800.f));
-        return Across*.10f+(Outer+Inner-AtCenter)*Width;
+        // Legacy callers may still ask for a cross-section, but the caldera
+        // has a flat mean surface. Entry elevation is supplied by HeightAt.
+        return 0.f;
     }
 }
