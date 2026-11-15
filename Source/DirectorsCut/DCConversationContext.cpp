@@ -251,6 +251,6 @@ FString DCConversationContext::Build(const UObject* WorldContext, const FString&
         Out += FString::Printf(TEXT("DECK: %d active fires. Rigging %s.\n"), Troubles->NumFires(),
             Troubles->IsRiggingLoose() ? TEXT("loose; needs repair at the marked lines on deck") : TEXT("secure"));
     }
-    Out += TEXT("PRACTICAL FACTS: smother deck fires by swatting with a rag; repair rigging at marked lines on deck, without climbing. Conversation itself changes no duties. Distinguish personal hunches or an ominous mood from the facts above. Never predict unseen encounters, invent a current hazard, or claim an action has happened merely because you said it.");
+    Out += TEXT("PRACTICAL FACTS: keep the ship in the clear channel and give stone banks, pillars and obstacles room; never advise steering closer to banks to see through fog. Smother deck fires by swatting with a rag; repair rigging at marked lines on deck, without climbing. Wind is not measured: do not claim still air, calm wind or a wind direction. Describe only the recorded rain, mist, cloud and water conditions. Conversation itself changes no duties. Distinguish personal hunches or an ominous mood from the facts above. Never predict unseen encounters, invent a current hazard, or claim an action has happened merely because you said it.");
     return Out;
 }
