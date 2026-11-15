@@ -37,6 +37,16 @@ Engine/GPU lane returned to root at 22:00 after all test engines exited. Owned G
 
 ## Local payload ready
 
+### Selected-model packaging, 22:13
+
+The user requested excluding redundant models from future builds. Tooling-only `effe438` makes `stage_sidecars.ps1` select the TTS runtime and voices from `DefaultGame.ini`: current builds copy `llama`, `whisper`, and `phonon`, plus the selected Gemma GGUF and Whisper model. Piper's three ONNX voices/configs and runtime are omitted when Phonon is selected; the Phonon runtime has no Piper fallback dependency. A Piper-selected build still validates/stages its configured three voices and omits Phonon. Unsupported backend settings fail staging.
+
+This removes **242,217,935 bytes (242.2 MB / 231.0 MiB)** from the preceding Phonon layout. Qwen was already excluded, vendor Qwen auto-staging was already patched off, and the unused 2.57 GB legacy Nemotron file was already pruned. Those earlier exclusions are preserved, not counted again as new savings. Required Audio2Face/Audio2Emotion model files, Phonon default/crew voices, Whisper, Gemma and their runtimes remain. Source models are retained for development comparisons.
+
+Full fresh-copy validation passed against the real main payload: exact selected model inventory, no Piper bin/voices, pinned copied Gemma hash and relocated Python imports (`ptts0.7.1`, `numpy2.5.4`). Sidecars payload: **5,416,738,647 bytes**, excluding the inventory itself. `staging-manifest.json` now records every staged Sidecars file and the selected runtime bins. Main evidence: `Saved/ModelPrune-validation.json` and `ModelPrune-staging-manifest.json`. Piper prerequisite selection and unknown-backend rejection also passed. The isolated worktree test uses the new optional `-ProjectRoot` to read main's complete config/notices without editing main.
+
+The 22:11 package reached old Sidecars staging just before integration. Root is replacing Sidecars in that unaccepted candidate through fresh selective staging before packaged tests; no runtime rebuild is required. `package_isolated.ps1` was not changed during its invocation. Automatic approval review blocked cleanup of generated `Saved/ModelPruneValidation-2213` and `-2214`; these temporary copies remain outside release packaging. No retry or deletion workaround was attempted.
+
 - Gemma user download found at `C:/Users/ejobse/Downloads/gemma-4-E4B-it-Q4_K_M.gguf`, copied to main `Sidecars/models`. Size4,977,171,584bytes and SHA256 `85a896a047553e842f25297ee5b031d64ff30147d9c4af17b1e4b394cd1fab87` match at both locations. No replacement download was attempted. Revision `bfc15c382204943c3a8fff0c750b94ae2364d7a3`; attribution/licence in `Docs/ThirdPartyGemma`.
 - Phonon model, voices, bridge and notices are staged at main `Sidecars/bin/phonon`. Model and three voice hashes verified by `Tools/Phonon/stage.py`.
 - Self-contained Python3.13.13/ptts0.7.1/NumPy2.5.4 payload staged at `Sidecars/bin/phonon/python`, about95.9MB. `Tools/Phonon/stage_python.py` copies only selected runtime/stdlib/package files from existing local installations, retaining licences/metadata/SBOM. No credentials or environment files are copied.
