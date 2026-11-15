@@ -65,6 +65,23 @@ class Face:
         return float(distance[k]), int(self.ids[ids[k]]), [float(1-u[k]-v[k]), float(u[k]), float(v[k])]
 
 
+def water_height(xy, water):
+    xyz = water['vertices_m'][water['triangles']]
+    keep = np.all(xyz[:, :, :2].min(1) <= xy+1e-6, axis=1)&np.all(xyz[:, :, :2].max(1) >= xy-1e-6, axis=1)
+    p = xyz[keep]
+    if not len(p):
+        return None
+    ab, ac, ap = p[:, 1, :2]-p[:, 0, :2], p[:, 2, :2]-p[:, 0, :2], xy-p[:, 0, :2]
+    cross = lambda a, b: a[:, 0]*b[:, 1]-a[:, 1]*b[:, 0]
+    det = cross(ab, ac)
+    inv = np.divide(1., det, out=np.zeros_like(det), where=abs(det)>1e-10)
+    u, v = cross(ap, ac)*inv, cross(ab, ap)*inv
+    valid = (abs(det)>1e-10)&(u>=-1e-6)&(v>=-1e-6)&(u+v<=1+1e-6)
+    if not valid.any():
+        return None
+    return float(np.max((p[:, 0, 2]+u*(p[:, 1, 2]-p[:, 0, 2])+v*(p[:, 2, 2]-p[:, 0, 2]))[valid]))
+
+
 def box_polygon_overlap(lo, hi, polygon):
     corners = np.array([[lo[0], lo[1]], [hi[0], lo[1]], [hi[0], hi[1]], [lo[0], hi[1]]])
     edges = np.roll(polygon, -1, axis=0)-polygon
@@ -78,14 +95,15 @@ def main():
     p.add_argument('--reports', type=Path, nargs='+', required=True)
     p.add_argument('--surface', type=Path, required=True)
     p.add_argument('--anchors', type=Path, required=True)
+    p.add_argument('--water', type=Path, required=True, help='Actual finite mean-water triangle mesh')
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--centre-angle-deg', type=float, default=136.4)
     p.add_argument('--width-m', type=float, default=205.)
     p.add_argument('--front-axis', choices=['+y', '-y', '+x', '-x'], default='+y')
     p.add_argument('--maximum', type=int, default=180)
     a = p.parse_args()
-    if not 150 <= a.width_m <= 230 or not 1 <= a.maximum <= 256:
-        p.error('This pilot is 150–230 m wide with at most256 instances')
+    if not 150 <= a.width_m <= 230 or not 1 <= a.maximum <= 200:
+        p.error('This pilot is 150–230 m wide with at most200 instances')
     assets = []
     for path in a.reports:
         report = read(path)
@@ -104,10 +122,12 @@ def main():
     centre = np.deg2rad(a.centre_angle_deg)
     low, high = centre-a.width_m/3200., centre+a.width_m/3200.
     face = Face(a.surface, low, high)
-    # Overlapping masonry-sized courses are staggered geometrically, not an
-    # area-weighted scatter. Original scan forms/UVs provide the exposed rock.
-    nominal_width = min(x['size'][0 if a.front_axis[-1] == 'y' else 1] for x in assets)*3.3
-    step = min(29., nominal_width*.60)
+    water = np.load(a.water, allow_pickle=False)
+    primary = next((i for i,x in enumerate(assets) if 'vefkehbva' in x['asset']), 0)
+    # Broad Huge scans form a continuous face; Massive is a sparse accent, not
+    # an alternating checkerboard. Overlap hides the scans' horizontal bases.
+    nominal_width = assets[primary]['size'][0 if a.front_axis[-1] == 'y' else 1]*3.65
+    step = 30.
     # The requested width includes the end scans, not just their centre span.
     span = max(step, a.width_m-nominal_width)
     columns = np.linspace(-span*.5, span*.5, int(np.ceil(span/step))+1)
@@ -120,22 +140,31 @@ def main():
         supported = [z for z in heights if face.hit(angle, z) is not None]
         if not supported:
             continue
-        # Preserve a small wet-toe band. Crest rows remain below/around the
-        # actual rim, rather than manufacturing a uniformly tall slab.
-        bottom, top = min(supported)+18., min(max(supported)-5., 45.)
-        rows = np.arange(bottom+5.*np.sin(col*1.73), top+1., 23.)
+        foot_hit = face.hit(angle, min(supported))
+        shoreline = water_height(np.array([np.cos(angle),np.sin(angle)])*foot_hit[0], water)
+        if shoreline is None:
+            # Walk only toward covered receiving water, keeping the same ray.
+            for distance in (2.,4.,8.,12.):
+                shoreline = water_height(np.array([np.cos(angle),np.sin(angle)])*(foot_hit[0]-distance), water)
+                if shoreline is not None: break
+        if shoreline is None:
+            raise ValueError('No finite receiving water at scan column '+str(col))
+        crest = min(max(supported), 56.)
+        bottom, top = shoreline+12., crest-18.
+        rows = np.linspace(bottom, max(bottom,top), max(1,int(np.ceil((top-bottom)/15.))+1))
         for row, z in enumerate(rows):
             if len(placements) >= a.maximum:
                 break
-            asset = assets[(col+row//2) % len(assets)]
-            scale = float(3.35+.34*np.sin(col*2.17+row*1.39))
-            theta = angle+((row % 2)-.5)*step*.32/1600.
+            accent = (col,row) in {(1,2),(3,5),(5,1),(4,8)} and len(assets)>1
+            asset = assets[(primary+1)%len(assets) if accent else primary]
+            scale = float((3.25 if accent else 3.65)+.18*np.sin(col*2.17+row*1.39))
+            theta = angle+np.sin(row*.71+col*1.33)*step*.13/1600.
             hit = face.hit(theta, z)
             if hit is None:
                 rejects['no_surface'] += 1
                 continue
             radial = np.array([np.cos(theta), np.sin(theta), 0.])
-            pitch, roll = float(5.*np.sin(col*1.81+row*.77)), float(6.*np.cos(row*1.67+col*.53))
+            pitch, roll = float(3.*np.sin(col*1.81+row*.77)), float(4.*np.cos(row*1.67+col*.53))
             yaw = float(np.rad2deg(theta)+180.-local_face_angle+4.*np.sin(row*1.19+col*.67))
             rot = rotation(pitch, yaw, roll)
             signs = np.array([[x, y, zz] for x in (-1, 1) for y in (-1, 1) for zz in (-1, 1)])
@@ -144,6 +173,13 @@ def main():
             half_width = float(abs(relative_corners@tangent).max())
             half_height = float(abs(relative_corners[:, 2]).max())
             half_depth = float(abs(relative_corners@radial).max())
+            if row == 0:
+                z = shoreline+half_height-5.
+            z = min(z, crest-half_height+2.)
+            hit = face.hit(theta,z)
+            if hit is None:
+                rejects['no_surface'] += 1
+                continue
             samples = [face.hit(theta+du/1600., z+dz)
                        for du in (-half_width*.8, 0., half_width*.8)
                        for dz in (-half_height*.7, 0., half_height*.7)]
@@ -151,9 +187,15 @@ def main():
             # Fit to the frontmost backing across the whole visible envelope,
             # not the centroid of a deep recess behind a projecting buttress.
             front_radius = min(s[0] for s in samples)
-            relief = 4. if z < -90 else 7.5
+            relief = float(25.+2.*np.sin(col*.9+row*.43))
             box_centre = radial*(front_radius+half_depth-relief)
             box_centre[2] = z
+            receiver = shoreline
+            if row == 0:
+                front_water = water_height(radial[:2]*(front_radius-relief), water)
+                if front_water is not None:
+                    receiver = front_water
+                    box_centre[2] = min(crest-half_height+2., receiver+half_height-5.)
             corners = box_centre+relative_corners
             box_lo, box_hi = corners.min(0), corners.max(0)
             if box_hi[0] >= -1055. and box_lo[0] <= -920. and box_hi[1] >= 1125. and box_lo[1] <= 1270.:
@@ -168,6 +210,7 @@ def main():
                 rotation_degrees=[pitch, yaw, roll], scale=[scale]*3,
                 source_triangle=hit[1], source_barycentric=hit[2], surface_radius_m=hit[0],
                 footprint_front_radius_m=front_radius, bounds_front_relief_m=relief,
+                measured_shore_height_m=shoreline, front_receiver_height_m=receiver, crest_limit_m=crest+2.,
                 box_min_arena_m=box_lo.tolist(), box_max_arena_m=box_hi.tolist(),
                 source_bounds_min_cm=(asset['minimum']*100).tolist(), source_bounds_max_cm=(asset['maximum']*100).tolist()))
     if not placements:
@@ -175,6 +218,7 @@ def main():
     report = dict(schema='directorscut.cliff_scan_demo.v1', instances=placements,
         source_surface=str(a.surface.resolve()), source_sha256=sha(a.surface),
         source_anchors=str(a.anchors.resolve()), anchors_sha256=sha(a.anchors), generator_sha256=sha(__file__),
+        source_water=str(a.water.resolve()), water_sha256=sha(a.water),
         imported_reports=[dict(path=str(p.resolve()), sha256=sha(p)) for p in a.reports],
         authored_width_m=a.width_m, centre_angle_deg=a.centre_angle_deg,
         native_front_axis=a.front_axis, waterfall_protected_xy_m=[-1055., -920., 1125., 1270.],
