@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 15 Nov Codex: established terrain workflow; 3D fracture tests rejected visually
+
+- Answered the mountain-algorithm direction: ridged terrain and erosion for connected landforms, detailed 3D cliff meshes, and terrain-derived material masks. [Workflow, evidence and next shape work](CRATER-CLIFF-ALGORITHMS-15NOV.md).
+- Two physical-scale outcrop trials have valid overhang geometry but fail the visual target: straight saw slots, then repeated quarry-like pockets. Neither is promoted to the game. Added a standalone original-triangle query for future overhang-aware contacts and matched 3D review tools; CPU checks pass.
+- An actual native Nanite-triangle view confirms the current preview's soft form is authored geometry, not simply its coarse fallback. Normal arena, water/falls, sky/light and boss remain unchanged. No main merge or package.
+
 ## 15 Nov Codex: connected massif, measured supports and corrected native preview
 
 - Replaced the offline locked cap/apron with a connected massif fitted to actual coast/seams and ruin footprints. Protected land drops from65.51% to15.29%; bounded erosion and independent exact-triangle support checks pass. [Actual evidence and next fracture work](CRATER-MASSIF-15NOV.md).
