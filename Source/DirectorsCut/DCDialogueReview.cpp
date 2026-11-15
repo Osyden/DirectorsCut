@@ -66,14 +66,25 @@ void ADCDialogueReviewGameMode::BeginPlay()
     Order(TEXT("report"),TEXT("Rex, how much damage has the hull taken?"),TEXT("Rex"),A::Report,S::None,D::None);
     Order(TEXT("not_an_order"),TEXT("Good morning. Lovely weather today."),TEXT(""),A::None,S::None,D::None);
 
+    // Held-out paraphrases: keep these out of prompt examples and preserve the original cases above.
+    Order(TEXT("heldout_cease_port"),TEXT("Duncan, cease fire on the port side."),TEXT("Duncan"),A::HoldFire,S::Cannons,D::Port);
+    Order(TEXT("heldout_negated_fire"),TEXT("Ruby, do not shoot the starboard guns."),TEXT("Ruby"),A::HoldFire,S::Cannons,D::Starboard);
+    Order(TEXT("heldout_crew_port"),TEXT("Duncan, go and crew the port cannons."),TEXT("Duncan"),A::Man,S::Cannons,D::Port);
+    Order(TEXT("heldout_crew_starboard"),TEXT("Ruby, take your place at the starboard battery."),TEXT("Ruby"),A::Man,S::Cannons,D::Starboard);
+    Order(TEXT("heldout_discharge_port"),TEXT("Duncan, let the port guns fire now."),TEXT("Duncan"),A::Fire,S::Cannons,D::Port);
+    Order(TEXT("heldout_fire_unrestricted"),TEXT("Duncan, keep firing whenever you have a shot."),TEXT("Duncan"),A::Fire,S::Cannons,D::None);
+    Order(TEXT("heldout_left"),TEXT("Rex, steer the ship left."),TEXT("Rex"),A::TurnPort,S::Helm,D::Port);
+    Order(TEXT("heldout_right"),TEXT("Rex, swing the bow to the right."),TEXT("Rex"),A::TurnStarboard,S::Helm,D::Starboard);
+    Order(TEXT("heldout_mend"),TEXT("Ruby, mend the torn sails for me."),TEXT("Ruby"),A::Repair,S::Rigging,D::None);
+    Order(TEXT("heldout_put_out"),TEXT("Ruby, put out the blaze beside the mast."),TEXT("Ruby"),A::Extinguish,S::Fire,D::None);
+    Order(TEXT("heldout_damage_report"),TEXT("Duncan, give me a damage report."),TEXT("Duncan"),A::Report,S::None,D::None);
+    Order(TEXT("heldout_nonorder"),TEXT("I used to sail these waters as a child."),TEXT(""),A::None,S::None,D::None);
+
     auto Acknowledge = [this](const TCHAR* Crew,const TCHAR* OrderText,const TCHAR* Doing,const TCHAR* Forbidden)
     {
         FReviewCase& Case=Cases.AddDefaulted_GetRef();
         Case.Label=FString(TEXT("ack_"))+Crew; Case.bAcknowledgement=true; Case.ForbiddenDirection=Forbidden;
-        Case.System=FString::Printf(
-            TEXT("You are %s, crew on a pirate brigantine. The captain has given an order and you are already carrying it out. ")
-            TEXT("Say one short line aloud to the captain confirming it, in character. At most 10 words. Spoken words only: no quotes, no actions, no narration."),
-            *Voice->PersonaFor(Crew));
+        Case.System=DCDialoguePrompts::AcknowledgementSystem(Voice->PersonaFor(Crew));
         Case.User=FString::Printf(TEXT("Captain's order: \"%s\"\nWhat you are doing: %s\nSituation: open sea in sunshine; hull at 100 percent"),OrderText,Doing);
     };
     Acknowledge(TEXT("Rex"),TEXT("Rex, hard to starboard"),TEXT("Hard to starboard, aye!"),TEXT("port"));

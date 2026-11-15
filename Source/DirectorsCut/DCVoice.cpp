@@ -639,10 +639,7 @@ void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const 
 			TEXT("You are %s, crew on a pirate brigantine. You have just seen something the captain must know. ")
 			TEXT("Shout it in one short urgent line, in character. At most 8 words. Repeat any direction exactly as given (port, starboard, ahead) and add no other direction or order. Spoken words only: no quotes, no actions, no narration."),
 			*PersonaFor(Speaker))
-		: FString::Printf(
-			TEXT("You are %s, crew on a pirate brigantine. The captain has given an order and you are already carrying it out. ")
-			TEXT("Say one short line aloud to the captain confirming it, in character. At most 10 words. Spoken words only: no quotes, no actions, no narration."),
-			*PersonaFor(Speaker));
+		: DCDialoguePrompts::AcknowledgementSystem(PersonaFor(Speaker));
 	const FString User = bReport
 		? FString::Printf(TEXT("What you saw: %s\nSituation: %s"), *Fallback, *Situation)
 		: FString::Printf(TEXT("Captain's order: \"%s\"\nWhat you are doing: %s\nSituation: %s"), *Context, *Fallback, *Situation);

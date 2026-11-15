@@ -1,5 +1,6 @@
 #include "DCACEIntegrationReview.h"
 #include "DCACEDialogue.h"
+#include "DCDialoguePrompts.h"
 #include "DCCrew.h"
 #include "DCRideDirector.h"
 #include "DCVoice.h"
@@ -38,7 +39,11 @@ namespace
 bool UDCACEIntegrationReview::ShouldCreateSubsystem(UObject* Outer) const
 {
     const UWorld* World=Cast<UWorld>(Outer);
-    return World && World->WorldType==EWorldType::Game && FParse::Param(FCommandLine::Get(),TEXT("DCACEIntegrationTest")) && Super::ShouldCreateSubsystem(Outer);
+    // Startup creates a temporary Game world before the requested voyage loads.
+    // It must not count as the first tested level or a requested restart.
+    return World && World->WorldType==EWorldType::Game &&
+        World->GetOutermost()->GetName()==TEXT("/Game/DC/Maps/L_Ride") &&
+        FParse::Param(FCommandLine::Get(),TEXT("DCACEIntegrationTest")) && Super::ShouldCreateSubsystem(Outer);
 }
 
 void UDCACEIntegrationReview::Initialize(FSubsystemCollectionBase& Collection)
@@ -163,7 +168,7 @@ void UDCACEIntegrationReview::Tick(float DeltaTime)
 void UDCACEIntegrationReview::Generate()
 {
     Stage=EStage::Generating; StageStarted=FPlatformTime::Seconds(); bSawACEPlayback=false;
-    const FString System=FString::Printf(TEXT("You are %s, crew on a pirate brigantine. The captain has given an order and you are already carrying it out. Say one short line aloud to the captain confirming it, in character. At most 10 words. Spoken words only: no quotes, no actions, no narration."),*Voice->PersonaFor(Speakers[CrewIndex]));
+    const FString System=DCDialoguePrompts::AcknowledgementSystem(Voice->PersonaFor(Speakers[CrewIndex]));
     const FString User=FString::Printf(TEXT("Captain's order: \"%s\"\nWhat you are doing: %s\nSituation: open sea in sunshine; hull at 100 percent"),Orders[CrewIndex],Doing[CrewIndex]);
     TWeakObjectPtr<UDCACEIntegrationReview> Weak(this);
     Voice->RequestDialogue(System,User,32,.6f,false,1.5f,[Weak](bool bOK,const FString& Raw)
@@ -189,10 +194,18 @@ void UDCACEIntegrationReview::CancelAcrossScene()
     Voice->RequestDialogue(TEXT("Reply with one brief pirate acknowledgement."),TEXT("Captain, take the helm."),32,.6f,false,4.f,
         [Run](bool,const FString&) { Run->bLateSceneCallback=true; });
     if (!Voice->ACEDialogue || !Voice->ACEDialogue->IsBusy()) { Fail(TEXT("Scene cancellation probe did not start real model inference")); return; }
+    bSceneSpeechCleared=false;
+    // Capture after CurrentPhase changes, before the director queues its new fog report.
+    const FDelegateHandle PhaseCheck=Director->OnPhaseChanged.AddWeakLambda(this,[this](EDCPhase)
+    {
+        Voice->SynchronizeScene();
+        bSceneSpeechCleared=Voice->SpeechEpoch>PreviousEpoch && Voice->SpeechQueue.IsEmpty() &&
+            Voice->PendingTTS.IsEmpty() && !Voice->ActiveCurves && !Voice->IsSpeaking();
+    });
     Director->Seek(60.f);
-    Voice->SynchronizeScene();
-    // Capture the reset immediately; newly authored fog reports are allowed to start later.
-    bSceneSpeechCleared=Voice->SpeechQueue.IsEmpty() && Voice->PendingTTS.IsEmpty() && !Voice->ActiveCurves && !Voice->IsSpeaking();
+    // Seek changes RideTime; Tick applies CurrentPhase and broadcasts synchronously.
+    Director->Tick(0.f);
+    Director->OnPhaseChanged.Remove(PhaseCheck);
     Stage=EStage::SceneDrain; StageStarted=FPlatformTime::Seconds();
 }
 
