@@ -1,0 +1,51 @@
+[2026.11.15-08.35.07:878][206]LogDC: City exit: interior mist density 0.00022
+[2026.11.15-08.36.19:500][948]LogDC: Navigation plan: 0 -> 0 urgent=0 clearance=-1 at 74.5
+[2026.11.15-08.36.21:016][ 95]LogDC: City fog: saved live sun Sun scattering 1.080
+[2026.11.15-08.36.21:016][ 95]LogDC: City fog: saved second layer 0.0000 / 0.1000, FSSS 0, anisotropy 0.200
+[2026.11.15-08.36.21:983][182]LogDC: Navigation plan: 0 -> 1000 urgent=0 clearance=8482 at 77.0
+[2026.11.15-08.36.39:016][759]LogDC: City fog: live sun scattering 0.250
+[2026.11.15-08.36.45:456][372]LogDC: Navigation plan: 1000 -> 3500 urgent=0 clearance=15485 at 100.4
+[2026.11.15-08.36.47:829][587]LogDC: Display: Encounter defeated: creature at 102.8
+[2026.11.15-08.36.57:173][464]LogDC: Display: Encounter defeated: creature at 112.2
+[2026.11.15-08.37.05:424][180]LogDC: Navigation plan: 3500 -> -750 urgent=0 clearance=-1 at 120.4
+[2026.11.15-08.37.15:807][ 82]LogDC: Display: Encounter defeated: sentinel at 130.8
+[2026.11.15-08.37.29:189][207]LogDC: Display: Encounter defeated: creature at 144.2
+[2026.11.15-08.37.34:494][661]LogDC: Navigation plan: -750 -> -2750 urgent=0 clearance=14311 at 149.5
+[2026.11.15-08.37.35:028][705]LogDC: Capture state: hull=93.0 score=400 fires=2 rigging=0 at 150.0
+[2026.11.15-08.37.38:663][ 17]LogDC: Display: Encounter defeated: creature at 153.6
+[2026.11.15-08.37.54:024][428]LogDC: Capture state: hull=88.9 score=500 fires=2 rigging=0 at 169.0
+[2026.11.15-08.37.54:611][474]LogDC: City exit visibility: behind reveal curtain, distance 64986 cm at 169.59 s
+[2026.11.15-08.37.55:043][514]LogDC: Capture state: hull=88.8 score=500 fires=1 rigging=0 at 170.0
+[2026.11.15-08.37.58:549][835]LogDC: Display: Encounter defeated: sentinel at 173.5
+[2026.11.15-08.37.58:839][862]LogDC: Navigation plan: -2750 -> -3500 urgent=0 clearance=15657 at 173.8
+[2026.11.15-08.38.00:034][971]LogDC: Capture state: hull=88.4 score=600 fires=1 rigging=0 at 175.0
+[2026.11.15-08.38.12:269][106]LogDC: Navigation plan: -3500 -> -250 urgent=0 clearance=6298 at 187.2
+[2026.11.15-08.38.15:032][377]LogDC: Capture state: hull=87.2 score=600 fires=1 rigging=0 at 190.0
+[2026.11.15-08.38.15:226][386]LogDC: Display: Encounter defeated: creature at 190.2
+[2026.11.15-08.38.24:164][302]LogDC: Navigation plan: -250 -> 500 urgent=0 clearance=15609 at 199.1
+[2026.11.15-08.38.24:445][329]LogDC: Display: Encounter defeated: creature at 199.4
+[2026.11.15-08.38.25:028][386]LogDC: Capture state: hull=86.8 score=800 fires=0 rigging=0 at 200.0
+[2026.11.15-08.38.26:631][534]LogDC: Navigation plan: 500 -> -3250 urgent=0 clearance=13915 at 201.6
+[2026.11.15-08.38.30:031][871]LogDC: Capture state: hull=85.2 score=800 fires=1 rigging=0 at 205.0
+[2026.11.15-08.38.32:436][ 85]LogDC: Navigation plan: -3250 -> -3000 urgent=0 clearance=11546 at 207.4
+[2026.11.15-08.38.34:881][325]LogDC: Navigation plan: -3000 -> -3250 urgent=0 clearance=7814 at 209.9
+[2026.11.15-08.38.35:028][339]LogDC: Capture state: hull=83.3 score=800 fires=2 rigging=0 at 210.0
+[2026.11.15-08.38.36:579][474]LogDC: Navigation plan: -3250 -> 0 urgent=1 clearance=5334 at 211.6
+[2026.11.15-08.38.42:415][ 33]LogDC: Display: Encounter defeated: creature at 217.4
+[2026.11.15-08.38.45:029][287]LogDC: Capture state: hull=81.7 score=900 fires=2 rigging=0 at 220.0
+[2026.11.15-08.38.45:987][367]LogDC: Navigation plan: 0 -> 1250 urgent=0 clearance=-1 at 221.0
+[2026.11.15-08.38.51:930][966]LogDC: Navigation plan: 1250 -> 2500 urgent=0 clearance=15252 at 226.9
+[2026.11.15-08.38.52:339][  4]LogDC: Display: Encounter defeated: sentinel at 227.3
+[2026.11.15-08.38.55:029][273]LogDC: Capture state: hull=80.1 score=1000 fires=2 rigging=0 at 230.0
+[2026.11.15-08.38.59:032][657]LogDC: Capture state: hull=79.4 score=1000 fires=2 rigging=0 at 234.0
+[2026.11.15-08.39.01:025][852]LogDC: Capture state: hull=79.1 score=1000 fires=2 rigging=0 at 236.0
+[2026.11.15-08.39.03:031][ 36]LogDC: Capture state: hull=78.8 score=1000 fires=2 rigging=0 at 238.0
+[2026.11.15-08.39.04:049][123]LogDC: Capture state: hull=78.6 score=1000 fires=2 rigging=0 at 239.0
+[2026.11.15-08.39.05:065][212]LogDC: Capture state: hull=78.5 score=1000 fires=2 rigging=0 at 240.0
+[2026.11.15-08.39.06:076][303]LogDC: Capture state: hull=78.4 score=1000 fires=1 rigging=0 at 241.1
+[2026.11.15-08.39.07:094][401]LogDC: Capture state: hull=78.3 score=1000 fires=1 rigging=0 at 242.1
+[2026.11.15-08.39.09:026][594]LogDC: Capture state: hull=78.1 score=1000 fires=1 rigging=0 at 244.0
+[2026.11.15-08.39.11:025][796]LogDC: Capture state: hull=78.0 score=1000 fires=0 rigging=0 at 246.0
+[2026.11.15-08.39.13:015][ 18]LogDC: City fog: restored second layer 0.0000, scattering 0 / 1.000, distance 70000 cm, anisotropy 0.200
+[2026.11.15-08.39.13:015][ 18]LogDC: City fog: restored live sun scattering 1.080
+[2026.11.15-08.39.15:027][283]LogDC: Capture state: hull=78.0 score=1000 fires=0 rigging=0 at 250.0

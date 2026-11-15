@@ -1,0 +1,58 @@
+{
+  "package": "E:\\Projects\\DirectorsCut\\Builds\\2026-11-15_0829_exit-mist-candidate\\Windows\\DirectorsCut.exe",
+  "manifest_entries": 80,
+  "owned_private_package_source_match": true,
+  "production_change": "One existing-material heterogeneous fog bank inside the city exit; no new assets, no geometry or gameplay edits.",
+  "comparison": "Same packaged executable and capture schedule, with -DCExitInteriorDensity=0 for before. Ship motion, lightning, fire and obstacle layouts vary.",
+  "runs": {
+    "before": {
+      "normal_exit": true,
+      "failure_matches": [],
+      "screenshots": 10,
+      "final_state": "Capture state: hull=87.3 score=1000 fires=1 rigging=0 at 246.0",
+      "contacts": 0,
+      "rapid_reversal_pairs": []
+    },
+    "trial-interior": {
+      "normal_exit": true,
+      "failure_matches": [],
+      "screenshots": 20,
+      "final_state": "Capture state: hull=81.2 score=1000 fires=0 rigging=0 at 250.0",
+      "contacts": 0,
+      "rapid_reversal_pairs": [
+        [
+          114.7,
+          116.2
+        ],
+        [
+          116.2,
+          118.8
+        ]
+      ]
+    },
+    "packaged-interior": {
+      "normal_exit": true,
+      "failure_matches": [],
+      "screenshots": 20,
+      "final_state": "Capture state: hull=78.0 score=1000 fires=0 rigging=0 at 250.0",
+      "contacts": 0,
+      "rapid_reversal_pairs": []
+    },
+    "packaged-without-interior": {
+      "normal_exit": true,
+      "failure_matches": [],
+      "screenshots": 20,
+      "final_state": "Capture state: hull=81.2 score=1000 fires=0 rigging=0 at 250.0",
+      "contacts": 0,
+      "rapid_reversal_pairs": []
+    }
+  },
+  "limitations": [
+    "The specific earlier white flash was not reproduced at the same time in the new baseline.",
+    "The exit water shell is still a hard silhouette; this adds interior depth, not reference parity.",
+    "Later slide water shading remains separately owned.",
+    "Editor trial revealed rapid steering corrections in one layout; diagnosis is still pending.",
+    "This package predates the new committed ACE integration d94275a.",
+    "Audio/voice disabled; no clean-machine test."
+  ]
+}

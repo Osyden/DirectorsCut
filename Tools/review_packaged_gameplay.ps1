@@ -2,7 +2,7 @@
 param(
     [Parameter(Mandatory=$true)][string]$ExecutablePath,
     [Parameter(Mandatory=$true)][string]$OutputPath,
-    [ValidateSet('rag','encounters','navigation','bow','bownatural','bowsequence','bowwide','fog','route')][string]$Case = 'rag',
+    [ValidateSet('rag','encounters','navigation','bow','bownatural','bowsequence','bowwide','fog','exitdetail','route')][string]$Case = 'rag',
     [string]$DiagnosticArguments = ''
 )
 $ErrorActionPreference = 'Stop'
@@ -24,6 +24,7 @@ $options = switch ($Case) {
     'bowsequence' { '-DCStartAt=90 -DCRunThrough -DCTenths -DCAutoShots=100.9,101.1,101.3,101.5,101.7,101.9,102.1,102.3,102.5,102.7,102.9,103.1 -DCShotCam=1700,-600,550,-10,132 -DCBowLog -DCBowParticleAudit -DCBowRenderAudit' }
     'bowwide' { '-DCStartAt=90 -DCRunThrough -DCTenths -DCAutoShots=98.6,98.8,99,99.2,100.5,101 -DCShotCam=2500,-1400,850,-18,132 -DCBowLog -DCBowParticleAudit -DCBowRenderAudit' }
     'fog' { '-DCRunThrough -DCOrders=Hold_fire -DCAutoShots=100,110,125 -DCShotCam=-2200,0,1200,5,-55' }
+    'exitdetail' { '-DCRunThrough -DCAutoShots=150,169,170,175,190,200,205,210,220,230,234,236,238,239,240,241,242,244,246,250 -DCLaneLog -DCCurrentLog' }
     'route' { '-DCRunThrough -DCAutoShots=34,55,100,125,175,210,236,239,246 -DCLaneLog -DCCurrentLog' }
 }
 New-Item -ItemType Directory -Path $output | Out-Null

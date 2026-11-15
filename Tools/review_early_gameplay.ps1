@@ -1,9 +1,10 @@
 # Uses a separately built runtime project; never saves or changes content assets.
 param(
     [Parameter(Mandatory=$true)][string]$ProjectPath,
-    [ValidateSet('rag','cannons','encounters','statue','city','fogband','crew','default','exit','navigation','navigationroute','bow','bowclose','bowstorm','bowstormclose','bowdeck','bowrough','bowroughclose','bowparticles','bowdetail','bowroughdeck','bowlookdown','bowtransition','manual')][string]$Case = 'encounters',
+    [ValidateSet('rag','cannons','encounters','statue','city','fogband','crew','default','exit','exitdetail','navigation','navigationroute','bow','bowclose','bowstorm','bowstormclose','bowdeck','bowrough','bowroughclose','bowparticles','bowdetail','bowroughdeck','bowlookdown','bowtransition','manual')][string]$Case = 'encounters',
     [string]$EngineRoot = 'E:\Utilities\UE_5.8',
-    [string]$OutputPath = ''
+    [string]$OutputPath = '',
+    [string]$DiagnosticArguments = ''
 )
 $ErrorActionPreference = 'Stop'
 $project = (Resolve-Path -LiteralPath $ProjectPath).Path
@@ -23,6 +24,7 @@ $options = switch ($Case) {
     'crew' { '-DCBot -DCRunThrough -DCAutoShots=100,125,175,235 -DCLaneLog -DCCurrentLog -DCGunLog' }
     'default' { '-DCRunThrough -DCAutoShots=100,110,125,175,235 -DCLaneLog -DCCurrentLog -DCGunLog' }
     'exit' { '-DCRunThrough -DCAutoShots=210,225,230,234,236,239,242,246 -DCLaneLog -DCCurrentLog' }
+    'exitdetail' { '-DCRunThrough -DCAutoShots=150,169,170,175,190,200,205,210,220,230,234,236,238,239,240,241,242,244,246,250 -DCLaneLog -DCCurrentLog' }
     'navigation' { '-DCNavigationVerify -DCRunThrough' }
     'navigationroute' { '-DCRunThrough -DCAutoShots=100,125,150,175,200,205,210,236,239,246 -DCLaneLog -DCCurrentLog -DCNavCandidates' }
     'bow' { '-DCStartAt=20 -DCRunThrough -DCShipView -DCOrbit=145,5 -DCAutoShots=23,25,28,32' }
@@ -41,7 +43,7 @@ $options = switch ($Case) {
 }
 $log = Join-Path $output 'runtime.log'
 $started = Get-Date
-$arguments = '"' + $project + '" /Game/DC/Maps/L_Ride -game -RenderOffscreen -Unattended -NoSound -DCNoVoice -NoSplash -Windowed -ResX=1280 -ResY=720 ' + $options + ' -AbsLog="' + $log + '"'
+$arguments = '"' + $project + '" /Game/DC/Maps/L_Ride -game -RenderOffscreen -Unattended -NoSound -DCNoVoice -NoSplash -Windowed -ResX=1280 -ResY=720 ' + $options + ' -AbsLog="' + $log + '" ' + $DiagnosticArguments
 $run = Start-Process -FilePath (Join-Path $EngineRoot 'Engine\Binaries\Win64\UnrealEditor.exe') -ArgumentList $arguments -WindowStyle Hidden -PassThru
 Write-Output "Review $Case started as process $($run.Id); log: $log"
 if (!$run.WaitForExit(420000)) {

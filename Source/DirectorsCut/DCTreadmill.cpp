@@ -1657,6 +1657,29 @@ void ADCTreadmill::SpawnAtlantis()
 						0.f, false, 1.f, 0.f, false);
 				}
 			}
+			// The approach curtains part before the ship reaches the mouth. Keep
+			// depth inside the hollow entrance, so the newly revealed throat leads
+			// into storm mist instead of exposing a bright slice of distant sky.
+			float InteriorDensity = 0.00022f;
+			FParse::Value(FCommandLine::Get(), TEXT("DCExitInteriorDensity="), InteriorDensity);
+			if (InteriorDensity > 0.f)
+			{
+				FDCFogBankDesc D;
+				D.bCityLayer = true;
+				D.bHero = true;
+				D.Radii = FVector(45000.f, 28000.f, 26000.f);
+				D.Density = InteriorDensity;
+				D.Size = 8500.f;
+				D.Erode = 0.35f;
+				D.Tint = FLinearColor(0.3f, 0.36f, 0.44f);
+				D.Drift = FVector(-180.f, 100.f, 45.f);
+				if (ADCFogBank* Interior = ADCFogBank::Spawn(World, D, 317))
+				{
+					Register(Interior, FVector(PortalDistance + 40000.f, 0.f, SeaZ + 18000.f),
+						0.f, false, 1.f, 0.f, false);
+					UE_LOG(LogDC, Log, TEXT("City exit: interior mist density %.5f"), InteriorDensity);
+				}
+			}
 		}
 	}
 
