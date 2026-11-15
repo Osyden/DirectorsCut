@@ -11,6 +11,7 @@ out.mkdir(parents=True, exist_ok=True)
 cpp = out / "work.cpp"
 cpp.write_text('#include "' + (root / 'Source/DirectorsCut/DCCrewWorkPolicy.h').as_posix() + '"\n' + r'''
 #include <cstdio>
+#include <cmath>
 #include <initializer_list>
 int main() {
     int failures=0, checks=0;
@@ -31,6 +32,16 @@ int main() {
     for(int stroke=0;stroke<3;++stroke) for(float age=0;age<Duration;age+=1.f/60)
         suppression+=CrossedContact(age,age+1.f/60);
     check(suppression==3,"three fresh strokes provide exactly three suppression contacts");
+    check(PoseWeight(0.f)==0.f && PoseWeight(Duration)==0.f,"stroke endpoints preserve the idle pose");
+    check(PoseWeight(-1.f)==0.f && PoseWeight(10.f)==0.f,"cancelled/inactive pose has no arm offset");
+    check(PoseWeight(Contact)==1.f,"full visible stroke at the unchanged suppression contact");
+    for(float age=0.f;age<Duration;age+=.001f) {
+        const float w=PoseWeight(age), next=PoseWeight(age+.001f);
+        check(w>=0.f && w<=1.f,"pose interpolation never extrapolates the joints");
+        check(std::abs(next-w)<.013f,"final joint blend envelope has no frame-edge snap");
+    }
+    check(PoseWeight(.00001f)<.000001f && PoseWeight(Duration-.00001f)<.000001f,
+          "both sides of the active/inactive branch converge to idle");
     std::printf("CREW_WORK_CPU checks=%d failed=%d\n",checks,failures);
     return failures?1:0;
 }
