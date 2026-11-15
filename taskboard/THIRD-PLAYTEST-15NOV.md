@@ -18,9 +18,11 @@ Main contains the latest human feedback pass. The selected 18:33 music package r
 - `Saved/ThirdPlaytest/Water`: four real shots produce four water contacts, including an upward shot returning to the sea. Contact effect inspected; final splash scale increased from 1.1 to 1.4 afterward and still needs packaged visual confirmation.
 - `Saved/ThirdPlaytest/Landing`: deck pitch reaches -31.4 degrees; one contact at elapsed 29.18 with spray and rebound. First-person frames show the downward deck and landing spray. Ship-view mode is intentionally disabled after the slide begins. This run used no sound, so it does not establish audible mix quality.
 - `Saved/ThirdPlaytest/CannonVerify`: all 14 checks pass, including empty-sky firing, separate player/NPC gun ownership, crew walking to a real target, and wheel clearance. Exit 0.
+- `Saved/ThirdPlaytest/Helm`: positive steering reaches -45.5 degrees wheel angle, reverse reaches +45.5, then returns to center. All 56 pivot samples have hub drift at or below .0001 cm. Lane velocity reverses with inertia.
+- `Saved/ThirdPlaytest/Boss`: actual cannon run interrupts all six attacks, severs two designated limbs, applies exactly eight effective damage, takes zero boss damage, and reaches the scheduled ending. Target bands are absent after interruption in the inspected images; active-band presentation still needs the packaged hold-fire view.
 
 ## Remaining review
 
-Finish helm and boss cue native checks, investigate the reproduced temple edges at full-route second 167, then package and inspect the new candidate. Earlier second-110 tests ruled out neither the later layout nor its stronger artifact. Diagnostic show flags are not shipping changes.
+Finish active boss-cue views and packaged sustained-starboard descent, music/ACE and water checks. Investigate the reproduced temple edges at full-route second 167. Earlier second-110 tests ruled out neither the later layout nor its stronger artifact. Matched second-167 tests show the artifact disappears with all fog disabled, persists with direct lighting or light shafts disabled, and persists in the brighter/flatter image with volumetric fog disabled. All these diagnostic show flags are rejected as shipping settings; the native production fog remains unchanged. Matched environment-specular isolation is the next comparison.
 
 The continued-polish heartbeat is active every 30 minutes in this chat. It must respect ongoing foreground/subagent work and human playtest GPU priority, preserve accepted packages, and keep distribution local.
