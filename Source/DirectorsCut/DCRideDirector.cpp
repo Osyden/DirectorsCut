@@ -403,7 +403,7 @@ void ADCRideDirector::Tick(float DeltaSeconds)
 			case EDCPhase::Slide: Crew->Report(TEXT("The sea is falling away beneath us! Hold on!"), true); break;
 			case EDCPhase::Hell: Crew->Report(TEXT("The water is burning! We are in hell itself!"), true); break;
 			case EDCPhase::Breach: Crew->Report(TEXT("Light ahead! We are breaking through!"), true); break;
-			case EDCPhase::Maelstrom: Crew->Report(TEXT("We're in the caldera! Kraken ahead!"), true); break;
+			case EDCPhase::Maelstrom: Crew->Report(TEXT("We're in the caldera!"), true); break;
 			case EDCPhase::Ending: WhiteOut = 1.f; Crew->Report(TEXT("Clear water, Captain. We made it through."), true); break;
 			default: break;
 			}
