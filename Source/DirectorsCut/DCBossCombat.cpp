@@ -11,6 +11,8 @@
 #include "ProceduralMeshComponent.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
+#include "Camera/CameraActor.h"
+#include "GameFramework/PlayerController.h"
 
 ADCBossCombat::ADCBossCombat()
 {
@@ -33,7 +35,7 @@ void ADCBossCombat::EndPlay(const EEndPlayReason::Type Reason)
 { AHUD::OnHUDPostRender.Remove(HUDHandle); ResetEncounterState(false); Super::EndPlay(Reason); }
 void ADCBossCombat::ClearAttack()
 {
-    for(auto* A:{Attack.Target.Get(),Attack.Marker.Get(),Attack.Projectile.Get()}) if(A) A->Destroy();
+    for(auto* A:{Attack.Target.Get(),Attack.Projectile.Get()}) if(A) A->Destroy();
     Attack=FAttack(); PoseVisible=false;
 }
 void ADCBossCombat::ResetEncounterState(bool ResetScore)
@@ -60,7 +62,7 @@ void ADCBossCombat::AddScore()
 float ADCBossCombat::AcceptTargetHit(float Damage,int32 Event)
 {
     const float T=Director?Director->RideTime-RideOrigin:Deadline;
-    if(!Running || !Director || Director->TimeScale<=0 || Event!=Attack.Index || Attack.Interrupted || Attack.Cancelled) return 0;
+    if(!Running || !Director || Director->TimeScale<=0 || Event!=Attack.Index || Attack.Interrupted || Attack.Cancelled || Attack.Applied) return 0;
     const float Effective=DCBossTimeline::EffectiveDamage(Damage,Attack.Remaining,DCBossTimeline::Open(T,Attack.Start,Attack.Strike,Deadline));
     if(Effective<=0) return 0;
     Attack.Remaining-=Effective; BossDamage+=Effective; HitAt=T;
@@ -74,6 +76,7 @@ float ADCBossCombat::AcceptTargetHit(float Damage,int32 Event)
         }
         else Report(Attack.Kind==DCBossTimeline::EAttack::Mouth?TEXT("Mouth hit! The fire is choking out!"):TEXT("Tentacle broken! The way is clear!"));
         UE_LOG(LogDC,Log,TEXT("BOSS_INTERRUPT event=%d t=%.2f limb=%d"),Event,T,Attack.Limb);
+        if(Stage && Attack.Kind!=DCBossTimeline::EAttack::Mouth) Stage->EmitWaterContact(PoseJoint,2.f);
     }
     AddScore();
     UE_LOG(LogDC,Log,TEXT("BOSS_HIT event=%d t=%.2f effective=%.1f remaining=%.1f total=%.1f"),Event,T,Effective,Attack.Remaining,BossDamage);
@@ -108,14 +111,26 @@ AActor* ADCBossCombat::MakeMesh(UStaticMesh* Mesh,UMaterialInterface* Mat,const 
 void ADCBossCombat::MakeTarget(const FVector& P)
 {
     AActor* A=MakeMesh(Sphere,Glow,P); if(!A) return;
-    A->SetActorScale3D(FVector(Attack.Kind==DCBossTimeline::EAttack::Mouth?2.f:3.5f));
+    // A flattened exposed band sits in the flesh; the generous invisible hit
+    // radius remains forgiving while the visible target avoids a floating orb.
+    A->SetActorScale3D(Attack.Kind==DCBossTimeline::EAttack::Mouth?FVector(2.4f):FVector(2.4f,2.4f,1.f));
     auto* C=A->FindComponentByClass<UStaticMeshComponent>(); C->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
     C->SetCollisionResponseToAllChannels(ECR_Ignore); C->SetCollisionResponseToChannel(ECC_Visibility,ECR_Block);
     if(Glow)
     {
         auto* MID=UMaterialInstanceDynamic::Create(Glow,A); C->SetMaterial(0,MID); Attack.MID=MID;
     }
-    if(auto* T=ADCTreadmill::Get(this)) T->AddExternalHostile(A,450.f,Attack.Remaining,true,FDCExternalDamage::CreateUObject(this,&ADCBossCombat::AcceptTargetHit,Attack.Index));
+    if(Attack.Kind==DCBossTimeline::EAttack::Mouth)
+    {
+        auto* Light=NewObject<UPointLightComponent>(A); Light->SetupAttachment(C);
+        Light->SetMobility(EComponentMobility::Movable); Light->SetLightColor(FLinearColor(1.f,.24f,.035f));
+        Light->SetAttenuationRadius(1800.f); Light->SetCastShadows(false); Light->SetIntensity(0); Light->RegisterComponent();
+    }
+    // Route appendages travel roughly 8m/s through the ship's frame. Allow
+    // for that travel during a staggered cannon volley; stationary slam and
+    // mouth targets retain the tighter hit region.
+    const float HitRadius=Attack.Kind==DCBossTimeline::EAttack::Obstacle?1400.f:450.f;
+    if(auto* T=ADCTreadmill::Get(this)) T->AddExternalHostile(A,HitRadius,Attack.Remaining,true,FDCExternalDamage::CreateUObject(this,&ADCBossCombat::AcceptTargetHit,Attack.Index));
     Attack.Target=A;
 }
 void ADCBossCombat::StartAttack(int32 Index,float Start,const FTransform& Arena,float Radius,bool Reconstruct)
@@ -128,7 +143,7 @@ void ADCBossCombat::StartAttack(int32 Index,float Start,const FTransform& Arena,
     if(Attack.Strike>=Deadline) { ClearAttack(); return; }
     if(Attack.Kind==DCBossTimeline::EAttack::Mouth && !CanReach(Mouth()))
     {
-        UE_LOG(LogDC,Log,TEXT("BOSS_CHARGE_SKIPPED event=%d mouth outside usable battery arc"),Index);
+        UE_LOG(LogDC,Log,TEXT("BOSS_CHARGE_SKIPPED event=%d mouth=%s outside usable battery arc"),Index,*Mouth().ToCompactString());
         ClearAttack(); return;
     }
     const float Offset=FMath::Clamp(Stage->GetRouteOffset(),-6500.f,6500.f);
@@ -141,18 +156,13 @@ void ADCBossCombat::StartAttack(int32 Index,float Start,const FTransform& Arena,
     if(Now<Attack.Strike) MakeTarget(Attack.Kind==DCBossTimeline::EAttack::Mouth?Mouth():PoseJoint);
     if(Attack.Kind==DCBossTimeline::EAttack::Obstacle)
     {
-        Attack.Marker=MakeMesh(Sphere,Glow,Attack.Previous);
-        if(auto* M=Attack.Marker.Get())
-        {
-            M->SetActorScale3D(FVector(25.f,25.f,.3f));
-            auto* MID=UMaterialInstanceDynamic::Create(Glow,M); M->FindComponentByClass<UStaticMeshComponent>()->SetMaterial(0,MID);
-            MID->SetVectorParameterValue(TEXT("Color"),FLinearColor(.1f,.6f,.8f));
-        }
+        // The tell comes from disturbed water at the committed root, not a neon disk.
+        Stage->EmitWaterContact(Attack.Previous,1.5f);
         Report(Attack.Side>0?TEXT("Tentacle ahead! Clear to port, or shoot the bright joint!"):TEXT("Tentacle ahead! Clear to starboard, or shoot the bright joint!"));
     }
     else if(Attack.Kind==DCBossTimeline::EAttack::Slam)
         Report(Attack.Side<0?TEXT("Port tentacle is drawing back! Shoot its joint before it slams!"):TEXT("Starboard tentacle is drawing back! Shoot its joint before it slams!"));
-    else Report(TEXT("Its mouth is charging! Port battery, fire into the glow!"));
+    else Report(Mouth().Y<0?TEXT("Its mouth is charging! Port battery, fire into the glow!"):TEXT("Its mouth is charging! Starboard battery, fire into the glow!"));
     UE_LOG(LogDC,Log,TEXT("BOSS_ATTACK event=%d kind=%d tell=%.2f strike=%.2f"),Index,int(Attack.Kind),Start,Attack.Strike);
 }
 void ADCBossCombat::Impact(const FVector& Contact,bool Slam)
@@ -184,15 +194,17 @@ void ADCBossCombat::UpdateAttack(float DT,const FTransform& Arena)
         const FVector2D Tangent=DCMaelstromRoute::Tangent(Attack.Strike,Stage->Radius);
         const FVector Along=Arena.TransformVectorNoScale(FVector(Tangent.X,Tangent.Y,0));
         const FVector Across=Arena.TransformVectorNoScale(FVector(-Tangent.Y,Tangent.X,0));
-        const float Rise=FMath::SmoothStep(0.f,3.f,Age);
-        PoseBase=Anchor+Across*(Side*8000.f)-FVector(0,0,5000.f);
-        PoseJoint=Anchor+Across*(Side*6200.f)+FVector(0,0,1400.f);
-        PoseBend=Anchor+Across*(Side*5500.f)-Along*1500.f+FVector(0,0,2600.f);
-        PoseTip=Anchor+FVector(0,0,1000.f);
+        const float Rise=FMath::SmoothStep(1.f,4.f,Age);
+        PoseBase=Anchor+Across*(Side*6500.f)-FVector(0,0,5000.f);
+        // Keep the joint in the forward view and below the gun's elevation
+        // limit; the tall curved shaft supplies the silhouette above the sails.
+        PoseJoint=Anchor+Across*(Side*3500.f)+Along*1000.f+FVector(0,0,1400.f);
+        PoseBend=Anchor+Across*(Side*4500.f)-Along*500.f+FVector(0,0,6500.f);
+        // Uncoil after the initial water tell, then hold the obstruction steady.
+        PoseTip=Anchor+Across*(Side*1800.f*(1.f-Rise))+FVector(0,0,1000.f+900.f*FMath::Sin(Rise*UE_PI));
         const float Submerge=(1.f-Rise)*6000.f+Withdraw*6500.f;
         PoseJoint.Z-=Submerge; PoseBend.Z-=Submerge; PoseTip.Z-=Submerge;
         PoseVisible=Withdraw<1.f;
-        if(auto* M=Attack.Marker.Get()) { M->SetActorLocation(Anchor+FVector(0,0,60)); M->SetActorHiddenInGame(Attack.Interrupted); }
         const FVector Bias=Across*(Side*DCBossTimeline::ObstacleSideBias);
         if(!Attack.Applied && !Attack.Interrupted && !Attack.Cancelled && DT>0 && Now>=Attack.Strike-3.f && Now<=Attack.Strike+3.f &&
             DCBossTimeline::SweptHull(Attack.Previous.X+Bias.X,Attack.Previous.Y+Bias.Y,Anchor.X+Bias.X,Anchor.Y+Bias.Y,DCBossTimeline::ObstacleHalfLength,DCBossTimeline::ObstacleHalfWidth))
@@ -205,9 +217,11 @@ void ADCBossCombat::UpdateAttack(float DT,const FTransform& Arena)
         PoseBase=FVector(2000,Side*10000,Water-5000);
         PoseJoint=FVector(2200,Side*7000,Water+1400);
         PoseBend=FVector(-1500,Side*8500,Water+3300);
-        const FVector Raised(800,Side*6500,Water+2500);
+        const float Tension=FMath::SmoothStep(Attack.Start+2.f,Attack.Strike-1.f,Now);
+        PoseBend.Z+=Tension*550.f;
+        const FVector Raised(800-500.f*Tension,Side*(6500.f+350.f*Tension),Water+2500.f+900.f*Tension);
         const FVector Contact=Director->DeckToWorld(FVector(800,Side*650,620));
-        const float Swing=FMath::SmoothStep(Attack.Strike-1.f,Attack.Strike,Now);
+        const float Swing=FMath::Square(FMath::Clamp(Now-(Attack.Strike-1.f),0.f,1.f));
         PoseTip=FMath::Lerp(Raised,Contact,Attack.Interrupted?0.f:Swing);
         if(Attack.Interrupted)
         {
@@ -254,16 +268,41 @@ void ADCBossCombat::UpdateAttack(float DT,const FTransform& Arena)
             }
         }
     }
-    if(Attack.Interrupted || Attack.Cancelled || Now>=Attack.Strike)
+    if(Attack.Interrupted || Attack.Cancelled || Attack.Applied || Now>=Attack.Strike)
     { if(auto* T=Attack.Target.Get()) T->Destroy(); Attack.Target.Reset(); }
-    else if(auto* T=Attack.Target.Get()) T->SetActorLocation(Attack.Kind==DCBossTimeline::EAttack::Mouth?Mouth():PoseJoint);
+    else if(auto* T=Attack.Target.Get())
+    {
+        T->SetActorLocation(Attack.Kind==DCBossTimeline::EAttack::Mouth?Mouth():PoseJoint);
+        if(Attack.Kind!=DCBossTimeline::EAttack::Mouth)
+            T->SetActorRotation(FRotationMatrix::MakeFromZ((PoseJoint-PoseBend).GetSafeNormal()).Rotator());
+        if(auto* Light=T->FindComponentByClass<UPointLightComponent>()) Light->SetIntensity(15000.f+85000.f*FMath::Square(GetCharge()));
+        // Review-only mouse aim. Real play has no camera steering or auto-aim.
+        if(FParse::Param(FCommandLine::Get(),TEXT("DCBossReviewAim")))
+            if(auto* PC=GetWorld()->GetFirstPlayerController())
+                if(auto* Camera=Cast<ACameraActor>(PC->GetViewTarget()))
+                    if(Camera->GetActorRightVector().X*T->GetActorLocation().Y<0)
+                    {
+                        FRotator Aim=(T->GetActorLocation()-Camera->GetActorLocation()).Rotation();
+                        const float SideYaw=T->GetActorLocation().Y<0?-90.f:90.f;
+                        Aim.Yaw=SideYaw+FMath::Clamp(FMath::FindDeltaAngleDegrees(SideYaw,Aim.Yaw),-62.f,62.f);
+                        Aim.Pitch=FMath::Clamp(Aim.Pitch,-62.f,12.f);
+                        Camera->SetActorRotation(Aim);
+                    }
+    }
     if(auto* MID=Attack.MID.Get())
     {
-        const float Pulse=Now-HitAt<.2f?3.f:(Attack.Kind==DCBossTimeline::EAttack::Mouth?.4f+GetCharge()*1.6f:1.f);
+        const float Urgency=FMath::SmoothStep(Attack.Start,Attack.Strike,Now);
+        const float Pulse=Now-HitAt<.2f?3.f:(Attack.Kind==DCBossTimeline::EAttack::Mouth?.4f+GetCharge()*1.6f:
+            .8f+.25f*FMath::Sin(Now*(4.f+Urgency*5.f))+Urgency*.45f);
         MID->SetVectorParameterValue(TEXT("Color"),FLinearColor(1.2f,.28f,.07f)*Pulse);
     }
     if(PoseVisible && Now>Attack.LastSpray+.4f)
-    { Stage->EmitWaterContact(PoseBase,.7f); Attack.LastSpray=Now; }
+    {
+        Stage->EmitWaterContact(PoseBase,Age<4.f?1.2f:.45f);
+        if(Attack.Kind==DCBossTimeline::EAttack::Obstacle && Age<4.f)
+            Stage->EmitWaterContact(Arena.TransformPosition(Attack.Anchor),1.f);
+        Attack.LastSpray=Now;
+    }
 }
 bool ADCBossCombat::GetAppendagePose(FVector& Base,FVector& Bend,FVector& Joint,FVector& Tip) const
 { Base=PoseBase; Bend=PoseBend; Joint=PoseJoint; Tip=PoseTip; return PoseVisible; }
@@ -373,15 +412,23 @@ void ADCBossCombat::DrawStatus(AHUD* HUD,UCanvas* Canvas)
     if(!HUD || HUD->GetWorld()!=GetWorld() || !Canvas || !GEngine || Now<DCBossTimeline::CombatStart || (!Running && !Finished) || FParse::Param(FCommandLine::Get(),TEXT("DCNoHUD"))) return;
     const float S=FMath::Clamp(Canvas->SizeY/900.f,.7f,1.5f),X=Canvas->SizeX*.5f-250.f*S,Y=90.f*S;
     HUD->DrawRect(FLinearColor(.015f,.025f,.035f,.8f),X-12.f*S,Y-8.f*S,520.f*S,78.f*S);
-    HUD->DrawText(FString::Printf(TEXT("%s  %.0fs  |  DAMAGE %.0f  SHIP -%.1f  SCORE %d"),Finished?TEXT("DEFEATED"):TEXT("KRAKEN"),FMath::Max(0.f,Deadline-Now),BossDamage,ShipDamage,PerformanceScore),FLinearColor(1,.87f,.55f),X,Y,GEngine->GetSmallFont(),S);
+    HUD->DrawText(FString::Printf(TEXT("%s   |   %d / 2 LIMBS SEVERED"),Finished?TEXT("KRAKEN DEFEATED"):TEXT("KRAKEN"),int(Severed[0])+int(Severed[1])),FLinearColor(1,.87f,.55f),X,Y,GEngine->GetSmallFont(),S*1.3f);
     FString Cue=TEXT("Watch for tentacles. Ready the batteries and repair crew.");
     if(Attack.Index!=INDEX_NONE && !Attack.Cancelled)
     {
         if(Attack.Interrupted) Cue=Attack.Kind==DCBossTimeline::EAttack::Slam?TEXT("TENTACLE SEVERED - this limb stays broken"):TEXT("ATTACK INTERRUPTED");
-        else if(Attack.Kind==DCBossTimeline::EAttack::Obstacle) Cue=FString::Printf(TEXT("TENTACLE AHEAD: steer %s or shoot its joint  %.0fs"),Attack.Side>0?TEXT("PORT"):TEXT("STARBOARD"),FMath::Max(0.f,Attack.Strike-Now));
+        else if(Attack.Applied) Cue=Attack.Kind==DCBossTimeline::EAttack::Slam?TEXT("SLAM HIT - repair the hull and rigging"):TEXT("IMPACT - check the ship and ready the crew");
+        else if(Attack.Kind==DCBossTimeline::EAttack::Obstacle) Cue=FString::Printf(TEXT("TENTACLE AHEAD: steer %s or shoot its joint"),Attack.Side>0?TEXT("PORT"):TEXT("STARBOARD"));
         else if(Attack.Kind==DCBossTimeline::EAttack::Slam) Cue=FString::Printf(TEXT("%s SLAM: shoot the joint before impact  %.0fs"),Attack.Side<0?TEXT("PORT"):TEXT("STARBOARD"),FMath::Max(0.f,Attack.Strike-Now));
         else Cue=Attack.Released?TEXT("FIRE INCOMING - turn clear, ready the buckets"):FString::Printf(TEXT("MOUTH CHARGE: fire into the glow  %.0fs"),FMath::Max(0.f,Attack.Strike-Now));
     }
     if(Finished) Cue=FString::Printf(TEXT("%d limbs severed   %d attacks interrupted"),int(Severed[0])+int(Severed[1]),Interrupts);
-    HUD->DrawText(Cue,FLinearColor::White,X,Y+28.f*S,GEngine->GetSmallFont(),S);
+    HUD->DrawText(Cue,FLinearColor::White,X,Y+28.f*S,GEngine->GetSmallFont(),S*1.3f);
+    if(Attack.Index!=INDEX_NONE && !Attack.Cancelled && !Attack.Interrupted && !Attack.Applied && Now<Attack.Strike)
+    {
+        const float Contact=Attack.Strike-(Attack.Kind==DCBossTimeline::EAttack::Obstacle?3.f:0.f);
+        const float Remaining=FMath::Clamp((Contact-Now)/(Contact-Attack.Start),0.f,1.f);
+        HUD->DrawRect(FLinearColor(.18f,.16f,.13f),X,Y+56.f*S,490.f*S,4.f*S);
+        HUD->DrawRect(FLinearColor(1.f,.45f,.12f),X,Y+56.f*S,490.f*S*Remaining,4.f*S);
+    }
 }

@@ -25,7 +25,7 @@
 namespace
 {
 	constexpr int32 ArmRings = 96;
-	constexpr int32 ArmSides = 24;
+	constexpr int32 ArmSides = 32; // samples both sucker rows at .1875 and .3125 around the tube
 	constexpr float FirstPeekAt = 36.f;
 	constexpr float ArmWidthScale = 0.25f;
 }
@@ -56,7 +56,7 @@ ADCLeviathan::ADCLeviathan()
 void ADCLeviathan::BeginPlay()
 {
 	Super::BeginPlay();
-    const bool Kraken=FParse::Param(FCommandLine::Get(),TEXT("DCBossKraken"));
+    const bool Kraken=!FParse::Param(FCommandLine::Get(),TEXT("DCBossClaw"));
     const TCHAR* BodyPath=Kraken?TEXT("/Game/Kraken/Meshes/KRAKEN.KRAKEN"):TEXT("/Game/Fab/Claw_Kaiju_Monster/ClawKaiju_allAnimation.ClawKaiju_allAnimation");
 	if (USkeletalMesh* Mesh = LoadObject<USkeletalMesh>(nullptr,BodyPath,nullptr,LOAD_NoWarn|LOAD_Quiet))
 	{
@@ -79,11 +79,9 @@ void ADCLeviathan::BeginPlay()
     Combat=GetWorld()->SpawnActor<ADCBossCombat>(FVector::ZeroVector,FRotator::ZeroRotator,CombatParams);
 	PainAudio->SetSound(LoadObject<USoundBase>(nullptr, TEXT("/Game/Sonniss/kraken_pain.kraken_pain"),
 		nullptr, LOAD_NoWarn | LOAD_Quiet));
-	if (UMaterialInterface* Skin = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Maelstrom/M_LeviathanWet.M_LeviathanWet")))
+	if (UMaterialInterface* Skin = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Boss/M_BossSkin.M_BossSkin")))
 	{
 		ArmMaterial = UMaterialInstanceDynamic::Create(Skin, this);
-		ArmMaterial->SetVectorParameterValue(TEXT("Skin"), FLinearColor(0.035f, 0.048f, 0.045f));
-		ArmMaterial->SetVectorParameterValue(TEXT("Belly"), FLinearColor(0.22f, 0.11f, 0.055f));
 	}
 	for (int32 Ring = 0; Ring < ArmRings - 1; ++Ring)
 	{
@@ -203,17 +201,17 @@ void ADCLeviathan::UpdateBody(float Elapsed,const FTransform& Arena)
     const auto* Stage=ADCMaelstrom::Get(this);
     const float Radius=Stage?Stage->Radius:160000.f;
     // Swim around the inner lake on an authored orbit, independent of the helm offset.
-    // A 30m reference footprint plus animation reserve stays clear even at full inward helm.
+    // Bound the reference footprint before the authored animation is applied.
     const FVector2D Local=DCMaelstromRoute::Point(Elapsed,Radius,-18000.f);
     FVector Anchor=Arena.TransformPosition(FVector(Local.X,Local.Y,-40000.f));
     const float Water=Stage?Stage->SampleSurfaceWorld(Anchor):ShipPosition.Z;
     const float Horizontal=FVector2D(MeshBoundsExtent.X,MeshBoundsExtent.Y).Size();
-    const float Scale=FMath::Min(5000.f/FMath::Max(1.f,static_cast<float>(MeshBoundsExtent.Z)*2.f),3000.f/FMath::Max(1.f,Horizontal));
+    const float Scale=FMath::Min(4500.f/FMath::Max(1.f,static_cast<float>(MeshBoundsExtent.Z)*2.f),4500.f/FMath::Max(1.f,Horizontal));
     int32 Pose=0; float PoseTime=Elapsed-36.f;
     for(const auto& Event:DCBossTimeline::Events)
     {
         const float Since=Elapsed-DCBossTimeline::At(Event.At,FinaleAt);
-        if(Event.Kind==DCBossTimeline::EAttack::Slam && Since>=0.f && Since<DCBossTimeline::SlamTell+1.f)
+        if(Event.Kind==DCBossTimeline::EAttack::Slam && !(Combat && Combat->IsLimbSevered(Event.Limb)) && Since>=0.f && Since<DCBossTimeline::SlamTell+1.f)
         { Pose=2; PoseTime=Since/DCBossTimeline::SlamTell*(Poses[2]?Poses[2]->GetPlayLength():1.f); }
     }
     if(Combat && Combat->IsMouthCharging()) { Pose=1; PoseTime=Poses[1]?Poses[1]->GetPlayLength()*.45f:0.f; }
@@ -230,21 +228,26 @@ void ADCLeviathan::UpdateBody(float Elapsed,const FTransform& Arena)
     if(Body->DoesSocketExist(TEXT("KRAKEN_BEAK_UPPER")))
     {
         const FVector LocalMouth=(Body->GetSocketTransform(TEXT("KRAKEN_BEAK_UPPER"),RTS_Component).GetLocation()
-            +Body->GetSocketTransform(TEXT("KRAKEN_BEAK_LOWER"),RTS_Component).GetLocation())*.5f-MeshBoundsCenter;
+            +Body->GetSocketTransform(TEXT("KRAKEN_BEAK_LOWER"),RTS_Component).GetLocation())*.5f
+            -Body->GetSocketTransform(TEXT("KRAKEN_SHELL"),RTS_Component).GetLocation();
         MouthBearing=FMath::RadiansToDegrees(FMath::Atan2(LocalMouth.Y,LocalMouth.X));
     }
     const FQuat Facing=FRotator(0.f,(ShipPosition-Anchor).Rotation().Yaw-MouthBearing,0.f).Quaternion();
     const float Rise=FMath::SmoothStep(36.f,44.f,Elapsed);
     const float Sink=DefeatedAt>=0.f?FMath::SmoothStep(0.f,9.f,Elapsed-DefeatedAt):0.f;
-    FVector Position=Anchor-Facing.RotateVector(FVector(MeshBoundsCenter.X,MeshBoundsCenter.Y,0.f)*Scale);
+    // Anchor the torso, not the tentacle-expanded bounds. Otherwise facing the
+    // ship moves the actual mouth backwards beyond cannon range.
+    const FVector Torso=Body->DoesSocketExist(TEXT("KRAKEN_SHELL"))?
+        Body->GetSocketTransform(TEXT("KRAKEN_SHELL"),RTS_Component).GetLocation():MeshBoundsCenter;
+    FVector Position=Anchor-Facing.RotateVector(FVector(Torso.X,Torso.Y,0.f)*Scale);
     Position.Z=Water-(MeshBoundsCenter.Z+MeshBoundsExtent.Z*.3f)*Scale;
     Body->SetWorldLocationAndRotation(Position,Facing); Body->SetWorldScale3D(FVector(Scale));
     // Put the actual mouth above the lake and within a flat broadside arc; never target the crater floor.
-    Body->AddWorldOffset(FVector(0,0,Water+1200.f-GetMouthPosition().Z-(1.f-Rise+Sink)*7000.f));
+    Body->AddWorldOffset(FVector(0,0,Water+650.f-GetMouthPosition().Z-(1.f-Rise+Sink)*7000.f));
     Body->SetVisibility(Elapsed>=36.f && Sink<1.f,true); Body->SetHiddenInGame(Elapsed<36.f || Sink>=1.f,true);
     for(int32 I=0;I<2;++I)
     {
-        const FName Bone=I==0?TEXT("KRAKEN_ARM_L"):TEXT("KRAKEN_ARM_R");
+        const FName Bone=I==0?TEXT("KRAKEN_TENTACLE_BASE_H_1"):TEXT("KRAKEN_TENTACLE_BASE_B_1");
         if(Body->GetBoneIndex(Bone)==INDEX_NONE) continue;
         if(Combat && Combat->IsLimbSevered(I)) Body->HideBoneByName(Bone,EPhysBodyOp::PBO_None);
         else Body->UnHideBoneByName(Bone);
@@ -278,7 +281,7 @@ void ADCLeviathan::BuildArm(int32 Index, const FVector& Base, const FVector& Ben
 	for (int32 Ring = 0; Ring < ArmRings; ++Ring)
 	{
 		const float U = static_cast<float>(Ring) / (ArmRings - 1);
-		constexpr float JointU = 0.86f;
+		constexpr float JointU = 0.72f;
 		FVector Point;
 		if (U < JointU)
 		{
@@ -379,7 +382,13 @@ void ADCLeviathan::BuildArm(int32 Index, const FVector& Base, const FVector& Ben
 			const FVector Radial = Across * FMath::Cos(Angle) + Up * FMath::Sin(Angle);
 			const FVector Normal = (Radial - Tangent * WidthSlope).GetSafeNormal();
 			const FVector SurfaceTangent = (Tangent - Normal * FVector::DotProduct(Tangent, Normal)).GetSafeNormal();
-			Vertices.Add(MeshTransform.InverseTransformPosition(Points[Ring] + Radial * Width));
+            // Raised sucker rims match the two rows in the wet-skin material.
+            // Actual relief breaks up the smooth hose silhouette in grazing light.
+            const float Row=FMath::Min(FMath::Abs(Around-.19f),FMath::Abs(Around-.31f));
+            const float Along=(FMath::Frac(Distance/700.f*2.f)-.5f)*2.f;
+            const float Cup=FMath::Sqrt(Along*Along+FMath::Square(Row*65.f));
+            const float Rim=FMath::Exp(-FMath::Square((Cup-.62f)*6.f));
+			Vertices.Add(MeshTransform.InverseTransformPosition(Points[Ring] + Radial * Width*(1.f+.24f*Rim)));
 			Normals.Add(MeshTransform.InverseTransformVectorNoScale(Normal));
 			Tangents.Add(FProcMeshTangent(MeshTransform.InverseTransformVectorNoScale(SurfaceTangent), true));
 			UVs.Add(FVector2D(Distance / 700.f, Around));

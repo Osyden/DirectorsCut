@@ -45,7 +45,7 @@ private:
         bool Applied=false,Interrupted=false,Cancelled=false,Released=false;
         FVector Anchor=FVector::ZeroVector,Previous=FVector::ZeroVector;
         FVector FireFrom=FVector::ZeroVector,FireTo=FVector::ZeroVector;
-        TWeakObjectPtr<AActor> Target,Marker,Projectile;
+        TWeakObjectPtr<AActor> Target,Projectile;
         TWeakObjectPtr<UMaterialInstanceDynamic> MID;
     } Attack;
     struct FSplinter { TWeakObjectPtr<AActor> Visual; FVector From,Velocity; float At; };
