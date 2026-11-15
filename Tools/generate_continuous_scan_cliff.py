@@ -78,6 +78,35 @@ def lookup(tile, uv, clamp=False):
         +tile[jy, jx]*fx*fy)
 
 
+def intermediate_relief(tile, u, z):
+    """Authored 15–50 m rock forms from three nonrepeating scan windows.
+
+    This explicitly enlarges measured geometry, not the fine PBR textures.
+    Positive values project toward the crater; the underlying U/Z chart stays
+    single-valued so radial setbacks can form overhangs without folded strips.
+    """
+    result = np.zeros_like(u, dtype=float)
+    for scale, degrees, ox, oz, weight in [(3.2,17,82,-58,.72),
+            (5.8,-23,241,-45,.40),(2.1,8,115,-82,.18)]:
+        angle = np.deg2rad(degrees)
+        sx = ox+(u*np.cos(angle)+z*np.sin(angle))/scale
+        sz = oz+(-u*np.sin(angle)+z*np.cos(angle))/scale
+        result += weight*lookup(tile,np.c_[sx/497.418836818384,(sz+200)/280],True)
+    return np.clip(result*22.,-12.,12.)
+
+
+def midscale_profile(tile, u, t, toe_radius, toe_z, span):
+    radius, crest = macro_profile(u,t,toe_radius,span)
+    crest_radius, _ = macro_profile(u,np.ones_like(t),toe_radius,span)
+    # A small scan-derived crest variation participates in the real silhouette.
+    crest += .30*intermediate_relief(tile,u,crest)
+    z = toe_z+(crest-toe_z)*t
+    relief = intermediate_relief(tile,u,z)*smooth(t/.16)
+    radius -= relief
+    crest_radius -= intermediate_relief(tile,u,crest)
+    return radius,crest,crest_radius,relief
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--ring', type=Path, required=True)
@@ -87,6 +116,7 @@ def main():
     p.add_argument('--tile-height-m', type=float, default=5.5125)
     p.add_argument('--edge-m', type=float, default=.85)
     p.add_argument('--unique-atlas', action='store_true', help='One full-pilot U/Z atlas, Z range−200..80m')
+    p.add_argument('--midscale-rock', action='store_true', help='Add nonperiodic scan-derived intermediate rock forms')
     a = p.parse_args()
     if a.output.exists() or 'saved' not in [x.lower() for x in a.output.resolve().parts]:
         p.error('Use a new ignored Saved directory')
@@ -136,6 +166,8 @@ def main():
     if a.unique_atlas:
         radius,crest=macro_profile(u,t,toe_radius,span)
         crest_radius,_=macro_profile(u,np.ones_like(t),toe_radius,span)
+        if a.midscale_rock:
+            radius,crest,crest_radius,mid_relief=midscale_profile(depth,u,t,toe_radius,toe[:,2],span)
         z=toe[:,2]+(crest-toe[:,2])*t
     else:
         crest_radius=toe_radius+setback
@@ -180,6 +212,10 @@ def main():
     if a.unique_atlas:
         meta['uv_mapping']='U=arc/497.418836818384; V=(Z+.35*max(0,R−localCrestR)+200)/280; +V=source+Z; no phase or repeated face UV'
         meta['unique_atlas']=True
+    if a.midscale_rock:
+        meta['midscale_rock']=dict(mapping='intermediate_relief on three unique scan windows; fine PBR unchanged',
+            scales=[3.2,5.8,2.1],limit_m=12.,applied_range_m=[float(mid_relief.min()),float(mid_relief.max())],
+            crest_height_factor=.30,authoring='Deliberate physical enlargement of scanned geometry, not erosion simulation')
     a.output.mkdir(parents=True)
     for name, v in [('baseline',old),('candidate',final)]:
         np.savez_compressed(a.output/(name+'.npz'),vertices_m=v,triangles=triangles,uv0=uv,
@@ -199,6 +235,8 @@ def main():
     fcr=np.linalg.norm(ftoe[:,:2],axis=1)+curve(fu,knots,np.array([79.,62.,76.,67.,82.,75.]))
     if a.unique_atlas:
         fcr,_=macro_profile(fu,np.ones_like(fu),np.linalg.norm(ftoe[:,:2],axis=1),span)
+        if a.midscale_rock:
+            _,_,fcr,_=midscale_profile(depth,fu,np.ones_like(fu),np.linalg.norm(ftoe[:,:2],axis=1),ftz,span)
         fm=smooth(np.minimum(fu,span-fu)/28.)
     full['uv0'] = uv_at(fv,c0,a.tile_width_m,a.tile_height_m,a.unique_atlas,fcr).astype(np.float32)
     rgba = np.zeros((len(fv),4),np.float32);rgba[:,0]=fm;rgba[:,3]=1.
