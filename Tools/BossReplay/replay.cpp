@@ -22,11 +22,18 @@ int main()
     using namespace DCBossTimeline;
     try
     {
-        Check(Score(20,2,6,0)==1000,"Perfect score is capped at 1000");
+        Check(Score(8,2,6,0)==1000,"Perfect score is capped at 1000");
         Check(Score(20,200,200,10)==800,"Add farming capped, cumulative damage penalized");
         Check(EffectiveDamage(100,2,true)==2,"Overkill never scores");
         Check(EffectiveDamage(-1,8,true)==0,"Negative damage rejected");
         Check(EffectiveDamage(1,8,false)==0,"Closed targets never score");
+        for(const auto& E:Events)
+        {
+            // Two seconds to recognize/aim, up to one reload already in progress,
+            // three seconds between shots, and the cannon's maximum three-second flight.
+            const float LastImpact=2.f+3.f+(Health(E.Kind)-1.f)*3.f+3.f;
+            Check(LastImpact<Tell(E.Kind),"A solo individual cannon can interrupt within the warning");
+        }
         Check(SweptHull(4000,0,-4000,0,3000,1700),"Swept contact catches frame crossings");
         Check(!SweptHull(4000,1800,-4000,1800,3000,1700),"Clear lane stays safe");
         for(float Deadline:{140.f,160.f,180.f})

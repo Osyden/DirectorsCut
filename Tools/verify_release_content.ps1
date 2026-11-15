@@ -15,6 +15,20 @@ $required = @(
 )
 $required += @('Captain','Finch','Marlow','Odessa') | ForEach-Object { "PirateCast/Assembled/$_/BP_$_.uasset" }
 $required += @('Rex','Duncan','Ruby') | ForEach-Object { "DC/UI/T_Crew_$_.uasset" }
+$required += @('Kraken/Meshes/KRAKEN.uasset','DC/Boss/M_BossSkin.uasset','DC/Boss/M_BossTell.uasset')
+$required += @('idle','smashAttackForward','smashAttack','getHit','death') | ForEach-Object { "Kraken/Animations/KRAKEN_$_.uasset" }
+$runtime = Join-Path $root 'Content/DC/Maelstrom/GeneratedCliffPreview/Runtime'
+$arena = Get-Content -LiteralPath (Join-Path $runtime 'CompleteArena.json') -Raw | ConvertFrom-Json
+$import = Get-Content -LiteralPath (Join-Path $runtime 'CliffLandformPreviewImport.json') -Raw | ConvertFrom-Json
+if (!$arena.normal_game_enabled -or !$arena.caldera_lake -or $arena.cliff_fbx_sha256 -ne $import.source_sha256 -or $arena.source_candidate_sha256 -ne $import.source_candidate_sha256) {
+    throw 'Caldera runtime marker does not match the installed active terrain import.'
+}
+foreach ($assetPath in @($import.asset,$import.material,$arena.material)) {
+    $required += ($assetPath.Split('.')[0] -replace '^/Game/','') + '.uasset'
+}
+foreach ($runtimeFile in @('CliffPreviewSurface.bin','CliffPreviewSupports.json','CliffPreviewSourceAudit.json','CalderaShoreMist.json')) {
+    if (!(Test-Path -LiteralPath (Join-Path $runtime $runtimeFile))) { throw "Missing caldera runtime file: $runtimeFile" }
+}
 $missing = @()
 foreach ($asset in $required) {
     $file = Join-Path $root "Content/$asset"

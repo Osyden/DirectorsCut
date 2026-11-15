@@ -419,7 +419,7 @@ void ADCBossCombat::DrawStatus(AHUD* HUD,UCanvas* Canvas)
         if(Attack.Interrupted) Cue=Attack.Kind==DCBossTimeline::EAttack::Slam?TEXT("TENTACLE SEVERED - this limb stays broken"):TEXT("ATTACK INTERRUPTED");
         else if(Attack.Applied) Cue=Attack.Kind==DCBossTimeline::EAttack::Slam?TEXT("SLAM HIT - repair the hull and rigging"):TEXT("IMPACT - check the ship and ready the crew");
         else if(Attack.Kind==DCBossTimeline::EAttack::Obstacle) Cue=FString::Printf(TEXT("TENTACLE AHEAD: steer %s or shoot its joint"),Attack.Side>0?TEXT("PORT"):TEXT("STARBOARD"));
-        else if(Attack.Kind==DCBossTimeline::EAttack::Slam) Cue=FString::Printf(TEXT("%s SLAM: shoot the joint before impact  %.0fs"),Attack.Side<0?TEXT("PORT"):TEXT("STARBOARD"),FMath::Max(0.f,Attack.Strike-Now));
+        else if(Attack.Kind==DCBossTimeline::EAttack::Slam) Cue=FString::Printf(TEXT("%s SLAM: joint needs %.0f hit(s)  %.0fs"),Attack.Side<0?TEXT("PORT"):TEXT("STARBOARD"),FMath::CeilToFloat(Attack.Remaining),FMath::Max(0.f,Attack.Strike-Now));
         else Cue=Attack.Released?TEXT("FIRE INCOMING - turn clear, ready the buckets"):FString::Printf(TEXT("MOUTH CHARGE: fire into the glow  %.0fs"),FMath::Max(0.f,Attack.Strike-Now));
     }
     if(Finished) Cue=FString::Printf(TEXT("%d limbs severed   %d attacks interrupted"),int(Severed[0])+int(Severed[1]),Interrupts);
