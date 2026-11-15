@@ -103,6 +103,10 @@ try:
             data["parent"] = path(parent)
             data["instance_properties"] = props(material, ["base_property_overrides", "scalar_parameter_values",
                 "vector_parameter_values", "texture_parameter_values"])
+            data["base_overrides"] = props(material.get_editor_property("base_property_overrides"),
+                ["override_blend_mode", "blend_mode", "override_shading_model", "shading_model",
+                 "override_two_sided", "two_sided", "override_opacity_mask_clip_value", "opacity_mask_clip_value",
+                 "override_dithered_lod_transition", "dithered_lod_transition"])
             if parent:
                 pending.append(parent)
         if isinstance(material, unreal.MaterialInstanceConstant):
@@ -123,7 +127,7 @@ try:
     for name, base in sorted(bases.items()):
         emit("base", path=name, properties=props(base, ["blend_mode", "shading_model", "two_sided",
             "opacity_mask_clip_value", "dithered_lod_transition", "use_material_attributes",
-            "disable_depth_test", "apply_fogging", "compute_fog_per_pixel", "translucency_lighting_mode",
+            "disable_depth_test", "use_translucency_vertex_fog", "apply_cloud_fogging", "compute_fog_per_pixel", "translucency_lighting_mode",
             "enable_responsive_aa", "output_translucent_velocity", "pixel_depth_offset_mode",
             "max_world_position_offset_displacement"]))
         export_graph(base)

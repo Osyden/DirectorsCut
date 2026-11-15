@@ -62,3 +62,22 @@ Source establishes that `ADCGameMode` spawns `/Game/Brigantine/BP/BP_Brigantine`
 
 Only script syntax/source checks have been run for the new sail audit; its Unreal execution and a proven visual fix remain pending. Packaging should not be held for additional speculative global experiments.
 
+## Constructed ship audit, 19:36
+
+Root successfully ran the read-only audit in NullRHI. `Saved/AuditShipSailFog.log` and `Saved/ShipSailFogAudit/manifest.json` record 81 mesh components, 30 assigned materials and four base materials, plus exported graph text. All nine sail skeletal components use slot 0 `MI_Sail_2-wp` with no constructed override. Their names are `SK_BSTDS_Brigantine`, `SK_BPSTDS_Brigantine`, `SK_BPSTMS_Brigantine`, `SK_FMS_Brigantine`, `SK_FTS_BrigantineFTS`, `SK_FSTDS_Brigantine`, `SK_FSTMS_Brigantine`, `SK_FDS_Brigantine` and `SK_BSTTS_Brigantine`. All are visible, render in main/depth passes, have custom depth off, and evaluate WPO with no distance cutoff.
+
+The assigned instance inherits `M_Master`: masked, TwoSidedFoliage, opacity threshold 0.3333; base depth test remains enabled. The initial reflection output string for instance base-property overrides was opaque (`{}`), so it does not prove every effective instance override. The audit now reads nested override flags/values explicitly if rerun and uses the engine's correct `use_translucency_vertex_fog` name. The actual exported base graph has constant PixelDepthOffset, not an active PDO connection; the hidden Python enum was unavailable but the graph text supplies that evidence. A translucent per-vertex fog fix is therefore not supported by the audited base graph.
+
+### Narrow actionable hypothesis and test
+
+The sail instance enables `Normal-mask`, assigns `mask_Normal` to `T_Sail-brigantine_Mask_Normal`, and sets `Mask_Normal_Strengh=0.589333`. Exact graph path in `M_Master`: `MaterialExpressionScalarParameter_82` scales normal-map X/Y through `MaterialExpressionMultiply_36` and `_37`, joins them in `MaterialExpressionAppendVector_21`, appends the map's Z in `_20`, then supplies `AdditionalNormal` to `MaterialExpressionMaterialFunctionCall_15` (`BlendAngleCorrectedNormals`). Static switch `_7` (`Normal-mask=true`) selects that result. This is an authored embossed-pattern contribution, independent of the tiled fabric normal. Ambient lighting can still respond to normals when direct lighting/specular diagnostics are disabled; the earlier tests do not exclude this path.
+
+**One next test:** create transient MIDs only for assigned `MI_Sail_2-wp` slots on those sail components and set exact parameter `Mask_Normal_Strengh` from 0.589333 to **0.0**. Keep the material parent, opacity, WPO, normal-mask switch, cloth/rope texture normals, fog, lighting and all other ship materials unchanged. Capture the same continuous route/camera at 165/167/169 seconds and compare the sail lattice, separately from temple edges. No asset save is needed. This is an isolation test, not an approved permanent flattening of sail detail. If it resolves the lattice, evaluate a restrained nonzero strength afterwards rather than automatically shipping zero.
+
+### Why opacity/WPO are not the first test
+
+`Opacity-Full=false` bypasses the outer temporal-dither function, but `Opacity-Camera=true` contains another `DitherTemporalAA` inside `MF_Opacity-camera`. Its recorded `Camera=(0,0,0)` makes the function choose constant alpha 1 for nonzero world positions. With `Enable_opacity=false` and `power_blur=1`, the surrounding opacity-mask lerps also resolve to 1 at those recorded defaults. Thus the presence of dithering nodes alone does not establish unwanted holes. No native project source writes the `Camera` material parameter; Blueprint BeginPlay/runtime values still require observation if the scoped normal test fails.
+
+WPO is active: `WPO=true`, `WP=true` select the authored axis sine deformation in `MF_WPO-1`; the scalar named `wpo=0` belongs to a different SimpleGrassWind branch and must not be mistaken for all displacement being disabled. Preserve this sail motion in the first test. Emissive scalar powers remain zero; subsurface `SSS=0.35` is nonzero, with `SSS-RCHANNAL=0`, but changing it alongside the normal would confound the comparison.
+
+The test is supported by exact graph connectivity and reproduced geometry, while the visual cause remains unproven. Original temple/rigging reports remain broader than this strongest sail-lattice reproduction.
