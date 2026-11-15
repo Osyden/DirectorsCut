@@ -734,6 +734,9 @@ bool UDCCrewSubsystem::EnsureNavigation()
 		int32 Passed=0, Failed=0;
 		for (int32 A=0; A<Stations.Num(); ++A)
 		{
+			FVector Projected=FVector::ZeroVector;
+			const bool Reachable=Navigation.Project(Stations[A].Location,Projected);
+			UE_LOG(LogDC,Log,TEXT("CREW_STATION index=%d type=%d raw=%s projected=%d feet=%s"),A,int32(Stations[A].Type),*Stations[A].Location.ToCompactString(),Reachable,*Projected.ToCompactString());
 			for (int32 B=A+1; B<Stations.Num(); ++B)
 			{
 				TArray<FVector> Route;

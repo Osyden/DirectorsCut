@@ -7,6 +7,8 @@
 #include "Engine/World.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
 #include <initializer_list>
 
 namespace
@@ -26,17 +28,25 @@ namespace
 		mutable int32 FloorMiss=0, FloorLowHigh=0, FloorSlope=0, FloorPassed=0;
 		mutable int32 SolidRejected=0, SupportRejected=0, BodyRejected=0;
 		mutable TMap<FString,int32> LineBlockers;
+		mutable TMap<FString,int32> SolidBlockers;
+		mutable int32 LastRejection=0;
 
 		bool Floor(float X, float Y, FVector& Feet) const
 		{
-			FHitResult Hit;
 			// The brigantine's upper deck is about 500 cm, quarterdeck about 700.
 			// Query its actual triangles, not Visibility-channel props or the gun deck.
-			if (!Hull->LineTraceComponent(Hit, Deck.TransformPosition(FVector(X,Y,1050)), Deck.TransformPosition(FVector(X,Y,420)), Query)) { ++FloorMiss; return false; }
-			Feet = Deck.InverseTransformPosition(Hit.ImpactPoint);
-			if (Feet.Z<440.f || Feet.Z>850.f) { ++FloorLowHigh; return false; }
-			if (Deck.InverseTransformVectorNoScale(Hit.ImpactNormal).Z<=.65f) { ++FloorSlope; return false; }
-			++FloorPassed; return true;
+			float Top=1050.f;
+			for (int32 Probe=0; Probe<16 && Top>440.f; ++Probe)
+			{
+				FHitResult Hit;
+				if (!Hull->LineTraceComponent(Hit,Deck.TransformPosition(FVector(X,Y,Top)),Deck.TransformPosition(FVector(X,Y,420)),Query)) { ++FloorMiss; return false; }
+				Feet=Deck.InverseTransformPosition(Hit.ImpactPoint);
+				Top=FMath::Min(Top-2.f,float(Feet.Z)-2.f);
+				if (Feet.Z<440.f || Feet.Z>850.f) { ++FloorLowHigh; continue; }
+				if (Deck.InverseTransformVectorNoScale(Hit.ImpactNormal).Z<=.65f) { ++FloorSlope; continue; }
+				++FloorPassed; return true;
+			}
+			return false;
 		}
 
 		bool ClearLine(const FVector& A, const FVector& B) const
@@ -54,9 +64,10 @@ namespace
 
 		bool Standing(const FVector& Feet) const
 		{
+			LastRejection=0;
 			for (const FVector& Trunk : MastTrunks)
 			{
-				if (FVector::DistSquared2D(Feet,Trunk)<FMath::Square(Trunk.Z+CrewBodyRadius)) { ++SolidRejected; return false; }
+				if (FVector::DistSquared2D(Feet,Trunk)<FMath::Square(Trunk.Z+CrewBodyRadius)) { ++SolidRejected; LastRejection=1; return false; }
 			}
 			for (UPrimitiveComponent* Part : Parts)
 			{
@@ -64,14 +75,14 @@ namespace
 				if (!Name.Contains(TEXT("Cannon")) && !Name.Contains(TEXT("Anchor-support")) && Name!=TEXT("SK_Wheel") && Name!=TEXT("SK_Door_Brigantine")) { continue; }
 				// These compact solid fittings must also reject a sample wholly
 				// inside them, where a surface ray could start behind every triangle.
-				const FBox Box=Part->CalcBounds(Part->GetComponentTransform()*Deck.Inverse()).GetBox();
+				const FBox Box=Part->Bounds.GetBox().TransformBy(Deck.ToInverseMatrixWithScale());
 				if (Feet.Z+170.f>Box.Min.Z && Feet.Z+25.f<Box.Max.Z &&
-					Feet.X>Box.Min.X-CrewBodyRadius && Feet.X<Box.Max.X+CrewBodyRadius && Feet.Y>Box.Min.Y-CrewBodyRadius && Feet.Y<Box.Max.Y+CrewBodyRadius) { ++SolidRejected; return false; }
+					Feet.X>Box.Min.X-CrewBodyRadius && Feet.X<Box.Max.X+CrewBodyRadius && Feet.Y>Box.Min.Y-CrewBodyRadius && Feet.Y<Box.Max.Y+CrewBodyRadius) { ++SolidRejected; ++SolidBlockers.FindOrAdd(Name); LastRejection=1; return false; }
 			}
 			for (const FVector2D Offset : { FVector2D(CrewBodyRadius,0), FVector2D(-CrewBodyRadius,0), FVector2D(0,CrewBodyRadius), FVector2D(0,-CrewBodyRadius) })
 			{
 				FVector Edge;
-				if (!Floor(Feet.X+Offset.X, Feet.Y+Offset.Y, Edge) || FMath::Abs(Edge.Z-Feet.Z)>MaxStep) { ++SupportRejected; return false; }
+				if (!Floor(Feet.X+Offset.X, Feet.Y+Offset.Y, Edge) || FMath::Abs(Edge.Z-Feet.Z)>MaxStep) { ++SupportRejected; LastRejection=2; return false; }
 			}
 			// Shoulder-width clearance excludes masts, cabin walls, wheels and gun
 			// carriages even when their tops are not part of the floor mesh.
@@ -79,9 +90,9 @@ namespace
 			{
 				const FVector At = Feet + FVector(0,0,Height);
 				if (!ClearLine(At-FVector(CrewBodyRadius,0,0),At+FVector(CrewBodyRadius,0,0)) ||
-					!ClearLine(At-FVector(0,CrewBodyRadius,0),At+FVector(0,CrewBodyRadius,0))) { ++BodyRejected; return false; }
+					!ClearLine(At-FVector(0,CrewBodyRadius,0),At+FVector(0,CrewBodyRadius,0))) { ++BodyRejected; LastRejection=3; return false; }
 			}
-			if (!ClearLine(Feet+FVector(0,0,55), Feet+FVector(0,0,180))) { ++BodyRejected; return false; }
+			if (!ClearLine(Feet+FVector(0,0,55), Feet+FVector(0,0,180))) { ++BodyRejected; LastRejection=3; return false; }
 			return true;
 		}
 
@@ -152,13 +163,16 @@ bool FDCCrewNavigation::Build(ADCRideDirector* Director)
 	if (!Sampler.Hull) { return false; }
 	Hull=Sampler.Hull;
 	TMap<FIntPoint,int32> Grid;
+	TArray<FVector4> Samples;
 	// Keep the walkable graph on the vessel itself: no bowsprit, railing or net.
 	for (int32 X=-47; X<=35; ++X)
 	{
 		for (int32 Y=-11; Y<=11; ++Y)
 		{
-			FVector Feet;
-			if (!Sampler.Floor(X*Cell,Y*Cell,Feet) || !Sampler.Standing(Feet)) { continue; }
+			FVector Feet(X*Cell,Y*Cell,0);
+			if (!Sampler.Floor(X*Cell,Y*Cell,Feet)) { Samples.Add(FVector4(Feet,0)); continue; }
+			if (!Sampler.Standing(Feet)) { Samples.Add(FVector4(Feet,Sampler.LastRejection)); continue; }
+			Samples.Add(FVector4(Feet,4));
 			FNode Node; Node.Feet=Feet+FVector(0,0,2.f);
 			Grid.Add(FIntPoint(X,Y),Nodes.Add(MoveTemp(Node)));
 		}
@@ -180,6 +194,7 @@ bool FDCCrewNavigation::Build(ADCRideDirector* Director)
 	if (Nodes.IsEmpty() || FParse::Param(FCommandLine::Get(),TEXT("DCCrewRouteVerify")))
 	{
 		for (const auto& Blocker : Sampler.LineBlockers) { UE_LOG(LogDC,Log,TEXT("CREW_DECK_BLOCKER component=%s count=%d"),*Blocker.Key,Blocker.Value); }
+		for (const auto& Blocker : Sampler.SolidBlockers) { UE_LOG(LogDC,Log,TEXT("CREW_DECK_SOLID component=%s count=%d"),*Blocker.Key,Blocker.Value); }
 		for (const FVector2D XY : { FVector2D(-1040,0),FVector2D(-460,-90),FVector2D(40,80),FVector2D(211,-153),FVector2D(505,121) })
 		{
 			const FVector From=Sampler.Deck.TransformPosition(FVector(XY.X,XY.Y,1050)), To=Sampler.Deck.TransformPosition(FVector(XY.X,XY.Y,200));
@@ -188,6 +203,30 @@ bool FDCCrewNavigation::Build(ADCRideDirector* Director)
 			const bool HasWorld=Director->GetWorld()->LineTraceSingleByObjectType(WorldHit,From,To,FCollisionObjectQueryParams(FCollisionObjectQueryParams::AllObjects),Sampler.Query);
 			UE_LOG(LogDC,Log,TEXT("CREW_DECK_PROBE xy=%.0f,%.0f hull=%d hullZ=%.1f normalZ=%.2f world=%d part=%s worldZ=%.1f"),XY.X,XY.Y,HasDirect,Direct.ImpactPoint.Z,Direct.ImpactNormal.Z,HasWorld,*GetNameSafe(WorldHit.GetComponent()),WorldHit.ImpactPoint.Z);
 		}
+		FString Json=TEXT("{\"nodes\":[");
+		for (int32 I=0; I<Nodes.Num(); ++I)
+		{
+			const FNode& N=Nodes[I];
+			Json+=FString::Printf(TEXT("%s{\"p\":[%.3f,%.3f,%.3f],\"links\":["),I?TEXT(","):TEXT(""),N.Feet.X,N.Feet.Y,N.Feet.Z);
+			for (int32 J=0; J<N.Links.Num(); ++J) { Json+=FString::Printf(TEXT("%s%d"),J?TEXT(","):TEXT(""),N.Links[J]); }
+			Json+=TEXT("]}");
+		}
+		Json+=TEXT("],\"samples\":[");
+		for (int32 I=0; I<Samples.Num(); ++I)
+		{
+			const FVector4& P=Samples[I]; Json+=FString::Printf(TEXT("%s[%.3f,%.3f,%.3f,%d]"),I?TEXT(","):TEXT(""),P.X,P.Y,P.Z,int32(P.W));
+		}
+		Json+=TEXT("],\"parts\":[");
+		for (int32 I=0; I<Sampler.Parts.Num(); ++I)
+		{
+			UPrimitiveComponent* P=Sampler.Parts[I];
+			const FBox Box=P->Bounds.GetBox().TransformBy(Sampler.Deck.ToInverseMatrixWithScale());
+			const FBox Recomputed=P->CalcBounds(P->GetComponentTransform()*Sampler.Deck.Inverse()).GetBox();
+			Json+=FString::Printf(TEXT("%s{\"name\":\"%s\",\"min\":[%.2f,%.2f,%.2f],\"max\":[%.2f,%.2f,%.2f],\"calcMin\":[%.2f,%.2f,%.2f],\"calcMax\":[%.2f,%.2f,%.2f]}"),I?TEXT(","):TEXT(""),*P->GetName(),Box.Min.X,Box.Min.Y,Box.Min.Z,Box.Max.X,Box.Max.Y,Box.Max.Z,Recomputed.Min.X,Recomputed.Min.Y,Recomputed.Min.Z,Recomputed.Max.X,Recomputed.Max.Y,Recomputed.Max.Z);
+		}
+		Json+=TEXT("]}");
+		FFileHelper::SaveStringToFile(Json,*(FPaths::ProjectSavedDir()/TEXT("CrewNavigation.json")));
+		UE_LOG(LogDC,Log,TEXT("CREW_DECK_DUMP Saved/CrewNavigation.json sampleCodes=0:floor,1:solid,2:support,3:body,4:accepted"));
 	}
 	return !Nodes.IsEmpty();
 }
