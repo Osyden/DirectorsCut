@@ -65,7 +65,8 @@ def main():
     if tile.ndim != 2 or not np.isfinite(tile).all():
         raise ValueError('Scan tile must be finite and fully covered')
     # Mesh sampling cannot represent the texture's sub-metre frequencies.
-    # The same high-resolution maps retain those details in shading.
+    # Source normal textures supply fine detail; this discarded geometric
+    # residual is not automatically reconstructed by those normal textures.
     fy = np.fft.fftfreq(tile.shape[0], a.tile_height_m/tile.shape[0])
     fx = np.fft.fftfreq(tile.shape[1], a.tile_width_m/tile.shape[1])
     kernel = np.exp(-2*np.pi*np.pi*.35**2*(fy[:, None]**2+fx[None, :]**2))
