@@ -985,8 +985,12 @@ void ADCRideDirector::TickUDS()
 	// Keep a little aerial perspective so the wall reads as cloud, then restore city fog on entering.
 	SkyNum(UDSSky, TEXT("Scale Fog Density"), FMath::Lerp(0.2f, 1.f, CityTakeover) * FMath::Lerp(1.f, CityDensityScale, CityFog));
 	SkyNum(UDSSky, TEXT("Volumetric Fog Distance"), FMath::Lerp(70000.f, 100000.f, CityFog));
-	// Keep the original later-stage lighting; only remove the early front's screen-space glare.
-	SkyFlag(UDSSky, TEXT("Enable Sun Light Shaft Bloom"), RideTime >= 240.f);
+	// Keep glare out of the enclosed water tunnel as well as the city. Enabling
+	// it at Slide start caused an abrupt silver shaft fan before the other
+	// lighting had blended. Hand it over with the caldera atmosphere instead.
+	const FDCPhaseDef* Breach = Phases.FindByPredicate([](const FDCPhaseDef& P) { return P.Phase == EDCPhase::Breach; });
+	const float ShaftStart = Breach ? Breach->StartTime - 1.f : 269.f;
+	SkyFlag(UDSSky, TEXT("Enable Sun Light Shaft Bloom"), RideTime >= ShaftStart);
 	// Keep the front's internal light readable: a full-strength sky flash bleaches the entire volume.
 	SkyNum(UDSWeather, TEXT("Lightning Flash Light Intensity"), FMath::Lerp(
 		FMath::Lerp(0.65f, 4.f, FMath::SmoothStep(76.f, 82.f, RideTime)), 1.3f, CityFog));
