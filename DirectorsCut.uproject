@@ -91,6 +91,18 @@
 		{
 			"Name": "Terminal",
 			"Enabled": true
-		}
+		},
+		{ "Name": "MetaHumanCharacter", "Enabled": true },
+		{ "Name": "MetaHumanSDK", "Enabled": true },
+		{ "Name": "HairStrands", "Enabled": true },
+		{ "Name": "RigLogic", "Enabled": true },
+		{ "Name": "LiveLinkControlRig", "Enabled": true },
+		{ "Name": "ChaosClothAsset", "Enabled": true },
+		{ "Name": "ChaosClothAssetEditorCore", "Enabled": true },
+		{ "Name": "ChaosClothAssetDataflowNodes", "Enabled": true },
+		{ "Name": "ChaosOutfitAsset", "Enabled": true },
+		{ "Name": "AlembicHairImporter", "Enabled": true },
+		{ "Name": "PythonScriptPlugin", "Enabled": true },
+		{ "Name": "EditorScriptingUtilities", "Enabled": true }
 	]
 }
