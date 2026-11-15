@@ -232,7 +232,7 @@ def weather_planes(rock, materials, helpers_dir, scan_manifest=None,joined=False
         refine_source_sha256=digest(Path(helpers_dir)/'generate_displaced_crater_face.py'))
 
 
-def connected_fracture_volume(materials,poisson=False):
+def connected_fracture_volume(materials,poisson=False,headland=False):
     """Boundary of retained irregular cells, with all internal faces omitted.
 
     Cell sites define a shared finite fracture network. A monotonic exterior
@@ -251,8 +251,10 @@ def connected_fracture_volume(materials,poisson=False):
     sites+=rng.uniform(-3.0,3.0,sites.shape)
     if poisson:
         accepted=[];radii=[]
-        for point in rng.uniform([-58,-42,-107],[58,102,77],(18000,3)):
-            radius=8.5+3.7*np.sin(point[0]/31.+.8)*np.cos(point[2]/43.-.4)
+        bounds=([-86,-42,-107],[82,102,90]) if headland else ([-58,-42,-107],[58,102,77])
+        for point in rng.uniform(*bounds,(18000,3)):
+            radius=(12.+7.*np.sin(point[0]/43.+.8)*np.cos(point[2]/61.-.4) if headland else
+                    8.5+3.7*np.sin(point[0]/31.+.8)*np.cos(point[2]/43.-.4))
             if accepted:
                 delta=np.asarray(accepted)-point
                 minimum=.5*(np.asarray(radii)+radius)
@@ -260,8 +262,21 @@ def connected_fracture_volume(materials,poisson=False):
             accepted.append(point);radii.append(radius)
         sites=np.asarray(accepted)
     threshold=3.5*np.sin(sites[:,0]/23.)+4.5*np.sin(sites[:,2]/37.+sites[:,0]/51.)
+    def smooth(a,b,x):
+        x=np.clip((x-a)/(b-a),0,1);return x*x*(3-2*x)
+    if headland:
+        # Two finite major fractures interrupt broad shallow exposures.
+        joint_a=(1-smooth(3,8,abs(sites[:,0]+.22*sites[:,2]+19)))*(1-smooth(32,54,abs(sites[:,2]+12)))
+        joint_b=(1-smooth(2,6,abs(sites[:,0]-.15*sites[:,2]-36)))*(1-smooth(20,40,abs(sites[:,2]-17)))
+        threshold+=22*joint_a+16*joint_b
     retained=sites[:,1]>threshold
-    box_lo=np.array([-38.,-26.,-76.]);box_hi=np.array([38.,84.,43.])
+    if headland:
+        # The top is a retained/released rock interface, not a horizontal box
+        # cap. Unequal broad upper masses alter the actual skyline.
+        top=45+7*np.sin(sites[:,0]/34.+.5)+3*np.sin(sites[:,0]/16.-.3)
+        retained&=sites[:,2]<top
+    box_lo=np.array([-68.,-26.,-80.]) if headland else np.array([-38.,-26.,-76.])
+    box_hi=np.array([64.,84.,74.]) if headland else np.array([38.,84.,43.])
     vertices=[];polygons=[];sources=[]
     for i,center in enumerate(sites):
         if not retained[i]:continue
@@ -301,7 +316,19 @@ def connected_fracture_volume(materials,poisson=False):
             base=len(vertices)
             # Rigid/shear mapping defines the broad scarp dip. Individual
             # fracture planes remain planes under this affine map.
-            world=pts.copy();world[:,1]=pts[:,1]+.40*pts[:,2]+36.
+            world=pts.copy()
+            if headland:
+                # Shallow1–3m cell relief and broad unequal shoulders. The
+                # side/foot return goes behind existing parent rock, so those
+                # planes cannot form an exposed rectangular patch border.
+                shoulder=85*smooth(22,65,abs(pts[:,0]+.10*pts[:,2]+5))
+                foot=80*(1-smooth(-80,-48,pts[:,2]))
+                # Compress only the exposed layer. Compressing the complete
+                # depth also shrank the buried connection and left a detached
+                # veneer in the first diagnostic. Restore full rear thickness.
+                depth=pts[:,1]*(.30+.70*smooth(8,60,pts[:,1]))
+                world[:,1]=depth+.40*pts[:,2]+38+shoulder+foot
+            else:world[:,1]=pts[:,1]+.40*pts[:,2]+36.
             vertices.extend(world.tolist());polygons.append(tuple(range(base,base+len(pts))))
             sources.append(int(i))
     obj=mesh_object('Connected finite fracture bedrock',vertices,polygons)
@@ -314,9 +341,12 @@ def connected_fracture_volume(materials,poisson=False):
     clean_boolean_mesh(obj)
     return obj,dict(method='Shared unequal finite Voronoi cells; only kept/removed interfaces and external boundaries exported',
         site_count=len(sites),retained_site_count=int(retained.sum()),visible_interface_polygons=len(polygons),
-        site_distribution='Variable-radius Poisson,4.8..12.2m separation radii' if poisson else 'Irregular lattice diagnostic',
+        site_distribution=('Variable-radius Poisson,5..19m separation radii' if headland else
+                           'Variable-radius Poisson,4.8..12.2m separation radii') if poisson else 'Irregular lattice diagnostic',
+        headland_mode=headland,physical_depth_scale=.30 if headland else 1.,
         physical_axis_spacings_m=[[8,15],[8,14],[9,17]],jitter_m=3.,
-        chart_to_local='U=x, V=depth+.4*Z+36, Z=z',domain_m=[box_lo.tolist(),box_hi.tolist()],
+        chart_to_local=('U=x, Z=z; shallow front depth blended to full rear depth, plus nonlinear side/foot return behind parent' if headland else
+                        'U=x, V=depth+.4*Z+36, Z=z'),domain_m=[box_lo.tolist(),box_hi.tolist()],
         weld_tolerance_m=.0008,source_site_per_boundary_polygon=sources)
 
 
@@ -334,6 +364,7 @@ def main():
     parser.add_argument('--fracture-volume',action='store_true')
     parser.add_argument('--poisson-sites',action='store_true')
     parser.add_argument('--detail-after-union',action='store_true')
+    parser.add_argument('--headland',action='store_true')
     args=parser.parse_args(sys.argv[sys.argv.index('--')+1:])
     out=args.output.resolve()
     if 'saved' not in [p.lower() for p in out.parts]:
@@ -342,7 +373,7 @@ def main():
     bpy.ops.object.select_all(action='SELECT'); bpy.ops.object.delete(use_global=False)
     source=np.load(args.input, allow_pickle=False)
     ring=source['vertices_m'].reshape(161,1537,3)
-    row_end=145; c0,c1=573,585; center=579
+    row_end=145; c0,c1=(568,591) if args.headland else (573,585); center=579
     angle=center*2*np.pi/1536
     basis=np.array([[np.sin(angle),np.cos(angle),0],[-np.cos(angle),np.sin(angle),0],[0,0,1.]])
     origin=ring[4,center].copy(); origin[2]=0
@@ -379,15 +410,16 @@ def main():
     fracture_volume={}
     if args.fracture_volume:
         bpy.data.objects.remove(rock,do_unlink=True)
-        rock,fracture_volume=connected_fracture_volume(materials,args.poisson_sites)
+        rock,fracture_volume=connected_fracture_volume(materials,args.poisson_sites,args.headland)
         # Only the side/back silhouette is clipped by a broad host-scale
         # wedge. Its front is extended so fracture interfaces define the face.
-        envelope_points=np.asarray(points,float)
-        envelope_points[:15,1]-=32.
-        envelope=wedge('Broad taper only',envelope_points.tolist())
-        for mat in materials:envelope.data.materials.append(mat)
-        for p in envelope.data.polygons:p.material_index=3
-        apply_boolean(rock,envelope,'INTERSECT');bpy.data.objects.remove(envelope,do_unlink=True)
+        if not args.headland:
+            envelope_points=np.asarray(points,float)
+            envelope_points[:15,1]-=32.
+            envelope=wedge('Broad taper only',envelope_points.tolist())
+            for mat in materials:envelope.data.materials.append(mat)
+            for p in envelope.data.polygons:p.material_index=3
+            apply_boolean(rock,envelope,'INTERSECT');bpy.data.objects.remove(envelope,do_unlink=True)
     # Finite open corner removals. No closed cavity cut into the old cliff.
     cutters=[
       ('Left oblique shoulder',[[-50,-30,4],[-50,150,4],[-50,150,75],[-50,-30,75],[-16,54,31],[-11,118,62]]),
