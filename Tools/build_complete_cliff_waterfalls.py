@@ -132,19 +132,28 @@ def main():
         # the production current direction with repeated water queries.
         contacts=[]
         for j in (2,5,8,11,14):
-            start=track[-1,j].copy();hit=sea.hit(start[:2])
-            if hit is None:continue
-            start[2]=hit[0][2];contacts.append(start.copy())
+            start=track[-1,j].copy();receiving=None
+            # The widened outlet crosses an uneven shoreline. Each filament
+            # gets its own first exposed water contact, not the centre track's
+            # radius projected under neighbouring rock.
+            for inset in np.arange(0,120,.5):
+                point=start-radial*inset;hit=sea.hit(point[:2]);solid=rock.hit(point[:2])
+                if hit is not None and (solid is None or hit[0][2]>=solid[0][2]-.05):
+                    receiving=hit[0].copy();break
+            if receiving is None:continue
+            start=receiving;contacts.append(start.copy())
             direction=current_at(start);direction/=np.linalg.norm(direction);across=np.array((-direction[1],direction[0],0))
             length=48+number*5+(j%4)*9;foam=[]
-            for distance in np.linspace(0,length,65):
-                center=start+direction*distance+across*math.sin(distance*.055+j)*1.8
-                half=(3.+width*.04)*(1-.75*distance/length);row=[]
-                for sign in (-1,1):
+            for distance in np.linspace(0,length,129):
+                # Carry the impact's inward momentum into the receiving
+                # current, then broaden after leaving the irregular shore.
+                center=start+direction*distance-radial*(1.+.35*min(distance,35.))+across*math.sin(distance*.055+j)*1.8*min(distance/15,1)
+                half=(.4+(2.6+width*.04)*min(distance/12,1))*(1-.75*distance/length);row=[]
+                for sign in np.linspace(-1,1,5):
                     point=center+across*sign*half;h=sea.hit(point[:2]);r=rock.hit(point[:2])
                     if h is None or (r is not None and r[0][2]>h[0][2]+.1):break
                     point[2]=h[0][2]+.18;row.append(point)
-                if len(row)!=2:break
+                if len(row)!=5:break
                 foam.append(row)
             if len(foam)>2:strip(foam,2)
             # Broken overlapping little spray arcs originate at the contact;
