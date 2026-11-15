@@ -20,6 +20,8 @@ import time
 
 import numpy as np
 
+sys.dont_write_bytecode = True
+
 
 def sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
