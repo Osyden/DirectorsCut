@@ -1,4 +1,5 @@
 #include "DCWake.h"
+#include "DCOcean.h"
 #include "DCRideDirector.h"
 #include "DCTypes.h"
 #include "ProceduralMeshComponent.h"
@@ -272,7 +273,7 @@ float ADCWake::SurfaceAt(const FVector2D& Where, int32 Channel)
 		else if (FIntProperty* I = CastField<FIntProperty>(*It)) { I->SetPropertyValue_InContainer(Params, Channel); }
 		else if (FStructProperty* SP = CastField<FStructProperty>(*It))
 		{
-			if (SP->Struct == TBaseStructure<FVector>::Get()) { *SP->ContainerPtrToValuePtr<FVector>(Params) = FVector(Where, Director->SeaLevelZ); }
+			if (SP->Struct == TBaseStructure<FVector>::Get()) { *SP->ContainerPtrToValuePtr<FVector>(Params) = DCOcean::WaveSamplePosition(this,FVector(Where, Director->SeaLevelZ)); }
 			else { Sample = SP; }
 		}
 	}

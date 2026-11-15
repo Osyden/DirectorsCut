@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "DCTypes.h"
+#include "DCSteering.h"
 #include "DCTreadmill.generated.h"
 
 class ADCRideDirector;
@@ -70,7 +71,7 @@ public:
 	float GetSteer() const { return Steer; }
 	float GetLaneOffset() const { return LaneOffset; }
 	/** How fast the ship is crossing the sea sideways as a fraction of full helm (-1 port .. 1 starboard): she gathers way into a turn and carries it out of one. */
-	float GetTurn() const { return LaneSpeed > 0.f ? LaneVelocity / LaneSpeed : 0.f; }
+	float GetTurn() const { return DCSteering::VisualTurn({LaneOffset,LaneVelocity,LaneAcceleration},CurrentDrift,LaneSpeed); }
 	float GetLateralVelocity() const { return LaneVelocity + CurrentDrift; }
 
 	/** Nearest obstacle ahead of the bow. Returns false if the lane is clear. OutY is relative to the ship centreline. */
@@ -177,6 +178,7 @@ protected:
 	float Steer = 0.f;
 	float LaneOffset = 0.f;
 	float LaneVelocity = 0.f;
+	float LaneAcceleration = 0.f;
 	float ObstacleTimer = 4.f;
 	float HostileTimer = 8.f;
 	/** Rags of mist that run aft across the deck in the fog (Easy Fog cards, if installed). */

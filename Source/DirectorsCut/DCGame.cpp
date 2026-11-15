@@ -828,8 +828,11 @@ void ADCGameMode::TickShipMotion(float DeltaSeconds)
 	// Under helm her head swings toward the turn and she heels a little away from it. Only on the open
 	// sea and in Atlantis; the maelstrom stage turns the world round her itself.
 	const ADCTreadmill* Mill = ADCTreadmill::Get(this);
-	ShipTurn = FMath::FInterpTo(ShipTurn, (Wake && Mill && Rise + SlopeX != 0.f) ? Mill->GetTurn() : 0.f, DeltaSeconds, 1.5f);
-	const FQuat Helm = FRotator(JoltAngle.Y, ShipTurn * 6.f + JoltAngle.Z, -ShipTurn * 2.2f + JoltAngle.X).Quaternion();
+	// A valid wave sample may be exactly zero; steering still turns the ship.
+	// The slide/caldera own their transforms and must not inherit this yaw.
+	const bool bHelmMotion = !bStill && Mill && Dir && Dir->GetPhase() <= EDCPhase::Fog;
+	ShipTurn = FMath::FInterpTo(ShipTurn, bHelmMotion ? Mill->GetTurn() : 0.f, DeltaSeconds, 2.4f);
+	const FQuat Helm = FRotator(JoltAngle.Y, ShipTurn * 8.f + JoltAngle.Z, -ShipTurn * 3.f + JoltAngle.X).Quaternion();
 	const FQuat Lean = FRotationMatrix::MakeFromZX(Up, FVector::ForwardVector).ToQuat() * Helm;
 	const FVector Pivot(0.f, 0.f, Dir ? Dir->SeaLevelZ : 0.f);
 	const FTransform Deck(Lean, Pivot - Lean.RotateVector(Pivot) + FVector(0.f, 0.f, ShipHeave));

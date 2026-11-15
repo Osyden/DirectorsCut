@@ -220,19 +220,11 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 	static float ForcedSteer = 0.f;
 	static const bool bForced = FParse::Value(FCommandLine::Get(), TEXT("DCSteer="), ForcedSteer);
 	if (bForced) { Steer = ForcedSteer; bSteerForced = true; }
-	// The helm takes a moment to bite and the ship carries her swing after it is eased: she turns, she is not slid sideways.
-	// (In the trough she is given half as much helm again: it is a wide channel and there is a slope to climb.)
-	LaneVelocity = FMath::FInterpTo(LaneVelocity, Steer * LaneSpeed * SteerAuthority * (Director->TroughRise > 1.f ? 1.5f : 1.f), DeltaSeconds, 1.65f);
-	// In the trough of the drowned city the sea itself brings her back: she slides down the slope she
-	// has climbed, harder the higher she is, so full helm holds her near the edge and no further, and
-	// with the wheel let go she swings back to the middle. Elsewhere the lane simply ends.
-	// (The slope eases off toward the shoulder, so past the middle of it a steady pull is added that grows with the distance out: she cannot be held on the shelf.)
-	const float Out = FMath::Abs(LaneOffset) / FMath::Max(Director->TroughHalfWidth, 1.f);
-	const float Pull = Director->SeaRiseSlope(LaneOffset) * 4400.f + (Director->TroughRise > 1.f ? FMath::Sign(LaneOffset) * FMath::Max(0.f, Out - 0.45f) * 2600.f : 0.f);
-	LaneVelocity -= Pull * DeltaSeconds;
 	const float Edge = Director->TroughRise > 1.f ? Director->TroughHalfWidth : LaneLimit;
-	LaneOffset = FMath::Clamp(LaneOffset + (LaneVelocity + CurrentDrift) * DeltaSeconds, -Edge, Edge);
-	if (FMath::Abs(LaneOffset) >= Edge && LaneOffset * LaneVelocity > 0.f) { LaneVelocity = 0.f; }
+	const float HelmSpeed = LaneSpeed * SteerAuthority * (Director->TroughRise > 1.f ? 1.5f : 1.f);
+	DCSteering::State HelmState{LaneOffset,LaneVelocity,LaneAcceleration};
+	DCSteering::Advance(HelmState,Steer,HelmSpeed,Edge,CurrentDrift,Director->SeaRiseSlope(LaneOffset)*1200.f,DeltaSeconds);
+	LaneOffset=HelmState.Position; LaneVelocity=HelmState.Velocity; LaneAcceleration=HelmState.Acceleration;
 	// Test hook: -DCLaneLog writes where she is across the channel twice a second.
 	{
 		static const bool bLaneLog = FParse::Param(FCommandLine::Get(), TEXT("DCLaneLog"));
@@ -642,6 +634,7 @@ float ADCTreadmill::ForecastLaneImpact(float Candidate) const
 	const float Edge = Director->TroughRise > 1.f ? Director->TroughHalfWidth : LaneLimit;
 	const float Rise = Director->SeaRise(LaneOffset);
 	float Lane = LaneOffset, Velocity = LaneVelocity, Time = 0.f;
+	DCSteering::State Forecast{LaneOffset,LaneVelocity,LaneAcceleration};
 	FVector From(0.f, 0.f, Director->SeaLevelZ + 140.f);
 	const FCollisionShape Hull = FCollisionShape::MakeBox(FVector(ShipHalfLength + 150.f, ShipHalfWidth + 80.f, 60.f));
 	FCollisionQueryParams Query(TEXT("DCLanePath"), true);
@@ -654,12 +647,8 @@ float ADCTreadmill::ForecastLaneImpact(float Candidate) const
 			const float Dt = FMath::Min(.1f, Horizon - Time);
 			const float Drift = CurrentDrift * FMath::Exp(-2.2f * Time);
 			const float Helm = FMath::Clamp((Candidate - Lane - (Velocity + Drift) * .7f) / 700.f, -1.f, 1.f);
-			Velocity = FMath::FInterpTo(Velocity, Helm * HelmSpeed, Dt, 1.65f);
-			const float Out = FMath::Abs(Lane) / FMath::Max(Director->TroughHalfWidth, 1.f);
-			const float Pull = Director->SeaRiseSlope(Lane) * 4400.f
-				+ (Director->TroughRise > 1.f ? FMath::Sign(Lane) * FMath::Max(0.f, Out - .45f) * 2600.f : 0.f);
-			Velocity -= Pull * Dt;
-			Lane = FMath::Clamp(Lane + (Velocity + Drift) * Dt, -Edge, Edge);
+			DCSteering::Advance(Forecast,Helm,HelmSpeed,Edge,Drift,Director->SeaRiseSlope(Lane)*1200.f,Dt);
+			Lane=Forecast.Position; Velocity=Forecast.Velocity;
 			Time += Dt;
 		}
 		const FVector To(Speed * Time, Lane - LaneOffset, Director->SeaLevelZ + 140.f + Director->SeaRise(Lane) - Rise);
