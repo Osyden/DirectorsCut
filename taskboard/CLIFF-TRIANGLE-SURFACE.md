@@ -80,3 +80,17 @@ kerfs on a smooth slab; a wedge-detachment revision is separate. No Unreal
 render/build or final runtime contact agreement is claimed here. Any future
 provider must load the exact rendered original-source arrays with the same
 coordinate transform and invalidate fitted waterfall caches when they change.
+
+## Subsequent finite-wedge source check
+
+The same runner, unchanged, was rerun with
+`Flow-Seams/Saved/FracturedOutcrop/wedges/fractured.npz` and output directory
+`Saved/CliffTriangleSurfaceTests/Wedges`. Source SHA-256 is
+`117868b62c7422e50d6360ef18023f92a56c67387f40826f9abe3f54fe12c46f`.
+Its 18,290 vertices / 36,576 original triangles build with zero skipped
+degenerates. All checks pass; the 256 actual-mesh oracle rays have zero
+mismatches and maximum distance error `3.09e-11 cm`. The identical vertical
+grid has 1,896 covered rays, 242 with at least three separated intersections,
+and a maximum of six intersections / three front faces. This confirms real
+multi-interval geometry survives the wedge revision; it does not decide its
+visual acceptance. No geometry or query source changed for this measurement.
