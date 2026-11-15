@@ -98,12 +98,12 @@ void ADCGameMode::ShowMainMenu()
                 +SVerticalBox::Slot().AutoHeight().Padding(0,3,0,0)[Body(TEXT("Eva Jobse"),16,Cream)]]
             +SHorizontalBox::Slot().FillWidth(.68f)
             [SNew(SVerticalBox)
-                +SVerticalBox::Slot().AutoHeight()[Body(TEXT("DEVELOPERS"),11,Gold)]
-                +SVerticalBox::Slot().AutoHeight().Padding(0,3,0,0)[Body(TEXT("GPT-6 Astra, Claude Fable 5.2,\nQwen 3.8 27B"),16,Cream)]]]
+                +SVerticalBox::Slot().AutoHeight()[Body(TEXT("AI"),11,Gold)]
+                +SVerticalBox::Slot().AutoHeight().Padding(0,3,0,0)[Body(TEXT("GPT-6 Astra, Claude Fable 5.2,\nQwen 3.8 27B, Google Gemma E4B,\nWhisperCPP, Phonon, Suno"),16,Cream)]]]
         +SVerticalBox::Slot().AutoHeight().Padding(0,0,0,5)[Body(TEXT("ART & ASSET PACKS"),11,Gold)]
         +SVerticalBox::Slot().AutoHeight()[Body(TEXT("Brigantine Ship  -  MainStore\nDynamic Real Water  -  Natural Level Game Studio\nUltra Dynamic Sky & Weather  -  Everett Gunther\nModular Ancient Ruins  -  archafizov\nKraken  -  PROTOFACTOR INC\nClaw Kaiju Monster  -  HuyKhoi2407\nMHC: Pirates  -  Quang Phan\nEasy Fog  -  William Faucher\nClouds Tunnel Vdb Effects Pack Loop  -  one.studio2\nNordic coastal cliff scans  -  Quixel Megascans\nParagon: Rampage, MetaHuman & engine art  -  Epic Games"),13,Cream)]
         +SVerticalBox::Slot().AutoHeight().Padding(0,12,0,4)[Body(TEXT("THANKS TO"),11,Gold)]
-        +SVerticalBox::Slot().AutoHeight()[Body(TEXT("Epic Games, NVIDIA, Suno"),16,Cream)]
+        +SVerticalBox::Slot().AutoHeight()[Body(TEXT("Epic Games, NVIDIA, LlamaCPP,\nGeorgi Gerganov"),16,Cream)]
         +SVerticalBox::Slot().AutoHeight().Padding(0,12,0,4)[Body(TEXT("AUDIO & TYPE"),11,Gold)]
         +SVerticalBox::Slot().AutoHeight()[Body(TEXT("Sonniss: Just Sound Effects, 344 Audio, InMotionAudio, Jake Fielding, Epic Stock Media, SoundBits.\nCinzel: The Cinzel Project Authors (SIL Open Font License)."),11,Muted)];
     MainMenuWidget=SNew(SScaleBox).Stretch(EStretch::ScaleToFit)
@@ -153,8 +153,8 @@ void ADCGameMode::ShowMainMenu()
                     [SNew(SOverlay)
                         +SOverlay::Slot()[SNew(SScrollBox).Visibility_Lambda([Weak](){return Weak.IsValid() && Weak->MenuInfoPage==1?EVisibility::Visible:EVisibility::Collapsed;})
                             +SScrollBox::Slot()[Help]]
-                        +SOverlay::Slot()[SNew(SBox).VAlign(VAlign_Top).Visibility_Lambda([Weak](){return Weak.IsValid() && Weak->MenuInfoPage==2?EVisibility::Visible:EVisibility::Collapsed;})
-                            [Credits]]
+                        +SOverlay::Slot()[SNew(SScrollBox).Visibility_Lambda([Weak](){return Weak.IsValid() && Weak->MenuInfoPage==2?EVisibility::Visible:EVisibility::Collapsed;})
+                            +SScrollBox::Slot()[Credits]]
                     ]
                 ]
             ]

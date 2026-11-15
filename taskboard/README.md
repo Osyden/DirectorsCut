@@ -2,6 +2,7 @@
 
 | Task | Status | Owner | Done when |
 | --- | --- | --- | --- |
+| Credits AI labels and acknowledgements | Source complete; next package required | Butler/credits chat, `codex/credits-ai-15nov`; DCMenu.cpp credits only | [Changes and validation](CREDITS-AI-15NOV.md). Requested AI names/thanks updated; credits scroll. No package or upload. |
 | Menu adventure soundtrack | Imported and verified across start/restart; included in22:11 package | Root and voice_audio | [Menu music](MENU-MUSIC-15NOV.md). Loops at0.26 gain; immediate0.30s fade on Start. |
 | AI helm wheel animation | Isolated70a2ec5; CPU checks pass, native/integration pending | tunnel_boss; root schedules review after human test | [Follow-up](AI-WHEEL-FOLLOWUP-15NOV.md). Outside frozen22:11 package. |
 | Caldera sideways drift heading | Integrated;56,715 CPU checks and native drift/reversal review pass | tunnel_boss, `codex/caldera-drift-heading`: helm yaw/review hooks only; voice_audio retains landing/music | [Tuning, reversal results and review flags](CALDERA-DRIFT-HEADING-15NOV.md). Small10° capped heading with6°/s easing; unchanged radial dodge authority and route. |
