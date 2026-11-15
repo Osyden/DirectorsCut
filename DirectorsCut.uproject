@@ -92,6 +92,7 @@
 			"Name": "Terminal",
 			"Enabled": true
 		},
+		{ "Name": "LLMPlugin", "Enabled": true },
 		{ "Name": "NV_ACE_Reference", "Enabled": true },
 		{ "Name": "NvAudio2FaceMarkRegressive", "Enabled": true },
 		{ "Name": "AppleARKitFaceSupport", "Enabled": true },

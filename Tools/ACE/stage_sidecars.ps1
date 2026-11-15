@@ -21,9 +21,13 @@ $project = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $notices = Join-Path $game 'ThirdPartyNotices'
 New-Item -ItemType Directory -Force -Path $notices | Out-Null
 Copy-Item -LiteralPath (Join-Path $project 'Docs/ThirdPartyVoices') -Destination $notices -Recurse
+if (Test-Path -LiteralPath (Join-Path $project 'Docs/ThirdPartyACELLM')) {
+    Copy-Item -LiteralPath (Join-Path $project 'Docs/ThirdPartyACELLM') -Destination $notices -Recurse
+}
 foreach ($plugin in @('NV_ACE_Reference','NvAudio2FaceMarkRegressive')) {
     $destination = Join-Path $notices $plugin
     New-Item -ItemType Directory -Force -Path $destination | Out-Null
     Get-ChildItem -LiteralPath (Join-Path $project "Plugins/$plugin") -File | Where-Object { $_.Name -match 'licen[cs]e' } | Copy-Item -Destination $destination
 }
+& (Join-Path $PSScriptRoot 'prune_unused_gpt_model.ps1') -GameRoot $game
 Write-Output "Staged sidecars and notices at $game"

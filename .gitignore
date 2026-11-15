@@ -71,6 +71,7 @@ Content/Demon*/
 
 # Local NVIDIA ACE vendor source, model weights and facial mapping assets.
 /Plugins/NV_ACE_Reference/
+/Plugins/LLMPlugin/
 /Plugins/NvAudio2Face*/
 /Content/MetaHumans/
 /Content/ACEComparisonVendor/

@@ -11,6 +11,7 @@ class UAudioComponent;
 class USoundWaveProcedural;
 class UACEAudioCurveSourceComponent;
 class UAsyncActionAnimateCharacter;
+class UDCACEDialogue;
 
 /**
  * The voice loop: microphone -> speech-to-text -> order, and crew line -> (LLM) -> text-to-speech.
@@ -25,6 +26,8 @@ UCLASS(Config = Game)
 class ADCVoice : public AActor
 {
 	GENERATED_BODY()
+	friend class ADCDialogueReviewGameMode;
+	friend class UDCACEIntegrationReview;
 
 public:
 	ADCVoice();
@@ -60,6 +63,8 @@ public:
 	UPROPERTY(Config, EditAnywhere) FString LLMModel = TEXT("Qwen3.5-4B-Q5_K_M.gguf");
 	UPROPERTY(Config, EditAnywhere) FString STTModel = TEXT("ggml-base.en.bin");
 	UPROPERTY(Config, EditAnywhere) bool bUseLLM = true;
+	/** LlamaCpp (external server) or ACE (local NVIDIA runtime). Selected per launch for comparison. */
+	UPROPERTY(Config, EditAnywhere) FString DialogueBackend = TEXT("LlamaCpp");
 	/** Whisper vocabulary/context hint, not a strict grammar or guaranteed whitelist. */
 	UPROPERTY(Config, EditAnywhere) FString STTVocabulary = TEXT("Rex, Duncan, Ruby. Rex, take the helm. Duncan, fire at will. Ruby, put out the fire. Hard to port. Hard to starboard. Steady as she goes. Man the cannons. Hold fire. Repair the rigging. Report.");
 	/** Seconds to wait for the LLM before speaking the canned line instead. */
@@ -76,6 +81,11 @@ public:
 	UPROPERTY(Config, EditAnywhere) float OdessaLengthScale = 1.f;
 
 protected:
+	void InitializeDialogueBackend();
+	void RequestDialogue(const FString& System, const FString& User, int32 MaxTokens, float Temperature,
+		bool bJson, float Timeout, TFunction<void(bool, const FString&)> Completion);
+	UPROPERTY(Transient) TObjectPtr<UDCACEDialogue> ACEDialogue;
+	bool bUseACEDialogue = false;
 	FString SidecarDir() const;
 	void CheckHealth();
 	void LaunchSidecars();
