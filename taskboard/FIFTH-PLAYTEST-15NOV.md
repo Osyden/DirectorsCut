@@ -7,7 +7,7 @@ User released the test slot after the20:48 playtest. Root owns serialized editor
 - cannons_helm: slam target visibility, real contact/impact, general boss body damage marker, synchronized authored attack presentation. DCBossCombat, DCLeviathan and related policies.
 - tunnel_boss: earlier statue target indicators, four-hit statues with adequate exposure, three additional general enemies on existing supported banks. DCEarlyEncounters and route policy.
 - voice_audio: remove cannon miss text and strengthen surface-anchored water splash (integrated83f7992); next delay second music222→224s, louder descent preserving speech duck, earlier and stronger waterfall landing with deck spray/audio/shake. DCAudio and DCMaelstrom descent sections.
-- Root: review/integrate, native visual checks, package and select only after acceptance. AI NPCs chat owns isolated speech streaming and Phonon31M integration; these are not part of this candidate yet.
+- Root: review/integrate, native visual checks, package and select only after acceptance. AI NPCs chat owns speech streaming and Phonon31M integration, now included in this candidate by explicit user request below.
 
 ## Baseline evidence
 
@@ -30,10 +30,12 @@ Evidence under `Saved/FifthPlaytest/Native`:
 - StatueVerify: all six native assertions pass, exactly four fired shots silence statue before release; ignored threats cause20 fireball and3 beam impacts, phase cleanup passes. Eye marker inspected at118; physical statue remains faint through dense fog, an existing visual limitation.
 - Steering: held A/D cycle preserves radial drift, approximately9° heading (10° cap) and6°/s smoothing. Inlet outward safety clamp remains intentional. No navigation route changes.
 - Landing (before clarity refinement): one onset293.19, no damage, three-second wash, cooked water bursts; landing water/timber audio logs once. Descent music.4368, normal combat.208; separate statue run starts track224.01. Native images show mist too dominant, so follow-up61ffac9 reduces only landing cards to40% opacity and late authored bursts to1.6; final comparison still pending.
-- BossFull: six interrupts, both limbs severed, interrupt damage8 plus body damage34, zero ship damage, scheduled160-second finale preserved. Final ending capture pending process completion at this entry.
+- BossFull: six interrupts, both limbs severed, interrupt damage8 plus body damage34, zero ship damage, scheduled160-second finale preserved. Ending captured at470 and process exited0.
 
-Native game source compiled through6e81d38. Later clarity/arrow and speech changes await the next successful compile. All agent CPU checks passed; no claim of native Phonon acceptance yet.
+Those native gameplay checks used source compiled through6e81d38. Combined editor compilation throughd0529c9 subsequently passed, including final landing clarity, marker placement, speech defaults, pre-exit drain and late-health callback guards. All agent CPU checks passed; no claim of native Phonon acceptance yet.
+
+Final landing rerender on d0529c9 passed: same single293.19 onset (elapsed23.19), landing water/timber sounds once, unchanged0 damage, descent.4368 returning to.208. Captures294–296 show a clearer deck through the wash and reduced late distortion. Some refraction remains in the last authored splash, so this is an improvement rather than a claim of artifact-free water. CPU/editor lane handed to AI NPCs chat at21:40 for selected-backend acceptance; root remains CPU-only until explicit return.
 
 ## Expanded next-test-build scope
 
-Direct user instruction relayed by AI NPCs chat selects Phonon31M + Gemma E4B + streaming for the next local test build. Source/default/payload work integrated into main; existing20:48 playable still unchanged. Selected model found in user Downloads and hash-verified; no blocked download workaround. Initial native compile found four source/API issues, corrected by1df5735. Exit-worker/module lifetime audit found a P1; owner is implementing a pre-exit drain barrier before native speech tests. Root retains serialized lane for final game checks, then explicitly hands it to AI NPCs chat for model/voice/cancel/exit validation. Package only after concrete selected-backend evidence.
+Direct user instruction relayed by AI NPCs chat selects Phonon31M + Gemma E4B + streaming for the next local test build. Source/default/payload work integrated into main; existing20:48 playable still unchanged. Selected model found in user Downloads and hash-verified; no blocked download workaround. Initial native compile found four source/API issues, corrected by1df5735. Exit-worker/module lifetime audit found a P1; pre-exit drain barrier8c66b5f and late-health callback guardd0529c9 are integrated and compile. Root retains serialized lane for final game checks, then explicitly hands it to AI NPCs chat for model/voice/cancel/exit validation. Package only after concrete selected-backend evidence.
