@@ -691,7 +691,7 @@ void ADCBossCombat::DrawStatus(AHUD* HUD,UCanvas* Canvas)
                 Title=FString::Printf(TEXT("%s: %s"),Battery,Kind);
                 if(Attack.Kind==DCBossTimeline::EAttack::Obstacle)
                     Instruction=FString::Printf(TEXT("STEER %s or prepare cannon | %.1fs"),Attack.Side>0?TEXT("PORT"):TEXT("STARBOARD"),FMath::Max(0.f,Seconds-3.f));
-                else Instruction=InCannonArc?FString::Printf(TEXT("TURN TO %s CANNONS | %.1fs"),Battery,Seconds):
+                else Instruction=InCannonArc?FString::Printf(TEXT("USE %s CANNONS | %.1fs"),Battery,Seconds):
                     FString::Printf(TEXT("WAIT FOR CANNON SHOT | %.1fs"),Seconds);
             }
         }
