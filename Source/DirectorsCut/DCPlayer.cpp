@@ -277,9 +277,19 @@ void ADCPlayerCharacter::EnterStation(APlayerController* PC, int32 Index)
 			for (USceneComponent* Part : Parts)
 			{
 				if (Part->GetFName() != FName(TEXT("SK_Wheel"))) { continue; }
+				// This mesh contains the wheel, but its imported origin is down at
+				// the pedestal. The authored hub bone supplies the rotation pivot.
+				if (!Part->DoesSocketExist(TEXT("Bone_001")))
+				{
+					UE_LOG(LogDC, Warning, TEXT("Helm wheel has no hub bone; keeping its visual transform unchanged"));
+					break;
+				}
 				HelmWheel = Part;
 				WheelRestRotation = Part->GetRelativeRotation().Quaternion();
+				WheelRestLocation = Part->GetRelativeLocation();
 				const USceneComponent* Parent = Part->GetAttachParent();
+				const FVector Hub = Part->GetSocketLocation(TEXT("Bone_001"));
+				WheelPivotInParent = Parent ? Parent->GetComponentTransform().InverseTransformPosition(Hub) : Hub;
 				WheelAxisInParent = Parent
 					? Parent->GetComponentTransform().InverseTransformVectorNoScale(Ship->GetActorForwardVector())
 					: Ship->GetActorForwardVector();
@@ -316,9 +326,23 @@ void ADCPlayerCharacter::LeaveStation(APlayerController* PC)
 
 void ADCPlayerCharacter::RestoreWheel()
 {
-	if (USceneComponent* Wheel = HelmWheel.Get()) { Wheel->SetRelativeRotation(WheelRestRotation); }
+	if (USceneComponent* Wheel = HelmWheel.Get())
+	{
+		Wheel->SetRelativeLocationAndRotation(WheelRestLocation, WheelRestRotation);
+#if !UE_BUILD_SHIPPING
+		if (FParse::Param(FCommandLine::Get(), TEXT("DCHelmLog")))
+		{
+			const USceneComponent* Parent = Wheel->GetAttachParent();
+			const FVector Hub = Wheel->GetSocketLocation(TEXT("Bone_001"));
+			const FVector HubInParent = Parent ? Parent->GetComponentTransform().InverseTransformPosition(Hub) : Hub;
+			UE_LOG(LogDC, Log, TEXT("Helm restored: hubDrift=%.4f locationError=%.4f t=%.2f"),
+				FVector::Distance(HubInParent, WheelPivotInParent), FVector::Distance(Wheel->GetRelativeLocation(), WheelRestLocation), GetWorld()->GetTimeSeconds());
+		}
+#endif
+	}
 	HelmWheel.Reset();
 	WheelAngle = 0.f;
+	WheelLogTimer = 0.f;
 }
 
 void ADCPlayerCharacter::TickHelm(APlayerController* PC, float DeltaSeconds)
@@ -328,6 +352,12 @@ void ADCPlayerCharacter::TickHelm(APlayerController* PC, float DeltaSeconds)
 	if (PC->IsInputKeyDown(EKeys::D)) { Steer += 1.f; }
 	if (PC->IsInputKeyDown(EKeys::A)) { Steer -= 1.f; }
 #if !UE_BUILD_SHIPPING
+	float LeaveAt = -1.f;
+	if (FParse::Value(FCommandLine::Get(), TEXT("DCHelmLeaveAt="), LeaveAt) && GetWorld()->GetTimeSeconds() >= LeaveAt)
+	{
+		LeaveStation(PC);
+		return;
+	}
 	// Repeatable wheel response capture through the same input path as A/D.
 	if (FParse::Param(FCommandLine::Get(), TEXT("DCHelmSequence")))
 	{
@@ -339,7 +369,25 @@ void ADCPlayerCharacter::TickHelm(APlayerController* PC, float DeltaSeconds)
 	if (USceneComponent* Wheel = HelmWheel.Get())
 	{
 		WheelAngle = FMath::FInterpTo(WheelAngle, Steer * 65.f, DeltaSeconds, 5.f);
-		Wheel->SetRelativeRotation(FQuat(WheelAxisInParent, FMath::DegreesToRadians(WheelAngle)) * WheelRestRotation);
+		const FQuat Turn(WheelAxisInParent, FMath::DegreesToRadians(WheelAngle));
+		// Compensate the component origin so the hub stays fixed to the ship.
+		Wheel->SetRelativeLocationAndRotation(
+			WheelPivotInParent + Turn.RotateVector(WheelRestLocation - WheelPivotInParent), Turn * WheelRestRotation);
+#if !UE_BUILD_SHIPPING
+		if (FParse::Param(FCommandLine::Get(), TEXT("DCHelmLog")))
+		{
+			WheelLogTimer -= DeltaSeconds;
+			if (WheelLogTimer <= 0.f)
+			{
+				WheelLogTimer = .25f;
+				const USceneComponent* Parent = Wheel->GetAttachParent();
+				const FVector Hub = Wheel->GetSocketLocation(TEXT("Bone_001"));
+				const FVector HubInParent = Parent ? Parent->GetComponentTransform().InverseTransformPosition(Hub) : Hub;
+				UE_LOG(LogDC, Log, TEXT("Helm pivot: angle=%.2f hubDrift=%.4f hub=%s t=%.2f"),
+					WheelAngle, FVector::Distance(HubInParent, WheelPivotInParent), *HubInParent.ToString(), GetWorld()->GetTimeSeconds());
+			}
+		}
+#endif
 	}
 	if (PC->WasInputKeyJustPressed(EKeys::C)) { bClearHelmView = !bClearHelmView; }
 	Prompt = bClearHelmView ? TEXT("A/D  steer     C  wheel view     T  ship view     E  leave helm")

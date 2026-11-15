@@ -2,7 +2,7 @@
 param(
     [Parameter(Mandatory=$true)][string]$ExecutablePath,
     [Parameter(Mandatory=$true)][string]$OutputPath,
-    [ValidateSet('rag','cannons','encounters','navigation','bow','bownatural','bowsequence','bowwide','fog','exitdetail','route','voyage')][string]$Case = 'rag',
+    [ValidateSet('helm','rag','cannons','encounters','navigation','bow','bownatural','bowsequence','bowwide','fog','exitdetail','route','voyage')][string]$Case = 'rag',
     [string]$DiagnosticArguments = ''
 )
 $ErrorActionPreference = 'Stop'
@@ -16,6 +16,7 @@ if (Test-Path -LiteralPath $output) { throw 'Use a new review directory so stale
 $running = Get-CimInstance Win32_Process -Filter "Name = 'DirectorsCut.exe'" | Where-Object { $_.ExecutablePath -eq $exe }
 if ($running) { throw 'This packaged executable is already running.' }
 $options = switch ($Case) {
+    'helm' { '-DCRunThrough -DCStation=helm -DCHelmSequence -DCHelmLog -DCAutoShots=2,6,10,14 -DCShotCam=-700,-180,850,-18,142 -DCNoHUD' }
     'rag' { '-DCEarlyVerify -DCSkipIntro -DCRunThrough -DCTenths -DCAutoShots=2.9,3.1,3.8,4.0,4.7,4.9,5.4,9,12,20' }
     'navigation' { '-DCNavigationVerify -DCRunThrough' }
     'cannons' { '-DCCannonVerify' }
@@ -40,7 +41,7 @@ if (!$run.WaitForExit($timeoutMs)) {
     throw "Review exceeded $($timeoutMs / 60000) minutes; stopped only its own process."
 }
 $lines = Get-Content -LiteralPath $log
-$lines | Select-String 'LogDC:.*(VERIFY|VERIFICATION|Rag contact:|Encounter |Sentinel |Hull struck|Navigation:|Navigation plan:|Bow |Auto shot|Capture state:)' | ForEach-Object { $_.Line } | Set-Content -LiteralPath (Join-Path $output 'results.txt')
+$lines | Select-String 'LogDC:.*(VERIFY|VERIFICATION|Rag contact:|Helm pivot:|Helm restored:|Encounter |Sentinel |Hull struck|Navigation:|Navigation plan:|Bow |Auto shot|Capture state:)' | ForEach-Object { $_.Line } | Set-Content -LiteralPath (Join-Path $output 'results.txt')
 $shots = Join-Path $output 'user\Saved\Screenshots\Auto'
 if (Test-Path -LiteralPath $shots) { Get-ChildItem -LiteralPath $shots -Filter 'shot_*.png' | Copy-Item -Destination $output }
 if ($run.ExitCode -ne 0 -or $lines -match 'VERIFICATION FAILED|VERIFY FAIL|Fatal error|Assertion failed|Blueprint Runtime Error') { throw "Packaged review failed; inspect $log" }

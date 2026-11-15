@@ -1,0 +1,10 @@
+[2/4] Link [x64] UnrealEditor-DirectorsCut.lib
+[3/4] Link [x64] UnrealEditor-DirectorsCut.dll
+[4/4] WriteMetadata DirectorsCutEditor.target [NoUba]
+
+Total time in Unreal Build Accelerator local executor: 3.58 seconds
+Output binary: E:\Utilities\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe
+
+Result: Succeeded
+Total execution time: 4.40 seconds
+Trace written to file C:\Users\ejobse\AppData\Local\UnrealBuildTool\Trace.uba with size 5.7kb

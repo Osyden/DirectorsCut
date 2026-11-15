@@ -1,7 +1,7 @@
 # Uses a separately built runtime project; never saves or changes content assets.
 param(
     [Parameter(Mandatory=$true)][string]$ProjectPath,
-    [ValidateSet('rag','cannons','encounters','statue','city','fogband','crew','default','exit','exitdetail','navigation','navigationroute','bow','bowclose','bowstorm','bowstormclose','bowdeck','bowrough','bowroughclose','bowparticles','bowdetail','bowroughdeck','bowlookdown','bowtransition','manual')][string]$Case = 'encounters',
+    [ValidateSet('helm','rag','cannons','encounters','statue','city','fogband','crew','default','exit','exitdetail','navigation','navigationroute','bow','bowclose','bowstorm','bowstormclose','bowdeck','bowrough','bowroughclose','bowparticles','bowdetail','bowroughdeck','bowlookdown','bowtransition','manual')][string]$Case = 'encounters',
     [string]$EngineRoot = 'E:\Utilities\UE_5.8',
     [string]$OutputPath = '',
     [string]$DiagnosticArguments = ''
@@ -15,6 +15,7 @@ New-Item -ItemType Directory -Path $output -Force | Out-Null
 $running = Get-CimInstance Win32_Process -Filter "Name = 'UnrealEditor.exe'" | Where-Object { $_.CommandLine -and $_.CommandLine.Contains($project) }
 if ($running) { throw "The selected runtime project is already open. Finish that capture before starting another." }
 $options = switch ($Case) {
+    'helm' { '-DCRunThrough -DCStation=helm -DCHelmSequence -DCHelmLog -DCAutoShots=2,6,10,14 -DCShotCam=-700,-180,850,-18,142 -DCNoHUD' }
     'rag' { '-DCEarlyVerify -DCSkipIntro -DCRunThrough -DCTenths -DCAutoShots=2.9,3.1,3.8,4.0,4.7,4.9,5.4,9,12,20' }
     'cannons' { '-DCCannonVerify' }
     'encounters' { '-DCEncounterVerify -DCStartAt=90 -DCRunThrough -DCOrders=Hold_fire -DCAutoShots=101,108,119,121,123,126,129,135,146,175,208,225,235,236 -DCShotCam=-2200,0,1200,7,55 -DCGunLog' }
@@ -53,7 +54,7 @@ if (!$run.WaitForExit(420000)) {
 $shots = Join-Path $projectFolder 'Saved\Screenshots\Auto'
 Get-ChildItem -LiteralPath $shots -Filter 'shot_*.png' | Where-Object { $_.LastWriteTime -ge $started } | Copy-Item -Destination $output
 $lines = Get-Content -LiteralPath $log
-$lines | Select-String 'LogDC:.*(VERIFY|VERIFICATION|Rag contact:|Encounter |Sentinel |Hull struck|Navigation:|Navigation plan:|Navigation alternatives:|Bow |Auto shot|Capture state:)' | ForEach-Object { $_.Line } | Set-Content -LiteralPath (Join-Path $output 'results.txt')
+$lines | Select-String 'LogDC:.*(VERIFY|VERIFICATION|Rag contact:|Helm pivot:|Helm restored:|Encounter |Sentinel |Hull struck|Navigation:|Navigation plan:|Navigation alternatives:|Bow |Auto shot|Capture state:)' | ForEach-Object { $_.Line } | Set-Content -LiteralPath (Join-Path $output 'results.txt')
 if ($run.ExitCode -ne 0 -or $lines -match 'VERIFICATION FAILED|VERIFY FAIL') { throw "Review failed; inspect $log." }
 if ($Case -in @('rag','cannons','encounters','navigation') -and !($lines -match 'VERIFICATION PASSED')) { throw 'The verification did not reach its success marker.' }
 Write-Output "Review completed: $output. Inspect the screenshots before accepting visual quality."

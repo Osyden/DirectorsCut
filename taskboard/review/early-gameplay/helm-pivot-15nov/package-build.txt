@@ -1,0 +1,10 @@
+Stage command time: 16.17 s
+********** STAGE COMMAND COMPLETED **********
+********** ARCHIVE COMMAND STARTED **********
+Archiving to E:\Projects\DirectorsCut\Builds\2026-11-15_1129_helm-pivot
+Archive command time: 4.20 s
+********** ARCHIVE COMMAND COMPLETED **********
+BuildCookRun time: 119.17 s
+BUILD SUCCESSFUL
+AutomationTool executed for 0h 1m 59s
+AutomationTool exiting with ExitCode=0 (Success)

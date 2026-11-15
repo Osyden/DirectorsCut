@@ -1,0 +1,32 @@
+{
+  "before": {
+    "samples": 56,
+    "max_hub_drift_cm": 80.4612,
+    "angle_range_degrees": [
+      -45.5,
+      45.5
+    ]
+  },
+  "after": {
+    "samples": 39,
+    "max_hub_drift_cm": 0.0002,
+    "angle_range_degrees": [
+      -45.5,
+      45.5
+    ],
+    "leave_hub_drift_cm": 0.0,
+    "leave_location_error_cm": 0.0
+  },
+  "packaged": {
+    "samples": 40,
+    "max_hub_drift_cm": 0.0002,
+    "angle_range_degrees": [
+      -45.5,
+      45.5
+    ],
+    "leave_hub_drift_cm": 0.0,
+    "leave_location_error_cm": 0.0,
+    "screenshots": 4,
+    "source_manifest_matches": 85
+  }
+}

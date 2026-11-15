@@ -82,8 +82,11 @@ protected:
 	bool bClearHelmView = false;
 	TWeakObjectPtr<USceneComponent> HelmWheel;
 	FQuat WheelRestRotation = FQuat::Identity;
+	FVector WheelRestLocation = FVector::ZeroVector;
+	FVector WheelPivotInParent = FVector::ZeroVector;
 	FVector WheelAxisInParent = FVector::ForwardVector;
 	float WheelAngle = 0.f;
+	float WheelLogTimer = 0.f;
 
 	int32 ActiveStation = INDEX_NONE;
 	EDCStationType ActiveType = EDCStationType::None;

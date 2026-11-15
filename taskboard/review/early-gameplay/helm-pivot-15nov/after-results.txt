@@ -1,0 +1,50 @@
+[2026.11.15-11.27.40:417][  1]LogDC: Helm pivot: angle=0.00 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=0.40
+[2026.11.15-11.27.40:525][  2]LogDC: Bow spray waterline: x=1216 halfwidth=78
+[2026.11.15-11.27.40:525][  2]LogDC: Bow wash: tuned 2 live water materials; shared assets unchanged
+[2026.11.15-11.27.40:637][  4]LogDC: Helm pivot: angle=0.00 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=0.66
+[2026.11.15-11.27.40:890][ 15]LogDC: Helm pivot: angle=0.00 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=0.92
+[2026.11.15-11.27.41:178][ 18]LogDC: Helm pivot: angle=0.00 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=1.18
+[2026.11.15-11.27.41:406][ 43]LogDC: Helm pivot: angle=0.00 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=1.43
+[2026.11.15-11.27.41:657][ 72]LogDC: Helm pivot: angle=0.00 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=1.68
+[2026.11.15-11.27.41:908][102]LogDC: Helm pivot: angle=0.00 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=1.94
+[2026.11.15-11.27.41:983][111]LogDC: Auto shot shot_0002.png at ride time 2.0, 119 fps (game 5.5 ms, render 9.0 ms, gpu 7.5 ms)
+[2026.11.15-11.27.41:984][111]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 2.0
+[2026.11.15-11.27.42:441][112]LogDC: Helm pivot: angle=0.00 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=2.41
+[2026.11.15-11.27.42:874][118]LogDC: Helm pivot: angle=0.00 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=2.84
+[2026.11.15-11.27.43:129][144]LogDC: Helm pivot: angle=18.48 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=3.10
+[2026.11.15-11.27.43:385][173]LogDC: Helm pivot: angle=38.21 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=3.35
+[2026.11.15-11.27.43:640][204]LogDC: Helm pivot: angle=43.52 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=3.61
+[2026.11.15-11.27.43:894][235]LogDC: Helm pivot: angle=44.96 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=3.86
+[2026.11.15-11.27.44:146][266]LogDC: Helm pivot: angle=45.35 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=4.11
+[2026.11.15-11.27.44:402][297]LogDC: Helm pivot: angle=45.46 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=4.37
+[2026.11.15-11.27.44:661][327]LogDC: Helm pivot: angle=45.49 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=4.63
+[2026.11.15-11.27.44:917][358]LogDC: Helm pivot: angle=45.50 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=4.89
+[2026.11.15-11.27.45:175][389]LogDC: Helm pivot: angle=45.50 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=5.14
+[2026.11.15-11.27.45:430][420]LogDC: Helm pivot: angle=45.50 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=5.40
+[2026.11.15-11.27.45:681][449]LogDC: Helm pivot: angle=45.50 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=5.65
+[2026.11.15-11.27.45:936][481]LogDC: Helm pivot: angle=45.50 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=5.90
+[2026.11.15-11.27.46:038][494]LogDC: Auto shot shot_0006.png at ride time 6.0, 126 fps (game 6.3 ms, render 7.6 ms, gpu 6.8 ms)
+[2026.11.15-11.27.46:038][494]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 6.0
+[2026.11.15-11.27.46:188][501]LogDC: Helm pivot: angle=45.50 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=6.16
+[2026.11.15-11.27.46:446][532]LogDC: Helm pivot: angle=45.50 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=6.41
+[2026.11.15-11.27.46:697][563]LogDC: Helm pivot: angle=45.50 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=6.67
+[2026.11.15-11.27.46:957][594]LogDC: Helm pivot: angle=45.50 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=6.93
+[2026.11.15-11.27.47:207][625]LogDC: Helm pivot: angle=-9.40 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=7.18
+[2026.11.15-11.27.47:463][656]LogDC: Helm pivot: angle=-35.73 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=7.43
+[2026.11.15-11.27.47:717][687]LogDC: Helm pivot: angle=-42.83 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=7.69
+[2026.11.15-11.27.47:972][714]LogDC: Helm pivot: angle=-44.77 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=7.94
+[2026.11.15-11.27.48:225][743]LogDC: Helm pivot: angle=-45.30 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=8.19
+[2026.11.15-11.27.48:484][774]LogDC: Helm pivot: angle=-45.45 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=8.45
+[2026.11.15-11.27.48:737][805]LogDC: Helm pivot: angle=-45.49 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=8.71
+[2026.11.15-11.27.48:991][836]LogDC: Helm pivot: angle=-45.50 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=8.96
+[2026.11.15-11.27.49:246][867]LogDC: Helm pivot: angle=-45.50 hubDrift=0.0002 hub=X=-1003.677 Y=-0.001 Z=757.204 t=9.22
+[2026.11.15-11.27.49:502][897]LogDC: Helm pivot: angle=-45.50 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=9.47
+[2026.11.15-11.27.49:760][929]LogDC: Helm pivot: angle=-45.50 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=9.73
+[2026.11.15-11.27.50:018][960]LogDC: Helm pivot: angle=-45.50 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=9.99
+[2026.11.15-11.27.50:041][963]LogDC: Auto shot shot_0010.png at ride time 10.0, 121 fps (game 6.8 ms, render 8.7 ms, gpu 6.7 ms)
+[2026.11.15-11.27.50:041][963]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 10.0
+[2026.11.15-11.27.50:271][979]LogDC: Helm pivot: angle=-45.50 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=10.24
+[2026.11.15-11.27.50:527][ 11]LogDC: Helm pivot: angle=-45.50 hubDrift=0.0000 hub=X=-1003.677 Y=-0.001 Z=757.204 t=10.50
+[2026.11.15-11.27.50:536][ 12]LogDC: Helm restored: hubDrift=0.0000 locationError=0.0000 t=10.50
+[2026.11.15-11.27.54:045][437]LogDC: Auto shot shot_0014.png at ride time 14.0, 122 fps (game 5.8 ms, render 10.2 ms, gpu 9.4 ms)
+[2026.11.15-11.27.54:045][437]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 14.0
