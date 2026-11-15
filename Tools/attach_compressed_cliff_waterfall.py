@@ -108,11 +108,13 @@ def main():
     p.add_argument('--template-source-index',type=int,default=939,help='Ring pilot: use template tag only to choose a seed; all fitting uses actual ring triangles')
     p.add_argument('--hero-source-index',type=int,help='Explicit actual ring vertex for a supported high-rim ballistic source')
     p.add_argument('--hero-speed',type=float,default=12.5,help='Physical horizontal feeder speed in metres/second')
+    p.add_argument('--hero-feeder-m',type=float,default=4.,help='Actual downhill supported feeder length, metres (1–16); invalid uphill paths are rejected')
     p.add_argument('--width-m',type=float,default=6);p.add_argument('--render',action='store_true')
     p.add_argument('--exposed-jet',action='store_true',help='Try one longer supported ravine jet; authored launch velocity, no invented ledge')
     a=p.parse_args(sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else [])
     if a.output.exists() or 'saved' not in [s.lower() for s in a.output.resolve().parts]:p.error('Choose a new ignored Saved output')
     if not 1<=a.width_m<=12:p.error('Prototype width must be between 1 and 12 physical metres')
+    if not 1<=a.hero_feeder_m<=16:p.error('Hero feeder must be between1 and16 physical metres')
     cliff=load(a.cliff);water=load(a.water)
     meta=json.loads(str(cliff['metadata_json']));ring='compressed_chart_uvz_m' in cliff
     # Arena XYZ is authoritative. A ring's identity export frame and a sector's
@@ -186,10 +188,13 @@ def main():
         direction=np.array((-world[0],-world[1],0));direction/=np.linalg.norm(direction);direction=direction@B
         vel=direction*a.hero_speed;vel[2]=-1.
         feeder=[]
-        for dist in np.linspace(-4,-.25,16):
+        for dist in np.linspace(-a.hero_feeder_m,-.25,math.ceil(a.hero_feeder_m*4)):
             h=rock.hit(source[:2]+direction[:2]*dist)
             if h is None:raise ValueError('Hero feeder has no actual rock support')
             feeder.append(h[0])
+        feeder_heights=np.r_[np.asarray(feeder)[:,2],source[2]]
+        if feeder_heights[0]<source[2] or np.max(np.diff(feeder_heights))>.25:
+            raise ValueError('Hero feeder would climb uphill over the actual rock; shorten it or choose another source')
         start=source.copy();start[2]+=.30;samples=[];hit=None;minimum_clearance=1e9
         for time in np.arange(0,9,.015):
             pt=start+vel*time+np.array((0,0,-4.905*time*time));rh=rock.hit(pt[:2]);wh=sea.hit(pt[:2])
@@ -210,7 +215,8 @@ def main():
         jet=dict(launch_index=len(feeder),initial_velocity_chart_m_s=vel.tolist(),duration_s=high,gravity_m_s2=9.81,
                  drop_m=float(start[2]-end[2]),minimum_centre_clearance_m=minimum_clearance,
                  horizontal_projection_m=float(np.linalg.norm(end[:2]-start[:2])),high_rim_source=True,
-                 feeder_depth_m=.4,feeder_momentum_authored=True,source_support_vertex=a.hero_source_index)
+                 feeder_depth_m=.4,feeder_length_m=a.hero_feeder_m,
+                 feeder_momentum_authored=True,source_support_vertex=a.hero_source_index)
     if jet is None:raise ValueError('No short terminal ballistic jet clears rock and reaches measured finite water')
     launch_index=jet['launch_index'];s=np.r_[0,np.cumsum(np.linalg.norm(np.diff(path,axis=0),axis=1))]
     support_ids=[];support_weights=[];sections=[];widths=[];positions=[];faces=[];materials=[];uvs=[]

@@ -186,6 +186,26 @@ class FittedWaterfall(Waterfall):
         if "shore_clearance_cm_y_major" in water:
             self.water_shore = np.asarray(water["shore_clearance_cm_y_major"], dtype=float).reshape(self.water_count, self.water_count) / 100
         super().__init__(args)
+        self.hero_breakup = bool(self.ballistic_launch and getattr(args, "hero_breakup", False))
+        if self.hero_breakup:
+            # Three unequal physical source channels, advected with their birth
+            # phase. Preserve total emitted density mass; do not brighten the
+            # fall by adding a uniform blanket of particles.
+            original_mass = self.strength.sum()
+            phase = 2*np.pi*self.birth/args.duration
+            channel = (.04 + np.exp(-.5*((self.x+2.35)/.72)**2)
+                       + .72*np.exp(-.5*((self.x-.05)/.49)**2)
+                       + .85*np.exp(-.5*((self.x-2.45)/.81)**2))
+            channel *= .72+.28*np.sin(phase+self.x*.83)**2
+            self.strength *= channel
+            self.strength *= original_mass/self.strength.sum()
+            self.birth_phase = phase
+            # Unequal sideways impact jets, correlated across the curtain.
+            # Keep their bounded lateral footprint: the ship route is nearby.
+            self.impact_vx = 4.2*np.sin(phase*2+self.x*.65)
+            self.impact_vy = 2.0+3.0*(.5+.5*np.sin(phase+self.x*.9))
+            self.impact_vz = 5.5+7.0*(.5+.5*np.sin(phase*2-self.x*.7))
+            self.impact_drag = np.minimum(self.impact_drag,1.25)
         points = np.asarray(profile["samples_local_cm"], dtype=float) / 100
         length = np.linalg.norm(np.diff(points, axis=0), axis=1)
         keep = np.concatenate(([True], length > .001))
@@ -260,6 +280,9 @@ class FittedWaterfall(Waterfall):
         self.spray_launch_time = times[-1] * (.12 + .72 * (self.phase[:, 2] / (2 * np.pi)))
         if self.ballistic_launch:
             self.spray_launch_time = self.flight * (.10 + .72 * (self.phase[:, 2] / (2 * np.pi)))
+            if self.hero_breakup:
+                self.spray_indices = np.arange(0,len(self.birth),2)
+                self.spray_launch_time = self.flight*(.40+.48*(self.phase[:,2]/(2*np.pi)))
         self.spray_birth = np.mod(self.birth + (self.spray_launch_time if self.ballistic_launch else self.spray_launch_time / self.speed_scale), args.duration)
 
     def sample_path(self, time_s):
@@ -344,6 +367,14 @@ class FittedWaterfall(Waterfall):
             spread = .03 * np.maximum(0, age-.25)**2
             p[:, 0] += spread*np.sin(self.phase[:, 0])
             p[:, 1] += spread*.6*np.sin(self.phase[:, 1])
+            if getattr(self,"hero_breakup",False):
+                lower = smoothstep(1.9,5.0,age)
+                # Continuous birth-phase waves move with the falling water.
+                # The unequal channels separate/merge, without periodic missing
+                # rectangles or lifting particles against gravity.
+                p[:,0] += lower*(2.15*np.sin(age*.96+self.birth_phase+self.x*.49)
+                                 +.65*np.sin(age*1.73-self.birth_phase*2+self.x*.83))
+                p[:,1] += lower*(.70+.65*np.sin(age*1.1+self.birth_phase+self.x*.6))
             return p
         clock = np.minimum(age * self.speed_scale, self.path_time[-1])
         p = self.sample_width(clock, self.x + .25 * np.sin(age * 2.3 + self.phase[:, 0]))
@@ -363,6 +394,8 @@ class FittedWaterfall(Waterfall):
             age = np.mod(round(time_s % self.a.duration, 12) - self.spray_birth[indices], self.a.duration)
             launch_age = self.spray_launch_time[indices] if self.ballistic_launch else self.spray_launch_time[indices]/self.speed_scale[indices]
             active = (age < .85) & (launch_age < self.flight[indices])
+            if self.hero_breakup:
+                active = (age < 1.75) & (launch_age < self.flight[indices])
             indices, age = indices[active], age[active]
             launch = self.spray_launch_time[indices]
             normal = np.tile((0.0, 1.0, 0.0), (len(indices), 1))
@@ -382,6 +415,23 @@ class FittedWaterfall(Waterfall):
             clearance = np.ones(len(indices)) if self.ballistic_launch else spray[:, 1] - expected[:, 1]
             fade = smoothstep(0, .08, age) * (1-smoothstep(.55, .85, age)) * smoothstep(0, .4, clearance)
             spray_mass = self.mass * self.strength[indices] * fade * .35
+            if self.hero_breakup:
+                # Drag slows small released droplets, producing a lower fan
+                # around the still accelerating core. Coherent eddies are
+                # bounded to a few metres instead of a smoke-like giant cloud.
+                tau=.85
+                travel=tau*(1-np.exp(-age/tau))
+                phase=self.birth_phase[indices]
+                kick=np.column_stack((2.8*np.sin(phase+self.x[indices]*.8),
+                                      1.2+1.2*np.sin(phase*2+self.x[indices]*.6)**2,
+                                      np.zeros(len(indices))))
+                spray=start+(launch_velocity+kick)*travel[:,None]
+                spray[:,2] -= 9.81*tau*(age-travel)
+                eddy=np.sin(np.pi*np.minimum(age/1.75,1))
+                spray[:,0] += eddy*1.1*np.sin(phase+age*2.4)
+                spray[:,1] += eddy*.8*np.sin(phase*2-age*1.8)
+                fade=smoothstep(0,.10,age)*(1-smoothstep(1.15,1.75,age))
+                spray_mass=self.mass*self.strength[indices]*fade*.30
             return self.keep_airborne(np.concatenate((p, spray)), np.concatenate((mass, spray_mass)))
         positions, masses = [], []
         base_age = np.mod(round(time_s % self.a.duration, 12) - self.impact_birth, self.a.duration)
@@ -510,6 +560,7 @@ def main():
     parser.add_argument("--seed", type=int, default=54117)
     parser.add_argument("--threshold", type=float, default=.00005)
     parser.add_argument("--profile", type=Path, help="actual lower water-core profile exported with -DCExportWaterfallProfile")
+    parser.add_argument("--hero-breakup", action="store_true", help="bounded unequal channels and lower aerodynamic spray for an explicit ballistic hero profile")
     args = parser.parse_args()
     positive = (args.width_m, args.height_m, args.depth_m, args.voxel_m,
                 args.fps, args.duration, args.emission_rate)
@@ -540,7 +591,11 @@ def main():
         args.width_m = min(args.width_m, float(profile["source_half_width_cm"]) * .02)
         model = FittedWaterfall(args, profile)
     else:
+        if args.hero_breakup:
+            parser.error("--hero-breakup requires an explicit ballistic --profile")
         model = Waterfall(args)
+    if args.hero_breakup and not getattr(model,"ballistic_launch",None):
+        parser.error("--hero-breakup requires a ballistic_launch profile")
     manifest = {
         "schema": "directorscut.waterfall_vdb.v1",
         "generator": "Tools/generate_waterfall_vdb.py",
@@ -573,6 +628,14 @@ def main():
             manifest["physics"]["ballistic_launch"] = profile["ballistic_launch"]
             manifest["physics"].pop("terminal_velocity_m_s",None)
             manifest["physics"]["core_drag"] = "none; source momentum plus gravity; drag applies to secondary spray"
+            if args.hero_breakup:
+                manifest["physics"]["hero_breakup"] = {
+                    "source_channels": 3, "source_density_mass_preserved": True,
+                    "core_additional_lateral_envelope_m": 2.8,
+                    "core_additional_outward_envelope_m": 1.35,
+                    "secondary_lifetime_s": 1.75, "secondary_drag_s": .85,
+                    "secondary_fraction": .5, "secondary_relative_density_weight": .30,
+                    "model_limit": "authored aerodynamic density response, not conserved two-phase liquid mass; whole-rock/route sampling checked separately"}
         manifest["water_contact"] = {**model.contact_stats, "coverage_required": True,
                                       "outside_height_grid_is_water": False, "post_blur_submerged_density_mask": True,
                                       "core_endpoint_lift": False, "impact_timing": "first actual covered water entry per strand"}
