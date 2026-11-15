@@ -1,0 +1,9 @@
+# Statue eye markers during approach
+
+Owner: cannons_helm, isolated `codex/statue-marker-awareness`, based59228c3. Owns only statue HUD drawing and awareness policy/replay assertions; tunnel_boss owns damage and callouts. No main files, packaged game, engine or GPU jobs changed by this agent.
+
+Root cause: the existing normal HUD delegate correctly ran outside cannon mode, but its marker admission reused `T.bCanShoot`. That value requires the statue eyes to be inside the player cannon's range/arc/elevation and unobstructed firing line. A visible approaching statue therefore had no marker until a usable broadside existed. The developer aiming flag was not required to draw it; it only made this narrow window easier to see during previous verification.
+
+The eye brackets and edge arrow now identify a revealed, living statue from the helm, deck and cannons independently of cannon admission. The exact hittable eye position and existing boss-style placement remain unchanged. An unreachable target says `EYE TARGET / WAIT FOR A CLEAR CANNON SHOT`; it changes to `SHOOT EYES` and the charge countdown only when the cannon really has a clear shot. Concealed, missing and defeated targets stay hidden. Actual cannon checks, review auto-aim admission and enemy charge/attack rules remain unchanged.
+
+CPU validation: `Tools/test_fog_route.ps1` passed296,766checks. Added exhaustive awareness lifecycle cases and the explicit visible-but-unreachable approach case while retaining all prior shot eligibility and charge tests. Native acceptance still required by root: ordinary helm and both cannon views at statue approach105/139/173/211seconds, with no `DCEarlyTargetReview` or threat-tracking flags. Confirm approach identification, firing-label transition, edge guidance and disappearance after four hits. Clean trailer mode `DCNoHUD` intentionally suppresses markers.

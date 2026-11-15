@@ -75,7 +75,13 @@ int main()
         const bool Statue=Bits&1,Target=Bits&2,Hidden=Bits&4,Reachable=Bits&8;
         Check(ShowStatueMarker(Statue,Target,Hidden,Reachable,Stage)==(Statue&&Target&&!Hidden&&Reachable&&Stage!=4),
             "Marker never leaks concealed, dead, unreachable or non-statue targets");
+        Check(ShowStatueAwareness(Statue,Target,Hidden,Stage)==(Statue&&Target&&!Hidden&&Stage!=4),
+            "Visible living statue remains identified from helm and approach before cannon admission");
     }
+    Check(ShowStatueAwareness(true,true,false,0) && !ShowStatueMarker(true,true,false,false,0),
+        "Approaching statue has an eye marker without granting a blocked cannon/review shot");
+    Check(!CanBeginCharge(0,60.f,StatueFirstExposure,false,0.f),
+        "Awareness never allows an unreachable statue to start charging");
     // Replay all new waves plus statues, repeated attacks and cooldowns. The
     // same production charge gate must leave only one urgent aim demand.
     for(int FPS:{15,30,60,120})

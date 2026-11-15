@@ -14,8 +14,13 @@ namespace DCEarlyEncounterPolicy
     constexpr float CreatureCharge=3.f;
     constexpr float ChargeSpacing=4.f;
 
+    // Awareness starts when the monument is revealed, before the ship reaches
+    // a usable broadside. Shot/review admission remains a separate decision.
+    inline bool ShowStatueAwareness(bool Statue,bool Target,bool Hidden,int Stage)
+    { return Statue && Target && !Hidden && Stage!=4; }
+
     inline bool ShowStatueMarker(bool Statue,bool Target,bool Hidden,bool CanShoot,int Stage)
-    { return Statue && Target && !Hidden && CanShoot && Stage!=4; }
+    { return ShowStatueAwareness(Statue,Target,Hidden,Stage) && CanShoot; }
 
     inline bool CanBeginCharge(int Stage,float Exposure,float Wait,bool CanShoot,float Spacing)
     { return Stage==0 && Exposure>=Wait && CanShoot && Spacing<=0.f; }

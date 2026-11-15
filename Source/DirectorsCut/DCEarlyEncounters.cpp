@@ -571,8 +571,10 @@ void ADCEarlyEncounters::DrawStatueTarget(AHUD* HUD,UCanvas* Canvas)
 	const FThreat* Selected=nullptr;
 	for(const FThreat& T:Threats)
 	{
-		if(!DCEarlyEncounterPolicy::ShowStatueMarker(T.bStatue,T.Target.IsValid(),
-			!T.Body.IsValid() || T.Body->IsHidden(),T.bCanShoot,T.Stage)) { continue; }
+		// Show the eyes from the helm/on approach too. Cannon line-of-fire
+		// decides the instruction below, not whether the player learns the target.
+		if(!DCEarlyEncounterPolicy::ShowStatueAwareness(T.bStatue,T.Target.IsValid(),
+			!T.Body.IsValid() || T.Body->IsHidden(),T.Stage)) { continue; }
 		if(!Selected || (T.Stage==1 && Selected->Stage!=1)
 			|| (T.Stage==Selected->Stage && FMath::Abs(T.X)<FMath::Abs(Selected->X))) { Selected=&T; }
 	}
@@ -612,10 +614,11 @@ void ADCEarlyEncounters::DrawStatueTarget(AHUD* HUD,UCanvas* Canvas)
 	Line(P.X,P.Y-R,P.LabelX+14*S,P.LabelY+60*S);
 	HUD->DrawRect(FLinearColor(.012f,.022f,.03f,.94f),P.LabelX,P.LabelY,288*S,66*S);
 	HUD->DrawRect(Color,P.LabelX,P.LabelY,4*S,66*S);
-	const FString Title=FString::Printf(TEXT("%s STATUE - SHOOT EYES"),T.Side<0?TEXT("PORT"):TEXT("STARBOARD"));
-	FString Detail=TEXT("Silence it before its eyes fire");
-	if(T.Stage==1) { Detail=FString::Printf(TEXT("BEAM IN %.1fs - KEEP FIRING"),FMath::Max(0.f,DCEarlyEncounterPolicy::StatueCharge-T.Clock)); }
-	else if(T.Stage==2) { Detail=TEXT("BEAM ACTIVE - SHOOT THE EYES"); }
+	const FString Title=FString::Printf(TEXT("%s STATUE - %s"),T.Side<0?TEXT("PORT"):TEXT("STARBOARD"),
+		T.bCanShoot?TEXT("SHOOT EYES"):TEXT("EYE TARGET"));
+	FString Detail=T.bCanShoot?TEXT("Silence it before its eyes fire"):TEXT("WAIT FOR A CLEAR CANNON SHOT");
+	if(T.bCanShoot && T.Stage==1) { Detail=FString::Printf(TEXT("BEAM IN %.1fs - KEEP FIRING"),FMath::Max(0.f,DCEarlyEncounterPolicy::StatueCharge-T.Clock)); }
+	else if(T.bCanShoot && T.Stage==2) { Detail=TEXT("BEAM ACTIVE - SHOOT THE EYES"); }
 	HUD->DrawText(Title,Color,P.LabelX+13*S,P.LabelY+9*S,GEngine->GetSmallFont(),1.15f*S);
 	HUD->DrawText(Detail,FLinearColor::White,P.LabelX+13*S,P.LabelY+35*S,GEngine->GetSmallFont(),1.04f*S);
 }
