@@ -1049,7 +1049,14 @@ void ADCTreadmill::TickStrikes(float DeltaSeconds)
 			const int32 TargetIndex = FMath::RoundToInt((AvoidanceLane + LaneLimit) / 250.f);
 			const float TargetStone = StoneAhead.IsValidIndex(TargetIndex) ? StoneAhead[TargetIndex] : -1.f;
 			const float TargetPath = LanePathImpact.IsValidIndex(TargetIndex) ? LanePathImpact[TargetIndex] : -1.f;
-			const bool bUrgent = (TargetStone >= 0.f && TargetStone < 4500.f) || (TargetPath >= 0.f && TargetPath < 1.8f);
+			// A destination ray can hit stone already astern of the turning hull.
+			// A confirmed clear turn keeps its hold for that unrelated ray hit.
+			// Preserve the existing emergency lead time for blocked/unknown paths.
+			const float PathReach = Director->TroughRise > 1.f ? LaneLimit * .7f : LaneLimit;
+			const bool bPathClear = FMath::Abs(AvoidanceLane) <= PathReach
+				&& LanePathImpact.IsValidIndex(TargetIndex) && TargetPath < 0.f;
+			const bool bUrgent = !bPathClear && ((TargetStone >= 0.f && TargetStone < 4500.f)
+				|| (TargetPath >= 0.f && TargetPath < 1.8f));
 			const int32 CandidateIndex = FMath::RoundToInt((Candidate + LaneLimit) / 250.f);
 			const bool bSafer = TargetPath >= 0.f && LanePathImpact.IsValidIndex(CandidateIndex) && LanePathImpact[CandidateIndex] < 0.f;
 			const bool bBetter = bSafer || ScoreLane(Candidate, 17000.f) + .6f < ScoreLane(AvoidanceLane, 17000.f);
@@ -1058,7 +1065,7 @@ void ADCTreadmill::TickStrikes(float DeltaSeconds)
 			{
 				if (FParse::Param(FCommandLine::Get(), TEXT("DCCurrentLog")))
 				{
-					UE_LOG(LogDC, Log, TEXT("Navigation plan: %.0f -> %.0f urgent=%d clearance=%.0f at %.1f"), AvoidanceLane, Candidate, bUrgent, TargetStone, Director->RideTime);
+					UE_LOG(LogDC, Log, TEXT("Navigation plan: %.0f -> %.0f urgent=%d clearance=%.0f pathHit=%.2f at %.1f"), AvoidanceLane, Candidate, bUrgent, TargetStone, TargetPath, Director->RideTime);
 				}
 				AvoidanceLane = Candidate;
 				bHasAvoidance = true;

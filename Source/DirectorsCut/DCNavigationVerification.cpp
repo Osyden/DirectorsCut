@@ -85,6 +85,49 @@ void ADCTreadmill::VerifyNavigation()
 	Objects.SetNum(SavedObjects);
 	LaneLimit = SavedLimit;
 
+	// A destination's straight ray can see a pillar already astern of the
+	// turning hull. That must not override a held, swept-clear course.
+	CrossingStone->GetStaticMeshComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	AheadStone->GetStaticMeshComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	LaneOffset = LaneVelocity = CurrentDrift = 0.f;
+	AStaticMeshActor* AsternStone = Pillar(-1900.f, 1500.f);
+	FDCWorldObject& Astern = Objects.AddDefaulted_GetRef();
+	Astern.Actor = AsternStone; Astern.Base = FVector(-1900.f, 1500.f, Z);
+	Astern.Radius = 1000.f; Astern.bFeelable = true;
+	AvoidanceLane = 1500.f; bHasAvoidance = true; AvoidanceHold = 2.4f;
+	AvoidanceCandidateTime = 0.f; StoneLookTimer = 0.f;
+	const float HeldPath = ForecastLaneImpact(AvoidanceLane);
+	const bool bRearRayHit = GetWorld()->LineTraceSingleByObjectType(Hit,
+		FVector(-ShipHalfLength, 1500.f, Z), FVector(16000.f, 1500.f, Z), FCollisionObjectQueryParams(ECC_Destructible), Query);
+	Check(bRearRayHit && Hit.ImpactPoint.X < 0.f && HeldPath < 0.f,
+		TEXT("astern pillar obstructs the destination ray but leaves the turning hull clear"));
+	TickStrikes(.2f);
+	UE_LOG(LogDC, Display, TEXT("NAVIGATION VERIFY ASTERN path=%.2f rayX=%.0f held=%.0f hold=%.2f"),
+		HeldPath, Hit.ImpactPoint.X, AvoidanceLane, AvoidanceHold);
+	Check(FMath::IsNearlyEqual(AvoidanceLane, 1500.f) && AvoidanceHold > 0.f,
+		TEXT("astern destination-ray hit cannot interrupt a clear committed turn"));
+	// A real imminent collision must still cancel that hold without waiting.
+	AsternStone->SetActorLocation(FVector(ShipHalfLength + 1200.f, 0.f, Z));
+	Astern.Base = AsternStone->GetActorLocation();
+	LaneOffset = LaneVelocity = CurrentDrift = 0.f;
+	AvoidanceLane = 0.f; AvoidanceHold = 2.4f; AvoidanceCandidateTime = 0.f; StoneLookTimer = 0.f;
+	const float Imminent = ForecastLaneImpact(0.f);
+	Check(Imminent >= 0.f && Imminent < 1.8f, TEXT("forward pillar creates an imminent swept collision"));
+	TickStrikes(.2f);
+	Check(FMath::Abs(AvoidanceLane) > 250.f,
+		TEXT("imminent swept collision interrupts the course hold immediately"));
+	AsternStone->SetActorLocation(FVector(4600.f, 0.f, Z));
+	Astern.Base = AsternStone->GetActorLocation();
+	LaneOffset = LaneVelocity = CurrentDrift = 0.f;
+	AvoidanceLane = 0.f; AvoidanceHold = 2.4f; AvoidanceCandidateTime = 0.f; StoneLookTimer = 0.f;
+	Check(ForecastLaneImpact(0.f) >= 1.8f,
+		TEXT("farther pillar gives more than 1.8 seconds of swept warning"));
+	TickStrikes(.2f);
+	Check(FMath::Abs(AvoidanceLane) > 250.f,
+		TEXT("blocked course retains the earlier straight-probe emergency lead time"));
+	AsternStone->Destroy(); Objects.SetNum(SavedObjects);
+	CrossingStone->GetStaticMeshComponent()->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+
 	// A crew destination across the obstacle previously overrode the physical
 	// contact side and shouldered the hull further into the stone.
 	CrossingStone->SetActorLocation(FVector(1460.f, 400.f, Z));
