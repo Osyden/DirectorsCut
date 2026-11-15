@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 15 Nov 14:46 Codex: integrated review baseline and bounded lake displacement
+
+Fast-forwarded the visual review branch to combined main `3368536`, preserving the integrated Kraken, crew/ACE and individual cannons. Limited lake hull-clearance deformation to water within 3-8m of the ship's waterline so it cannot lift distant lake vertices hundreds of metres during the descent. Cataract, terrain, fog, sky and route are unchanged.
+
+Editor/Game builds, 37-asset content preflight, water-only import and native ship/overview/open-sea/backward-seek checks pass. The deck comparison is nearly unchanged: the visible river-bed triangle remains and needs a separate cataract/bed fix. [Precise evidence and limitations](CALDERA-LAKE-SHELF-15NOV.md). This is a scoped review-branch patch, not a new package or a change to the combined-main local playable. All engine jobs from this pass have ended.
+
 ## 15 Nov 14:05 Codex: inlet outcrops now match the bank palette
 
 Added adjustable cool-gray derivatives of the two owned Nordic scan materials and bound them only to inlet boulder instances. The conspicuous ochre spots now blend with the surrounding stone. Original assets, texture pixels, source UVs/normals/roughness, placement, terrain, water, bank fog and sky remain unchanged. Generated materials stay ignored; source builder and replay instructions are in the branch.

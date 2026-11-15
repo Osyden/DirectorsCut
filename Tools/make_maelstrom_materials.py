@@ -310,8 +310,14 @@ base_inputs = {"UV": uv, "VC": vc, "P": position, "T": time, "Center": center, "
 protected_hull_flatten=custom(water,r"""
 float gate=smoothstep(.56,.58,length(UV*100.0)/max(RadiusM,1.0));
 float inlet=saturate(Calm)*saturate(Cataract)*(1-saturate(Tunnel));
-return Hull*lerp(1.0,gate,inlet);
-""",FLOAT,{"UV":uv,"RadiusM":basin_radius,"Calm":calm_caldera,"Cataract":cataract_flow,"Tunnel":tunnel_flow,"Hull":hull_flatten})
+// During the descent the lake can sit hundreds of metres below the hull.
+// Flatten only a nearby lake surface; otherwise its coarse triangles rise
+// through the inlet as huge artificial spikes. The cataract keeps its own
+// hull protection. Centimetre-space bounds preserve normal arrival/heave.
+float lakeOnly=saturate(Calm)*(1-saturate(Cataract))*(1-saturate(Tunnel));
+float nearbyLake=1-smoothstep(300.0,800.0,abs(Level-P.z));
+return Hull*lerp(1.0,gate,inlet)*lerp(1.0,nearbyLake,lakeOnly);
+""",FLOAT,{"UV":uv,"RadiusM":basin_radius,"Calm":calm_caldera,"Cataract":cataract_flow,"Tunnel":tunnel_flow,"Hull":hull_flatten,"P":position,"Level":sea_level})
 
 # Runtime bridge replaces these array references with the live grid's private
 # render targets and copies its MPC values. No paid shader implementation is

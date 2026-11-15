@@ -1,5 +1,7 @@
 # Caldera lake - 15 November
 
+**15 November afternoon:** combined main `3368536` is now the review baseline, including Kraken, pirate crew/ACE and individual cannons. Earlier statements below that the boss is unmerged are historical. [The lake hull-clearance follow-up](CALDERA-LAKE-SHELF-15NOV.md) records a bounded displacement correction, actual integrated native frames and the still-unresolved river-bed sliver. Main's packaged local candidate is unchanged.
+
 **Current revision:** the inlet banks are part of the connected cliff mesh, with original fracture relief restored on the dry shoulders in `IntegratedBanksFractured`. The smooth first integrated banks were rejected in native review. The detached procedural embankment, stretched one-row lower wall and large mist cards from checkpoint **`a368e8f` are superseded**. Their screenshots and successful build/exit checks remain historical evidence, not acceptance of this revision. Root owns final native review and STATUS.
 
 ## Current assembly
