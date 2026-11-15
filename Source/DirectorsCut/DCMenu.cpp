@@ -2,6 +2,7 @@
 #include "DCRideDirector.h"
 #include "DCCrew.h"
 #include "DCVoice.h"
+#include "DCAudio.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
 #include "Engine/GameViewportClient.h"
@@ -223,6 +224,10 @@ void ADCGameMode::StartVoyage()
 {
     if(!bAwaitingStart || MenuReveal<1.f) { return; }
     bAwaitingStart=false;
+    if(ADCAudio* Audio=Cast<ADCAudio>(UGameplayStatics::GetActorOfClass(this,ADCAudio::StaticClass())))
+    {
+        Audio->FadeMenuMusicOut();
+    }
     UGameplayStatics::SetGamePaused(this,false);
     if(MainMenuWidget.IsValid() && GetWorld()->GetGameViewport()) { GetWorld()->GetGameViewport()->RemoveViewportWidgetContent(MainMenuWidget.ToSharedRef()); }
     MainMenuWidget.Reset();
