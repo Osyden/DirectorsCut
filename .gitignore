@@ -62,3 +62,7 @@ Content/ParagonRampage/
 Content/GiantDemon*/
 Content/Giant_Demon*/
 Content/Demon*/
+
+# Purchased MHC Pirates source and assembled MetaHumans (local assets only).
+/Content/PirateCastVendor/
+/Content/PirateCast/
