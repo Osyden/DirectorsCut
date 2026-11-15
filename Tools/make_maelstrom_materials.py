@@ -569,7 +569,11 @@ float liquidRoughness=lerp(.16,.28,saturate(Surface.a));
 // erase the liquid/foam distinction or manufacture whitewater coverage.
 float filteredLiquid=max(liquidRoughness,lerp(.18,.36,smoothstep(250.0,1400.0,distanceM)));
 float areaRoughness=sqrt(lerp(filteredLiquid*filteredLiquid,.78*.78,saturate(Foam)));
-float weight=saturate(Enabled)*step(.5,Count)*(1-saturate(Tunnel));
+// The live normal uses this same 120–500m transition. Once the normal has
+// returned to the procedural current field, its corresponding roughness must
+// return too; otherwise distant banks retain the sharper live-water glints.
+float weight=saturate(Enabled)*step(.5,Count)*(1-saturate(Tunnel))
+    *(1-smoothstep(120.0,500.0,distanceM));
 return lerp(Fallback,areaRoughness,weight);
 """,FLOAT,{"Fallback":roughness,"Surface":fft_surface,"P":position,"Cam":camera,"Enabled":use_live_fft,"Count":live_count,"Foam":foam,"Tunnel":tunnel_flow},1400)
 output(roughness, unreal.MaterialProperty.MP_ROUGHNESS)
