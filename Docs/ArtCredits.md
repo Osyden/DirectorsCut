@@ -6,7 +6,7 @@ Verified against current main source, installed assets, project integration reco
 
 - **Director:** Eva Jobse
 - **Developers:** GPT-6 Astra, Claude Fable 5.2, Qwen 3.8 27B
-- **Special thanks:** Epic Games, NVIDIA
+- **Special thanks:** Epic Games, NVIDIA, Suno
 
 The developer names above preserve the owner's requested wording.
 
