@@ -99,7 +99,7 @@ void UDCObstacleWaterContact::Build()
     UE_LOG(LogDC,Log,TEXT("PILLAR_CONTACT built feet=%d foundationDepth=%.0f actor=%s"),Feet.Num(),FoundationDepth,*Owner->GetName());
 }
 
-float UDCObstacleWaterContact::SurfaceAt(const FVector& Position,int32 Channel) const
+float UDCObstacleWaterContact::SurfaceAt(const FVector& Position,int32 Channel)
 {
     const float Mean=Director?Director->SeaLevelZ:230.f;
     if(!SurfaceFunction || !WaterLibrary) { return Mean; }

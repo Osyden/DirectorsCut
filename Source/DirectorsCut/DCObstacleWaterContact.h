@@ -15,7 +15,7 @@ public:
     virtual void TickComponent(float DeltaSeconds,ELevelTick TickType,FActorComponentTickFunction* ThisTickFunction) override;
 private:
     void Build();
-    float SurfaceAt(const FVector& Position,int32 Channel) const;
+    float SurfaceAt(const FVector& Position,int32 Channel);
     struct FFoot
     {
         FVector LocalCenter=FVector::ZeroVector;

@@ -8,7 +8,7 @@
 namespace
 {
 	constexpr float Cell = 40.f;
-	constexpr float Radius = 24.f;
+	constexpr float CrewBodyRadius = 24.f;
 	constexpr float MaxStep = 50.f;
 
 	struct FDeckSampler
@@ -51,9 +51,9 @@ namespace
 				// inside them, where a surface ray could start behind every triangle.
 				const FBox Box=Part->CalcBounds(Part->GetComponentTransform()*Deck.Inverse()).GetBox();
 				if (Feet.Z+170.f>Box.Min.Z && Feet.Z+25.f<Box.Max.Z &&
-					Feet.X>Box.Min.X-Radius && Feet.X<Box.Max.X+Radius && Feet.Y>Box.Min.Y-Radius && Feet.Y<Box.Max.Y+Radius) { return false; }
+					Feet.X>Box.Min.X-CrewBodyRadius && Feet.X<Box.Max.X+CrewBodyRadius && Feet.Y>Box.Min.Y-CrewBodyRadius && Feet.Y<Box.Max.Y+CrewBodyRadius) { return false; }
 			}
-			for (const FVector2D Offset : { FVector2D(Radius,0), FVector2D(-Radius,0), FVector2D(0,Radius), FVector2D(0,-Radius) })
+			for (const FVector2D Offset : { FVector2D(CrewBodyRadius,0), FVector2D(-CrewBodyRadius,0), FVector2D(0,CrewBodyRadius), FVector2D(0,-CrewBodyRadius) })
 			{
 				FVector Edge;
 				if (!Floor(Feet.X+Offset.X, Feet.Y+Offset.Y, Edge) || FMath::Abs(Edge.Z-Feet.Z)>MaxStep) { return false; }
@@ -63,8 +63,8 @@ namespace
 			for (const float Height : { 55.f, 110.f, 170.f })
 			{
 				const FVector At = Feet + FVector(0,0,Height);
-				if (!ClearLine(At-FVector(Radius,0,0),At+FVector(Radius,0,0)) ||
-					!ClearLine(At-FVector(0,Radius,0),At+FVector(0,Radius,0))) { return false; }
+				if (!ClearLine(At-FVector(CrewBodyRadius,0,0),At+FVector(CrewBodyRadius,0,0)) ||
+					!ClearLine(At-FVector(0,CrewBodyRadius,0),At+FVector(0,CrewBodyRadius,0))) { return false; }
 			}
 			return ClearLine(Feet+FVector(0,0,55), Feet+FVector(0,0,180));
 		}
@@ -74,7 +74,7 @@ namespace
 			if (FMath::Abs(A.Z-B.Z)>MaxStep) { return false; }
 			FVector Mid;
 			if (!Floor((A.X+B.X)*.5f,(A.Y+B.Y)*.5f,Mid) || FMath::Abs(Mid.Z-(A.Z+B.Z)*.5f)>MaxStep*.6f) { return false; }
-			const FVector Side = FVector::CrossProduct((B-A).GetSafeNormal2D(),FVector::UpVector)*Radius;
+			const FVector Side = FVector::CrossProduct((B-A).GetSafeNormal2D(),FVector::UpVector)*CrewBodyRadius;
 			for (const float Height : { 55.f, 150.f })
 			{
 				for (const float Offset : { -1.f, 0.f, 1.f })
