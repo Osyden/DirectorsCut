@@ -123,9 +123,9 @@ void UDCPirateCastSubsystem::Tick(float DeltaTime)
 			ADCCrewMember* Crew = *It;
 			if (Attempted.Contains(Crew) || Crew->CrewName.IsEmpty()) { continue; }
 			const TSoftClassPtr<AActor>* Asset = nullptr;
-			if (Crew->CrewName == TEXT("Finch")) { Asset = &Settings->Finch; }
-			else if (Crew->CrewName == TEXT("Marlow")) { Asset = &Settings->Marlow; }
-			else if (Crew->CrewName == TEXT("Odessa")) { Asset = &Settings->Odessa; }
+			if (Crew->CrewName == TEXT("Rex")) { Asset = &Settings->Finch; }
+			else if (Crew->CrewName == TEXT("Duncan")) { Asset = &Settings->Marlow; }
+			else if (Crew->CrewName == TEXT("Ruby")) { Asset = &Settings->Odessa; }
 			if (Asset) { Bind(Crew, Crew->FindComponentByClass<USkeletalMeshComponent>(), *Asset, false); }
 		}
 		for (TActorIterator<ADCPlayerCharacter> It(GetWorld()); It; ++It)

@@ -530,19 +530,19 @@ void ADCGunnery::TickVerification()
 	{
 		VerificationStage = 1;
 		UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>();
-		Crew->ExecuteOrder(TEXT("Marlow, man the starboard guns"));
-		Crew->ExecuteOrder(TEXT("Odessa, man the starboard guns"));
-		const int32 Marlow = Crew->FindCrewGun(EDCSide::Starboard, TEXT("Marlow"));
-		const int32 Odessa = Crew->FindCrewGun(EDCSide::Starboard, TEXT("Odessa"));
+		Crew->ExecuteOrder(TEXT("Duncan, man the starboard guns"));
+		Crew->ExecuteOrder(TEXT("Ruby, man the starboard guns"));
+		const int32 Marlow = Crew->FindCrewGun(EDCSide::Starboard, TEXT("Duncan"));
+		const int32 Odessa = Crew->FindCrewGun(EDCSide::Starboard, TEXT("Ruby"));
 		auto Check = [this](bool bPassed, const TCHAR* What)
 		{
 			UE_LOG(LogDC, Display, TEXT("CANNON VERIFY %s: %s"), bPassed ? TEXT("PASS") : TEXT("FAIL"), What);
 			bVerificationFailed |= !bPassed;
 		};
 		Check(Marlow != INDEX_NONE && Odessa != INDEX_NONE && Marlow != Odessa, TEXT("two crew have distinct guns on one side"));
-		Crew->ExecuteOrder(TEXT("Marlow, repair the rigging"));
-		Crew->ExecuteOrder(TEXT("Marlow, man the starboard guns"));
-		Check(Crew->FindCrewGun(EDCSide::Starboard, TEXT("Marlow")) == Marlow, TEXT("gun reservation survives repair duty"));
+		Crew->ExecuteOrder(TEXT("Duncan, repair the rigging"));
+		Crew->ExecuteOrder(TEXT("Duncan, man the starboard guns"));
+		Check(Crew->FindCrewGun(EDCSide::Starboard, TEXT("Duncan")) == Marlow, TEXT("gun reservation survives repair duty"));
 		const FDCStation* M = Crew->GetStation(Marlow);
 		const FDCStation* O = Crew->GetStation(Odessa);
 		Check(M && O && M->GunIndex != GetPlayerGun(EDCSide::Starboard) && O->GunIndex != GetPlayerGun(EDCSide::Starboard), TEXT("crew never take the player gun"));

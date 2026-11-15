@@ -167,6 +167,8 @@ void ADCHUD::DrawHUD()
 	}
 
 	// Subtitles, bottom left, on a dark plate.
+	DrawCrewPanel();
+
 	if (UDCCrewSubsystem* Sub = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
 	{
 		const int32 Num = FMath::Min(4, Sub->RecentLines.Num());
@@ -270,7 +272,7 @@ void ADCHUD::DrawHUD()
 			Centered(TEXT("DIRECTOR'S CUT"), H * 0.17f + 22.f * S, 4.f, G, Big);
 			Centered(TEXT("You are the captain. You cannot do it all yourself. Give the orders."), H * 0.17f + 118.f * S, 1.6f, Wh, Font);
 			Centered(TEXT("Hold V and speak   or press Enter and type   or use keys 1 to 6"), H * 0.17f + 162.f * S, 1.4f, Wh, Font);
-			Centered(TEXT("\"Finch, hard to starboard\"    \"Port battery, fire\"    \"Odessa, put out the fire\"    \"Repair the rigging\""), H * 0.17f + 202.f * S, 1.2f, Wh, Font);
+			Centered(TEXT("\"Rex, hard to starboard\"    \"Port battery, fire\"    \"Ruby, put out the fire\"    \"Repair the rigging\""), H * 0.17f + 202.f * S, 1.2f, Wh, Font);
 			Centered(TEXT("WASD  move     Shift  sprint     Space  jump     E  take a marked station"), H * 0.17f + 240.f * S, 1.2f, Wh, Font);
 		}
 		if (D->GetPhase() == EDCPhase::Ending)
@@ -565,9 +567,9 @@ void ADCGameMode::StartPlay()
 	}
 	Troubles->DeckPoints.Add(DeckAt(Wheel.X - 330.f, -170.f, Wheel.Z + 120.f));
 
-	Crew->SpawnCrew(TEXT("Finch"), FLinearColor(0.9f, 0.7f, 0.2f), DeckAt(Wheel.X - 60.f, -180.f, Wheel.Z + 120.f));
-	Crew->SpawnCrew(TEXT("Marlow"), FLinearColor(0.3f, 0.7f, 0.9f), DeckAt(GunS.X + 150.f, 80.f, MainTop));
-	Crew->SpawnCrew(TEXT("Odessa"), FLinearColor(0.8f, 0.3f, 0.5f), DeckAt(GunS.X - 350.f, -90.f, MainTop));
+	Crew->SpawnCrew(TEXT("Rex"), FLinearColor(0.9f, 0.7f, 0.2f), DeckAt(Wheel.X - 60.f, -180.f, Wheel.Z + 120.f));
+	Crew->SpawnCrew(TEXT("Duncan"), FLinearColor(0.3f, 0.7f, 0.9f), DeckAt(GunS.X + 150.f, 80.f, MainTop));
+	Crew->SpawnCrew(TEXT("Ruby"), FLinearColor(0.8f, 0.3f, 0.5f), DeckAt(GunS.X - 350.f, -90.f, MainTop));
 
 	Super::StartPlay();
 
@@ -585,9 +587,9 @@ void ADCGameMode::StartPlay()
 		PC->bShowMouseCursor = false;
 	}
 
-	Crew->ExecuteOrder(TEXT("Finch, take the helm"));
-	Crew->ExecuteOrder(TEXT("Marlow, man the port guns"));
-	Crew->ExecuteOrder(TEXT("Odessa, man the starboard guns"));
+	Crew->ExecuteOrder(TEXT("Rex, take the helm"));
+	Crew->ExecuteOrder(TEXT("Duncan, man the port guns"));
+	Crew->ExecuteOrder(TEXT("Ruby, man the starboard guns"));
 
 	// Unattended test hooks: -DCOrders=hard_to_port;port_battery_fire and -DCStation=helm|port|starboard.
 	FString OrderList;
@@ -693,19 +695,19 @@ void ADCGameMode::Tick(float DeltaSeconds)
 			const bool bRig = Troubles->IsRiggingLoose();
 			if (BotStage == 0)
 			{
-				CrewSub->ExecuteOrder(TEXT("Marlow, man the port guns"));
-				CrewSub->ExecuteOrder(TEXT("Odessa, man the starboard guns"));
+				CrewSub->ExecuteOrder(TEXT("Duncan, man the port guns"));
+				CrewSub->ExecuteOrder(TEXT("Ruby, man the starboard guns"));
 				BotStage = 1;
 			}
 			if (bFire != bBotOdessaOnFire)
 			{
 				bBotOdessaOnFire = bFire;
-				CrewSub->ExecuteOrder(bFire ? TEXT("Odessa, put out the fire") : TEXT("Odessa, man the starboard guns"));
+				CrewSub->ExecuteOrder(bFire ? TEXT("Ruby, put out the fire") : TEXT("Ruby, man the starboard guns"));
 			}
 			if (bRig != bBotMarlowOnRigging)
 			{
 				bBotMarlowOnRigging = bRig;
-				CrewSub->ExecuteOrder(bRig ? TEXT("Marlow, repair the rigging") : TEXT("Marlow, man the port guns"));
+				CrewSub->ExecuteOrder(bRig ? TEXT("Duncan, repair the rigging") : TEXT("Duncan, man the port guns"));
 			}
 		}
 	}

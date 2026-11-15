@@ -14,6 +14,7 @@ $required = @(
     'MetaHumans/Common/Common/Mocap/mh_arkit_mapping_pose.uasset'
 )
 $required += @('Captain','Finch','Marlow','Odessa') | ForEach-Object { "PirateCast/Assembled/$_/BP_$_.uasset" }
+$required += @('Rex','Duncan','Ruby') | ForEach-Object { "DC/UI/T_Crew_$_.uasset" }
 $missing = @()
 foreach ($asset in $required) {
     $file = Join-Path $root "Content/$asset"

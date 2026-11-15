@@ -67,7 +67,7 @@ Retain the old sourced inventory in [SUBMISSION.md](SUBMISSION.md), then reconci
 - Add **Clouds Tunnel Vdb Effects Pack Loop / Clouds Tunnel Loop**, one.studio2: volume 01 used for front/tunnel/spouts in overnight build.
 - Add **Easy Fog** and **Paragon: Rampage**, Epic Games: mist/cards and stone giants/animations/rock.
 - If final sky branch ships, add **Quarry Cloudy**, Poly Haven; photo Dimitrios Savva, processing Jarod Guest. Branch records CC0 and exact source in `Maelstrom-Sky/Content/DC/Maelstrom/Sky/ASSET_LICENSES.md`; retain that provenance on integration.
-- Purchased **MHC: Pirates | Metahuman Mega Bundle**, Quang Phan, and Epic MetaHuman are now integrated: captain plus Finch, Marlow and Odessa. Declare them. FogArea, Ancient Marchosias and proposed future packs were not used in the overnight handoff; check the eventual final build.
+- Purchased **MHC: Pirates | Metahuman Mega Bundle**, Quang Phan, and Epic MetaHuman are now integrated: captain plus Rex, Duncan and Ruby. Declare them. FogArea, Ancient Marchosias and proposed future packs were not used in the overnight handoff; check the eventual final build.
 - Verify **each Piper voice** model card and bundled Piper/eSpeak dependencies, model weight licences and required runtime notices. A blanket engine-library licence label does not cover all bundled voices/dependencies.
 - Correct “made during jam” wording: code/layouts/adaptations are project work; purchased ruins, ship, creatures and sourced textures/audio are not original art. Identify generated assets separately if used.
 - Correct store copy: hell route and ghost ships are disabled by default; spawnlings ram rather than board; old memory, frame-rate and disk figures are not final-candidate guarantees.
