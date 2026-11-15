@@ -675,7 +675,13 @@ void ADCRideDirector::AddLamp(const FVector& Location)
 	Lamp->SetSourceRadius(12.f);
 	Lamp->SetIntensity(0.f);
 	// No shadows from the lanterns: four point lights re-rendering the whole rig every frame cost more than they showed.
-	Lamp->SetCastShadows(false);
+	// Optional per-lantern review mask isolates groom light leaking without
+	// changing the accepted performance/lighting defaults (bits0..3).
+	int32 ShadowReviewMask = 0;
+	FParse::Value(FCommandLine::Get(), TEXT("DCShadowLamps="), ShadowReviewMask);
+	const bool bReviewShadows = (ShadowReviewMask & (1 << Lamps.Num())) != 0;
+	Lamp->SetCastShadows(bReviewShadows);
+	Lamp->bCastDeepShadow = bReviewShadows;
 	Lamp->RegisterComponent();
 	Lamps.Add(Lamp);
 }

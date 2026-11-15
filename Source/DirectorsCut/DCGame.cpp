@@ -33,6 +33,7 @@
 #include "RHI.h"
 #include "Animation/SkeletalMeshActor.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "Animation/AnimationAsset.h"
 #include "Engine/WindDirectionalSource.h"
 #include "Camera/CameraActor.h"
@@ -394,6 +395,27 @@ void ADCGameMode::StartPlay()
 		}
 	}
 
+	// Narrow material diagnostic: isolate the embossed sail-mask normal from
+	// fabric, WPO and fog. No default change and no source-asset modification.
+	float SailMaskNormal = -1.f;
+	if (Ship && FParse::Value(FCommandLine::Get(), TEXT("DCSailMaskNormal="), SailMaskNormal))
+	{
+		for (UActorComponent* C : Ship->GetComponents())
+		{
+			UMeshComponent* Mesh = Cast<UMeshComponent>(C);
+			if (!Mesh) { continue; }
+			for (int32 Slot = 0; Slot < Mesh->GetNumMaterials(); ++Slot)
+			{
+				UMaterialInterface* Material = Mesh->GetMaterial(Slot);
+				if (Material && Material->GetName() == TEXT("MI_Sail_2-wp"))
+				{
+					if (UMaterialInstanceDynamic* MID = Mesh->CreateDynamicMaterialInstance(Slot))
+					{ MID->SetScalarParameterValue(TEXT("Mask_Normal_Strengh"), SailMaskNormal); }
+				}
+			}
+		}
+	}
+
 	// Test hook: -DCExec=cmd~arg;cmd~arg runs console commands at start ("~" stands for a space).
 	{
 		FString Cmds;
@@ -586,6 +608,22 @@ void ADCGameMode::StartPlay()
 		if (AutoShotTimes.Num() && !FParse::Param(FCommandLine::Get(), TEXT("DCRunThrough"))) { Director->Seek(AutoShotTimes[0]); }
 
 		FString Cam;
+		FString CrewCloseup;
+		if (FParse::Value(FCommandLine::Get(), TEXT("DCShotCrew="), CrewCloseup))
+		{
+			for (ADCCrewMember* Member : Crew->GetCrew())
+			{
+				if (Member->CrewName != CrewCloseup) { continue; }
+				const FVector Focus = Member->GetActorLocation() + FVector(0.f, 0.f, 65.f);
+				const FVector Position = Focus + FVector(230.f, -120.f, 10.f);
+				ACameraActor* Closeup = World->SpawnActor<ACameraActor>(Position, (Focus - Position).Rotation(), Params);
+				Closeup->AttachToActor(Member, FAttachmentTransformRules::KeepWorldTransform);
+				Closeup->GetCameraComponent()->bConstrainAspectRatio = false;
+				Closeup->GetCameraComponent()->SetFieldOfView(40.f);
+				if (APlayerController* PC = World->GetFirstPlayerController()) { PC->SetViewTarget(Closeup); }
+				break;
+			}
+		}
 		if (FParse::Value(FCommandLine::Get(), TEXT("DCShotCam="), Cam, false))
 		{
 			TArray<FString> C;
