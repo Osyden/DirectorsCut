@@ -61,6 +61,48 @@ void ADCBossCombat::ResetEncounterState(bool ResetScore)
 }
 void ADCBossCombat::Report(const FString& S)
 { if(auto* C=GetWorld()->GetSubsystem<UDCCrewSubsystem>()) C->Report(S,true); }
+void ADCBossCombat::TryAttackWarning(bool Incoming)
+{
+    if(Attack.Index==INDEX_NONE || Now<Attack.NextWarningAt || (Incoming?Attack.IncomingReported:Attack.TelegraphReported)) return;
+    const TWeakObjectPtr<ADCBossCombat> Weak(this);
+    const TWeakObjectPtr<AActor> Subject=Incoming?Attack.Projectile:Attack.Target;
+    const int32 Event=Attack.Index;
+    const float Start=Attack.Start;
+    const auto Kind=Attack.Kind;
+    const bool Port=Director && Subject.IsValid() && Director->DeckTransform.InverseTransformPosition(Subject->GetActorLocation()).Y<0;
+    auto StillRelevant=[Weak,Subject,Event,Start,Kind,Incoming,Port]()
+    {
+        const ADCBossCombat* Self=Weak.Get();
+        if(!Self || !Self->Director || !Self->Running || Self->Finished || !Subject.IsValid()
+            || Self->Director->GetPhase()!=EDCPhase::Maelstrom) return false;
+        const FAttack& Live=Self->Attack;
+        if(Live.Index!=Event || Live.Start!=Start || Live.Kind!=Kind || Live.Cancelled || Live.Applied || Live.Interrupted) return false;
+        const float Time=Self->Director->RideTime-Self->RideOrigin;
+        if(Incoming)
+            return Live.Projectile==Subject && Live.Released && Time>=Live.Strike
+                && Time<Live.Strike+DCBossFireball::Flight && Time<Self->Deadline;
+        if(Live.Target!=Subject || Live.Released || !DCBossTimeline::Open(Time,Live.Start,Live.Strike,Self->Deadline)) return false;
+        // If the ship turns enough to change the named battery, discard this
+        // queued line rather than speaking a stale direction. Obstacle advice
+        // names its committed clear lane, not the current screen/battery side.
+        return Kind==DCBossTimeline::EAttack::Obstacle
+            || (Self->Director->DeckTransform.InverseTransformPosition(Subject->GetActorLocation()).Y<0)==Port;
+    };
+    if(!StillRelevant()) return;
+    FString Text;
+    if(Incoming) Text=TEXT("Fire incoming! Brace, then smother the flames!");
+    else if(Kind==DCBossTimeline::EAttack::Obstacle)
+        Text=Attack.Side>0?TEXT("Tentacle ahead! Clear to port, or shoot the bright joint!"):TEXT("Tentacle ahead! Clear to starboard, or shoot the bright joint!");
+    else if(Kind==DCBossTimeline::EAttack::Slam)
+        Text=Port?TEXT("Port tentacle is drawing back! Shoot its joint before it slams!"):TEXT("Starboard tentacle is drawing back! Shoot its joint before it slams!");
+    else Text=Port?TEXT("Its mouth is charging! Port battery, fire into the glow!"):TEXT("Its mouth is charging! Starboard battery, fire into the glow!");
+    Attack.NextWarningAt=Now+.25f;
+    if(auto* Crew=GetWorld()->GetSubsystem<UDCCrewSubsystem>())
+    {
+        const bool Accepted=Crew->Report(Text,true,MoveTemp(StillRelevant));
+        if(Incoming) Attack.IncomingReported=Accepted; else Attack.TelegraphReported=Accepted;
+    }
+}
 void ADCBossCombat::AddScore()
 {
     PerformanceScore=DCBossTimeline::Score(BossDamage,int(Severed[0])+int(Severed[1]),Interrupts,ShipDamage)+FMath::RoundToInt(BodyDamage*25.f);
@@ -227,11 +269,8 @@ void ADCBossCombat::StartAttack(int32 Index,float Start,const FTransform& Arena,
     {
         // The tell comes from disturbed water at the committed root, not a neon disk.
         Stage->EmitWaterContact(Attack.Previous,1.5f);
-        Report(Attack.Side>0?TEXT("Tentacle ahead! Clear to port, or shoot the bright joint!"):TEXT("Tentacle ahead! Clear to starboard, or shoot the bright joint!"));
     }
-    else if(Attack.Kind==DCBossTimeline::EAttack::Slam)
-        Report(Attack.Side<0?TEXT("Port tentacle is drawing back! Shoot its joint before it slams!"):TEXT("Starboard tentacle is drawing back! Shoot its joint before it slams!"));
-    else Report(Mouth().Y<0?TEXT("Its mouth is charging! Port battery, fire into the glow!"):TEXT("Its mouth is charging! Starboard battery, fire into the glow!"));
+    TryAttackWarning(false);
     UE_LOG(LogDC,Log,TEXT("BOSS_ATTACK event=%d kind=%d tell=%.2f strike=%.2f"),Index,int(Attack.Kind),Start,Attack.Strike);
 }
 void ADCBossCombat::Impact(const FVector& Contact,bool Slam)
@@ -332,7 +371,7 @@ void ADCBossCombat::UpdateAttack(float DT,const FTransform& Arena)
             const FVector2D P=DCMaelstromRoute::Point(Now+DCBossFireball::Flight,Stage->Radius,Stage->GetRouteOffset());
             Attack.FireTo=FVector(P.X,P.Y,-40000.f+620.f);
             Attack.Projectile=DCBossFireball::Spawn(GetWorld(),this,Mouth());
-            Report(TEXT("Fire incoming! Brace, then smother the flames!"));
+            Attack.NextWarningAt=Now;
         }
         if(Attack.Released)
         {
@@ -359,6 +398,7 @@ void ADCBossCombat::UpdateAttack(float DT,const FTransform& Arena)
             T->SetActorRotation(FRotationMatrix::MakeFromZ((PoseJoint-PoseBend).GetSafeNormal()).Rotator());
         if(auto* Light=T->FindComponentByClass<UPointLightComponent>()) Light->SetIntensity(15000.f+85000.f*FMath::Square(GetCharge()));
     }
+    TryAttackWarning(Attack.Released);
     if(auto* Cue=Attack.WeakPointCue.Get())
     {
         const bool Open=DCBossTimeline::Open(Now,Attack.Start,Attack.Strike,Deadline);

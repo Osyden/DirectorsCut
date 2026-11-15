@@ -46,6 +46,8 @@ private:
         int32 Index=INDEX_NONE,Side=1,Limb=INDEX_NONE;
         float Start=0,Strike=0,End=0,Remaining=0,InterruptedAt=-1,LastSpray=-100;
         bool Applied=false,Interrupted=false,Cancelled=false,Released=false,ReachLogged=false;
+        bool TelegraphReported=false,IncomingReported=false;
+        float NextWarningAt=-100.f;
         FVector Anchor=FVector::ZeroVector,Previous=FVector::ZeroVector;
         FVector FireFrom=FVector::ZeroVector,FireTo=FVector::ZeroVector;
         TWeakObjectPtr<AActor> Target,Projectile;
@@ -65,6 +67,7 @@ private:
     void Impact(const FVector& Contact,bool Slam);
     void DrawStatus(AHUD* HUD,UCanvas* Canvas);
     void Report(const FString& Message);
+    void TryAttackWarning(bool Incoming);
     void AddScore();
     void UpdateDamagedRigging();
     bool CanReach(const FVector& Point) const;
