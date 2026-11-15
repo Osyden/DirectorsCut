@@ -80,7 +80,9 @@ void ADCMaelstrom::BuildCliffPreview()
     if(AuditedPath!=MeshPath&&AuditedPath!=PackagePath) { return; }
     UStaticMesh* Mesh=LoadObject<UStaticMesh>(nullptr,*MeshPath);
     const bool Rock=FParse::Param(FCommandLine::Get(),TEXT("DCCliffPreviewRock"));
-    UMaterialInterface* Material=LoadObject<UMaterialInterface>(nullptr,Rock
+    const bool Scan=FParse::Param(FCommandLine::Get(),TEXT("DCCliffPreviewScan"));
+    UMaterialInterface* Material=LoadObject<UMaterialInterface>(nullptr,Scan
+        ? TEXT("/Game/DC/Maelstrom/GeneratedCliffPreview/M_CliffScanSurface.M_CliffScanSurface") : Rock
         ? TEXT("/Game/DC/Maelstrom/GeneratedCliffPreview/M_CliffRock.M_CliffRock")
         : TEXT("/Game/DC/Maelstrom/GeneratedCliffPreview/M_CliffClay.M_CliffClay"));
     if(!Mesh||!Material) { UE_LOG(LogTemp,Warning,TEXT("DC_CLIFF_PREVIEW missing isolated assets")); return; }
