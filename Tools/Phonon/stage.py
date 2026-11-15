@@ -1,6 +1,7 @@
 """Stage verified local31M weights and three pinned public voice embeddings.
 
-This is a development payload, not a portable Python runtime or release package.
+Pair this model/voice stage with stage_python.py's isolated portable CPU runtime
+at output/python. No external Python installation is needed by that combined payload.
 """
 import argparse
 import hashlib
@@ -23,18 +24,26 @@ def verify(data, sha256, length):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--model-source', type=Path, required=True)
+    parser.add_argument('--model-source', type=Path)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--download-voices', action='store_true')
+    parser.add_argument('--metadata-only', action='store_true',
+                        help='Verify existing model/voices and refresh only staging.json and notices')
     args = parser.parse_args()
+    if not args.metadata_only and args.model_source is None:
+        parser.error('--model-source is required unless --metadata-only is selected')
+    if args.metadata_only and args.download_voices:
+        parser.error('--metadata-only cannot download voices')
     source = Path(__file__).resolve().parent
-    args.output.mkdir(parents=True, exist_ok=True)
     model_out = args.output / 'model'
-    model_out.mkdir(exist_ok=True)
+    if not args.metadata_only:
+        args.output.mkdir(parents=True, exist_ok=True)
+        model_out.mkdir(exist_ok=True)
     for name, (digest, size) in MODEL_FILES.items():
-        data = (args.model_source / name).read_bytes()
+        data = ((model_out if args.metadata_only else args.model_source) / name).read_bytes()
         verify(data, digest, size)
-        (model_out / name).write_bytes(data)
+        if not args.metadata_only:
+            (model_out / name).write_bytes(data)
     manifest = json.loads((source / 'voices.json').read_text(encoding='utf-8'))
     for info in manifest['crew'].values():
         destination = (args.output / info['filename']).resolve()
@@ -51,17 +60,26 @@ def main():
         else:
             raise ValueError('Voice missing; explicit --download-voices required')
         verify(data, info['sha256'], info['bytes'])
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes(data)
-    shutil.copyfile(source / 'voices.json', args.output / 'voices.json')
-    shutil.copyfile(source / 'serve.py', args.output / 'serve.py')
+        if not args.metadata_only:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(data)
+    if args.metadata_only:
+        if json.loads((args.output / 'voices.json').read_text(encoding='utf-8')) != manifest:
+            raise ValueError('Staged voice manifest differs; perform a full model/voice stage')
+    else:
+        shutil.copyfile(source / 'voices.json', args.output / 'voices.json')
+        shutil.copyfile(source / 'serve.py', args.output / 'serve.py')
     shutil.copyfile(source / 'THIRD-PARTY-NOTICES.md', args.output / 'THIRD-PARTY-NOTICES.md')
-    shutil.copytree(source / 'licenses', args.output / 'licenses', dirs_exist_ok=True)
-    report = dict(model='gradium/phonon-31m-en', revision=MODEL_REVISION,
+    if not args.metadata_only:
+        shutil.copytree(source / 'licenses', args.output / 'licenses', dirs_exist_ok=True)
+    report = dict(schema_version=2, model='gradium/phonon-31m-en', revision=MODEL_REVISION,
         model_files={name: dict(sha256=digest, bytes=size) for name, (digest, size) in MODEL_FILES.items()},
         voices_revision=manifest['revision'], voices_verified=list(manifest['crew']),
-        runtime='External Python environment with ptts==0.7.1 and numpy; not bundled',
-        release_status='Development only; include runtime/dependency/model/voice licences before redistribution')
+        runtime=dict(kind='portable-cpu-python', executable='python/python.exe',
+                     manifest='python/payload-manifest.json', python='3.13', ptts='0.7.1', numpy='2.5.4',
+                     setup='Tools/Phonon/stage_python.py', external_installation_required=False),
+        release_status='Next-test payload; stage_sidecars.ps1 must verify the complete portable runtime, model and voices before copying. Native and second-machine acceptance remain separate.',
+        notices=['THIRD-PARTY-NOTICES.md', 'licenses/', 'python/THIRD-PARTY-NOTICES.txt'])
     (args.output / 'staging.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
     print(json.dumps(report))
 

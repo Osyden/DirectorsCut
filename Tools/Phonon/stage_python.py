@@ -141,6 +141,11 @@ def main():
         'does not include a separate Microsoft redistribution grant; release packaging must\n'
         'verify applicable VC redistributable terms. Windows system libraries remain OS prerequisites.\n'
         'Speech model and voice embeddings are separate payloads with separate notices.\n', encoding='utf-8')
+    # Include generated isolation/notices files too (the manifest cannot hash itself).
+    for relative in ('licenses/PYTHON-COPYRIGHT.txt', 'python313._pth', 'THIRD-PARTY-NOTICES.txt'):
+        target = destination/relative
+        inventory.append(dict(path=relative, bytes=target.stat().st_size, sha256=sha(target),
+                              component='Generated portable runtime metadata'))
     report = dict(schema_version=1, python_version=sys.version, ptts='0.7.1', numpy='2.5.4',
                   isolation='python313._pth; no import site; no environment or user site paths',
                   cpu_only_adapter=True, downloads=False, source_base=str(base),
