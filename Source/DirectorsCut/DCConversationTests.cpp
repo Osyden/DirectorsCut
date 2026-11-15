@@ -30,8 +30,20 @@ bool FDCFireOrderRouting::RunTest(const FString&)
         TEXT("Rex, tell me how to kill that fire"),TEXT("Rex, how do you put those fires out?"),
         TEXT("Rex, don't kill that fire"),TEXT("Rex, do not put out the flames"),TEXT("Rex, stop shooting"),
         TEXT("Rex, get me information about fires"),TEXT("Rex, get the fire report"),
-        TEXT("Rex, killing fires is hard"),TEXT("Rex, putting out fires is tiring"),TEXT("Rex, report on the fire")};
+        TEXT("Rex, killing fires is hard"),TEXT("Rex, putting out fires is tiring"),TEXT("Rex, report on the fire"),
+        TEXT("Rex, kill the fire elemental"),TEXT("Rex, fight that fire creature")};
     for (const TCHAR* Text:NotFire) { TestFalse(FString(Text)+TEXT(" not extinguish override"),DCConversationPolicy::IsFireOrder(Text)); }
+    for (const TCHAR* Text:{TEXT("Rex, don't kill that fire"),TEXT("Rex, do not put out the flames"),
+        TEXT("Ruby, please don't extinguish the fire"),TEXT("Rex, how do you put those fires out?")})
+    {
+        TestTrue(FString(Text)+TEXT(" no execution route"),DCConversationPolicy::IsConversation(Text));
+        TestFalse(FString(Text)+TEXT(" no fallback execution"),DCIntentParser::Parse(Text,{TEXT("Rex"),TEXT("Duncan"),TEXT("Ruby")}).bValid);
+    }
+    for (const TCHAR* Text:{TEXT("Rex, kill the fire elemental"),TEXT("Rex, fight that fire creature")})
+    {
+        TestFalse(FString(Text)+TEXT(" reaches combat order path"),DCConversationPolicy::IsConversation(Text));
+        TestEqual(FString(Text)+TEXT(" combat action"),int32(DCIntentParser::Parse(Text,{TEXT("Rex"),TEXT("Duncan"),TEXT("Ruby")}).Action),int32(EDCAction::Fire));
+    }
     return true;
 }
 

@@ -105,6 +105,9 @@ bool DCConversationPolicy::IsFireOrder(const FString& Text)
         const FString& Hazard=Parts[Index];
         if (Hazard!=TEXT("fire") && Hazard!=TEXT("fires") && Hazard!=TEXT("flame") && Hazard!=TEXT("flames") &&
             Hazard!=TEXT("blaze") && Hazard!=TEXT("blazes")) { continue; }
+        if (Parts.IsValidIndex(Index+1) && (Parts[Index+1]==TEXT("elemental") || Parts[Index+1]==TEXT("elementals") ||
+            Parts[Index+1]==TEXT("creature") || Parts[Index+1]==TEXT("creatures") || Parts[Index+1]==TEXT("monster") ||
+            Parts[Index+1]==TEXT("monsters") || Parts[Index+1]==TEXT("demon") || Parts[Index+1]==TEXT("demons"))) { continue; }
         if (VerbText==TEXT("put") && !Has(Object,TEXT("out"))) { continue; }
         if (Has(Object,TEXT("story")) || Has(Object,TEXT("stories")) || Has(Object,TEXT("report")) ||
             Has(Object,TEXT("information")) || Has(Object,TEXT("at will"))) { continue; }
@@ -146,7 +149,7 @@ bool DCConversationPolicy::IsConversation(const FString& Text)
     const bool bGuns=Has(Body,TEXT("guns")) || Has(Body,TEXT("cannons")) || Has(Body,TEXT("gun")) || Has(Body,TEXT("cannon")) || Has(Body,TEXT("battery"));
     const bool bStation=bGuns || Has(Body,TEXT("helm")) || Has(Body,TEXT("wheel")) || Has(Body,TEXT("rigging")) ||
         Has(Body,TEXT("sails")) || Has(Body,TEXT("sail")) || Has(Body,TEXT("ropes")) || Has(Body,TEXT("rope")) || Has(Body,TEXT("rudder")) || Has(Body,TEXT("fire"));
-    const TCHAR* Direct[]={TEXT("fire"),TEXT("firing"),TEXT("shoot"),TEXT("shooting"),TEXT("blast"),TEXT("sink"),TEXT("discharge"),TEXT("attack"),TEXT("extinguish"),
+    const TCHAR* Direct[]={TEXT("fire"),TEXT("firing"),TEXT("shoot"),TEXT("shooting"),TEXT("blast"),TEXT("sink"),TEXT("discharge"),TEXT("attack"),TEXT("kill"),TEXT("fight"),TEXT("extinguish"),
         TEXT("extinguishing"),TEXT("douse"),TEXT("dousing"),TEXT("repair"),TEXT("repairing"),TEXT("mend"),TEXT("mending"),
         TEXT("fix"),TEXT("fixing"),TEXT("report"),TEXT("status"),TEXT("steady"),TEXT("midships")};
     for (const TCHAR* Prefix:Direct)

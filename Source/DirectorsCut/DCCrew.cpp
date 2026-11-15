@@ -43,6 +43,8 @@ FDCIntent DCIntentParser::Parse(const FString& InText, const TArray<FString>& Cr
 {
 	FDCIntent I;
 	I.RawText = InText;
+	// Never let fallback keyword matching turn a question or negated task into an order.
+	if (DCConversationPolicy::IsConversation(InText)) { return I; }
 	FString Normalized = DCSpeech::NormalizeCrewAddress(InText).ToLower().Replace(TEXT("don't"), TEXT("do not")).Replace(TEXT("don’t"), TEXT("do not"));
 	for (TCHAR& C : Normalized) { if (!FChar::IsAlnum(C)) { C = TEXT(' '); } }
 	TArray<FString> Tokens;
