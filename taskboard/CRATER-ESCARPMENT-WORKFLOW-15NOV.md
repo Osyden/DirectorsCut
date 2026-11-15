@@ -2,7 +2,17 @@
 
 Branch: `codex/maelstrom-saturday`. **Normal gameplay geometry remains unchanged; the current full-ring candidate is available only in the opt-in native preview. The visual target is not met.** Preserve the3.2km crater,900m depth and existing steering route; clouds/sky remain owned by the separate chat, boss deferred.
 
-## Current work, 15 November 06:23
+## Current work, 15 November 06:55
+
+Current opt-in import is `Cliff-Contact/Saved/RockButtressNativeH2/rock_headland_h2.fbx`, a full ring with one wider fractured headland. It remains visually rejected: broad clay-like surfaces, thin black clefts and a jagged wedge on the skyline. Three unequal waterfall outlets across32.2m are bound to that surface, but their dense SVT cores still look like pipes. Actual native frames are in `Saved/SceneReview/CliffH2Three`, the continuous400m view in `CliffH2Motion400`, and the scan-material comparison in `CliffH2Scan`. A clean build/import is not visual approval.
+
+Root replaced the obsolete polar-grid support lookup with actual triangle intersection, including new overhangs. All50 current ruin assemblies are supported in the native review and restore on backseek/exit. The export now uses a local origin to avoid float32 triangle collapse at kilometre coordinates; the audited import retains the authored geometry. Native water foam now uses the installed DRW rafts and preserves gaps rather than saturating into continuous white rails. It is still too faint in this distant composition and needs ship-camera/motion review.
+
+Active next changes: replace the complete visible cliff face instead of adding another rock insert; test sparse native-sized installed outcrops without enlarging their meshes; broaden the lower falls into aerated fans tied to their real impact positions. The sky chat is coordinating an opt-in lighting correction. Actual diagnostics identify strong atmospheric blue attenuation, with neutral sun colour/temperature and no grading LUT; changing rock albedo to compensate would hide the cause. Cloud composition remains with that chat.
+
+Only root runs native Unreal imports/builds/GPU reviews. The boss, main branch and package are untouched. Continue implementing and judging actual images; do not restart the rejected erosion/bedding/noise sweeps below.
+
+## Previous checkpoint, 15 November 06:23
 
 The high148.31m waterfall now imports and renders in native Unreal. [Actual first result](review/cliff-native-15nov/hero-fall-first.png) is rejected: long dashed core strips and almost invisible spray. The immutable ShortCore revision removes the opaque tail below25m; native field placement/residency and scene-lit density are being checked before further changes. Editor build and import pass; backseek restores terrain/camera. This is still an opt-in authoring preview, not gameplay integration.
 

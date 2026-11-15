@@ -115,34 +115,61 @@ void ADCMaelstrom::BuildCliffPreview()
             &&Supports->TryGetStringField(TEXT("source_fbx_sha256"),SupportHash)&&SupportHash==SourceHash
             &&Supports->TryGetArrayField(TEXT("actors"),Actors))
         {
-            // Exact authoring grid, tied to this imported FBX. Ruin colonnades
-            // and rubble vary between runs, so check their CURRENT footprints
-            // instead of accepting a nearby stale bounding box.
+            // Sample the actual imported triangles, including new overhangs.
+            // Angular bins accelerate queries without assuming polar topology.
             TArray<FVector3f> Surface;
-            int32 Rows=0,Sectors=0;
-            const TSharedPtr<FJsonObject>* Grid=nullptr;
-            if(Supports->TryGetObjectField(TEXT("surface_grid"),Grid))
+            TArray<FIntVector> SurfaceTriangles;
+            constexpr int32 Sectors=1536;
+            TArray<TArray<int32>> TriangleBins;
+            TriangleBins.SetNum(Sectors);
+            const auto SectorAt=[](const FVector3f& P)
             {
-                FString Digest; int32 Count=0; TArray<uint8> Bytes;
-                if((*Grid)->TryGetNumberField(TEXT("rows"),Rows)&&Rows>0&&Rows<=512
-                    &&(*Grid)->TryGetNumberField(TEXT("sectors"),Sectors)&&Sectors>0&&Sectors<=4096
-                    &&(*Grid)->TryGetNumberField(TEXT("vertex_count"),Count)&&Count==(Rows+1)*(Sectors+1)
-                    &&(*Grid)->TryGetStringField(TEXT("md5"),Digest)
+                double A=FMath::Atan2(static_cast<double>(P.Y),static_cast<double>(P.X));
+                if(A<0.) { A+=UE_TWO_PI; }
+                return FMath::Min(FMath::FloorToInt(A/UE_TWO_PI*Sectors),Sectors-1);
+            };
+            const TSharedPtr<FJsonObject>* SurfaceData=nullptr;
+            if(Supports->TryGetObjectField(TEXT("surface_mesh"),SurfaceData))
+            {
+                FString Digest; int32 Count=0,FaceCount=0; TArray<uint8> Bytes;
+                if((*SurfaceData)->TryGetNumberField(TEXT("vertex_count"),Count)&&Count>0&&Count<=8000000
+                    &&(*SurfaceData)->TryGetNumberField(TEXT("triangle_count"),FaceCount)&&FaceCount>0&&FaceCount<=16000000
+                    &&(*SurfaceData)->TryGetStringField(TEXT("md5"),Digest)
                     &&FFileHelper::LoadFileToArray(Bytes,*(Saved/TEXT("CliffPreviewSurface.bin")))
-                    &&Bytes.Num()==Count*3*sizeof(float)&&FMD5::HashBytes(Bytes.GetData(),Bytes.Num())==Digest)
+                    &&Bytes.Num()==int64(Count)*12+int64(FaceCount)*12&&FMD5::HashBytes(Bytes.GetData(),Bytes.Num())==Digest)
                 {
                     static_assert(sizeof(FVector3f)==3*sizeof(float));
+                    static_assert(sizeof(FIntVector)==3*sizeof(int32));
                     Surface.SetNumUninitialized(Count);
-                    FMemory::Memcpy(Surface.GetData(),Bytes.GetData(),Bytes.Num());
+                    SurfaceTriangles.SetNumUninitialized(FaceCount);
+                    FMemory::Memcpy(Surface.GetData(),Bytes.GetData(),Count*12);
+                    FMemory::Memcpy(SurfaceTriangles.GetData(),Bytes.GetData()+Count*12,FaceCount*12);
                     for(const FVector3f& P:Surface) { if(P.ContainsNaN()) { Surface.Reset(); break; } }
+                    for(int32 I=0;I<SurfaceTriangles.Num()&&!Surface.IsEmpty();++I)
+                    {
+                        const FIntVector T=SurfaceTriangles[I];
+                        if(T.X<0||T.Y<0||T.Z<0||T.X>=Count||T.Y>=Count||T.Z>=Count)
+                        { Surface.Reset(); break; }
+                        int32 A=SectorAt(Surface[T.X]),B=SectorAt(Surface[T.Y]),C=SectorAt(Surface[T.Z]);
+                        int32 Low=FMath::Min3(A,B,C),High=FMath::Max3(A,B,C);
+                        if(High-Low>Sectors/2)
+                        {
+                            if(A<Sectors/2) { A+=Sectors; }
+                            if(B<Sectors/2) { B+=Sectors; }
+                            if(C<Sectors/2) { C+=Sectors; }
+                            Low=FMath::Min3(A,B,C); High=FMath::Max3(A,B,C);
+                        }
+                        // The crater wall stays away from the arena origin.
+                        if(High-Low>Sectors/2) { Surface.Reset(); break; }
+                        for(int32 Bin=Low;Bin<=High;++Bin) { TriangleBins[Bin%Sectors].Add(I); }
+                    }
                 }
             }
             const auto GroundAt=[&](const FVector2D& P)
             {
                 double Ground=-DBL_MAX;
                 if(Surface.IsEmpty()) { return Ground; }
-                double A=FMath::Atan2(P.Y,P.X); if(A<0.) { A+=UE_TWO_PI; }
-                const int32 CentreSide=FMath::Min(FMath::FloorToInt(A/UE_TWO_PI*Sectors),Sectors-1);
+                const int32 CentreSide=SectorAt(FVector3f(P.X,P.Y,0.f));
                 const auto Triangle=[&](int32 IA,int32 IB,int32 IC)
                 {
                     const FVector A3(Surface[IA]),B3(Surface[IB]),C3(Surface[IC]);
@@ -153,14 +180,10 @@ void ADCMaelstrom::BuildCliffPreview()
                     if(U>=-.000001&&V>=-.000001&&U+V<=1.000001)
                     { Ground=FMath::Max(Ground,A3.Z+U*(B3.Z-A3.Z)+V*(C3.Z-A3.Z)); }
                 };
-                for(int32 Delta=-1;Delta<=1;++Delta)
+                for(const int32 Index:TriangleBins[CentreSide])
                 {
-                    const int32 Side=(CentreSide+Delta+Sectors)%Sectors;
-                    for(int32 Row=0;Row<Rows;++Row)
-                    {
-                        const int32 B=Row*(Sectors+1)+Side,D=B+Sectors+1;
-                        Triangle(B,D,B+1); Triangle(B+1,D,D+1);
-                    }
+                    const FIntVector T=SurfaceTriangles[Index];
+                    Triangle(T.X,T.Y,T.Z);
                 }
                 return Ground;
             };
@@ -241,6 +264,7 @@ void ADCMaelstrom::UpdateCliffPreview()
     if(!bActive||Elapsed<0.f) { ClearCliffPreview(); return; }
     CliffPreviewMesh->SetVisibility(true);
     UpdateCliffPreviewFalls();
+    UpdateCliffDetailPreview();
     if(CliffPreviewHidden.IsEmpty())
     {
         const auto Remember=[this](USceneComponent* Mesh)
@@ -322,6 +346,7 @@ void ADCMaelstrom::ClearCliffPreview()
 {
     if(CliffPreviewMesh) { CliffPreviewMesh->SetVisibility(false); }
     ClearCliffPreviewFalls();
+    ClearCliffDetailPreview();
     for(const auto& Entry:CliffPreviewLandmarkOrigins)
     { if(AActor* Landmark=Entry.Key.Get()) { Landmark->SetActorRelativeLocation(Entry.Value); } }
     for(const FCliffPreviewHidden& Saved:CliffPreviewHidden)

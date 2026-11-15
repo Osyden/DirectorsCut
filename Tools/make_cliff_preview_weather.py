@@ -189,15 +189,23 @@ def apply_unreal():
     wet_z0, wet_z1 = data['wet_band_vertical_m']
     wet_v0, wet_v1 = data['wet_band_landward_m']
     coordinate_code = 'float3 p=P*.01;\n'
+    imported_frame = None
     if coordinates == 'arena':
-        # Imported identity-frame UE coordinates reflect source arena Y.
-        # Recover arena metres, then the original source chart (also UE Y-reflected).
+        # Recover arena metres through the actual export frame. A local origin
+        # near the detailed rock prevents float32 slivers at kilometre offsets.
+        active = json.loads((saved / 'CliffLandformPreviewImport.json').read_text(encoding='utf-8'))
+        imported_frame = json.loads(Path(active['export_sidecar']).read_text(encoding='utf-8'))
+        if imported_frame['fbx_sha256'] != active['source_sha256']:
+            raise ValueError('Weather/export frame identity mismatch')
         origin = data['frame_origin_world_m']
         basis = data['frame_basis_columns']
         def vector(values):
             return 'float3(' + ','.join(f'{float(v):.16g}' for v in values) + ')'
         u_axis, v_axis, z_axis = [[basis[r][c] for r in range(3)] for c in range(3)]
-        coordinate_code = f'''float3 arena=float3(P.x,-P.y,P.z)*.01;
+        coordinate_code = f'''float3 arena={vector(imported_frame['local_origin_arena_m'])}
++P.x*.01*{vector(imported_frame['basis_u_arena'])}
+-P.y*.01*{vector(imported_frame['basis_v_arena'])}
++P.z*.01*{vector(imported_frame['basis_z_arena'])};
 float3 q=arena-{vector(origin)};
 float3 p=float3(dot(q,{vector(u_axis)}),-dot(q,{vector(v_axis)}),dot(q,{vector(z_axis)}));
 '''
@@ -248,6 +256,7 @@ return clamp(lerp(Base,wet,Masks.x)-.035*Masks.y,.28,.94);''', unreal.CustomMate
     (saved / 'CliffPreviewWeather.json').write_text(json.dumps(dict(config=str(config), config_sha256=sha(config),
         material=material.get_path_name(), profile=texture.get_path_name(), data=data, applied=True,
         coordinates=coordinates, material_preset=base_report['preset'],effective_settings=settings,
+        imported_frame=imported_frame,
         finite_lateral_range_m=[u0,u1], lateral_inside_fade_m=4.,
         near_shore_landward_zone_m=[-8.,-4.,100.,140.],
         note='All weather including dry tint is local; no profile extrapolation to other ring sectors.'), indent=2), encoding='utf-8')

@@ -70,6 +70,10 @@ private:
 	TMap<TWeakObjectPtr<AActor>,FVector> CliffPreviewLandmarkOffsets;
 	void UpdateCliffPreviewFalls();
 	void ClearCliffPreviewFalls();
+	void UpdateCliffDetailPreview();
+	void ClearCliffDetailPreview();
+	UPROPERTY() TArray<TObjectPtr<class UInstancedStaticMeshComponent>> CliffDetailPreviewMeshes;
+	bool bCliffDetailPreviewTried=false;
 	UPROPERTY() TObjectPtr<class UStaticMeshComponent> CliffPreviewFallCore;
 	struct FCliffPreviewVolume { TWeakObjectPtr<class AHeterogeneousVolume> Actor; int32 Frames=1; float FPS=12.f; };
 	TArray<FCliffPreviewVolume> CliffPreviewVolumes;
