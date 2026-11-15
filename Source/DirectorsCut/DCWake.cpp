@@ -1,5 +1,6 @@
 #include "DCWake.h"
 #include "DCOcean.h"
+#include "DCGame.h"
 #include "DCRideDirector.h"
 #include "DCTypes.h"
 #include "ProceduralMeshComponent.h"
@@ -28,6 +29,7 @@
 #include "Distributions/DistributionVectorConstant.h"
 #include "Distributions/DistributionVectorUniform.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/World.h"
 
 namespace
 {
@@ -297,7 +299,11 @@ void ADCWake::Tick(float DeltaSeconds)
 	if (!Director || FParse::Param(FCommandLine::Get(), TEXT("DCNoWake"))) { return; }
 	if (!bBuilt)
 	{
-		if (Director->RideTime < 0.5f || !Director->HasPluginSea()) { return; }
+		// The animated title holds RideTime at zero. Allow the same startup
+		// warmup on world time there so hull samples can drive real ship heave.
+		const ADCGameMode* Game = GetWorld()->GetAuthGameMode<ADCGameMode>();
+		const bool bMenuWarm = Game && Game->IsAwaitingStart() && GetWorld()->GetTimeSeconds() >= .5f;
+		if ((!bMenuWarm && Director->RideTime < 0.5f) || !Director->HasPluginSea()) { return; }
 		Build();
 	}
 	if (!Mesh || !MID) { return; }
