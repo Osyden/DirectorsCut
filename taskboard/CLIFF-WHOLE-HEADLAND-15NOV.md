@@ -87,3 +87,51 @@ unchanged ten-line canonical sampler and corrects the primary-count metadata:
 249 sites were considered; 222 primary volumes survived the boundary guard.
 Those two source cleanups change no geometry decisions. Rejected A/B radial
 face graphs and their tool are retained only under ignored `Saved` evidence.
+
+## Bounded buttress evolution after the native F frame
+
+`--hierarchy` starts from the **frozen F original triangle solid**, retaining
+its 222 primary and 57 shoulder volumes. Five larger finite volumes form three
+unequal groups; each has two inclined front planes meeting at a projecting
+ridge. No new blanket of small shards was added. Side-return widths vary at
+finite heights outside the waterfall guard. CPU images in
+`StructuralWholeFace/ButtressRidgesReview` compare the actual evolution to F.
+The larger masses now interrupt the plate field, but their faces remain very
+clean; native assessment and possible bounded physical weathering are pending.
+
+Final original source:
+`StructuralWholeFace/ButtressRidgesClean/full_ring_candidate.npz`, SHA256
+`d0a590e798ae9eb80a0dd3d28785c1b96960cd3cd80c33a65d1ecaeb51c45793`.
+Native bundle: `JointedButtressNative/jointed_buttresses.fbx` (+JSON/NPZ and
+`original_mesh_reference.json.gz`); FBX SHA256
+`925861d63faef9518f8daae3b1cd268825e0792c2d75cd44ecd3c524fa87f920`.
+250,442 vertices /497,494 triangles, same translated export frame and35° normals.
+
+The waterfall worker's full-height box X[-1055,-920],Y[1125,1270]m is excluded
+from all new volumes, with10m clearance. Whole source triangles crossing that
+box are frozen before the Boolean. Nevertheless, remote polygon
+retriangulation changes sampled surface distances by11.087mm old-to-new and
+27.456mm new-to-old. The tool does **not** call this exact preservation: its
+default1mm gate fails. `--provisional-corridor-review` explicitly writes an
+uncertified diagnostic mesh for the waterfall worker's bounded revalidation
+of the pinned sources and existing trajectories. It does not authorize cache
+reuse or integration. The final mesh was sent to that worker with these limits.
+
+The closed source and exposed surface have no degenerate/nonmanifold/winding
+errors; the exposed surface is one component with the same448 perimeter edges.
+One numerical triangular slit (area1.2561e-7m², longest edge0.29979m) was closed
+using its existing three vertices; no vertex was moved and no legitimate
+surface was culled. The manifest records the repair. Export float32-cm collapse
+count is zero. `ButtressRidgesContact/report.json` retains the27.4951m dry and
+26.8978m all-sample route margins, with the same static-sampling limitations.
+
+Reproduction adds the following flags to the generator command, using a new
+Saved output directory:
+
+```text
+--hierarchy --protected-surface Saved/StructuralWholeFace/JointedFExterior/full_ring_candidate.npz --provisional-corridor-review
+```
+
+The frozen source's sibling `closed_diagnostic.npz` is required. Earlier
+strict-gate failures and flat-front macro comparisons remain immutable under
+Saved; they were not exported for native use.
