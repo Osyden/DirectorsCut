@@ -5,6 +5,9 @@
 #include "DCVoice.h"
 #include "DCGunnery.h"
 #include "DCTroubles.h"
+#include "DCCrewWorkAnim.h"
+#include "DCCrewWorkPolicy.h"
+#include "ProceduralMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -54,7 +57,7 @@ FDCIntent DCIntentParser::Parse(const FString& InText, const TArray<FString>& Cr
 	if (HasAny(T, { TEXT("starboard"), TEXT(" right") })) { I.Side = EDCSide::Starboard; }
 	else if (HasAny(T, { TEXT(" port"), TEXT("larboard"), TEXT(" left") })) { I.Side = EDCSide::Port; }
 
-	const bool bExtinguish = HasAny(T, { TEXT("put out"), TEXT("extinguish"), TEXT("douse"), TEXT("bucket"), TEXT("flames"), TEXT("burning"), TEXT("on fire") });
+	const bool bExtinguish = HasAny(T, { TEXT("put out"), TEXT("extinguish"), TEXT("douse"), TEXT("bucket"), TEXT("swat"), TEXT("smother"), TEXT("flames"), TEXT("burning"), TEXT("on fire") });
 	const bool bHelmWord = HasAny(T, { TEXT("helm"), TEXT("wheel"), TEXT("steer"), TEXT("rudder") });
 	const bool bGunWord = HasAny(T, { TEXT("cannon"), TEXT("cannons"), TEXT("gun"), TEXT("guns"), TEXT("battery"), TEXT("broadside") });
 	const bool bRigWord = HasAny(T, { TEXT("sail"), TEXT("sails"), TEXT("rigging"), TEXT("rope"), TEXT("ropes"), TEXT("mast"), TEXT("repair"), TEXT("mend"), TEXT("fix") });
@@ -159,8 +162,10 @@ void ADCCrewMember::Init(const FString& InName, const FLinearColor& Color)
 	if (SkelMesh)
 	{
 		Figure->SetSkeletalMeshAsset(SkelMesh);
-		Figure->SetAnimationMode(EAnimationMode::AnimationSingleNode);
-		if (IdleAnim) { Figure->PlayAnimation(IdleAnim, true); }
+		Figure->SetAnimInstanceClass(UDCCrewWorkAnim::StaticClass());
+		Figure->AddTickPrerequisiteActor(this);
+		if (auto* Anim = Cast<UDCCrewWorkAnim>(Figure->GetAnimInstance())) { Anim->SetAnimationAsset(IdleAnim,true,1.f); }
+		UE_LOG(LogDC,Log,TEXT("CREW_WORK_DRIVER name=%s anim=%s"),*CrewName,*GetNameSafe(Figure->GetAnimInstance()));
 		Body->SetVisibility(false);
 		Label->SetRelativeLocation(FVector(0.f, 0.f, 108.f));
 		// The stock mannequin is polished metal, which glitters and crawls under the upscaler. Until
@@ -190,6 +195,7 @@ void ADCCrewMember::Init(const FString& InName, const FLinearColor& Color)
 
 void ADCCrewMember::AssignStation(int32 NewStation)
 {
+	CancelFireWork();
 	WalkRoute.Reset(); RoutePoint=0; RouteTarget=FVector(FLT_MAX); RouteRetry=0.f;
 	UDCCrewSubsystem* Sub = GetWorld()->GetSubsystem<UDCCrewSubsystem>();
 	if (FDCStation* Old = Sub->GetStation(StationIndex))
@@ -277,6 +283,7 @@ void ADCCrewMember::Tick(float DeltaSeconds)
 	}
 	TickCrew(DeltaSeconds);
 	SetActorLocationAndRotation(Deck.TransformPosition(DeckPos), Deck.GetRotation() * DeckRot.Quaternion());
+	UpdateWorkRag();
 	LastPlaced = GetActorLocation();
 }
 
@@ -299,6 +306,7 @@ void ADCCrewMember::TickCrew(float DeltaSeconds)
 	}
 	if (!Station)
 	{
+		CancelFireWork();
 		State = EDCCrewState::Idle;
 		SetWalking(false);
 		return;
@@ -611,7 +619,7 @@ void UDCCrewSubsystem::ExecuteIntent(const FDCIntent& I)
 		ADCCrewMember* M = EnsureOperator(FindStation(I.Station, EDCSide::None), I.CrewName);
 		if (M)
 		{
-			Reply(M->CrewName, I.Station == EDCStationType::Fire ? TEXT("Buckets! On it, Captain!") : TEXT("Aloft and mending, aye."));
+			Reply(M->CrewName, I.Station == EDCStationType::Fire ? TEXT("Smothering the flames, Captain!") : TEXT("At the repair lines, aye."));
 		}
 		break;
 	}
@@ -632,11 +640,12 @@ static FAutoConsoleCommandWithWorldAndArgs GDCOrderCmd(
 
 void ADCCrewMember::SetWalking(bool bWalk)
 {
+	if (bWalk) { CancelFireWork(); }
 	if (bWalking == bWalk || !Figure || !Figure->GetSkeletalMeshAsset()) { return; }
 	bWalking = bWalk;
 	if (UAnimationAsset* Anim = bWalk ? WalkAnim : IdleAnim)
 	{
-		Figure->PlayAnimation(Anim, true);
+		if (auto* WorkAnim = Cast<UDCCrewWorkAnim>(Figure->GetAnimInstance())) { WorkAnim->SetAnimationAsset(Anim,true,1.f); }
 		Figure->SetPlayRate(1.f);
 	}
 }
@@ -780,7 +789,30 @@ void ADCCrewMember::TickTroubles(float DeltaSeconds, FDCStation* Station)
 		return;
 	}
 
-	// Fire watch: go to the nearest fire, work on it, come back to the buckets when the deck is clear.
+	// Three visible rag strokes use the same retained suppression as the captain.
+	// A reassignment, vanished fire or lost reach cancels before another contact.
+	if (CrewSwatAge < DCCrewWorkPolicy::Duration)
+	{
+		if ((!bCrewSwatContact && Troubles->SwatsRemaining(CrewSwatTarget,1.f)==0) || FVector::Dist2D(DeckPos,CrewSwatTarget)>240.f)
+		{
+			CancelFireWork(); return;
+		}
+		const float Before=CrewSwatAge;
+		CrewSwatAge+=DeltaSeconds;
+		if (auto* Anim=Cast<UDCCrewWorkAnim>(Figure->GetAnimInstance())) { Anim->SwatAge=CrewSwatAge; }
+		if (DCCrewWorkPolicy::CrossedContact(Before,CrewSwatAge))
+		{
+			bCrewSwatContact=true;
+			Troubles->SwatNear(CrewSwatTarget,1.f);
+			UE_LOG(LogDC,Log,TEXT("CREW_SWAT name=%s remaining=%d at=%s"),*CrewName,Troubles->SwatsRemaining(CrewSwatTarget,1.f),*CrewSwatTarget.ToCompactString());
+			if (Troubles->SwatsRemaining(CrewSwatTarget,1.f)==0)
+			{
+				Sub->Report(Troubles->NumFires() ? TEXT("That one is out! More still burning!") : TEXT("Fire is out, Captain!"),true);
+			}
+		}
+		return;
+	}
+	CancelFireWork();
 	FVector Fire;
 	if (Troubles->NearestFire(DeckPos, Fire))
 	{
@@ -788,14 +820,10 @@ void ADCCrewMember::TickTroubles(float DeltaSeconds, FDCStation* Station)
 		if (Away.IsNearlyZero()) { Away = FVector(-1.f, 0.f, 0.f); }
 		if (MoveToward(Fire + Away * 120.f + FVector(0.f, 0.f, 90.f), DeltaSeconds))
 		{
+			SetWalking(false);
 			DeckRot = FRotator(0.f, (-Away).Rotation().Yaw, 0.f);
-			WorkTime += DeltaSeconds;
-			if (WorkTime > 3.f)
-			{
-				WorkTime = 0.f;
-				Troubles->ExtinguishNear(Fire);
-				Sub->Report(Troubles->NumFires() ? TEXT("That one is out! More still burning!") : TEXT("Fire is out, Captain!"), true);
-			}
+			CrewSwatTarget=Fire; CrewSwatAge=0.f; bCrewSwatContact=false;
+			if (auto* Anim=Cast<UDCCrewWorkAnim>(Figure->GetAnimInstance())) { Anim->SwatAge=0.f; }
 		}
 		else
 		{
@@ -806,4 +834,53 @@ void ADCCrewMember::TickTroubles(float DeltaSeconds, FDCStation* Station)
 	{
 		MoveToward(Station->Location + FVector(0.f, 0.f, 90.f), DeltaSeconds);
 	}
+}
+
+void ADCCrewMember::CancelFireWork()
+{
+	CrewSwatAge=10.f; WorkTime=0.f; bCrewSwatContact=false;
+	if (Figure) { if (auto* Anim=Cast<UDCCrewWorkAnim>(Figure->GetAnimInstance())) { Anim->SwatAge=10.f; } }
+	if (WorkRag) { WorkRag->SetVisibility(false); }
+}
+
+void ADCCrewMember::UpdateWorkRag()
+{
+	const bool Active=CrewSwatAge<DCCrewWorkPolicy::Duration;
+	if (!Active) { if (WorkRag) { WorkRag->SetVisibility(false); } return; }
+	if (!WorkRag)
+	{
+		WorkRag=NewObject<UProceduralMeshComponent>(this,TEXT("CrewWorkRag"));
+		WorkRag->SetupAttachment(Figure,TEXT("hand_r"));
+		// Follow the evaluated hand socket in this frame; keep cloth hanging in
+		// deck orientation rather than inheriting the wrist's twist.
+		WorkRag->SetAbsolute(false,true,true);
+		WorkRag->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		WorkRag->SetCastShadow(false);
+		WorkRag->SetCanEverAffectNavigation(false);
+		WorkRag->RegisterComponent();
+		if (auto* Base=LoadObject<UMaterialInterface>(nullptr,TEXT("/Game/DC/Materials/M_Stone.M_Stone")))
+		{
+			auto* Mat=UMaterialInstanceDynamic::Create(Base,this);
+			Mat->SetVectorParameterValue(TEXT("Color"),FLinearColor(.32f,.24f,.14f));
+			Mat->SetVectorParameterValue(TEXT("Glow"),FLinearColor::Black);
+			WorkRag->SetMaterial(0,Mat);
+		}
+	}
+	WorkRag->SetVisibility(true);
+	WorkRag->SetRelativeLocation(FVector::ZeroVector);
+	WorkRag->SetWorldRotation(GetActorQuat());
+	TArray<FVector> V; TArray<int32> Tri; TArray<FVector2D> UV;
+	for (int32 Row=0;Row<5;++Row) for (int32 Col=0;Col<3;++Col)
+	{
+		const float T=Row/4.f, Side=Col-1.f;
+		V.Add(FVector(T*15.f+FMath::Sin(T*8.f-CrewSwatAge*10.f)*T*4.f,Side*(2.f+12.f*T),-T*48.f));
+		UV.Add(FVector2D(Col/2.f,T));
+	}
+	for (int32 R=0;R<4;++R) for (int32 C=0;C<2;++C)
+	{
+		const int32 N=R*3+C;
+		Tri.Append({N,N+3,N+1,N+1,N+3,N+4,N+1,N+3,N,N+4,N+3,N+1});
+	}
+	if (WorkRag->GetProcMeshSection(0)) { WorkRag->UpdateMeshSection_LinearColor(0,V,TArray<FVector>(),UV,TArray<FLinearColor>(),TArray<FProcMeshTangent>()); }
+	else { WorkRag->CreateMeshSection_LinearColor(0,V,Tri,TArray<FVector>(),UV,TArray<FLinearColor>(),TArray<FProcMeshTangent>(),false); }
 }

@@ -8,11 +8,30 @@
 #include "EngineUtils.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
+#include "Components/TextRenderComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "Engine/StaticMesh.h"
+#include "GameFramework/PlayerController.h"
+#include "Camera/PlayerCameraManager.h"
 
 ADCTroubles::ADCTroubles()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+	RiggingLabel=CreateDefaultSubobject<UTextRenderComponent>(TEXT("RiggingRepairLabel"));
+	RiggingLabel->SetupAttachment(RootComponent);
+	RiggingLabel->SetHorizontalAlignment(EHTA_Center);
+	RiggingLabel->SetWorldSize(24.f);
+	RiggingLabel->SetTextRenderColor(FColor(255,220,110));
+	RiggingLabel->SetVisibility(false);
+	RiggingLabel->SetCastShadow(false);
+	RiggingArrow=CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RiggingRepairArrow"));
+	RiggingArrow->SetupAttachment(RootComponent);
+	RiggingArrow->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	RiggingArrow->SetCanEverAffectNavigation(false);
+	RiggingArrow->SetCastShadow(false);
+	RiggingArrow->SetVisibility(false);
 }
 
 ADCTroubles* ADCTroubles::Get(const UObject* WorldContext)
@@ -65,7 +84,7 @@ void ADCTroubles::StartFire(const FVector& Location)
 	Visual->Initialize(F.Seed);
 	if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
 	{
-		Crew->Report(TEXT("Fire on deck! We need hands on the buckets!"), true);
+		Crew->Report(TEXT("Fire on deck! Swat the flames with a rag!"), true);
 	}
 }
 
@@ -130,6 +149,7 @@ void ADCTroubles::ResetEncounterTroubles()
 	for (FDCFire& F : Fires) { if (AActor* V = F.Visual.Get()) { V->Destroy(); } }
 	Fires.Reset();
 	bRiggingLoose = false; RiggingProgress = 0.f;
+	UpdateRiggingMarker();
 	if (auto* T = ADCTreadmill::Get(this)) { T->SteerAuthority = 1.f; }
 }
 
@@ -138,9 +158,10 @@ void ADCTroubles::TearRigging()
 	if (bRiggingLoose) { return; }
 	bRiggingLoose = true;
 	RiggingProgress = 0.f;
+	UpdateRiggingMarker();
 	if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
 	{
-		Crew->Report(TEXT("Mainsail has torn loose! She will not answer the helm!"), true);
+		Crew->Report(TEXT("Mainsail loose! Repair the marked lines on deck!"), true);
 	}
 }
 
@@ -152,10 +173,59 @@ bool ADCTroubles::RepairRigging(float Amount)
 	{
 		bRiggingLoose = false;
 		RiggingProgress = 0.f;
+		UpdateRiggingMarker();
 		if (Director) { Director->Score += 50; }
 		return true;
 	}
 	return false;
+}
+
+bool ADCTroubles::GetRiggingRepairLocation(FVector& Location) const
+{
+	if (const auto* Crew=GetWorld()->GetSubsystem<UDCCrewSubsystem>())
+	{
+		for (const FDCStation& Station : Crew->GetStations())
+		{
+			if (Station.Type==EDCStationType::Rigging) { Location=Station.Location; return true; }
+		}
+	}
+	return false;
+}
+
+void ADCTroubles::UpdateRiggingMarker()
+{
+	FVector Station;
+	const bool Visible=bRiggingLoose && GetRiggingRepairLocation(Station);
+	if (Visible!=bRiggingMarkerVisible)
+	{
+		UE_LOG(LogDC,Log,TEXT("RIGGING_REPAIR_MARKER visible=%d station=%s"),Visible,Visible?*Station.ToCompactString():TEXT("none"));
+		bRiggingMarkerVisible=Visible;
+	}
+	RiggingLabel->SetVisibility(Visible); RiggingArrow->SetVisibility(Visible);
+	if (!Visible) { return; }
+	const auto* Ride=Director ? Director.Get() : ADCRideDirector::Get(this);
+	const FTransform Deck=Ride ? Ride->DeckTransform : FTransform::Identity;
+	if (!RiggingArrow->GetStaticMesh())
+	{
+		RiggingArrow->SetStaticMesh(LoadObject<UStaticMesh>(nullptr,TEXT("/Engine/BasicShapes/Cone.Cone")));
+		if (auto* Base=LoadObject<UMaterialInterface>(nullptr,TEXT("/Game/DC/Materials/M_Bolt.M_Bolt")))
+		{
+			auto* Glow=UMaterialInstanceDynamic::Create(Base,this);
+			Glow->SetVectorParameterValue(TEXT("Color"),FLinearColor(.85f,.55f,.08f));
+			RiggingArrow->SetMaterial(0,Glow);
+		}
+	}
+	RiggingArrow->SetWorldLocationAndRotation(Deck.TransformPosition(Station+FVector(0,0,95.f+8.f*FMath::Sin(Clock*3.f))),Deck.GetRotation()*FRotator(180,0,0).Quaternion());
+	RiggingArrow->SetWorldScale3D(FVector(.30f,.30f,.55f));
+	RiggingLabel->SetWorldLocation(Deck.TransformPosition(Station+FVector(0,0,160.f)));
+	float Distance=0.f;
+	if (auto* PC=GetWorld()->GetFirstPlayerController(); PC && PC->PlayerCameraManager)
+	{
+		const FVector Camera=PC->PlayerCameraManager->GetCameraLocation();
+		RiggingLabel->SetWorldRotation((Camera-RiggingLabel->GetComponentLocation()).Rotation());
+		Distance=FVector::Dist(Camera,Deck.TransformPosition(Station))/100.f;
+	}
+	RiggingLabel->SetText(FText::FromString(FString::Printf(TEXT("REPAIR RIGGING  %.0f m\nHold E at the marked lines  %d%%\nOr order: Ruby, repair the rigging"),Distance,FMath::RoundToInt(RiggingProgress*100.f))));
 }
 
 void ADCTroubles::Tick(float DeltaSeconds)
@@ -171,6 +241,15 @@ void ADCTroubles::Tick(float DeltaSeconds)
 	const float Dt = DeltaSeconds * Director->TimeScale;
 
 #if !UE_BUILD_SHIPPING
+	// Root-owned native review: real routed crew action and real repair marker.
+	if (FParse::Param(FCommandLine::Get(),TEXT("DCCrewWorkReview")) && Director->RideTime>=12.f && DeckPoints.Num() && !Tags.Contains(TEXT("CrewWorkReviewStarted")))
+	{
+		Tags.Add(TEXT("CrewWorkReviewStarted"));
+		StartFire(DeckPoints[FMath::Min(2,DeckPoints.Num()-1)]);
+		TearRigging();
+		if (auto* Crew=GetWorld()->GetSubsystem<UDCCrewSubsystem>()) { Crew->ExecuteOrder(TEXT("Ruby, put out the fire")); }
+		UE_LOG(LogDC,Log,TEXT("CREW_WORK_REVIEW started"));
+	}
 	// Repeatable visual/lifecycle review; ordinary play never enters this path.
 	float ReviewAt = -1.f, ReviewOut = -1.f;
 	if (FParse::Value(FCommandLine::Get(), TEXT("DCFireReviewAt="), ReviewAt) && DeckPoints.Num())
@@ -258,4 +337,5 @@ void ADCTroubles::Tick(float DeltaSeconds)
 	{
 		Treadmill->SteerAuthority = bRiggingLoose ? 0.35f : 1.f;
 	}
+	UpdateRiggingMarker();
 }

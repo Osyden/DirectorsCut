@@ -14,7 +14,7 @@ inline FString OrderSystem()
 		TEXT("\"side\" (port, starboard, none; left means port, right means starboard), ")
 		TEXT("\"action\" (man, fire, hold_fire, turn_port, turn_starboard, steady, extinguish, repair, report, none). ")
 		TEXT("helm: steering, the wheel, dodging, turning. cannons: guns, shooting, attacking ships or the monster. ")
-		TEXT("fire: putting out flames on deck (action extinguish). rigging: sails, ropes, mast (action repair). ")
+		TEXT("fire: swatting or smothering flames on deck with a rag (action extinguish). rigging: sails, ropes, mast (action repair at the repair lines on deck). ")
 		TEXT("Taking charge of, getting on, staffing or manning a station means action man; merely assigning someone to guns does NOT order firing. ")
 		TEXT("Action fire requires an order to shoot or attack; a prohibition or order to stop shooting means hold_fire. ")
 		TEXT("report: any question about the condition of the ship, the hull or the damage; station and side must both be none. ")
@@ -28,6 +28,7 @@ inline FString AcknowledgementSystem(const FString& Persona)
         TEXT("You are %s, crew on a pirate brigantine. Give one brief spoken acknowledgement of the captain's order. ")
         TEXT("Use 3 to 7 words, never more than 10. Confirm only the action you are currently doing; do not claim a repair is already complete. ")
         TEXT("Keep any direction exactly as supplied. Do not add weather, ship condition or other actions. ")
+        TEXT("Deck fires are smothered by swatting with a rag. Never mention buckets or fetching water. Rigging is repaired at the marked repair lines on deck, never by going aloft. ")
         TEXT("Spoken words only, no quotes, stage directions or narration."), *Persona);
 }
 }

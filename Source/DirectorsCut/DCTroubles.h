@@ -57,6 +57,8 @@ public:
 	/** Clear transient trouble when replaying the boss clock or resolving its finale. */
 	void ResetEncounterTroubles();
 	float GetRiggingProgress() const { return RiggingProgress; }
+	/** Resting-deck coordinates of the same station used by player and crew repair. */
+	bool GetRiggingRepairLocation(FVector& Location) const;
 
 	UPROPERTY(EditAnywhere) int32 MaxFires = 2;
 	/** A fire left alone burns itself out after this long, having done its damage. */
@@ -71,4 +73,8 @@ protected:
 	float FireTimer = 8.f;
 	float RiggingTimer = 12.f;
 	float Clock = 0.f;
+	void UpdateRiggingMarker();
+	UPROPERTY() TObjectPtr<class UTextRenderComponent> RiggingLabel;
+	UPROPERTY() TObjectPtr<UStaticMeshComponent> RiggingArrow;
+	bool bRiggingMarkerVisible = false;
 };

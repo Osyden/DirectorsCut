@@ -76,6 +76,12 @@ protected:
 	bool MoveToward(const FVector& Target, float DeltaSeconds);
 	void TickTroubles(float DeltaSeconds, struct FDCStation* Station);
 	float WorkTime = 0.f;
+	void CancelFireWork();
+	void UpdateWorkRag();
+	float CrewSwatAge = 10.f;
+	bool bCrewSwatContact = false;
+	FVector CrewSwatTarget = FVector::ZeroVector;
+	UPROPERTY() TObjectPtr<class UProceduralMeshComponent> WorkRag;
 
 	TArray<FVector> WalkRoute;
 	FVector RouteTarget = FVector(FLT_MAX);
