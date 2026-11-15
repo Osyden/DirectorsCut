@@ -8,4 +8,12 @@ Root owns DCAudio, music import and the build/GPU slot for this pass on main.
 
 Regenerate: decode with `Tools/prepare_music.py --ffmpeg <ffmpeg.exe>`, then run `Tools/import_music.py` with the Unreal Python commandlet. Prepared WAVs and source/hash manifest go in Saved/MusicImport. Imported Content/DC/Music stays local; release preflight requires both assets and /Game/DC is always cooked. Source MP3s are unchanged.
 
-Editor Development build and both stereo imports pass. Packaged validation pending. Use `-DCMusicReview` to log actual component playback and gains; test Start/menu/restart, real ACE ducking, the 220–224 handoff and ending.
+Editor Development build and both stereo imports pass. Runtime commit **1f4fac8** packaged to `E:/Projects/DirectorsCut/Builds/2026-11-15_1833_music`; selected by the normal Play Atlantean Odyssey launcher. Previous 18:19 selection is preserved in Saved/Release/Previous-1819.json. No itch upload.
+
+Packaged checks, all exit0:
+
+- MusicMenuRestart.log: silence in menu, first track starts at ride0 on both voyages across an actual level reload.
+- MusicTransitionACE.log: second track starts at 220.00, first stops after the four-second handoff. All three ACE voices finish, VOICE_SMOKE_SUCCESS. Gain drops from .1625 to .0406 during actual speech and recovers smoothly. Initial review started at215 and its third queued smoke line was discarded at the240 scene epoch boundary; reran from205 to allow the three-voice check to complete before the transition.
+- MusicEnding.log: second track resumes at correct offset at458, fades through460–470 and both components are stopped at470.
+
+Use `-DCMusicReview` to log component playback/gains. Evidence and source hashes are in the package root build-info.json and music-source-manifest.json. These focused checks cover the music change; prior full-voyage visuals/gameplay remain the existing baseline.
