@@ -31,7 +31,7 @@ namespace
 	 * Adds a mesh so that the centre of the bottom of its bounding box sits at Where (cm, in the
 	 * structure's own space), whatever the mesh's pivot is. Returns the size of its box after scaling.
 	 */
-	FVector RuinPiece(AActor* Actor, const TCHAR* Name, const FVector& Where, float Yaw = 0.f, const FVector& Scale = FVector(1.f), float Pitch = 0.f, float Roll = 0.f)
+	FVector RuinPiece(AActor* Actor, const TCHAR* Name, const FVector& Where, float Yaw = 0.f, const FVector& Scale = FVector(1.f), float Pitch = 0.f, float Roll = 0.f, FName Tag = NAME_None)
 	{
 		UStaticMesh* M = RuinMesh(Name);
 		if (!M) { return FVector::ZeroVector; }
@@ -43,6 +43,7 @@ namespace
 		C->SetStaticMesh(M);
 		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		C->SetupAttachment(Actor->GetRootComponent());
+		if(!Tag.IsNone()) { C->ComponentTags.Add(Tag); }
 		if (FParse::Param(FCommandLine::Get(), TEXT("DCNoRuinShadows"))) { C->SetCastShadow(false); }
 		C->SetRelativeTransform(FTransform(Rot, Where - Rot.RotateVector(Foot), Scale));
 		// The wash line: foam lapping at the stone where it stands in the sea, and wet stone above it.
@@ -214,7 +215,9 @@ AActor* DCRuins::SpawnBrokenColumns(UWorld* World, float Radius)
 	{
 		const float Ang = 2.f * UE_PI * i / Count + FMath::FRandRange(-0.4f, 0.4f);
 		const FVector At(FMath::Cos(Ang) * 280.f, FMath::Sin(Ang) * 280.f, -120.f);
-		RuinPiece(A, Stumps[FMath::RandRange(0, 3)], At, FMath::FRandRange(0.f, 360.f), FVector(1.f), FMath::FRandRange(-4.f, 4.f), FMath::FRandRange(-4.f, 4.f));
+		// Keep these vertical so fitting their visible height later cannot widen
+		// the already measured collision footprint or lean over the clear lane.
+		RuinPiece(A, Stumps[FMath::RandRange(0, 3)], At, FMath::FRandRange(0.f, 360.f), FVector(1.f), 0.f, 0.f, TEXT("DCPillarUpright"));
 	}
 	for (int32 i = 0; i < 3; ++i)
 	{

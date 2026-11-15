@@ -1,6 +1,7 @@
 #include "DCObstacleWaterContact.h"
 #include "DCRideDirector.h"
 #include "DCOcean.h"
+#include "DCCityObstacleLayout.h"
 #include "DCTypes.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
@@ -13,7 +14,7 @@
 #include "ProceduralMeshComponent.h"
 #include "UObject/UnrealType.h"
 
-namespace { constexpr float FoundationDepth=600.f; }
+namespace { constexpr float FoundationDepth=800.f; }
 
 UDCObstacleWaterContact::UDCObstacleWaterContact()
 {
@@ -42,20 +43,41 @@ void UDCObstacleWaterContact::Build()
     SampleChannel=NextChannel; NextChannel+=8;
     UStaticMesh* Cylinder=LoadObject<UStaticMesh>(nullptr,TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
     TInlineComponentArray<UStaticMeshComponent*> Parts(Owner);
+    const bool Authored=Parts.ContainsByPredicate([](const UStaticMeshComponent* P){return P->ComponentHasTag(TEXT("DCPillarUpright"));});
+    float PeakRise=1100.f;
+    FParse::Value(FCommandLine::Get(),TEXT("DCTrough="),PeakRise);
+    const float MinimumTop=DCCityObstacleLayout::MinimumPillarTop(Director?Director->SeaLevelZ:230.f,
+        Owner->GetActorLocation().Y,Director?Director->TroughHalfWidth:9000.f,FMath::Max(PeakRise,0.f));
     for(UStaticMeshComponent* Part:Parts)
     {
         if(!Part->GetStaticMesh()) { continue; }
-        const FVector Extent=Part->Bounds.BoxExtent;
+        FVector Extent=Part->Bounds.BoxExtent;
         // Upright columns only. Fallen drums/debris are already submerged.
-        if(Extent.Z<FMath::Max(Extent.X,Extent.Y)*1.15f || Feet.Num()>=6) { continue; }
+        if((Authored?!Part->ComponentHasTag(TEXT("DCPillarUpright")):Extent.Z<FMath::Max(Extent.X,Extent.Y)*1.15f) || Feet.Num()>=6) { continue; }
         const FVector Bottom=Part->Bounds.Origin-FVector(0,0,Extent.Z);
+        const float OldHeight=Extent.Z*2.f;
+        if(Authored && OldHeight>1.f && Bottom.Z+OldHeight<MinimumTop)
+        {
+            // One-time vertical fit around the fixed seabed foot. These tagged
+            // pieces have yaw only: changing Z scale cannot change their XY gap.
+            FVector Scale=Part->GetComponentScale();
+            Scale.Z*=(MinimumTop-Bottom.Z)/OldHeight;
+            Part->SetWorldScale3D(Scale);
+            Part->UpdateBounds();
+            const FVector MovedBottom=Part->Bounds.Origin-FVector(0,0,Part->Bounds.BoxExtent.Z);
+            Part->SetWorldLocation(Part->GetComponentLocation()+Bottom-MovedBottom);
+            Part->UpdateBounds();
+            Extent=Part->Bounds.BoxExtent;
+        }
+        UE_LOG(LogDC,Log,TEXT("PILLAR_FIT actor=%s mesh=%s footZ=%.1f oldHeight=%.1f height=%.1f topZ=%.1f requiredTop=%.1f"),
+            *Owner->GetName(),*Part->GetStaticMesh()->GetName(),Bottom.Z,OldHeight,Extent.Z*2.f,Bottom.Z+Extent.Z*2.f,MinimumTop);
         const float Radius=FMath::Clamp(static_cast<float>(FMath::Min(Extent.X,Extent.Y))*.92f,55.f,500.f);
         FFoot& Foot=Feet.AddDefaulted_GetRef();
         Foot.LocalCenter=Owner->GetActorTransform().InverseTransformPosition(Bottom);
         Foot.Radius=Radius; Foot.Height=Extent.Z*2.f; Foot.NextSplash=.4f+Feet.Num()*.37f;
         if(Cylinder)
         {
-            // Stone remains at mean sea level. Extend each foot six metres
+            // Stone remains fixed. Extend each foot eight metres
             // down so a passing wave trough reveals a continuous foundation.
             constexpr float Overlap=60.f;
             auto* Foundation=NewObject<UStaticMeshComponent>(Owner);
@@ -97,7 +119,8 @@ void UDCObstacleWaterContact::Build()
 float UDCObstacleWaterContact::SurfaceAt(const FVector& Position,int32 Channel)
 {
     const float Mean=Director?Director->SeaLevelZ:230.f;
-    if(!SurfaceFunction || !WaterLibrary) { return Mean; }
+    const float ChannelOffset=DCOcean::RenderedHeightOffset(this,Position);
+    if(!SurfaceFunction || !WaterLibrary) { return Mean+ChannelOffset; }
     uint8* Params=static_cast<uint8*>(FMemory_Alloca(FMath::Max<int32>(SurfaceFunction->ParmsSize,1)));
     FMemory::Memzero(Params,SurfaceFunction->ParmsSize);
     FStructProperty* Sample=nullptr;
@@ -122,7 +145,7 @@ float UDCObstacleWaterContact::SurfaceAt(const FVector& Position,int32 Channel)
         if(Valid && Value && Valid->GetPropertyValue_InContainer(Data)) { Height=Value->GetPropertyValue_InContainer(Data); }
     }
     for(TFieldIterator<FProperty> It(SurfaceFunction);It && It->HasAnyPropertyFlags(CPF_Parm);++It) { It->DestroyValue_InContainer(Params); }
-    return Height;
+    return Height+ChannelOffset;
 }
 
 void UDCObstacleWaterContact::TickComponent(float DT,ELevelTick TickType,FActorComponentTickFunction* TickFunction)

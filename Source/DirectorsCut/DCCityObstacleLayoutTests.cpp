@@ -10,6 +10,16 @@ bool FDCCityObstacleLayoutTest::RunTest(const FString& Parameters)
     using namespace DCCityObstacleLayout;
     TestTrue(TEXT("A ten-metre hull keeps at least ten metres spare on the central route"),HullClearance(500.f)>=1000.f);
     TestTrue(TEXT("Minimum interval gives over 100m between full footprints at city speed"),Interval*.9f*1500.f-2.f*MaximumFootprint>10000.f);
+    for(float SeaY : {-MaximumSide,-MinimumSide,MinimumSide,MaximumSide})
+    {
+        const float Top=MinimumPillarTop(230.f,SeaY,9000.f,1100.f);
+        for(float FootY=-MaximumFootprint;FootY<=MaximumFootprint;FootY+=100.f)
+        {
+            const float U=FMath::Clamp(FMath::Abs(SeaY+FootY)/9000.f,0.f,1.f);
+            const float HighestWater=230.f+1100.f*U*U*(3.f-2.f*U)+WaveAllowance;
+            TestTrue(TEXT("Each fitted upright clears the future raised water and wave allowance by four metres"),Top-HighestWater>=MinimumVisiblePillar-.1f);
+        }
+    }
     for(int32 I=0;I<20;++I)
     {
         TestTrue(TEXT("Successive obstacles have opposite clear flanks"),Side(I)*Side(I+1)<0.f);
