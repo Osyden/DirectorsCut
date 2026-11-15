@@ -85,24 +85,32 @@ void ADCVoice::StartNextConversation()
     const double Started = FPlatformTime::Seconds();
     TWeakObjectPtr<ADCVoice> Weak(this);
     const int32 BatchId = bStreamSpeech ? BeginSpeechBatch(Question.Speaker) : 0;
+    // These replies are bounded to 220 characters. Give Phonon the full prosody
+    // context once, avoiding a new A2F prebuffer/session at every clause. Its PCM
+    // still streams immediately through the existing native adapter.
+    const bool bWholePhononReply = bUsePhonon && bStreamSpeech;
     if (BatchId) { StreamingBatch.User = Question.Text.Left(350); }
     const TSharedRef<DCStreamedSpeechPolicy::FChunker> Chunker = MakeShared<DCStreamedSpeechPolicy::FChunker>();
     TFunction<void(const FString&)> Progress;
     if (bStreamSpeech)
     {
-        Progress = [Weak, Epoch, Serial, BatchId, Chunker](const FString& Partial)
+        Progress = [Weak, Epoch, Serial, BatchId, Chunker, bWholePhononReply](const FString& Partial)
         {
             ADCVoice* Voice = Weak.Get();
             if (!Voice || Voice->bEnding) { return; }
             Voice->SynchronizeScene();
             if (Serial != Voice->ConversationSerial || Epoch != Voice->SpeechEpoch || Voice->IsMenuOpen()) { return; }
-            for (const FString& Chunk : Chunker->Push(Partial)) { Voice->QueueSpeechChunk(BatchId, Chunk); }
+            for (const FString& Chunk : Chunker->Push(Partial))
+            {
+                if (!bWholePhononReply) { Voice->QueueSpeechChunk(BatchId, Chunk); }
+            }
         };
     }
-    UE_LOG(LogDC, Display, TEXT("CONVERSATION_REQUEST speaker=%s backend=%s scene=%s context_chars=%d"),
-        *Question.Speaker, *DialogueBackend, *DCConversationContext::SceneKey(this), System.Len()+User.Len());
+    UE_LOG(LogDC, Display, TEXT("CONVERSATION_REQUEST speaker=%s backend=%s scene=%s context_chars=%d speech_text=%s"),
+        *Question.Speaker, *DialogueBackend, *DCConversationContext::SceneKey(this), System.Len()+User.Len(),
+        bWholePhononReply ? TEXT("utterance") : TEXT("clauses"));
     RequestDialogue(System, User, 96, .65f, false, 6.f,
-        [Weak, Question, Epoch, Serial, Started, BatchId, Chunker](bool bOK, const FString& Raw)
+        [Weak, Question, Epoch, Serial, Started, BatchId, Chunker, bWholePhononReply](bool bOK, const FString& Raw)
     {
         ADCVoice* Voice = Weak.Get();
         if (!Voice || Voice->bEnding) { return; }
@@ -113,7 +121,10 @@ void ADCVoice::StartNextConversation()
         const bool bHealthyBatch = !BatchId || (Voice->StreamingBatch.Id == BatchId && !Voice->StreamingBatch.bFailed);
         if (BatchId && bOK && bHealthyBatch)
         {
-            for (const FString& Chunk : Chunker->Push(Raw, true)) { Voice->QueueSpeechChunk(BatchId, Chunk); }
+            for (const FString& Chunk : Chunker->Push(Raw, true))
+            {
+                if (!bWholePhononReply) { Voice->QueueSpeechChunk(BatchId, Chunk); }
+            }
         }
         const FString Reply = bOK && bHealthyBatch && (!BatchId || !Chunker->WasRejected()) ? DCConversationPolicy::CleanReply(Raw) : FString();
         if (Reply.IsEmpty())
@@ -132,6 +143,7 @@ void ADCVoice::StartNextConversation()
                 *Question.Speaker, (FPlatformTime::Seconds()-Started)*1000.0, *Reply);
             if (BatchId)
             {
+                if (bWholePhononReply) { Voice->QueueSpeechChunk(BatchId, Reply); }
                 Voice->FinalizeSpeechBatch(BatchId, Reply, true);
                 if (auto* Crew = Voice->GetWorld()->GetSubsystem<UDCCrewSubsystem>()) { Crew->Say(Question.Speaker, Reply); }
             }

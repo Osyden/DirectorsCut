@@ -76,7 +76,8 @@ void UDCConversationReview::ObserveSpeech()
         }
         bool bMatchingTTS=false;
         for (const auto& Pending:Voice->PendingTTS) { bMatchingTTS|=Pending.BatchId==ExpectedBatch; }
-        if (bMatchingTTS && !FirstTTSAt) { FirstTTSAt=Now; }
+        const bool bMatchingPhonon=Voice->bActivePhonon && Voice->ActiveSpeechBatchId==ExpectedBatch;
+        if ((bMatchingTTS || bMatchingPhonon) && !FirstTTSAt) { FirstTTSAt=Now; }
         const bool bMatchingPlayback=Voice->ActiveSpeechBatchId==ExpectedBatch && Voice->ActiveSpeaker==Speaker &&
             Voice->ActiveCurves && Voice->bACEStarted && !Voice->bACEEnded;
         if (bMatchingPlayback)
@@ -188,6 +189,8 @@ void UDCConversationReview::Tick(float DeltaTime)
                 if (Batch.Speaker!=Question.Speaker || Batch.Text!=Reply || !Batch.bFinalized || Batch.bFailed ||
                     Batch.Queued<=0 || Batch.Completed!=Batch.Queued || Batch.Faces!=Batch.Queued)
                 { Finish(TEXT("Completed batch identity/text/chunk or face counts do not match the generated utterance")); return; }
+                if (Voice->bUsePhonon && (Batch.Queued!=1 || !bSawPlayback || !bPlaybackBeforeSendCompleted))
+                { Finish(TEXT("Phonon reply must use one continuous audio/face session with progressive playback")); return; }
                 bCompleted=true;
             }
         }
@@ -202,6 +205,7 @@ void UDCConversationReview::Tick(float DeltaTime)
             Row->SetStringField(TEXT("speaker"),Question.Speaker); Row->SetStringField(TEXT("question"),Question.Text);
             Row->SetStringField(TEXT("answer"),Reply); Row->SetStringField(TEXT("live_context"),Context);
             Row->SetNumberField(TEXT("generation_ms"),GeneratedMs); Row->SetBoolField(TEXT("orders_unchanged"),true);
+            Row->SetNumberField(TEXT("utterance_completed_observed_ms"),(Now-QuestionStarted)*1000.0);
             Row->SetBoolField(TEXT("a2f_started_and_finished"),true);
             Row->SetBoolField(TEXT("streaming_enabled"),bCaseStreaming);
             Row->SetNumberField(TEXT("speech_batch_id"),ExpectedBatch);
