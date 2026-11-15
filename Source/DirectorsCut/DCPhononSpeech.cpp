@@ -2,11 +2,16 @@
 #include "ACEAudioCurveSourceComponent.h"
 #include "ACERuntimeModule.h"
 #include "Async/Async.h"
+#include "Async/TaskGraphInterfaces.h"
 #include "Containers/Queue.h"
 #include "Dom/JsonObject.h"
 #include "HAL/FileManager.h"
 #include "HAL/PlatformProcess.h"
+#include "HAL/Event.h"
+#include "HAL/Runnable.h"
+#include "HAL/RunnableThread.h"
 #include "Misc/Base64.h"
+#include "Misc/CoreDelegates.h"
 #include "Misc/Paths.h"
 #include "Misc/ScopeLock.h"
 #include "Serialization/JsonSerializer.h"
@@ -25,6 +30,10 @@ namespace DCPhononSpeechPrivate
     // The plugin's session map is not internally locked. This protects this
     // component's workers; the owner must also exclude legacy async WAV sends.
     FCriticalSection NativeCalls;
+    TAtomic<int32> DeferredLeaseDeletes{0};
+    // All registry/admission access is on the GT. Workers touch only atomics.
+    bool bExitAdmissionClosed = false;
+    bool bExitDrained = false;
 
     struct FLease
     {
@@ -41,7 +50,15 @@ namespace DCPhononSpeechPrivate
             // Strong UObject references are created and released on the GT,
             // including when a worker outlives its owning component's EndPlay.
             if (IsInGameThread()) { delete Value; }
-            else { AsyncTask(ENamedThreads::GameThread, [Value] { delete Value; }); }
+            else
+            {
+                DeferredLeaseDeletes.IncrementExchange();
+                AsyncTask(ENamedThreads::GameThread, [Value]
+                {
+                    delete Value;
+                    DeferredLeaseDeletes.DecrementExchange();
+                });
+            }
         });
     }
 
@@ -70,8 +87,12 @@ namespace DCPhononSpeechPrivate
         return Value.IsValid() && Value->Type == EJson::String && Object->TryGetStringField(Field, Out);
     }
 
-    struct FWorker : TSharedFromThis<FWorker, ESPMode::ThreadSafe>
+    struct FWorker : FRunnable, TSharedFromThis<FWorker, ESPMode::ThreadSafe>
     {
+        FWorker() : Completed(FPlatformProcess::GetSynchEventFromPool(true)) {}
+        ~FWorker() override { FPlatformProcess::ReturnSynchEventToPool(Completed); }
+        FEvent* Completed;
+        TAtomic<int32> PendingGameThreadWork{0};
         FString Python, Script, Model, Voices;
         FACERuntimeModule* ACE = nullptr;
         TAtomic<bool> Ready{false}, Busy{false}, ShutdownRequested{false};
@@ -277,7 +298,8 @@ namespace DCPhononSpeechPrivate
         void StopOnGameThread(const FLeasePtr& Consumer, bool bReleaseBusy)
         {
             auto Self = AsShared();
-            AsyncTask(ENamedThreads::GameThread, [Self, Consumer, bReleaseBusy]
+            PendingGameThreadWork.IncrementExchange();
+            AsyncTask(ENamedThreads::GameThread, [Self, Consumer = FLeasePtr(Consumer), bReleaseBusy]() mutable
             {
                 if (Consumer.IsValid() && IsValid(Consumer->Consumer.Get()))
                 {
@@ -285,6 +307,8 @@ namespace DCPhononSpeechPrivate
                     Self->ReuseAfterFrame.Store(GFrameCounter + 2);
                 }
                 if (bReleaseBusy) { Self->Busy.Store(false); }
+                Consumer.Reset();
+                Self->PendingGameThreadWork.DecrementExchange();
             });
         }
 
@@ -328,7 +352,8 @@ namespace DCPhononSpeechPrivate
             Active = FRequest();
             PCM.Reset(); PCMOffset = 0;
             auto Self = AsShared();
-            AsyncTask(ENamedThreads::GameThread, [Self, Consumer, Id, bSuccess, Duration, bAlreadyStopped]
+            PendingGameThreadWork.IncrementExchange();
+            AsyncTask(ENamedThreads::GameThread, [Self, Consumer, Id, bSuccess, Duration, bAlreadyStopped]() mutable
             {
                 const bool bCancelled = Self->ShutdownRequested.Load() || Self->CancelId.Load() == Id;
                 if (!bAlreadyStopped && (!bSuccess || bCancelled) && Consumer.IsValid() && IsValid(Consumer->Consumer.Get()))
@@ -340,10 +365,12 @@ namespace DCPhononSpeechPrivate
                 }
                 Self->Busy.Store(false);
                 if (!bCancelled && Self->Deliver) { Self->Deliver(Id, bSuccess, Duration); }
+                Consumer.Reset();
+                Self->PendingGameThreadWork.DecrementExchange();
             });
         }
 
-        void Run()
+        uint32 Run() override
         {
             if (!OpenProcess())
             {
@@ -437,8 +464,106 @@ namespace DCPhononSpeechPrivate
                 SendJSON(Object);
             }
             CloseProcess();
+            Completed->Trigger();
+            return 0;
         }
     };
+
+    struct FRegisteredWorker
+    {
+        TSharedPtr<FWorker, ESPMode::ThreadSafe> State;
+        TUniquePtr<FRunnableThread> Thread;
+        TFunction<void()> ShutdownOwner;
+    };
+    TArray<FRegisteredWorker> Workers;
+    FDelegateHandle EnginePreExitHandle, PreExitHandle;
+
+    void DrainApplicationExit()
+    {
+        check(IsInGameThread());
+        if (bExitDrained) { return; }
+        // No new producer can enter while pumping arbitrary GT tasks below.
+        bExitAdmissionClosed = true;
+        for (FRegisteredWorker& Entry : Workers)
+        {
+            // Owner cancellation also releases a successfully sent clip's
+            // retained playback lease, before its worker is told to exit.
+            if (Entry.ShutdownOwner) { Entry.ShutdownOwner(); }
+            Entry.State->Ready.Store(false);
+            Entry.State->ShutdownRequested.Store(true);
+        }
+        const double Started = FPlatformTime::Seconds();
+        double NextWarning = Started + 5.0;
+        UE_LOG(LogDCPhononSpeech, Display, TEXT("PHONON_EXIT_DRAIN_BEGIN workers=%d"), Workers.Num());
+        for (;;)
+        {
+            bool bOutstanding = DeferredLeaseDeletes.Load() != 0;
+            for (const FRegisteredWorker& Entry : Workers)
+            {
+                bOutstanding |= !Entry.State->Completed->Wait(0) || Entry.State->PendingGameThreadWork.Load() != 0;
+            }
+            if (!bOutstanding) { break; }
+            // OnEnginePreExit runs from the engine's exit sequence, outside the
+            // task graph. A raw GT join here would deadlock AudioCompReady.Wait.
+            // Pumping lets ACE prepare audio and our Stop/lease cleanup finish
+            // while engine, audio, task graph and ACE are all still available.
+            if (FTaskGraphInterface::IsRunning() &&
+                !FTaskGraphInterface::Get().IsThreadProcessingTasks(ENamedThreads::GameThread))
+            {
+                FTaskGraphInterface::Get().ProcessThreadUntilIdle(ENamedThreads::GameThread);
+            }
+            const double Now = FPlatformTime::Seconds();
+            if (Now >= NextWarning)
+            {
+                UE_LOG(LogDCPhononSpeech, Warning, TEXT("PHONON_EXIT_DRAIN_WAIT elapsed=%.1f; native drain must finish before ACE unload"), Now - Started);
+                NextWarning = Now + 30.0;
+            }
+            // Never timeout into module unload with a live native call. The SDK
+            // has no safe hard-abort primitive; a hung driver can delay exit.
+            FPlatformProcess::SleepNoStats(.001f);
+        }
+        for (FRegisteredWorker& Entry : Workers)
+        {
+            // Completed is signaled after all native work. Join here also covers
+            // the final return/FRunnable epilogue before its code can be unloaded.
+            Entry.Thread->WaitForCompletion();
+            Entry.Thread.Reset();
+            Entry.State->ACE = nullptr;
+            Entry.State->Deliver = nullptr;
+            Entry.ShutdownOwner = nullptr;
+        }
+        Workers.Empty();
+        bExitDrained = true;
+        // Core delegates outlive the game module. Do not leave callable pointers
+        // into this DLL registered after its workers and cleanup have drained.
+        FCoreDelegates::OnEnginePreExit.Remove(EnginePreExitHandle);
+        FCoreDelegates::OnPreExit.Remove(PreExitHandle);
+        EnginePreExitHandle.Reset();
+        PreExitHandle.Reset();
+        UE_LOG(LogDCPhononSpeech, Display, TEXT("PHONON_EXIT_DRAIN_COMPLETE elapsed=%.3f"), FPlatformTime::Seconds() - Started);
+    }
+
+    bool StartWorker(const TSharedRef<FWorker, ESPMode::ThreadSafe>& State, TFunction<void()> ShutdownOwner)
+    {
+        check(IsInGameThread());
+        if (bExitAdmissionClosed) { return false; }
+        if (!EnginePreExitHandle.IsValid())
+        {
+            // UE5.8: UnrealEngine.cpp UEngine::PreExit broadcasts this BEFORE
+            // audio/world/core teardown. OnPreExit is a fallback for exit paths
+            // without a live engine; LaunchEngineLoop unloads modules afterward.
+            EnginePreExitHandle = FCoreDelegates::OnEnginePreExit.AddStatic(&DrainApplicationExit);
+            PreExitHandle = FCoreDelegates::OnPreExit.AddStatic(&DrainApplicationExit);
+        }
+        TUniquePtr<FRunnableThread> Thread(FRunnableThread::Create(&State.Get(), TEXT("DCPhononPCM")));
+        if (!Thread) { return false; }
+        FRegisteredWorker Entry;
+        Entry.State = State;
+        Entry.Thread = MoveTemp(Thread);
+        Entry.ShutdownOwner = MoveTemp(ShutdownOwner);
+        Workers.Add(MoveTemp(Entry));
+        return true;
+    }
 }
 
 UDCPhononSpeech::UDCPhononSpeech()
@@ -450,7 +575,7 @@ bool UDCPhononSpeech::Initialize(const FString& PythonPath, const FString& Scrip
     const FString& ModelDirectory, const FString& VoiceManifestPath)
 {
     check(IsInGameThread());
-    if (Worker.IsValid() || bStopped) { return false; }
+    if (Worker.IsValid() || bStopped || DCPhononSpeechPrivate::bExitAdmissionClosed) { return false; }
     for (const FString* Path : { &PythonPath, &ScriptPath, &ModelDirectory, &VoiceManifestPath })
     {
         if (Path->IsEmpty() || Path->Contains(TEXT("\"")) || Path->Contains(TEXT("\n")) || Path->Contains(TEXT("\r"))) { return false; }
@@ -469,7 +594,14 @@ bool UDCPhononSpeech::Initialize(const FString& PythonPath, const FString& Scrip
         if (UDCPhononSpeech* Self = Weak.Get()) { Self->Delivered(Id, bSuccess, Duration); }
     };
     const auto State = Worker.ToSharedRef();
-    Async(EAsyncExecution::Thread, [State] { State->Run(); });
+    if (!DCPhononSpeechPrivate::StartWorker(State, [Weak]
+    {
+        if (UDCPhononSpeech* Self = Weak.Get()) { Self->Shutdown(); }
+    }))
+    {
+        Worker.Reset();
+        return false;
+    }
     return true;
 }
 
@@ -484,7 +616,7 @@ bool UDCPhononSpeech::Speak(const FString& Speaker, const FString& Text, UACEAud
     FName Provider, TFunction<void(bool, double)> Sent)
 {
     check(IsInGameThread());
-    if (!IsReady() || IsBusy() || LastConsumer.Get() != nullptr || !IsValid(Consumer) || !Sent || Text.TrimStartAndEnd().IsEmpty() || Text.Len() > 240 ||
+    if (DCPhononSpeechPrivate::bExitAdmissionClosed || !IsReady() || IsBusy() || LastConsumer.Get() != nullptr || !IsValid(Consumer) || !Sent || Text.TrimStartAndEnd().IsEmpty() || Text.Len() > 240 ||
         (Speaker != TEXT("Rex") && Speaker != TEXT("Duncan") && Speaker != TEXT("Ruby")) ||
         Provider.IsNone() || Provider == FName("Default") || NextId == MAX_int32) { return false; }
     ActiveId = ++NextId;
