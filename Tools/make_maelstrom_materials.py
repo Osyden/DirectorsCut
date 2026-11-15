@@ -490,7 +490,7 @@ struct SourceFoamRaft {
   // The bounded area budget controls coverage, not a global white lift.
   float massVariation=saturate(.5+(mass/16.-.5)*2.15);
   float rank=massVariation*massVariation*(3-2*massVariation);
-  float areaBudget=.44*sourceStrength*saturate(phaseWeight);
+  float areaBudget=.68*sourceStrength*saturate(phaseWeight);
   float packetAA=clamp(fwidth(rank)*.5,.008,.18);
   // Only exiting/downstream aged edges get a soft~5m trailing transition.
   // Its rank-space width is bounded; packet interiors remain bright, and the
@@ -530,9 +530,15 @@ float coverage0=rafts.coverage(q,direction0,Source0,ImpactSource,VC.r,movingLip0
     1-blend,available,raft0,shelf);
 float coverage1=rafts.coverage(q2,direction1,Source1,ImpactSource,VC.r,movingLip1,phase2,
     blend,available,raft1,shelf);
-// The two phases carry separate area budgets: combine covered area, rather
-// than turning every opaque raft half-grey at the middle of the flow cycle.
-return saturate((1-(1-coverage0)*(1-coverage1))*Coverage*(1-shelf*.35));
+// Real breaking fronts were losing their already narrow support to a second
+// occupancy lottery. Retain source-driven rafts, but show the fresh aerated lip
+// directly with finite packet breakup. Neither term follows a radial contour.
+float lip=lerp(movingLip0,movingLip1,blend);
+float lipTear=lerp(wn.noise(q*.19+37.1),wn.noise(q2*.19+37.1),blend);
+float lipAA=clamp(fwidth(lipTear)*.5,.025,.20);
+float front=lip*smoothstep(.28-lipAA,.48+lipAA,lipTear)*.86;
+float raftsCoverage=1-(1-coverage0)*(1-coverage1);
+return saturate((1-(1-raftsCoverage)*(1-front))*Coverage*(1-shelf*.35));
 """
 foam = custom(water, foam_code, FLOAT, foam_inputs)
 source_foam=foam
@@ -556,7 +562,7 @@ return lerp(body,foamColor,Foam);
 """, FLOAT3, {"VC":vc,"Foam":foam}, 100)
 output(color, unreal.MaterialProperty.MP_BASE_COLOR)
 # Mix water/foam roughness by covered area; weak wake fringes stay liquid.
-roughness = custom(water, "float f=saturate(Foam); float distanceM=length(P-Cam)*.01; float liquid=lerp(.30,.40,smoothstep(350.,1800.,distanceM)); return lerp(sqrt(lerp(liquid*liquid,.78*.78,f)),lerp(.30,.78,sqrt(f)),saturate(Tunnel));", FLOAT, {"Foam":foam,"Tunnel":tunnel_flow,"P":position,"Cam":camera}, 200)
+roughness = custom(water, "float f=saturate(Foam); float distanceM=length(P-Cam)*.01; float liquid=lerp(.30,.42,smoothstep(250.,1400.,distanceM)); return lerp(sqrt(lerp(liquid*liquid,.78*.78,f)),lerp(.30,.78,sqrt(f)),saturate(Tunnel));", FLOAT, {"Foam":foam,"Tunnel":tunnel_flow,"P":position,"Cam":camera}, 200)
 if fft_surface:
     roughness=custom(water,r"""
 float distanceM=length(P-Cam)*0.01;
@@ -567,7 +573,7 @@ float distanceM=length(P-Cam)*0.01;
 float liquidRoughness=lerp(.16,.28,saturate(Surface.a));
 // Bound the distant filtering floor independently of the wave mask. It cannot
 // erase the liquid/foam distinction or manufacture whitewater coverage.
-float filteredLiquid=max(liquidRoughness,lerp(.18,.36,smoothstep(250.0,1400.0,distanceM)));
+float filteredLiquid=max(liquidRoughness,lerp(.30,.42,smoothstep(250.0,1400.0,distanceM)));
 float areaRoughness=sqrt(lerp(filteredLiquid*filteredLiquid,.78*.78,saturate(Foam)));
 // The live normal uses this same 120–500m transition. Once the normal has
 // returned to the procedural current field, its corresponding roughness must

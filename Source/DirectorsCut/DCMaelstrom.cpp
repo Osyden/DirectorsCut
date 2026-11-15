@@ -297,11 +297,15 @@ float ADCMaelstrom::HeightAt(const FVector2D& Point, bool bWaves) const
     const float CenterHeight=BaseHeightAt(FVector2D(FMath::Cos(A),FMath::Sin(A))*RouteR);
     const float Channel=Across>=0.f
         ? 1.f-FMath::SmoothStep(17000.f*Width,33000.f*Width,Across)
-        : 1.f-FMath::SmoothStep(3500.f*Width,13000.f*Width,-Across);
+        // A flat 35m shelf followed by a 95m return amplified the bowl grade
+        // into a continuous dark cliff. An exponential shoulder has no lip or
+        // end boundary; its maximum extra grade is only exp(-2) of the local
+        // bowl/channel grade difference. Centre height and outer shore match.
+        : FMath::Exp(Across/(4200.f*Width));
     const float ChannelHeight=CenterHeight+DCMaelstromRoute::BankedHeight(Across,RouteT);
     Height=FMath::Lerp(Height,ChannelHeight,Lane*Channel);
-    // Keep the complete +/-110m steering range plus15m hull clearance exact.
-    // Outside it, unequal finite reaches vary the hydraulic bank width rather
+    // The ship samples this surface at its actual steering offset. Keep the
+    // outer steering range exact; unequal finite reaches beyond it vary width
     // than drawing one constant-width raised ribbon around the whole descent.
     // The35m shore fade preserves all existing waterfall/contact elevations.
     const float Protected=FMath::SmoothStep(12500.f,16500.f,Across);
