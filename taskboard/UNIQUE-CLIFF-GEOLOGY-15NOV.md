@@ -48,3 +48,10 @@ Meso relief exposure follows continuous lithological weathering regions;
 there are no random dark cell colors. Outputs are separately preserved in
 `Saved/CliffGeology/FacetedUniqueV2`, including a normal preview. Geometry and
 the importer remain untouched. Root owns the second actual-camera comparison.
+
+V3 responds to the second camera comparison: visible bed colors and normal
+ledges now share one regional exposure mask that reaches zero, with an
+additional shorter-scale termination mask. They no longer have a nonzero
+baseline spanning the entire mountain. Existing angular fracture relief is
+moderately stronger; the dark palette, original geometry and all scan-free
+albedo remain. Separate output: `Saved/CliffGeology/FacetedUniqueV3`.

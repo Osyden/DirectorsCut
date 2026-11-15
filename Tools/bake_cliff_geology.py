@@ -186,8 +186,14 @@ def main():
     joint_distance=np.minimum(joint_coordinate-joint_breaks[joint_bed],joint_breaks[joint_bed+1]-joint_coordinate)
     joints=np.exp(-(joint_distance/.22)**2)*smoothstep(-.17,.35,noise(u,actual_z,13,8,516))
     fracture_exposure=smoothstep(-.32,.40,noise(u,actual_z,23,14,735))
-    value=.165+.045*broad+.85*lithology+.023*meso+.008*fine-.016*interbed
-    value+=.012*fracture_exposure
+    # Only locally exposed strata retain visible bedding. Both their material
+    # contrast and physical ledge relief terminate together; the underlying
+    # formation is coherent without drawing lines across the whole mountain.
+    bedding_exposure=smoothstep(-.04,.32,noise(u,actual_z,46,31,202))
+    bedding_exposure*=smoothstep(-.27,.18,noise(u,actual_z,16,9,819))
+    interbed*=bedding_exposure
+    value=.165+.045*broad+.85*lithology*bedding_exposure+.023*meso+.008*fine-.016*interbed
+    value+=.016*fracture_exposure
     value-=.013*joints
     value+=.010*shelf+.010*exposed
     value*=1-.30*stains-.22*wet
@@ -207,11 +213,11 @@ def main():
     plane_v=formation_z+.38*noise(u,actual_z,7,4,116)
     angular=fractured_planes(plane_u,plane_v,2.7,1.8,871)
     small_angular=fractured_planes(plane_u+.35*plane_v,plane_v,.95,.68,563)
-    relief+=(.10+.23*fracture_exposure)*angular
+    relief+=(.11+.30*fracture_exposure)*angular
     relief+=.060*fracture_exposure*small_angular
     ledge_profile=fraction-smoothstep(.84,.98,fraction)
     bed_strength=.2+.32*hash01(bed,np.zeros_like(bed),471)
-    ledge_continuity=.3+.7*smoothstep(-.40,.38,noise(u,actual_z,11,7,819))
+    ledge_continuity=bedding_exposure*smoothstep(-.12,.30,noise(u,actual_z,11,7,819))
     relief+=bed_strength*ledge_profile*ledge_continuity
     dv,du=np.gradient(relief,physical_height/H,physical_width/W)
     # UV overlap/steep roof chart transitions must not create black normal spikes.
@@ -230,7 +236,8 @@ def main():
     np.savez_compressed(out/'geology_masks.npz',runoff=resize(stains,(512,1024)),wetness=resize(wet,(512,1024)),mineral=resize(mineral,(512,1024)),shelf=resize(shelf,(512,1024)),valid=resize(valid.astype(np.float32),(512,1024)))
     stats={'albedo_linear_min':color.min(axis=(0,1)).tolist(),'albedo_linear_max':color.max(axis=(0,1)).tolist(),'albedo_linear_mean':color.mean(axis=(0,1)).tolist(),'roughness_min':float(rough.min()),'roughness_max':float(rough.max()),'wet_fraction_above_025':float(np.mean(wet>.25)),'valid_fraction':float(valid.mean())}
     manifest={'schema':'directorscut.unique_geology.v1','resolution':[W,H],'physical_width_m':physical_width,'physical_height_m':physical_height,'z_min_m':zmin,'z_max_m':80.,'unique_pilot':True,'source_kind':'original geometry-conditioned procedural geology; no repeated scan albedo','geometry_fields':str(args.fields.resolve()),'geometry_fields_sha256':sha(args.fields),'generator_source_sha256':sha(__file__),'uv':'UV0 U=arc/497.418836818384; face V=(Z+200)/280; rows +V up; roof radial continuation in source UV. Use in-domain mask and pilot vertexR; do not wrap unique atlas beyond pilot.','normal_format':'OpenGL tangent-space fine relief only; positive V up; importer flips green once','albedo_encoding':'sRGB from linear reflectance; no AO/cavity/directional shading','roughness_encoding':'linear dry .65-.90; wet target .39-.45 blended by local flow coverage','geology':'One ordered irregular stratigraphic sequence; whole-surface dip/fold; broad mineral regions; projected gravity runoff; restrained sub-metre unique relief','limitations':'Art-directed geology and approximate UV drainage, not a calibrated erosion solver; atlas covers pilot only, not whole 4.3km ring','statistics':stats,'seconds':time.time()-started,'files':{n:sha(out/n) for n in files.values()}}
-    manifest.update(schema='directorscut.unique_geology.v2',normal_format='OpenGL tangent-space original micro and meso fracture/ledge relief; positive V up; importer flips green once',geology='One irregular geological sequence; broad mineral regions; projected gravity runoff; angular .6-4m fractured bedrock and shallow irregular 2-12m ledges; subdued sub-metre relief')
+    manifest.update(schema='directorscut.unique_geology.v3',normal_format='OpenGL tangent-space original micro and meso fracture/ledge relief; positive V up; importer flips green once',geology='One irregular geological sequence exposed only in terminating regional patches; broad mineral regions; projected gravity runoff; angular .6-4m fractured bedrock and interrupted shallow ledges; subdued sub-metre relief')
+    manifest['statistics']['bedding_exposure_fraction_above_025']=float(np.mean(bedding_exposure[valid]>.25))
     manifest['statistics']['normal_angle_p50_p90_p99_degrees']=np.percentile(np.degrees(np.arccos(np.clip(normal[:,:,2],0,1)))[valid],[50,90,99]).tolist()
     (out/'tile_manifest.json').write_text(json.dumps(manifest,indent=2))
     print('GEOLOGY_READY '+json.dumps({'output':str(out),'seconds':manifest['seconds'],'statistics':stats}),flush=True)
