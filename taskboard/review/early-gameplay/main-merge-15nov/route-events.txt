@@ -1,0 +1,413 @@
+[2026.11.15-05.35.13:339][  5]LogDC: Bow spray waterline: x=1216 halfwidth=78
+[2026.11.15-05.35.13:340][  5]LogDC: Bow wash: tuned 2 live water materials; shared assets unchanged
+[2026.11.15-05.36.27:334][306]LogDC: Navigation plan: 0 -> 0 urgent=0 clearance=-1 at 74.5
+[2026.11.15-05.36.27:334][306]LogDC: Navigation: obstacle=-1 target=0 lane=0 velocity=0 assist=0 helm=0.00 manual=0 t=74.5 committed=1 hold=2.4 targetStone=-1 pathHit=-1.00 pathMs=2.195
+[2026.11.15-05.36.27:834][340]LogDC: Navigation: obstacle=11556 target=0 lane=0 velocity=0 assist=0 helm=0.00 manual=0 t=75.0 committed=1 hold=1.9 targetStone=11556 pathHit=5.95 pathMs=1.380
+[2026.11.15-05.36.28:338][386]LogDC: Navigation: obstacle=10899 target=0 lane=0 velocity=0 assist=0 helm=0.00 manual=0 t=75.5 committed=1 hold=1.4 targetStone=10899 pathHit=5.51 pathMs=1.371
+[2026.11.15-05.36.28:883][431]LogDC: Navigation: obstacle=9989 target=0 lane=0 velocity=0 assist=0 helm=0.00 manual=0 t=76.0 committed=1 hold=0.9 targetStone=9989 pathHit=4.90 pathMs=1.338
+[2026.11.15-05.36.29:390][473]LogDC: Navigation: obstacle=9368 target=0 lane=0 velocity=0 assist=0 helm=0.00 manual=0 t=76.6 committed=1 hold=0.3 targetStone=9368 pathHit=4.49 pathMs=1.344
+[2026.11.15-05.36.29:812][510]LogDC: Navigation plan: 0 -> 1000 urgent=0 clearance=8454 at 77.0
+[2026.11.15-05.36.29:904][518]LogDC: Navigation: obstacle=8454 target=1000 lane=8 velocity=152 assist=21 helm=1.00 manual=0 t=77.1 committed=1 hold=2.3 targetStone=-1 pathHit=-1.00 pathMs=2.029
+[2026.11.15-05.36.30:404][562]LogDC: Navigation: obstacle=7737 target=1000 lane=214 velocity=541 assist=69 helm=0.59 manual=0 t=77.6 committed=1 hold=1.8 targetStone=-1 pathHit=-1.00 pathMs=1.321
+[2026.11.15-05.36.30:914][606]LogDC: Navigation: obstacle=6804 target=1000 lane=480 velocity=471 assist=69 helm=0.28 manual=0 t=78.1 committed=1 hold=1.3 targetStone=-1 pathHit=-1.00 pathMs=1.391
+[2026.11.15-05.36.31:416][650]LogDC: Navigation: obstacle=6328 target=1000 lane=678 velocity=323 assist=53 helm=0.14 manual=0 t=78.6 committed=1 hold=0.8 targetStone=-1 pathHit=-1.00 pathMs=1.329
+[2026.11.15-05.36.31:918][696]LogDC: Navigation: obstacle=5402 target=1000 lane=808 velocity=203 assist=37 helm=0.07 manual=0 t=79.1 committed=1 hold=0.3 targetStone=-1 pathHit=-1.00 pathMs=1.600
+[2026.11.15-05.36.32:429][733]LogDC: Navigation: obstacle=-1 target=1000 lane=888 velocity=118 assist=20 helm=0.04 manual=0 t=79.6 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.240
+[2026.11.15-05.36.32:942][767]LogDC: Navigation: obstacle=-1 target=1000 lane=934 velocity=66 assist=6 helm=0.03 manual=0 t=80.1 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.014
+[2026.11.15-05.36.33:450][812]LogDC: Navigation: obstacle=-1 target=1000 lane=960 velocity=39 assist=2 helm=0.02 manual=0 t=80.6 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.921
+[2026.11.15-05.36.33:956][845]LogDC: Navigation: obstacle=-1 target=1000 lane=975 velocity=24 assist=1 helm=0.01 manual=0 t=81.1 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.890
+[2026.11.15-05.36.34:462][881]LogDC: Navigation: obstacle=-1 target=1000 lane=985 velocity=15 assist=0 helm=0.01 manual=0 t=81.6 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.082
+[2026.11.15-05.36.34:963][917]LogDC: Navigation: obstacle=-1 target=1000 lane=991 velocity=9 assist=0 helm=0.00 manual=0 t=82.1 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.911
+[2026.11.15-05.36.35:465][953]LogDC: Navigation: obstacle=-1 target=1000 lane=994 velocity=6 assist=0 helm=0.00 manual=0 t=82.6 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.896
+[2026.11.15-05.36.35:981][991]LogDC: Navigation: obstacle=-1 target=1000 lane=996 velocity=3 assist=0 helm=0.00 manual=0 t=83.1 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.920
+[2026.11.15-05.36.36:483][ 31]LogDC: Navigation: obstacle=-1 target=1000 lane=998 velocity=2 assist=0 helm=0.00 manual=0 t=83.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.709
+[2026.11.15-05.36.36:998][ 71]LogDC: Navigation: obstacle=-1 target=1000 lane=997 velocity=-5 assist=0 helm=0.01 manual=0 t=84.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.668
+[2026.11.15-05.36.37:500][111]LogDC: Navigation: obstacle=-1 target=1000 lane=993 velocity=-11 assist=0 helm=0.02 manual=0 t=84.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.934
+[2026.11.15-05.36.38:013][153]LogDC: Navigation: obstacle=-1 target=1000 lane=986 velocity=-14 assist=0 helm=0.03 manual=0 t=85.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.976
+[2026.11.15-05.36.38:515][194]LogDC: Navigation: obstacle=-1 target=1000 lane=978 velocity=-16 assist=0 helm=0.05 manual=0 t=85.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.954
+[2026.11.15-05.36.39:016][236]LogDC: Navigation: obstacle=-1 target=1000 lane=970 velocity=-17 assist=0 helm=0.06 manual=0 t=86.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.952
+[2026.11.15-05.36.39:523][281]LogDC: Navigation: obstacle=-1 target=1000 lane=962 velocity=-17 assist=0 helm=0.07 manual=0 t=86.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.923
+[2026.11.15-05.36.40:030][325]LogDC: Navigation: obstacle=-1 target=1000 lane=953 velocity=-16 assist=0 helm=0.08 manual=0 t=87.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.947
+[2026.11.15-05.36.40:538][383]LogDC: Navigation: obstacle=-1 target=1000 lane=946 velocity=-15 assist=0 helm=0.09 manual=0 t=87.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.922
+[2026.11.15-05.36.41:039][436]LogDC: Navigation: obstacle=-1 target=1000 lane=938 velocity=-14 assist=0 helm=0.10 manual=0 t=88.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.922
+[2026.11.15-05.36.41:542][488]LogDC: Navigation: obstacle=-1 target=1000 lane=932 velocity=-12 assist=0 helm=0.11 manual=0 t=88.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.938
+[2026.11.15-05.36.42:042][540]LogDC: Navigation: obstacle=-1 target=1000 lane=926 velocity=-11 assist=0 helm=0.12 manual=0 t=89.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.957
+[2026.11.15-05.36.42:547][591]LogDC: Navigation: obstacle=-1 target=1000 lane=921 velocity=-9 assist=0 helm=0.12 manual=0 t=89.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.934
+[2026.11.15-05.36.43:257][622]LogDC: Display: Encounter group 1: 2 creatures on port at 90.0
+[2026.11.15-05.36.43:268][623]LogDC: Navigation: obstacle=-1 target=1000 lane=915 velocity=-9 assist=0 helm=0.12 manual=0 t=90.4 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.963
+[2026.11.15-05.36.43:769][672]LogDC: Navigation: obstacle=-1 target=1000 lane=912 velocity=-5 assist=0 helm=0.13 manual=0 t=90.9 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.679
+[2026.11.15-05.36.44:277][729]LogDC: Navigation: obstacle=-1 target=1000 lane=910 velocity=-3 assist=0 helm=0.13 manual=0 t=91.4 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.941
+[2026.11.15-05.36.44:780][782]LogDC: Navigation: obstacle=-1 target=1000 lane=909 velocity=-1 assist=0 helm=0.13 manual=0 t=91.9 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.183
+[2026.11.15-05.36.45:289][836]LogDC: Navigation: obstacle=-1 target=1000 lane=909 velocity=-1 assist=0 helm=0.13 manual=0 t=92.4 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.334
+[2026.11.15-05.36.45:793][888]LogDC: Navigation: obstacle=-1 target=1000 lane=908 velocity=-0 assist=0 helm=0.13 manual=0 t=92.9 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.991
+[2026.11.15-05.36.46:298][946]LogDC: Navigation: obstacle=-1 target=1000 lane=908 velocity=-0 assist=0 helm=0.13 manual=0 t=93.4 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.002
+[2026.11.15-05.36.46:801][  6]LogDC: Navigation: obstacle=-1 target=1000 lane=908 velocity=-0 assist=0 helm=0.13 manual=0 t=93.9 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.985
+[2026.11.15-05.36.47:306][ 66]LogDC: Navigation: obstacle=-1 target=1000 lane=908 velocity=-0 assist=0 helm=0.13 manual=0 t=94.4 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.998
+[2026.11.15-05.36.47:552][ 95]LogDC: Navigation plan: 1000 -> -500 urgent=0 clearance=15682 at 94.7
+[2026.11.15-05.36.47:812][126]LogDC: Navigation: obstacle=15364 target=-500 lane=831 velocity=-544 assist=-10 helm=-1.00 manual=0 t=94.9 committed=1 hold=2.1 targetStone=-1 pathHit=-1.00 pathMs=0.972
+[2026.11.15-05.36.48:319][186]LogDC: Navigation: obstacle=14706 target=-500 lane=416 velocity=-893 assist=-44 helm=-0.42 manual=0 t=95.5 committed=1 hold=1.6 targetStone=-1 pathHit=-1.00 pathMs=0.971
+[2026.11.15-05.36.48:821][246]LogDC: Navigation: obstacle=-1 target=-500 lane=33 velocity=-605 assist=-32 helm=-0.16 manual=0 t=96.0 committed=1 hold=1.1 targetStone=-1 pathHit=-1.00 pathMs=1.317
+[2026.11.15-05.36.49:328][307]LogDC: Navigation: obstacle=-1 target=-500 lane=-199 velocity=-334 assist=-10 helm=-0.10 manual=0 t=96.5 committed=1 hold=0.6 targetStone=-1 pathHit=-1.00 pathMs=1.006
+[2026.11.15-05.36.49:838][368]LogDC: Navigation: obstacle=-1 target=-500 lane=-324 velocity=-174 assist=-3 helm=-0.08 manual=0 t=97.0 committed=1 hold=0.1 targetStone=-1 pathHit=-1.00 pathMs=1.007
+[2026.11.15-05.36.49:983][384]LogDC: Display: Encounter firing window: creature port distance=15226 at 97.1
+[2026.11.15-05.36.50:345][424]LogDC: Navigation: obstacle=-1 target=-500 lane=-387 velocity=-89 assist=-1 helm=-0.07 manual=0 t=97.5 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.010
+[2026.11.15-05.36.50:846][483]LogDC: Navigation: obstacle=-1 target=-500 lane=-419 velocity=-45 assist=-0 helm=-0.07 manual=0 t=98.0 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.000
+[2026.11.15-05.36.51:343][540]LogDC: Display: Encounter firing window: creature port distance=17029 at 98.5
+[2026.11.15-05.36.51:351][541]LogDC: Navigation: obstacle=-1 target=-500 lane=-436 velocity=-22 assist=-0 helm=-0.07 manual=0 t=98.5 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.985
+[2026.11.15-05.36.51:853][594]LogDC: Navigation: obstacle=-1 target=-500 lane=-444 velocity=-11 assist=-0 helm=-0.07 manual=0 t=99.0 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.968
+[2026.11.15-05.36.52:358][648]LogDC: Navigation: obstacle=-1 target=-500 lane=-448 velocity=-6 assist=-0 helm=-0.07 manual=0 t=99.5 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.977
+[2026.11.15-05.36.52:861][702]LogDC: Navigation: obstacle=-1 target=-500 lane=-450 velocity=-3 assist=-0 helm=-0.07 manual=0 t=100.0 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.962
+[2026.11.15-05.36.53:368][757]LogDC: Navigation: obstacle=-1 target=-500 lane=-451 velocity=-1 assist=-0 helm=-0.07 manual=0 t=100.5 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.944
+[2026.11.15-05.36.53:872][816]LogDC: Navigation: obstacle=-1 target=-500 lane=-451 velocity=-1 assist=-0 helm=-0.07 manual=0 t=101.0 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.934
+[2026.11.15-05.36.54:375][874]LogDC: Navigation: obstacle=-1 target=-500 lane=-451 velocity=-0 assist=-0 helm=-0.07 manual=0 t=101.5 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.888
+[2026.11.15-05.36.54:883][931]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=102.0 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.877
+[2026.11.15-05.36.55:392][988]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=102.5 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.880
+[2026.11.15-05.36.55:900][ 44]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=103.0 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.128
+[2026.11.15-05.36.56:400][ 95]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=103.5 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.887
+[2026.11.15-05.36.56:903][149]LogDC: Navigation: obstacle=15821 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=104.0 committed=1 hold=0.0 targetStone=15821 pathHit=-1.00 pathMs=0.873
+[2026.11.15-05.36.56:958][154]LogDC: Display: Encounter defeated: creature at 104.1
+[2026.11.15-05.36.57:409][204]LogDC: Navigation: obstacle=14895 target=-500 lane=-452 velocity=-1 assist=-1 helm=-0.07 manual=0 t=104.5 committed=1 hold=0.0 targetStone=14895 pathHit=-1.00 pathMs=0.870
+[2026.11.15-05.36.57:584][223]LogDC: Navigation plan: -500 -> -2250 urgent=0 clearance=14594 at 104.7
+[2026.11.15-05.36.57:913][260]LogDC: Navigation: obstacle=14293 target=-2250 lane=-558 velocity=-573 assist=-44 helm=-1.00 manual=0 t=105.0 committed=1 hold=2.1 targetStone=-1 pathHit=-1.00 pathMs=0.850
+[2026.11.15-05.36.58:413][312]LogDC: Navigation: obstacle=13652 target=-2250 lane=-965 velocity=-969 assist=-72 helm=-0.88 manual=0 t=105.5 committed=1 hold=1.6 targetStone=-1 pathHit=-1.00 pathMs=1.094
+[2026.11.15-05.36.58:921][364]LogDC: Navigation: obstacle=-1 target=-2250 lane=-1419 velocity=-750 assist=-54 helm=-0.44 manual=0 t=106.1 committed=1 hold=1.1 targetStone=-1 pathHit=-1.00 pathMs=1.415
+[2026.11.15-05.36.59:428][416]LogDC: Navigation: obstacle=-1 target=-2250 lane=-1714 velocity=-437 assist=-18 helm=-0.33 manual=0 t=106.6 committed=1 hold=0.6 targetStone=-1 pathHit=-1.00 pathMs=1.143
+[2026.11.15-05.36.59:935][472]LogDC: Navigation: obstacle=-1 target=-2250 lane=-1881 velocity=-240 assist=-6 helm=-0.29 manual=0 t=107.1 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.153
+[2026.11.15-05.37.00:441][531]LogDC: Navigation: obstacle=-1 target=-2250 lane=-1970 velocity=-128 assist=-2 helm=-0.27 manual=0 t=107.6 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.085
+[2026.11.15-05.37.00:941][591]LogDC: Navigation: obstacle=-1 target=-2250 lane=-2018 velocity=-68 assist=-1 helm=-0.26 manual=0 t=108.1 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.054
+[2026.11.15-05.37.01:449][649]LogDC: Navigation: obstacle=-1 target=-2250 lane=-2043 velocity=-36 assist=-0 helm=-0.26 manual=0 t=108.6 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.023
+[2026.11.15-05.37.01:951][707]LogDC: Navigation: obstacle=-1 target=-2250 lane=-2056 velocity=-19 assist=-0 helm=-0.26 manual=0 t=109.1 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.015
+[2026.11.15-05.37.02:159][728]LogDC: Display: Encounter charge: creature exposure=10.8 at 109.3
+[2026.11.15-05.37.02:453][759]LogDC: Navigation: obstacle=-1 target=-2250 lane=-2063 velocity=-10 assist=-0 helm=-0.26 manual=0 t=109.6 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.982
+[2026.11.15-05.37.02:960][812]LogDC: Navigation: obstacle=-1 target=-2250 lane=-2066 velocity=-5 assist=-0 helm=-0.26 manual=0 t=110.1 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.175
+[2026.11.15-05.37.03:466][865]LogDC: Navigation: obstacle=-1 target=-2250 lane=-2068 velocity=-3 assist=-0 helm=-0.26 manual=0 t=110.6 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.916
+[2026.11.15-05.37.03:725][892]LogDC: Navigation plan: -2250 -> -3250 urgent=0 clearance=-1 at 110.9
+[2026.11.15-05.37.03:970][918]LogDC: Navigation: obstacle=-1 target=-3250 lane=-2115 velocity=-338 assist=-0 helm=-1.00 manual=0 t=111.1 committed=1 hold=2.2 targetStone=-1 pathHit=-1.00 pathMs=0.919
+[2026.11.15-05.37.04:477][974]LogDC: Navigation: obstacle=-1 target=-3250 lane=-2382 velocity=-598 assist=-12 helm=-0.65 manual=0 t=111.6 committed=1 hold=1.6 targetStone=-1 pathHit=-1.00 pathMs=0.854
+[2026.11.15-05.37.04:873][ 18]LogDC: Sentinel eye 0 local=V(X=-69.17, Y=-27.18, Z=1737.33) figure bounds=V(X=1779.84, Y=1739.63, Z=4108.27)
+[2026.11.15-05.37.04:873][ 18]LogDC: Sentinel eye 1 local=V(X=-69.17, Y=27.18, Z=1737.33) figure bounds=V(X=1779.84, Y=1739.63, Z=4108.27)
+[2026.11.15-05.37.04:873][ 18]LogDC: Display: Sentinel 1 placed on starboard at 112.0
+[2026.11.15-05.37.04:981][ 31]LogDC: Navigation: obstacle=-1 target=-3250 lane=-2643 velocity=-425 assist=-4 helm=-0.44 manual=0 t=112.1 committed=1 hold=1.1 targetStone=-1 pathHit=-1.00 pathMs=0.783
+[2026.11.15-05.37.05:482][ 88]LogDC: Navigation: obstacle=-1 target=-3250 lane=-2810 velocity=-254 assist=-1 helm=-0.37 manual=0 t=112.6 committed=1 hold=0.6 targetStone=-1 pathHit=-1.00 pathMs=0.795
+[2026.11.15-05.37.05:988][143]LogDC: Navigation: obstacle=-1 target=-3250 lane=-2907 velocity=-142 assist=-0 helm=-0.35 manual=0 t=113.1 committed=1 hold=0.1 targetStone=-1 pathHit=-1.00 pathMs=0.796
+[2026.11.15-05.37.06:099][155]LogDC: Display: Encounter defeated: creature at 113.2
+[2026.11.15-05.37.06:491][198]LogDC: Navigation: obstacle=-1 target=-3250 lane=-2961 velocity=-78 assist=-0 helm=-0.34 manual=0 t=113.6 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.842
+[2026.11.15-05.37.06:999][253]LogDC: Navigation: obstacle=-1 target=-3250 lane=-2990 velocity=-42 assist=-0 helm=-0.33 manual=0 t=114.1 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.822
+[2026.11.15-05.37.07:504][307]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3006 velocity=-22 assist=-0 helm=-0.33 manual=0 t=114.6 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.287
+[2026.11.15-05.37.07:542][311]LogDC: Display: Encounter impact: fireball deck=V(X=409.37, Y=60.00, Z=509.73) fires=0->1 at 114.7
+[2026.11.15-05.37.08:010][361]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3014 velocity=-12 assist=-0 helm=-0.32 manual=0 t=115.1 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.870
+[2026.11.15-05.37.08:519][415]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3019 velocity=-6 assist=-0 helm=-0.32 manual=0 t=115.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.929
+[2026.11.15-05.37.09:027][469]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3021 velocity=-3 assist=-0 helm=-0.32 manual=0 t=116.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.115
+[2026.11.15-05.37.09:534][523]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3022 velocity=-2 assist=-0 helm=-0.32 manual=0 t=116.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.937
+[2026.11.15-05.37.10:043][575]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3023 velocity=-1 assist=0 helm=-0.32 manual=0 t=117.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.841
+[2026.11.15-05.37.10:550][625]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3023 velocity=-1 assist=0 helm=-0.32 manual=0 t=117.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.829
+[2026.11.15-05.37.11:056][673]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=118.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.821
+[2026.11.15-05.37.11:556][722]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=118.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.674
+[2026.11.15-05.37.12:063][776]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=119.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.701
+[2026.11.15-05.37.12:569][829]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=119.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.702
+[2026.11.15-05.37.13:073][883]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=120.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.713
+[2026.11.15-05.37.13:578][936]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=120.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.737
+[2026.11.15-05.37.14:088][990]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=121.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.725
+[2026.11.15-05.37.14:597][ 43]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=121.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.712
+[2026.11.15-05.37.14:599][ 43]LogDC: Display: Encounter firing window: sentinel starboard distance=13822 at 121.7
+[2026.11.15-05.37.15:098][ 92]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=122.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.691
+[2026.11.15-05.37.15:600][145]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=122.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.694
+[2026.11.15-05.37.16:106][196]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=123.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.792
+[2026.11.15-05.37.16:607][248]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=123.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.868
+[2026.11.15-05.37.17:107][300]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=124.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.872
+[2026.11.15-05.37.17:617][350]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=124.8 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.306
+[2026.11.15-05.37.18:122][401]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=125.3 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.895
+[2026.11.15-05.37.18:625][451]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=125.8 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.905
+[2026.11.15-05.37.19:132][503]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=126.3 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.924
+[2026.11.15-05.37.19:591][549]LogDC: Display: Encounter charge: sentinel exposure=5.0 at 126.7
+[2026.11.15-05.37.19:637][554]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=126.8 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.947
+[2026.11.15-05.37.20:147][605]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=127.3 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.966
+[2026.11.15-05.37.20:658][656]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=127.8 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.971
+[2026.11.15-05.37.21:148][705]LogDC: Display: Encounter defeated: sentinel at 128.3
+[2026.11.15-05.37.21:163][707]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=128.3 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.925
+[2026.11.15-05.37.21:677][759]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=128.8 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.918
+[2026.11.15-05.37.22:175][809]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=129.3 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.869
+[2026.11.15-05.37.22:684][860]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=129.8 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.149
+[2026.11.15-05.37.23:193][913]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=130.3 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.850
+[2026.11.15-05.37.23:694][966]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=130.8 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.850
+[2026.11.15-05.37.24:197][ 19]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=131.3 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.890
+[2026.11.15-05.37.24:705][ 71]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=131.8 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.897
+[2026.11.15-05.37.25:235][ 88]LogDC: Display: Encounter group 2: 2 creatures on starboard at 132.0
+[2026.11.15-05.37.25:245][ 89]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=132.4 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.907
+[2026.11.15-05.37.25:745][132]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=132.9 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.898
+[2026.11.15-05.37.26:253][181]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=133.4 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.996
+[2026.11.15-05.37.26:765][231]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=133.9 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.939
+[2026.11.15-05.37.27:272][281]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=134.4 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.985
+[2026.11.15-05.37.27:777][329]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=134.9 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.244
+[2026.11.15-05.37.28:278][380]LogDC: Navigation: obstacle=-1 target=-3250 lane=-3024 velocity=-0 assist=0 helm=-0.32 manual=0 t=135.4 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.911
+[2026.11.15-05.37.28:309][383]LogDC: Navigation plan: -3250 -> -3500 urgent=0 clearance=-1 at 135.4
+[2026.11.15-05.37.28:782][431]LogDC: Navigation: obstacle=-1 target=-3500 lane=-3075 velocity=-154 assist=0 helm=-0.46 manual=0 t=135.9 committed=1 hold=1.9 targetStone=-1 pathHit=-1.00 pathMs=0.935
+[2026.11.15-05.37.29:287][482]LogDC: Navigation: obstacle=-1 target=-3500 lane=-3148 velocity=-125 assist=0 helm=-0.38 manual=0 t=136.4 committed=1 hold=1.4 targetStone=-1 pathHit=-1.00 pathMs=0.929
+[2026.11.15-05.37.29:792][532]LogDC: Navigation: obstacle=-1 target=-3500 lane=-3198 velocity=-78 assist=0 helm=-0.35 manual=0 t=136.9 committed=1 hold=0.9 targetStone=-1 pathHit=-1.00 pathMs=1.190
+[2026.11.15-05.37.30:247][577]LogDC: Display: Encounter firing window: creature starboard distance=18090 at 137.4
+[2026.11.15-05.37.30:301][582]LogDC: Navigation: obstacle=-1 target=-3500 lane=-3229 velocity=-44 assist=0 helm=-0.34 manual=0 t=137.4 committed=1 hold=0.4 targetStone=-1 pathHit=-1.00 pathMs=0.916
+[2026.11.15-05.37.30:807][632]LogDC: Navigation: obstacle=-1 target=-3500 lane=-3245 velocity=-24 assist=0 helm=-0.34 manual=0 t=137.9 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.908
+[2026.11.15-05.37.31:306][682]LogDC: Navigation: obstacle=-1 target=-3500 lane=-3255 velocity=-13 assist=0 helm=-0.34 manual=0 t=138.4 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.962
+[2026.11.15-05.37.31:426][694]LogDC: Display: Encounter firing window: creature starboard distance=20201 at 138.6
+[2026.11.15-05.37.31:809][731]LogDC: Navigation: obstacle=-1 target=-3500 lane=-3260 velocity=-7 assist=0 helm=-0.34 manual=0 t=138.9 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.888
+[2026.11.15-05.37.32:313][782]LogDC: Navigation: obstacle=-1 target=-3500 lane=-3262 velocity=-4 assist=0 helm=-0.34 manual=0 t=139.4 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.917
+[2026.11.15-05.37.32:816][831]LogDC: Navigation: obstacle=-1 target=-3500 lane=-3264 velocity=-2 assist=0 helm=-0.34 manual=0 t=140.0 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.301
+[2026.11.15-05.37.33:317][881]LogDC: Navigation: obstacle=-1 target=-3500 lane=-3265 velocity=-1 assist=0 helm=-0.34 manual=0 t=140.5 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.207
+[2026.11.15-05.37.33:827][931]LogDC: Navigation: obstacle=-1 target=-3500 lane=-3265 velocity=-1 assist=0 helm=-0.33 manual=0 t=141.0 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.923
+[2026.11.15-05.37.34:074][956]LogDC: Navigation plan: -3500 -> 3500 urgent=0 clearance=15725 at 141.2
+[2026.11.15-05.37.34:335][983]LogDC: Navigation: obstacle=15230 target=3500 lane=-3172 velocity=649 assist=10 helm=1.00 manual=0 t=141.5 committed=1 hold=2.1 targetStone=-1 pathHit=-1.00 pathMs=0.882
+[2026.11.15-05.37.34:836][ 33]LogDC: Navigation: obstacle=-1 target=3500 lane=-2648 velocity=1311 assist=29 helm=1.00 manual=0 t=142.0 committed=1 hold=1.6 targetStone=-1 pathHit=-1.00 pathMs=0.889
+[2026.11.15-05.37.35:340][ 85]LogDC: Navigation: obstacle=6559 target=3500 lane=-1904 velocity=1618 assist=90 helm=1.00 manual=0 t=142.5 committed=1 hold=1.1 targetStone=-1 pathHit=-1.00 pathMs=1.289
+[2026.11.15-05.37.35:846][135]LogDC: Navigation: obstacle=4239 target=3500 lane=-1050 velocity=1723 assist=148 helm=1.00 manual=0 t=143.0 committed=1 hold=0.6 targetStone=-1 pathHit=-1.00 pathMs=0.652
+[2026.11.15-05.37.36:347][184]LogDC: Navigation: obstacle=3315 target=3500 lane=-192 velocity=1686 assist=174 helm=1.00 manual=0 t=143.5 committed=1 hold=0.1 targetStone=-1 pathHit=-1.00 pathMs=0.641
+[2026.11.15-05.37.36:519][201]LogDC: Navigation plan: 3500 -> 750 urgent=0 clearance=-1 at 143.7
+[2026.11.15-05.37.36:636][211]LogDC: Display: Encounter defeated: creature at 143.8
+[2026.11.15-05.37.36:852][232]LogDC: Navigation: obstacle=3418 target=750 lane=454 velocity=680 assist=115 helm=-0.27 manual=0 t=144.0 committed=1 hold=2.1 targetStone=-1 pathHit=-1.00 pathMs=0.681
+[2026.11.15-05.37.37:359][284]LogDC: Navigation: obstacle=-1 target=750 lane=637 velocity=160 assist=51 helm=-0.00 manual=0 t=144.5 committed=1 hold=1.6 targetStone=-1 pathHit=-1.00 pathMs=0.633
+[2026.11.15-05.37.37:865][337]LogDC: Navigation: obstacle=-1 target=750 lane=676 velocity=28 assist=16 helm=0.08 manual=0 t=145.0 committed=1 hold=1.1 targetStone=-1 pathHit=-1.00 pathMs=0.828
+[2026.11.15-05.37.38:367][388]LogDC: Navigation: obstacle=-1 target=750 lane=682 velocity=2 assist=5 helm=0.10 manual=0 t=145.5 committed=1 hold=0.6 targetStone=-1 pathHit=-1.00 pathMs=0.807
+[2026.11.15-05.37.38:867][439]LogDC: Navigation: obstacle=-1 target=750 lane=681 velocity=-2 assist=2 helm=0.10 manual=0 t=146.0 committed=1 hold=0.1 targetStone=-1 pathHit=-1.00 pathMs=0.657
+[2026.11.15-05.37.39:373][490]LogDC: Navigation: obstacle=-1 target=750 lane=680 velocity=-1 assist=1 helm=0.10 manual=0 t=146.5 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.879
+[2026.11.15-05.37.39:812][534]LogDC: Navigation plan: 750 -> 1000 urgent=0 clearance=15949 at 146.9
+[2026.11.15-05.37.39:879][541]LogDC: Navigation: obstacle=15949 target=1000 lane=682 velocity=47 assist=0 helm=0.42 manual=0 t=147.0 committed=1 hold=2.3 targetStone=-1 pathHit=-1.00 pathMs=0.620
+[2026.11.15-05.37.40:387][593]LogDC: Navigation: obstacle=15338 target=1000 lane=747 velocity=156 assist=5 helm=0.21 manual=0 t=147.5 committed=1 hold=1.8 targetStone=15446 pathHit=-1.00 pathMs=0.769
+[2026.11.15-05.37.40:892][645]LogDC: Navigation: obstacle=14424 target=1000 lane=816 velocity=115 assist=9 helm=0.15 manual=0 t=148.0 committed=1 hold=1.3 targetStone=14541 pathHit=-1.00 pathMs=1.317
+[2026.11.15-05.37.41:396][697]LogDC: Navigation: obstacle=13822 target=1000 lane=861 velocity=66 assist=10 helm=0.13 manual=0 t=148.5 committed=1 hold=0.8 targetStone=13943 pathHit=-1.00 pathMs=1.377
+[2026.11.15-05.37.41:901][744]LogDC: Navigation: obstacle=13015 target=1000 lane=886 velocity=35 assist=9 helm=0.13 manual=0 t=149.0 committed=1 hold=0.3 targetStone=13015 pathHit=-1.00 pathMs=1.046
+[2026.11.15-05.37.42:271][781]LogDC: Navigation plan: 1000 -> 3250 urgent=0 clearance=12401 at 149.4
+[2026.11.15-05.37.42:409][795]LogDC: Navigation: obstacle=12401 target=3250 lane=920 velocity=290 assist=35 helm=1.00 manual=0 t=149.5 committed=1 hold=2.3 targetStone=-1 pathHit=-1.00 pathMs=1.034
+[2026.11.15-05.37.42:911][846]LogDC: Navigation: obstacle=11552 target=3250 lane=1226 velocity=842 assist=84 helm=1.00 manual=0 t=150.0 committed=1 hold=1.8 targetStone=-1 pathHit=-1.00 pathMs=1.099
+[2026.11.15-05.37.43:421][896]LogDC: Navigation: obstacle=11027 target=3250 lane=1719 velocity=1047 assist=105 helm=1.00 manual=0 t=150.6 committed=1 hold=1.2 targetStone=-1 pathHit=-1.00 pathMs=1.133
+[2026.11.15-05.37.43:930][942]LogDC: Navigation: obstacle=-1 target=3250 lane=2233 velocity=893 assist=102 helm=0.57 manual=0 t=151.1 committed=1 hold=0.7 targetStone=-1 pathHit=-1.00 pathMs=1.186
+[2026.11.15-05.37.44:428][976]LogDC: Navigation: obstacle=-1 target=3250 lane=2579 velocity=525 assist=33 helm=0.44 manual=0 t=151.6 committed=1 hold=0.2 targetStone=-1 pathHit=-1.00 pathMs=1.312
+[2026.11.15-05.37.44:935][ 11]LogDC: Navigation: obstacle=-1 target=3250 lane=2780 velocity=294 assist=11 helm=0.38 manual=0 t=152.1 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.182
+[2026.11.15-05.37.45:449][ 46]LogDC: Navigation: obstacle=-1 target=3250 lane=2893 velocity=160 assist=3 helm=0.35 manual=0 t=152.6 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.032
+[2026.11.15-05.37.45:950][ 82]LogDC: Navigation: obstacle=-1 target=3250 lane=2953 velocity=88 assist=1 helm=0.34 manual=0 t=153.1 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.990
+[2026.11.15-05.37.46:462][122]LogDC: Navigation: obstacle=-1 target=3250 lane=2986 velocity=47 assist=0 helm=0.33 manual=0 t=153.6 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.920
+[2026.11.15-05.37.46:969][158]LogDC: Navigation: obstacle=-1 target=3250 lane=3003 velocity=25 assist=0 helm=0.33 manual=0 t=154.1 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.844
+[2026.11.15-05.37.47:481][196]LogDC: Navigation: obstacle=-1 target=3250 lane=3013 velocity=13 assist=0 helm=0.33 manual=0 t=154.6 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.759
+[2026.11.15-05.37.47:981][235]LogDC: Navigation: obstacle=-1 target=3250 lane=3018 velocity=7 assist=0 helm=0.32 manual=0 t=155.1 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.839
+[2026.11.15-05.37.48:484][277]LogDC: Navigation: obstacle=-1 target=3250 lane=3021 velocity=4 assist=0 helm=0.32 manual=0 t=155.6 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.581
+[2026.11.15-05.37.48:991][321]LogDC: Navigation: obstacle=-1 target=3250 lane=3022 velocity=2 assist=0 helm=0.32 manual=0 t=156.1 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.606
+[2026.11.15-05.37.49:493][363]LogDC: Navigation: obstacle=-1 target=3250 lane=3023 velocity=1 assist=0 helm=0.32 manual=0 t=156.6 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.589
+[2026.11.15-05.37.50:000][406]LogDC: Navigation: obstacle=-1 target=3250 lane=3023 velocity=1 assist=0 helm=0.32 manual=0 t=157.1 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.583
+[2026.11.15-05.37.50:510][448]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=157.6 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.573
+[2026.11.15-05.37.50:878][476]LogDC: Sentinel eye 0 local=V(X=-69.17, Y=-27.18, Z=1737.33) figure bounds=V(X=1779.84, Y=1739.63, Z=4108.27)
+[2026.11.15-05.37.50:878][476]LogDC: Sentinel eye 1 local=V(X=-69.17, Y=27.18, Z=1737.33) figure bounds=V(X=1779.84, Y=1739.63, Z=4108.27)
+[2026.11.15-05.37.50:878][476]LogDC: Display: Sentinel 2 placed on port at 158.0
+[2026.11.15-05.37.51:011][486]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=158.1 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.579
+[2026.11.15-05.37.51:522][522]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=158.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.615
+[2026.11.15-05.37.52:030][559]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=159.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.029
+[2026.11.15-05.37.52:533][596]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=159.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.121
+[2026.11.15-05.37.53:035][634]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=160.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.011
+[2026.11.15-05.37.53:549][677]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=160.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.208
+[2026.11.15-05.37.54:051][718]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=161.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.920
+[2026.11.15-05.37.54:555][760]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=161.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.911
+[2026.11.15-05.37.55:061][802]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=162.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.876
+[2026.11.15-05.37.55:560][844]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=162.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.879
+[2026.11.15-05.37.56:060][889]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=163.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.868
+[2026.11.15-05.37.56:573][940]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=163.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.869
+[2026.11.15-05.37.57:085][977]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=164.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.910
+[2026.11.15-05.37.57:595][ 13]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=164.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.867
+[2026.11.15-05.37.58:096][ 55]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=165.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.965
+[2026.11.15-05.37.58:601][112]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=165.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.954
+[2026.11.15-05.37.59:110][174]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=166.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.921
+[2026.11.15-05.37.59:611][234]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=166.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.937
+[2026.11.15-05.38.00:111][296]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=167.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.939
+[2026.11.15-05.38.00:224][309]LogDC: Display: Encounter defeated: creature at 167.4
+[2026.11.15-05.38.00:613][356]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=167.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.929
+[2026.11.15-05.38.01:112][412]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=168.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.910
+[2026.11.15-05.38.01:285][431]LogDC: Display: Encounter firing window: sentinel port distance=12738 at 168.4
+[2026.11.15-05.38.01:614][467]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=168.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.914
+[2026.11.15-05.38.02:120][524]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=169.3 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.912
+[2026.11.15-05.38.02:624][581]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=169.8 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.043
+[2026.11.15-05.38.03:127][640]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=170.3 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.933
+[2026.11.15-05.38.03:636][703]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=170.8 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.285
+[2026.11.15-05.38.04:137][765]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=171.3 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.945
+[2026.11.15-05.38.04:641][830]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=171.8 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.935
+[2026.11.15-05.38.05:148][894]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=172.3 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.931
+[2026.11.15-05.38.05:651][960]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=172.8 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.939
+[2026.11.15-05.38.06:158][ 24]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=173.3 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.913
+[2026.11.15-05.38.06:280][ 39]LogDC: Display: Encounter charge: sentinel exposure=5.0 at 173.4
+[2026.11.15-05.38.06:657][ 88]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=173.8 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.951
+[2026.11.15-05.38.07:160][153]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=174.3 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.953
+[2026.11.15-05.38.07:665][219]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=174.8 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.971
+[2026.11.15-05.38.07:916][251]LogDC: Display: Encounter defeated: sentinel at 175.1
+[2026.11.15-05.38.08:169][284]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=175.3 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.007
+[2026.11.15-05.38.08:672][347]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=175.8 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.014
+[2026.11.15-05.38.09:175][404]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=176.3 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.989
+[2026.11.15-05.38.09:680][462]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=176.8 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.986
+[2026.11.15-05.38.10:188][518]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=177.3 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.959
+[2026.11.15-05.38.10:691][575]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=177.8 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.950
+[2026.11.15-05.38.10:871][597]LogDC: Display: Encounter group 3: 3 creatures on port at 178.0
+[2026.11.15-05.38.11:199][638]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=178.3 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.957
+[2026.11.15-05.38.11:703][702]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=178.8 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.932
+[2026.11.15-05.38.12:207][766]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=179.3 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.951
+[2026.11.15-05.38.12:714][829]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=179.8 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.947
+[2026.11.15-05.38.13:216][890]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=180.4 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.952
+[2026.11.15-05.38.13:722][953]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=180.9 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.237
+[2026.11.15-05.38.14:224][ 14]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=181.4 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.924
+[2026.11.15-05.38.14:733][ 72]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=181.9 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.978
+[2026.11.15-05.38.15:232][130]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=182.4 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.276
+[2026.11.15-05.38.15:734][188]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=182.9 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.211
+[2026.11.15-05.38.16:241][247]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=183.4 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.964
+[2026.11.15-05.38.16:591][293]LogDC: Display: Encounter firing window: creature port distance=17557 at 183.7
+[2026.11.15-05.38.16:744][313]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=183.9 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.973
+[2026.11.15-05.38.17:247][379]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=184.4 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.270
+[2026.11.15-05.38.17:755][445]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=184.9 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.994
+[2026.11.15-05.38.18:256][510]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=185.4 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.246
+[2026.11.15-05.38.18:343][520]LogDC: Display: Encounter firing window: creature port distance=18918 at 185.5
+[2026.11.15-05.38.18:760][575]LogDC: Navigation: obstacle=-1 target=3250 lane=3024 velocity=0 assist=0 helm=0.32 manual=0 t=185.9 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.702
+[2026.11.15-05.38.19:267][641]LogDC: Navigation: obstacle=15329 target=3250 lane=3024 velocity=2 assist=2 helm=0.32 manual=0 t=186.4 committed=1 hold=0.0 targetStone=15462 pathHit=-1.00 pathMs=0.962
+[2026.11.15-05.38.19:647][689]LogDC: Display: Encounter firing window: creature port distance=20849 at 186.8
+[2026.11.15-05.38.19:772][704]LogDC: Navigation: obstacle=14719 target=3250 lane=3026 velocity=5 assist=9 helm=0.32 manual=0 t=186.9 committed=1 hold=0.0 targetStone=14852 pathHit=-1.00 pathMs=0.922
+[2026.11.15-05.38.20:274][764]LogDC: Navigation: obstacle=13791 target=3250 lane=3028 velocity=3 assist=12 helm=0.31 manual=0 t=187.4 committed=1 hold=0.0 targetStone=13924 pathHit=-1.00 pathMs=1.106
+[2026.11.15-05.38.20:778][824]LogDC: Navigation: obstacle=13178 target=3250 lane=3029 velocity=2 assist=14 helm=0.31 manual=0 t=187.9 committed=1 hold=0.0 targetStone=13311 pathHit=-1.00 pathMs=0.886
+[2026.11.15-05.38.21:281][885]LogDC: Navigation: obstacle=12258 target=3250 lane=3030 velocity=2 assist=15 helm=0.31 manual=0 t=188.4 committed=1 hold=0.0 targetStone=12391 pathHit=-1.00 pathMs=0.894
+[2026.11.15-05.38.21:783][946]LogDC: Navigation: obstacle=11650 target=3250 lane=3031 velocity=1 assist=16 helm=0.31 manual=0 t=188.9 committed=1 hold=0.0 targetStone=11783 pathHit=-1.00 pathMs=1.395
+[2026.11.15-05.38.22:288][ 11]LogDC: Navigation: obstacle=10724 target=3250 lane=3032 velocity=1 assist=17 helm=0.31 manual=0 t=189.4 committed=1 hold=0.0 targetStone=10857 pathHit=5.50 pathMs=0.937
+[2026.11.15-05.38.22:671][ 62]LogDC: Navigation plan: 3250 -> 2500 urgent=0 clearance=10240 at 189.8
+[2026.11.15-05.38.22:791][ 78]LogDC: Navigation: obstacle=10108 target=2500 lane=3016 velocity=-243 assist=2 helm=-0.51 manual=0 t=189.9 committed=1 hold=2.3 targetStone=9844 pathHit=-1.00 pathMs=0.962
+[2026.11.15-05.38.23:291][144]LogDC: Navigation: obstacle=9068 target=2500 lane=2801 velocity=-476 assist=-24 helm=0.04 manual=0 t=190.4 committed=1 hold=1.8 targetStone=8936 pathHit=4.26 pathMs=0.977
+[2026.11.15-05.38.23:796][210]LogDC: Navigation: obstacle=-1 target=2500 lane=2595 velocity=-329 assist=-12 helm=0.19 manual=0 t=190.9 committed=1 hold=1.3 targetStone=-1 pathHit=3.85 pathMs=1.005
+[2026.11.15-05.38.24:299][278]LogDC: Navigation: obstacle=-1 target=2500 lane=2466 velocity=-193 assist=-4 helm=0.24 manual=0 t=191.4 committed=1 hold=0.8 targetStone=-1 pathHit=3.25 pathMs=1.396
+[2026.11.15-05.38.24:597][316]LogDC: Display: Encounter charge: creature exposure=8.0 at 191.7
+[2026.11.15-05.38.24:805][344]LogDC: Navigation: obstacle=-1 target=2500 lane=2392 velocity=-107 assist=-1 helm=0.26 manual=0 t=191.9 committed=1 hold=0.3 targetStone=-1 pathHit=-1.00 pathMs=1.317
+[2026.11.15-05.38.25:315][411]LogDC: Navigation: obstacle=-1 target=2500 lane=2352 velocity=-57 assist=-0 helm=0.27 manual=0 t=192.4 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.119
+[2026.11.15-05.38.25:816][476]LogDC: Navigation: obstacle=-1 target=2500 lane=2331 velocity=-31 assist=-0 helm=0.27 manual=0 t=193.0 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.079
+[2026.11.15-05.38.26:321][540]LogDC: Navigation: obstacle=-1 target=2500 lane=2319 velocity=-16 assist=-0 helm=0.27 manual=0 t=193.5 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.017
+[2026.11.15-05.38.26:481][560]LogDC: Display: Encounter defeated: creature at 193.6
+[2026.11.15-05.38.26:824][602]LogDC: Navigation: obstacle=-1 target=2500 lane=2313 velocity=-9 assist=-0 helm=0.28 manual=0 t=194.0 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.999
+[2026.11.15-05.38.27:327][661]LogDC: Navigation: obstacle=-1 target=2500 lane=2310 velocity=-4 assist=-0 helm=0.28 manual=0 t=194.5 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.919
+[2026.11.15-05.38.27:831][722]LogDC: Navigation: obstacle=-1 target=2500 lane=2309 velocity=-2 assist=-0 helm=0.28 manual=0 t=195.0 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.914
+[2026.11.15-05.38.28:339][784]LogDC: Navigation: obstacle=-1 target=2500 lane=2308 velocity=-1 assist=-0 helm=0.28 manual=0 t=195.5 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.901
+[2026.11.15-05.38.28:839][848]LogDC: Navigation: obstacle=-1 target=2500 lane=2307 velocity=-1 assist=-0 helm=0.28 manual=0 t=196.0 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.174
+[2026.11.15-05.38.29:140][887]LogDC: Display: Encounter charge: creature exposure=10.8 at 196.3
+[2026.11.15-05.38.29:341][914]LogDC: Navigation: obstacle=15629 target=2500 lane=2307 velocity=-0 assist=0 helm=0.28 manual=0 t=196.5 committed=1 hold=0.0 targetStone=15527 pathHit=-1.00 pathMs=0.874
+[2026.11.15-05.38.29:846][979]LogDC: Navigation: obstacle=14703 target=2500 lane=2308 velocity=4 assist=7 helm=0.27 manual=0 t=197.0 committed=1 hold=0.0 targetStone=14601 pathHit=-1.00 pathMs=0.772
+[2026.11.15-05.38.30:351][ 45]LogDC: Navigation: obstacle=14087 target=2500 lane=2310 velocity=3 assist=10 helm=0.27 manual=0 t=197.5 committed=1 hold=0.0 targetStone=13985 pathHit=-1.00 pathMs=0.852
+[2026.11.15-05.38.30:857][110]LogDC: Navigation: obstacle=13169 target=2500 lane=2311 velocity=2 assist=12 helm=0.27 manual=0 t=198.0 committed=1 hold=0.0 targetStone=13067 pathHit=-1.00 pathMs=0.667
+[2026.11.15-05.38.31:363][168]LogDC: Navigation: obstacle=12561 target=2500 lane=2312 velocity=2 assist=13 helm=0.27 manual=0 t=198.5 committed=1 hold=0.0 targetStone=12459 pathHit=-1.00 pathMs=0.679
+[2026.11.15-05.38.31:863][224]LogDC: Navigation: obstacle=11634 target=2500 lane=2313 velocity=1 assist=14 helm=0.27 manual=0 t=199.0 committed=1 hold=0.0 targetStone=11532 pathHit=5.94 pathMs=0.689
+[2026.11.15-05.38.32:363][279]LogDC: Navigation: obstacle=11013 target=2500 lane=2313 velocity=1 assist=15 helm=0.27 manual=0 t=199.5 committed=1 hold=0.0 targetStone=10911 pathHit=5.52 pathMs=0.725
+[2026.11.15-05.38.32:863][338]LogDC: Navigation: obstacle=10092 target=2500 lane=2314 velocity=1 assist=16 helm=0.26 manual=0 t=200.0 committed=1 hold=0.0 targetStone=9990 pathHit=4.91 pathMs=1.012
+[2026.11.15-05.38.33:245][382]LogDC: Display: Encounter charge: creature exposure=13.6 at 200.4
+[2026.11.15-05.38.33:367][396]LogDC: Navigation: obstacle=9480 target=2500 lane=2314 velocity=1 assist=17 helm=0.26 manual=0 t=200.5 committed=1 hold=0.0 targetStone=9378 pathHit=4.50 pathMs=0.844
+[2026.11.15-05.38.33:868][451]LogDC: Navigation: obstacle=8865 target=2500 lane=2315 velocity=1 assist=18 helm=0.26 manual=0 t=201.0 committed=1 hold=0.0 targetStone=8763 pathHit=4.09 pathMs=0.869
+[2026.11.15-05.38.34:374][511]LogDC: Navigation: obstacle=7949 target=2500 lane=2315 velocity=1 assist=19 helm=0.26 manual=0 t=201.5 committed=1 hold=0.0 targetStone=7847 pathHit=3.48 pathMs=1.091
+[2026.11.15-05.38.34:549][531]LogDC: Display: Encounter impact: fireball deck=V(X=139.37, Y=-120.00, Z=471.88) fires=0->1 at 201.7
+[2026.11.15-05.38.34:877][567]LogDC: Navigation: obstacle=7344 target=2500 lane=2316 velocity=1 assist=19 helm=0.26 manual=0 t=202.0 committed=1 hold=0.0 targetStone=7242 pathHit=3.08 pathMs=1.034
+[2026.11.15-05.38.35:304][616]LogDC: Navigation plan: 2500 -> -500 urgent=0 clearance=6315 at 202.4
+[2026.11.15-05.38.35:379][625]LogDC: Navigation: obstacle=6417 target=-500 lane=2306 velocity=-231 assist=-11 helm=-1.00 manual=0 t=202.5 committed=1 hold=2.3 targetStone=-1 pathHit=-1.00 pathMs=0.978
+[2026.11.15-05.38.35:846][679]LogDC: Display: Encounter defeated: creature at 203.0
+[2026.11.15-05.38.35:879][683]LogDC: Navigation: obstacle=5685 target=-500 lane=1917 velocity=-1173 assist=-115 helm=-1.00 manual=0 t=203.0 committed=1 hold=1.8 targetStone=-1 pathHit=-1.00 pathMs=0.929
+[2026.11.15-05.38.36:235][723]LogDC: Encounter charge cancelled: firing window closed delta=V(X=12326.90, Y=-8149.05, Z=2408.49) clear=0 at 203.4
+[2026.11.15-05.38.36:383][739]LogDC: Navigation: obstacle=4877 target=-500 lane=1217 velocity=-1533 assist=-155 helm=-0.94 manual=0 t=203.5 committed=1 hold=1.3 targetStone=-1 pathHit=-1.00 pathMs=0.916
+[2026.11.15-05.38.36:885][797]LogDC: Navigation: obstacle=-1 target=-500 lane=526 velocity=-1145 assist=-58 helm=-0.33 manual=0 t=204.0 committed=1 hold=0.8 targetStone=-1 pathHit=-1.00 pathMs=1.108
+[2026.11.15-05.38.37:393][854]LogDC: Navigation: obstacle=4024 target=-500 lane=63 velocity=-705 assist=-69 helm=-0.10 manual=0 t=204.5 committed=1 hold=0.3 targetStone=-1 pathHit=-1.00 pathMs=0.939
+[2026.11.15-05.38.37:898][912]LogDC: Navigation: obstacle=-1 target=-500 lane=-199 velocity=-361 assist=-43 helm=-0.07 manual=0 t=205.0 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.759
+[2026.11.15-05.38.38:400][967]LogDC: Navigation: obstacle=-1 target=-500 lane=-327 velocity=-174 assist=-14 helm=-0.07 manual=0 t=205.5 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.748
+[2026.11.15-05.38.38:906][ 22]LogDC: Navigation: obstacle=-1 target=-500 lane=-390 velocity=-86 assist=-5 helm=-0.07 manual=0 t=206.0 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.755
+[2026.11.15-05.38.39:411][ 81]LogDC: Navigation: obstacle=-1 target=-500 lane=-421 velocity=-43 assist=-1 helm=-0.07 manual=0 t=206.5 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.823
+[2026.11.15-05.38.39:913][139]LogDC: Navigation: obstacle=-1 target=-500 lane=-436 velocity=-22 assist=-0 helm=-0.07 manual=0 t=207.0 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.018
+[2026.11.15-05.38.40:415][197]LogDC: Navigation: obstacle=-1 target=-500 lane=-444 velocity=-11 assist=-0 helm=-0.07 manual=0 t=207.6 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.788
+[2026.11.15-05.38.40:874][248]LogDC: Sentinel eye 0 local=V(X=-69.17, Y=-27.18, Z=1737.33) figure bounds=V(X=1779.84, Y=1739.63, Z=4108.27)
+[2026.11.15-05.38.40:874][248]LogDC: Sentinel eye 1 local=V(X=-69.17, Y=27.18, Z=1737.33) figure bounds=V(X=1779.84, Y=1739.63, Z=4108.27)
+[2026.11.15-05.38.40:874][248]LogDC: Display: Sentinel 3 placed on starboard at 208.0
+[2026.11.15-05.38.40:923][253]LogDC: Navigation: obstacle=-1 target=-500 lane=-448 velocity=-5 assist=-0 helm=-0.07 manual=0 t=208.1 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.790
+[2026.11.15-05.38.41:428][309]LogDC: Navigation: obstacle=-1 target=-500 lane=-450 velocity=-3 assist=-0 helm=-0.07 manual=0 t=208.6 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.904
+[2026.11.15-05.38.41:930][366]LogDC: Navigation: obstacle=-1 target=-500 lane=-451 velocity=-1 assist=-0 helm=-0.07 manual=0 t=209.1 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.155
+[2026.11.15-05.38.42:439][423]LogDC: Navigation: obstacle=-1 target=-500 lane=-451 velocity=-1 assist=-0 helm=-0.07 manual=0 t=209.6 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.114
+[2026.11.15-05.38.42:873][471]LogDC: Auto shot shot_0210.png at ride time 210.0, 111 fps (game 7.8 ms, render 8.1 ms, gpu 6.1 ms)
+[2026.11.15-05.38.42:873][471]LogDC: Capture state: hull=93.7 score=800 fires=1 rigging=0 at 210.0
+[2026.11.15-05.38.43:333][472]LogDC: Navigation: obstacle=-1 target=-500 lane=-451 velocity=-0 assist=-0 helm=-0.07 manual=0 t=210.4 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.164
+[2026.11.15-05.38.43:834][525]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=210.9 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.342
+[2026.11.15-05.38.44:342][581]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=211.4 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.355
+[2026.11.15-05.38.44:847][634]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=211.9 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.075
+[2026.11.15-05.38.45:347][689]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=212.4 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.017
+[2026.11.15-05.38.45:850][745]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=212.9 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.983
+[2026.11.15-05.38.46:366][800]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=213.4 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.947
+[2026.11.15-05.38.46:872][859]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=213.9 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.887
+[2026.11.15-05.38.47:374][917]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=214.5 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.884
+[2026.11.15-05.38.47:874][973]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=215.0 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.892
+[2026.11.15-05.38.47:884][974]LogDC: Display: Encounter defeated: creature at 215.0
+[2026.11.15-05.38.48:376][ 29]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=215.5 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.895
+[2026.11.15-05.38.48:877][ 85]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=216.0 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.278
+[2026.11.15-05.38.49:383][144]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=216.5 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.832
+[2026.11.15-05.38.49:885][202]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=217.0 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.837
+[2026.11.15-05.38.50:398][261]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=217.5 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.885
+[2026.11.15-05.38.50:596][284]LogDC: Display: Encounter firing window: sentinel starboard distance=13859 at 217.7
+[2026.11.15-05.38.50:900][318]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=218.0 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.281
+[2026.11.15-05.38.51:401][374]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=218.5 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.030
+[2026.11.15-05.38.51:907][433]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=219.0 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.989
+[2026.11.15-05.38.52:411][493]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=219.5 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.052
+[2026.11.15-05.38.52:914][553]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=220.0 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.995
+[2026.11.15-05.38.53:420][612]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=220.5 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.980
+[2026.11.15-05.38.53:927][673]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=221.0 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.955
+[2026.11.15-05.38.54:430][734]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=221.5 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.293
+[2026.11.15-05.38.54:935][795]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=222.0 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.996
+[2026.11.15-05.38.55:442][857]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=222.5 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.973
+[2026.11.15-05.38.55:596][876]LogDC: Display: Encounter charge: sentinel exposure=5.0 at 222.7
+[2026.11.15-05.38.55:943][916]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=223.0 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.988
+[2026.11.15-05.38.56:449][976]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=223.5 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.984
+[2026.11.15-05.38.56:952][ 37]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=224.0 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.977
+[2026.11.15-05.38.56:955][ 37]LogDC: Display: Encounter defeated: sentinel at 224.0
+[2026.11.15-05.38.57:453][101]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=224.5 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.984
+[2026.11.15-05.38.57:932][158]LogDC: Auto shot shot_0225.png at ride time 225.0, 118 fps (game 6.3 ms, render 8.2 ms, gpu 7.0 ms)
+[2026.11.15-05.38.57:932][158]LogDC: Capture state: hull=92.5 score=1000 fires=1 rigging=0 at 225.0
+[2026.11.15-05.38.58:041][159]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=225.1 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.999
+[2026.11.15-05.38.58:541][216]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=225.6 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.003
+[2026.11.15-05.38.59:043][278]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=226.1 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.989
+[2026.11.15-05.38.59:540][338]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=226.6 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.966
+[2026.11.15-05.39.00:044][400]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=227.1 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.971
+[2026.11.15-05.39.00:548][462]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=227.6 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.250
+[2026.11.15-05.39.01:057][523]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=228.1 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.433
+[2026.11.15-05.39.01:560][584]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=228.6 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.000
+[2026.11.15-05.39.02:062][646]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=229.1 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.998
+[2026.11.15-05.39.02:563][708]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=229.6 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.006
+[2026.11.15-05.39.02:936][755]LogDC: Auto shot shot_0230.png at ride time 230.0, 129 fps (game 6.5 ms, render 7.2 ms, gpu 5.8 ms)
+[2026.11.15-05.39.02:936][755]LogDC: Capture state: hull=92.1 score=1000 fires=1 rigging=0 at 230.0
+[2026.11.15-05.39.03:071][759]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=230.1 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.100
+[2026.11.15-05.39.03:576][822]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=230.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.158
+[2026.11.15-05.39.04:080][883]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=231.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.977
+[2026.11.15-05.39.04:581][948]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=231.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.971
+[2026.11.15-05.39.05:084][ 12]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=232.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.283
+[2026.11.15-05.39.05:587][ 74]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=232.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.000
+[2026.11.15-05.39.06:089][136]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=233.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.045
+[2026.11.15-05.39.06:592][198]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=233.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.054
+[2026.11.15-05.39.06:936][240]LogDC: Auto shot shot_0234.png at ride time 234.0, 122 fps (game 7.0 ms, render 8.0 ms, gpu 5.8 ms)
+[2026.11.15-05.39.06:936][240]LogDC: Capture state: hull=91.8 score=1000 fires=1 rigging=0 at 234.0
+[2026.11.15-05.39.07:100][248]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=234.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.455
+[2026.11.15-05.39.07:601][311]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=234.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.059
+[2026.11.15-05.39.08:108][377]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=235.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.222
+[2026.11.15-05.39.08:609][444]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=235.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.975
+[2026.11.15-05.39.08:933][487]LogDC: Auto shot shot_0236.png at ride time 236.0, 133 fps (game 6.0 ms, render 7.4 ms, gpu 6.0 ms)
+[2026.11.15-05.39.08:933][487]LogDC: Capture state: hull=91.7 score=1000 fires=1 rigging=0 at 236.0
+[2026.11.15-05.39.09:109][498]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=236.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.953
+[2026.11.15-05.39.09:615][564]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=236.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.516
+[2026.11.15-05.39.10:121][629]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=237.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.925
+[2026.11.15-05.39.10:624][695]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=237.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.921
+[2026.11.15-05.39.11:132][761]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=238.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.884
+[2026.11.15-05.39.11:636][827]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=238.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.262
+[2026.11.15-05.39.11:935][865]LogDC: Auto shot shot_0239.png at ride time 239.0, 128 fps (game 7.1 ms, render 7.4 ms, gpu 7.1 ms)
+[2026.11.15-05.39.11:935][865]LogDC: Capture state: hull=91.4 score=1000 fires=1 rigging=0 at 239.0
+[2026.11.15-05.39.12:143][879]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=239.2 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=1.251
+[2026.11.15-05.39.12:648][943]LogDC: Navigation: obstacle=-1 target=-500 lane=-452 velocity=-0 assist=0 helm=-0.07 manual=0 t=239.7 committed=1 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.840
+[2026.11.15-05.39.13:149][  5]LogDC: Navigation: obstacle=-1 target=-2500 lane=-498 velocity=-384 assist=0 helm=-1.00 manual=0 t=240.2 committed=0 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.000
+[2026.11.15-05.39.13:655][ 66]LogDC: Navigation: obstacle=-1 target=-2500 lane=-833 velocity=-859 assist=0 helm=-1.00 manual=0 t=240.7 committed=0 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.000
+[2026.11.15-05.39.14:162][128]LogDC: Navigation: obstacle=-1 target=-2500 lane=-1317 velocity=-970 assist=0 helm=-0.73 manual=0 t=241.2 committed=0 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.000
+[2026.11.15-05.39.14:662][189]LogDC: Navigation: obstacle=15582 target=-2500 lane=-1736 velocity=-688 assist=0 helm=-0.41 manual=0 t=241.7 committed=0 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.000
+[2026.11.15-05.39.14:936][223]LogDC: Auto shot shot_0242.png at ride time 242.0, 124 fps (game 7.8 ms, render 7.4 ms, gpu 5.9 ms)
+[2026.11.15-05.39.14:936][223]LogDC: Capture state: hull=91.2 score=1000 fires=0 rigging=0 at 242.0
+[2026.11.15-05.39.15:167][240]LogDC: Navigation: obstacle=14860 target=-2500 lane=-2010 velocity=-432 assist=-17 helm=-0.27 manual=0 t=242.2 committed=1 hold=1.4 targetStone=-1 pathHit=-1.00 pathMs=0.000
+[2026.11.15-05.39.15:671][304]LogDC: Navigation: obstacle=-1 target=-2500 lane=-2178 velocity=-254 assist=-7 helm=-0.21 manual=0 t=242.7 committed=1 hold=0.9 targetStone=-1 pathHit=-1.00 pathMs=0.000
+[2026.11.15-05.39.16:176][369]LogDC: Navigation: obstacle=-1 target=-2500 lane=-2280 velocity=-160 assist=-2 helm=-0.16 manual=0 t=243.3 committed=1 hold=0.4 targetStone=-1 pathHit=-1.00 pathMs=0.000
+[2026.11.15-05.39.16:681][435]LogDC: Navigation: obstacle=-1 target=-2500 lane=-2347 velocity=-112 assist=-1 helm=-0.11 manual=0 t=243.8 committed=0 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.000
+[2026.11.15-05.39.17:183][499]LogDC: Navigation: obstacle=-1 target=-2500 lane=-2395 velocity=-85 assist=-0 helm=-0.07 manual=0 t=244.3 committed=0 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.000
+[2026.11.15-05.39.17:684][557]LogDC: Navigation: obstacle=-1 target=-2500 lane=-2433 velocity=-63 assist=-0 helm=-0.03 manual=0 t=244.8 committed=0 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.000
+[2026.11.15-05.39.18:184][622]LogDC: Navigation: obstacle=-1 target=-4250 lane=-2474 velocity=-230 assist=-0 helm=-1.00 manual=0 t=245.3 committed=0 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.000
+[2026.11.15-05.39.18:687][688]LogDC: Navigation: obstacle=-1 target=-4250 lane=-2699 velocity=-610 assist=-0 helm=-1.00 manual=0 t=245.8 committed=0 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.000
+[2026.11.15-05.39.18:935][722]LogDC: Auto shot shot_0246.png at ride time 246.0, 136 fps (game 7.1 ms, render 6.4 ms, gpu 4.1 ms)
+[2026.11.15-05.39.18:935][722]LogDC: Capture state: hull=91.2 score=1000 fires=0 rigging=0 at 246.0
+[2026.11.15-05.39.19:188][744]LogDC: Navigation: obstacle=-1 target=-4250 lane=-3054 velocity=-773 assist=-0 helm=-0.94 manual=0 t=246.3 committed=0 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.000
+[2026.11.15-05.39.19:690][812]LogDC: Navigation: obstacle=-1 target=-4250 lane=-3426 velocity=-675 assist=-0 helm=-0.51 manual=0 t=246.8 committed=0 hold=0.0 targetStone=-1 pathHit=-1.00 pathMs=0.000

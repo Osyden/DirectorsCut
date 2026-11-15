@@ -1,6 +1,6 @@
 # Early-game gameplay iterations — 14 November
 
-The autonomous early-gameplay session is implemented and visually reviewed on codex/early-gameplay, based on 14ffeb6 (accepted fog/fire and individual cannons). Worktree: E:/Projects/DirectorsCut/Early-Gameplay. Its checkpoints are saved on this branch; they have not been merged into main. Other chats' source/assets were preserved.
+The first autonomous early-gameplay session is implemented and visually reviewed, based on 14ffeb6 (accepted fog/fire and individual cannons). It was merged into main at 5014304 on 15 November. Worktree: E:/Projects/DirectorsCut/Early-Gameplay. Other chats' source/assets were preserved. See [main integration validation and the second session](EARLY-GAMEPLAY-15NOV.md) for current status; the first session's iteration history follows.
 
 The reported horizontal fog band is fixed. See [the worker's diagnosis and comparisons](FOG-CARD-BAND-14NOV.md). The final scheduled pass and remaining work are recorded below.
 

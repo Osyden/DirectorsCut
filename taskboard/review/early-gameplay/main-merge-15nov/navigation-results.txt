@@ -1,0 +1,12 @@
+[2026.11.15-05.34.08:971][  2]LogDC: Bow spray waterline: x=1216 halfwidth=78
+[2026.11.15-05.34.08:971][  2]LogDC: Bow wash: tuned 2 live water materials; shared assets unchanged
+[2026.11.15-05.34.09:400][ 16]LogDC: Display: NAVIGATION VERIFY PASS: starboard destination is clear along its full straight lane
+[2026.11.15-05.34.09:400][ 16]LogDC: Display: NAVIGATION VERIFY PASS: hull sweep detects intervening stone on the starboard crossing
+[2026.11.15-05.34.09:400][ 16]LogDC: Display: NAVIGATION VERIFY PASS: opposite crossing remains usable
+[2026.11.15-05.34.09:400][ 16]LogDC: Display: NAVIGATION VERIFY PASS: holding the current clear lane remains usable
+[2026.11.15-05.34.09:400][ 16]LogDC: Display: NAVIGATION VERIFY PASS: mirrored obstacle reverses which crossing is blocked
+[2026.11.15-05.34.09:401][ 16]LogDC: Display: NAVIGATION VERIFY PASS: planner chooses a reachable port route around both stones
+[2026.11.15-05.34.09:401][ 16]LogDC: Display: NAVIGATION VERIFY METRICS chosen=-1500 pathMs=0.887
+[2026.11.15-05.34.09:403][ 16]LogDC: Hull struck stone at V(X=1460.00, Y=150.00, Z=370.00) (in 397 cm, closing 693 cm/s, strength 0.58) at ride time 1.0
+[2026.11.15-05.34.09:403][ 16]LogDC: Display: NAVIGATION VERIFY PASS: starboard contact separates to port despite an opposing crew destination
+[2026.11.15-05.34.09:403][ 16]LogDC: Display: NAVIGATION VERIFICATION PASSED
