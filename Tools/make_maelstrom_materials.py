@@ -582,8 +582,19 @@ output(specular,unreal.MaterialProperty.MP_SPECULAR)
 opacity = custom(water,"return lerp(lerp(0.20,1.0,saturate(Foam)),1.0,saturate(Tunnel));",FLOAT,{"Foam":foam,"Tunnel":tunnel_flow},300)
 output(opacity,unreal.MaterialProperty.MP_OPACITY)
 
+# The basin's rendered swell and its analytic normal share this exact FFT blend.
+# The separately authored entrance retains its previous geometry/normal weights.
+WAVE_BLEND = r"""
+struct WaterWaveBlend {
+ float fft(float distanceCm,float enabled,float count) {
+  return saturate(enabled)*step(.5,count)*(1-smoothstep(12000.,50000.,distanceCm));
+ }
+ float swell(float fftWeight) { return 1-.75*fftWeight; }
+};WaterWaveBlend waveBlend;
+"""
 normal_inputs = dict(base_inputs, Strength=normal_strength, Foam=foam, Amp=wave_height, Cam=camera,
-                     VN=vertex_normal, VT=vertex_tangent)
+                     VN=vertex_normal, VT=vertex_tangent,
+                     Enabled=use_live_fft if fft_displacement else scalar(water,"NoFFTDisplacement",0.0), Count=live_count)
 if normal_texture:
     for index, coordinate in enumerate(("q", "q2")):
         sample_uv = custom(water,FLOW+"return "+coordinate+"/9.0;",FLOAT2,base_inputs,400+index*100)
@@ -592,18 +603,24 @@ if foam_texture and foam_normal_texture:
     for index, coordinates in enumerate(foam_fine_uvs):
         normal_inputs["FoamNormal"+str(index)] = texture_sample(water,"FoamNormal",foam_normal_texture,coordinates,normal=True,y=700+index*100)
 
-normal_code = NOISE + FLOW + r"""
+normal_code = NOISE + FLOW + WAVE_BLEND + r"""
 float nearHull=smoothstep(1200.0,4000.0,length(P.xy*float2(.5,2)));
 float distanceM=length(P-Cam)*0.01;
 // Retain each phase's covector until after the flow-map chain rule. Averaging
 // the q/q2 derivatives first loses their different rotations and stretches.
 float amplitude=min(max(Amp,0.0),650.0)*0.01;
-float2 slope0=-wn.wave_field(q,T).yz*amplitude;
-float2 slope1=-wn.wave_field(q2,T).yz*amplitude;
-slope0-=wn.breaking_field(q,T).yz*(1-saturate(Tunnel));
-slope1-=wn.breaking_field(q2,T).yz*(1-saturate(Tunnel));
-float largeWeight=nearHull*lerp(1.0,.70,smoothstep(500.0,3000.0,distanceM));
+float fftWeight=waveBlend.fft(length(P-Cam),Enabled,Count);
+float swellWeight=Tunnel<.5 ? waveBlend.swell(fftWeight) : 1.;
+float3 swell0=wn.wave_field(q,T),swell1=wn.wave_field(q2,T);
+float4 breaker0=wn.breaking_field(q,T),breaker1=wn.breaking_field(q2,T);
+float2 slope0=-swell0.yz*amplitude*swellWeight;
+float2 slope1=-swell1.yz*amplitude*swellWeight;
+slope0-=breaker0.yz*(1-saturate(Tunnel));
+slope1-=breaker1.yz*(1-saturate(Tunnel));
+float resolved=1-smoothstep(120000.0,350000.0,length(P-Cam));
+float largeWeight=nearHull*(Tunnel<.5 ? resolved : lerp(1.0,.70,smoothstep(500.0,3000.0,distanceM)));
 slope0*=largeWeight; slope1*=largeWeight;
+float2 macro0=slope0,macro1=slope1;
 // Intermediate wind waves connect the large swells to the close surface detail.
 // Fade unresolved frequencies with true camera distance, including crater depth.
 float2 chop0=cos(dot(q,float2(0.55,0.28))-T*2.45)*float2(0.55,0.28)*0.18
@@ -633,6 +650,13 @@ float foamWeight=Foam*lerp(0.30,0.04,smoothstep(80.0,650.0,distanceM));
 slope0+=foamSlope0*foamWeight; slope1+=foamSlope1*foamWeight;
 """
 normal_code += r"""
+// NormalStrength/foam flatten only unresolved shading detail. Applying them to
+// metre-scale waves changed the rendered surface's actual amplitude in shading.
+if(Tunnel<.5) {
+    float detailStrength=Strength*(1.0-Foam*.22);
+    slope0=macro0+(slope0-macro0)*detailStrength;
+    slope1=macro1+(slope1-macro1)*detailStrength;
+}
 float2 slope=lerp(slope0,slope1,blend);
 if(Tunnel<.5) {
     // q is advected arena XY in metres, not distance along an orthonormal
@@ -641,6 +665,12 @@ if(Tunnel<.5) {
     // steep bank foreshortening and an arena rotated around the stationary ship.
     float sx=lerp(dot(slope0,ddx(q)),dot(slope1,ddx(q2)),blend);
     float sy=lerp(dot(slope0,ddy(q)),dot(slope1,ddy(q2)),blend);
+    // Product rule for the hull, distance and FFT transition masks. q-space
+    // gradients alone miss height changes caused by these world-space fades.
+    float swellHeight=lerp(swell0.x,swell1.x,blend)*amplitude;
+    float breakerHeight=lerp(breaker0.x,breaker1.x,blend);
+    sx-=swellHeight*ddx(largeWeight*swellWeight)+breakerHeight*ddx(largeWeight);
+    sy-=swellHeight*ddy(largeWeight*swellWeight)+breakerHeight*ddy(largeWeight);
     float3 n=normalize(VN),t=normalize(VT-n*dot(VT,n));
     float3 b=cross(n,t),px=ddx(P)*.01,py=ddy(P)*.01;
     float3 rx=cross(py,n),ry=cross(n,px);
@@ -650,7 +680,8 @@ if(Tunnel<.5) {
     float3 perturbation=abs(determinant)>1e-8 ? (rx*sx+ry*sy)/determinant : float3(0,0,0);
     slope=float2(dot(perturbation,t),dot(perturbation,b));
 }
-return normalize(float3(slope*Strength*(1.0-Foam*0.22),1.0));
+float legacyStrength=Tunnel<.5 ? 1. : Strength*(1.0-Foam*.22);
+return normalize(float3(slope*legacyStrength,1.0));
 """
 detail_normal = custom(water,normal_code,FLOAT3,normal_inputs,600)
 # Transform the detailed tangent normal to world space before reshaping the shelf normal.
@@ -678,8 +709,8 @@ if fft_surface:
     # curved/shelf normal; never treat its xyz as an already-curved world normal.
     shelf_base_code=flatten_normal_code.replace("float3 detail=normalize(DetailWS);", "float3 detail=baseNormal;").replace("return normalize(shelfNormal+(detail-baseNormal));", "return shelfNormal;")
     shelf_base=custom(water,shelf_base_code,FLOAT3,{"VN":vertex_normal,"P":position,"Flatten":hull_flatten,"Level":sea_level},1450)
-    final_normal=custom(water,r"""
-float weight=saturate(Enabled)*step(0.5,Count)*(1-smoothstep(12000,50000,length(P-Cam)));
+    final_normal=custom(water,WAVE_BLEND+r"""
+float weight=waveBlend.fft(length(P-Cam),Enabled,Count);
 [branch] if (weight < 0.001) { return Fallback; }
 float3 base=normalize(Base);
 float distanceM=length(P-Cam)*0.01;
@@ -687,15 +718,16 @@ float strength=lerp(0.65,0.16,smoothstep(180.0,1600.0,distanceM));
 float3 flat=normalize(lerp(float3(0,0,1),Surface.xyz,strength));
 float3 axis=float3(-base.y,base.x,0);
 float3 curved=flat+cross(axis,flat)+cross(axis,cross(axis,flat))/max(1.0+base.z,0.01);
-// Blend the wind spectrum with the underlying current-aligned water banks.
-float3 live=normalize(curved+(Fallback-base)*0.65);
+// The basin fallback already includes the exact rendered swell attenuation.
+// Do not attenuate it again or use a different coefficient from the WPO.
+float3 live=normalize(curved+(Fallback-base)*lerp(1.,.65,saturate(Tunnel)));
 return normalize(lerp(Fallback,live,weight));
-""",FLOAT3,{"Fallback":final_normal,"Base":shelf_base,"Surface":fft_surface,"P":position,"Cam":camera,"Enabled":use_live_fft,"Count":live_count},1500)
+""",FLOAT3,{"Fallback":final_normal,"Base":shelf_base,"Surface":fft_surface,"P":position,"Cam":camera,"Enabled":use_live_fft,"Count":live_count,"Tunnel":tunnel_flow},1500)
 output(final_normal,unreal.MaterialProperty.MP_NORMAL)
 
 # Geometric displacement is bounded to WaveHeight (max 650cm), with the same
 # advected lobes used by the normal. The mesh owns the much larger breaking ridges.
-wpo_code = NOISE + FLOW + r"""
+wpo_code = NOISE + FLOW + WAVE_BLEND + r"""
 float h=lerp(wn.waves(q,T),wn.waves(q2,T),blend);
 float nearHull=smoothstep(1200.0,4000.0,length(P.xy*float2(.5,2)));
 float flatten=saturate(Flatten)*(1.0-smoothstep(1200.0,3500.0,length(P.xy*float2(0.5,2.0))));
@@ -714,8 +746,8 @@ d.xy=d.xy/(1+abs(d.xy)/150.0);
 d.z=d.z/(1+abs(d.z)/400.0);
 float3 axis=float3(-waveNormal.y,waveNormal.x,0);
 float3 curved=d+cross(axis,d)+cross(axis,cross(axis,d))/max(1+waveNormal.z,.01);
-float liveWeight=saturate(Enabled)*step(.5,Count);
-wave=lerp(wave,wave*.25+curved*nearHull*resolved,liveWeight);
+float liveWeight=Tunnel<.5 ? waveBlend.fft(length(P-Cam),Enabled,Count) : saturate(Enabled)*step(.5,Count);
+wave=wave*waveBlend.swell(liveWeight)+curved*nearHull*resolved*liveWeight;
 """
 wpo_code+=r"""
 float4 breaker=lerp(wn.breaking_field(q,T),wn.breaking_field(q2,T),blend);
@@ -727,7 +759,10 @@ float2 lateral=breaker.yz*130.0;
 lateral=lateral/(1+abs(lateral)/120.0);
 wave+=(waveNormal*breaker.x*100.0+tangent*lateral.x+bitangent*lateral.y)
     *nearHull*resolved*(1-saturate(Tunnel));
-wave*=1-saturate(VC.r*1.5);
+// A fresh foam source is not a rigid patch. The old vertex-red cutoff stopped
+// geometry on every CPU crest while its shading waves kept moving. Hull safety
+// remains nearHull; preserve the separate tunnel's previous cutoff unchanged.
+wave*=lerp(1.,1-saturate(VC.r*1.5),saturate(Tunnel));
 return wave+float3(0,0,(Level-P.z)*flatten);
 """
 output(custom(water,wpo_code,FLOAT3,wpo_inputs,800),unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
