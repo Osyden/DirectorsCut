@@ -245,6 +245,12 @@ q=lerp(q,delta-float2(3.5,1.2)*age,lake);
 q2=lerp(q2,delta-float2(3.5,1.2)*age2,lake);
 angle0*=1-lake; angle1*=1-lake;
 flow=lerp(flow,float2(3.5,1.2),lake);
+// The single inlet owns a slope mask. Both phases meet the lake's exact
+// ordinary-wave coordinates where that mask reaches zero at the flat foot.
+float cataract=lake*saturate(Cataract)*saturate(VC.r);
+q=lerp(q,delta+radial*24.0*age,cataract);
+q2=lerp(q2,delta+radial*24.0*age2,cataract);
+flow=lerp(flow,radial*(-24.0),cataract);
 """
 
 water = make_material("M_MaelstromWater")
@@ -273,7 +279,8 @@ overflow_foam = scalar(water, "OverflowFoam", 0.0)
 hull_flatten = scalar(water, "HullFlatten", 0.0)
 sea_level = scalar(water, "SeaLevel", 230.0)
 calm_caldera=scalar(water,"CalmCaldera",0.0)
-base_inputs = {"UV": uv, "VC": vc, "P": position, "T": time, "Center": center, "Flow": flow, "Tunnel": tunnel_flow, "Handedness":flow_handedness,"RadiusM":basin_radius,"Calm":calm_caldera}
+cataract_flow=scalar(water,"CataractFlow",0.0)
+base_inputs = {"UV": uv, "VC": vc, "P": position, "T": time, "Center": center, "Flow": flow, "Tunnel": tunnel_flow, "Handedness":flow_handedness,"RadiusM":basin_radius,"Calm":calm_caldera,"Cataract":cataract_flow}
 
 # Runtime bridge replaces these array references with the live grid's private
 # render targets and copies its MPC values. No paid shader implementation is
@@ -397,7 +404,22 @@ return lerp(cell/float2(9.0,17.0),float2(p.y/18.0,p.x/65.0),saturate(Tunnel));
 foam_code = NOISE + FLOW + r"""
 // Ordinary lake whitecaps come from the installed ocean simulation below.
 // Disable all old ridge, spiral-wake and synthetic breaking-lip populations.
-if(lake>.5) { return 0.0; }
+if(lake>.5) {
+    if(cataract<=0.0) { return 0.0; }
+    // Convolve nonperiodic Cartesian foam grain along the inward current.
+    // Finite 2–10m fingers carry air down the ramp without contour rings.
+    float a=0,b=0;
+    [unroll] for(int k=-2;k<=2;k++) {
+        float w=3-abs(k);
+        a+=wn.noise((q+radial*(k*2.0))/2.2+13.7)*w;
+        b+=wn.noise((q2+radial*(k*2.0))/2.2+13.7)*w;
+    }
+    float streak=lerp(a,b,blend)/9.0;
+    float aa=clamp(fwidth(streak)*.6,.025,.18);
+    float fingers=smoothstep(.32-aa,.57+aa,streak);
+    float body=smoothstep(.04,.65,cataract);
+    return saturate(body*(.32+.68*fingers)*Coverage);
+}
 float shelf=saturate(Flatten)*(1-smoothstep(1200,3500,length(P.xy*float2(.5,2))));
 float ageFade=lerp(exp(-phase*1.5),exp(-phase2*1.5),blend);
 float transported=lerp(Source0.r,Source1.r,blend);
@@ -563,7 +585,7 @@ if fft_foam:
     # Crater whitewater is driven by its actual crest/impact/wake sources above;
     # retain the previous overlay only for the separately authored tunnel path.
     # Live FFT normals, displacement and roughness remain independent/unchanged.
-    live_foam_code+="float liveWeight=saturate(Enabled)*step(0.5,Count); if(Calm>.5 && Tunnel<.5) return saturate(Live)*lerp(.65,1.0,detail)*liveWeight; if(Tunnel<.5) return Fallback; return max(Fallback,saturate(Live)*detail*.08*liveWeight);"
+    live_foam_code+="float liveWeight=saturate(Enabled)*step(0.5,Count); if(Calm>.5 && Tunnel<.5) return 1-(1-saturate(Fallback))*(1-saturate(Live)*lerp(.65,1.0,detail)*liveWeight); if(Tunnel<.5) return Fallback; return max(Fallback,saturate(Live)*detail*.08*liveWeight);"
     foam=custom(water,live_foam_code,FLOAT,live_foam_inputs,1350)
 color = custom(water, r"""
 float3 body=lerp(float3(0.018,0.065,0.085),float3(0.009,0.034,0.052),saturate(VC.b));
