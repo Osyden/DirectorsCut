@@ -80,4 +80,3 @@ Plugin requests start or resume Codex jobs. Use the taskboard and commit referen
 ## Unattended run (Thu 12 Nov)
 
 Claude is building autonomously. Read [PLAN.md](PLAN.md) for the design, [STATUS.md](STATUS.md) for progress. To reach Claude, append to [INBOX.md](INBOX.md). Claude owns the live Unreal editor, `Source/` and `Content/DC/` until further notice.
-
