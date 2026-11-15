@@ -575,7 +575,7 @@ void ADCVoice::StopRecordingAndTranscribe()
 	{
 		return; // Under a quarter second: a stray key tap.
 	}
-	SendToWhisper(Samples, Rate);
+	SendToWhisper(Samples, Rate, true);
 }
 
 void ADCVoice::TranscribeWavFile(const FString& Path)
@@ -595,7 +595,7 @@ void ADCVoice::TranscribeWavFile(const FString& Path)
 	SendToWhisper(Mono, Rate);
 }
 
-void ADCVoice::SendToWhisper(const TArray<float>& Mono, int32 SampleRate)
+void ADCVoice::SendToWhisper(const TArray<float>& Mono, int32 SampleRate, bool bFromMicrophone)
 {
 	const TArray<uint8> Wav = MakeWav(Resample(Mono, SampleRate, 16000), 16000);
 	FFileHelper::SaveArrayToFile(Wav, *(FPaths::ProjectSavedDir() / TEXT("TTS/last_order.wav")));
@@ -623,10 +623,13 @@ void ADCVoice::SendToWhisper(const TArray<float>& Mono, int32 SampleRate)
 	Req->SetHeader(TEXT("Content-Type"), FString::Printf(TEXT("multipart/form-data; boundary=%s"), *Boundary));
 	Req->SetContent(MoveTemp(Body));
 	Req->SetTimeout(15.f);
-	Req->OnProcessRequestComplete().BindLambda([Weak, Sent](FHttpRequestPtr, FHttpResponsePtr Resp, bool bOk)
+	const int32 Epoch = SpeechEpoch;
+	Req->OnProcessRequestComplete().BindLambda([Weak, Sent, Epoch, bFromMicrophone](FHttpRequestPtr, FHttpResponsePtr Resp, bool bOk)
 	{
 		ADCVoice* V = Weak.Get();
 		if (!V || V->bEnding) { return; }
+		V->SynchronizeScene();
+		if (V->SpeechEpoch != Epoch || V->IsMenuOpen()) { return; }
 		if (!bOk || !Resp.IsValid() || Resp->GetResponseCode() != 200)
 		{
 			UE_LOG(LogDC, Warning, TEXT("Voice: speech-to-text request failed"));
@@ -638,12 +641,12 @@ void ADCVoice::SendToWhisper(const TArray<float>& Mono, int32 SampleRate)
 		if (FJsonSerializer::Deserialize(Reader, Json) && Json.IsValid()) { Json->TryGetStringField(TEXT("text"), Text); }
 		Text = Text.TrimStartAndEnd().Replace(TEXT("\n"), TEXT(" "));
 		UE_LOG(LogDC, Log, TEXT("Voice: heard \"%s\" (%.0f ms)"), *Text, (FPlatformTime::Seconds() - Sent) * 1000.0);
-		V->OnHeard(Text);
+		V->OnHeard(Text, bFromMicrophone);
 	});
 	Req->ProcessRequest();
 }
 
-void ADCVoice::OnHeard(const FString& Text)
+void ADCVoice::OnHeard(const FString& Text, bool bFromMicrophone)
 {
 	LastHeard = Text;
 	if (Text.IsEmpty() || Text.StartsWith(TEXT("[")) || Text.StartsWith(TEXT("(")))
@@ -652,7 +655,7 @@ void ADCVoice::OnHeard(const FString& Text)
 	}
 	if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
 	{
-		Crew->ExecuteOrder(Text);
+		Crew->ExecuteOrder(Text, bFromMicrophone);
 	}
 }
 
@@ -1008,7 +1011,7 @@ static FAutoConsoleCommandWithWorldAndArgs GDCVoiceTestWav(
 		}
 	}));
 
-void ADCVoice::ResolveOrder(const FString& Text)
+void ADCVoice::ResolveOrder(const FString& Text, bool bFromMicrophone)
 {
 	// The keyword grammar did not recognise this. Ask the language model to turn it into the same
 	// structured intent, so loose phrasing ("somebody get on that wheel!") still works.
@@ -1018,7 +1021,7 @@ void ADCVoice::ResolveOrder(const FString& Text)
 	const double Sent = FPlatformTime::Seconds();
 	const int32 Epoch = SpeechEpoch;
 	RequestDialogue(System, Text, 80, 0.f, true, 4.f,
-		[Weak, Text, Sent, Epoch](bool bOK, const FString& Content)
+		[Weak, Text, Sent, Epoch, bFromMicrophone](bool bOK, const FString& Content)
 	{
 		ADCVoice* V = Weak.Get();
 		if (!V || V->bEnding) { return; }
@@ -1043,7 +1046,10 @@ void ADCVoice::ResolveOrder(const FString& Text)
 		UE_LOG(LogDC, Log, TEXT("Voice: language model read \"%s\" as %s (%.0f ms)"), *Text, Intent.bValid ? *Content.Replace(TEXT("\n"), TEXT(" ")) : TEXT("not an order"), (FPlatformTime::Seconds() - Sent) * 1000.0);
 		if (UDCCrewSubsystem* Crew = V->GetWorld()->GetSubsystem<UDCCrewSubsystem>())
 		{
-			if (Intent.bValid) { Crew->ExecuteIntent(Intent); }
+			if (Intent.bValid)
+			{
+				if (Crew->ExecuteIntent(Intent) && bFromMicrophone) { V->bIssuedSuccessfulVoiceCommand = true; }
+			}
 			else { V->QueueConversation(Text, false); }
 		}
 	});

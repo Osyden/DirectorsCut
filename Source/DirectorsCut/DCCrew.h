@@ -104,8 +104,9 @@ class UDCCrewSubsystem : public UWorldSubsystem
 
 public:
 	/** Entry point for every order, whatever the source. Returns the spoken reply. */
-	FString ExecuteOrder(const FString& Text);
-	void ExecuteIntent(const FDCIntent& Intent);
+	FString ExecuteOrder(const FString& Text, bool bFromMicrophone = false);
+	/** True only when the requested task/report was actually accepted by a crew member. */
+	bool ExecuteIntent(const FDCIntent& Intent);
 
 	void AddStation(EDCStationType Type, EDCSide Side, const FVector& Location);
 	ADCCrewMember* SpawnCrew(const FString& Name, const FLinearColor& Color, const FVector& Location);

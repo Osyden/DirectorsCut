@@ -486,7 +486,7 @@ ADCCrewMember* UDCCrewSubsystem::EnsureOperator(int32 StationIdx, const FString&
 	return Picked;
 }
 
-FString UDCCrewSubsystem::ExecuteOrder(const FString& Text)
+FString UDCCrewSubsystem::ExecuteOrder(const FString& Text, bool bFromMicrophone)
 {
 	if (ADCVoice* ConversationVoice = ADCVoice::Get(this); ConversationVoice && ConversationVoice->TryConversationInput(Text))
 	{
@@ -504,11 +504,11 @@ FString UDCCrewSubsystem::ExecuteOrder(const FString& Text)
 	const bool bQuick = Intent.bValid && (Text.Len() < 30 || DCConversationPolicy::IsFireOrder(Text));
 	if (Voice && Voice->IsLLMReady() && !bQuick)
 	{
-		Voice->ResolveOrder(DCSpeech::NormalizeCrewAddress(Text)); // answers a moment later
+		Voice->ResolveOrder(DCSpeech::NormalizeCrewAddress(Text), bFromMicrophone); // answers a moment later
 	}
 	else
 	{
-		ExecuteIntent(Intent);
+		if (ExecuteIntent(Intent) && bFromMicrophone && Voice) { Voice->bIssuedSuccessfulVoiceCommand = true; }
 	}
 	return RecentLines.Num() ? RecentLines.Last() : FString();
 }
@@ -526,14 +526,14 @@ void UDCCrewSubsystem::Reply(const FString& Speaker, const FString& Text)
 	}
 }
 
-void UDCCrewSubsystem::ExecuteIntent(const FDCIntent& I)
+bool UDCCrewSubsystem::ExecuteIntent(const FDCIntent& I)
 
 {
 	CurrentOrderText = I.RawText;
 	if (!I.bValid)
 	{
 		Reply(Crew.Num() && Crew[0] ? Crew[0]->CrewName : TEXT("Crew"), TEXT("Say again, Captain?"));
-		return;
+		return false;
 	}
 
 	if (I.Action == EDCAction::Report)
@@ -542,7 +542,7 @@ void UDCCrewSubsystem::ExecuteIntent(const FDCIntent& I)
 		ADCCrewMember* Reporter = I.CrewName.IsEmpty() ? (Crew.Num() ? Crew[0].Get() : nullptr) : PickCrew(I.CrewName, INDEX_NONE);
 		Reply(Reporter ? Reporter->CrewName : TEXT("Crew"),
 			FString::Printf(TEXT("Hull at %d percent, Captain."), D ? FMath::RoundToInt(D->ShipHealth) : 100));
-		return;
+		return Reporter != nullptr;
 	}
 
 
@@ -551,7 +551,7 @@ void UDCCrewSubsystem::ExecuteIntent(const FDCIntent& I)
 	case EDCStationType::Helm:
 	{
 		ADCCrewMember* M = EnsureOperator(FindStation(EDCStationType::Helm, EDCSide::None), I.CrewName);
-		if (!M) { return; }
+		if (!M) { return false; }
 		if (I.Action == EDCAction::TurnPort || I.Action == EDCAction::TurnStarboard)
 		{
 			M->SetHelmOrder(I.Action);
@@ -566,10 +566,11 @@ void UDCCrewSubsystem::ExecuteIntent(const FDCIntent& I)
 		{
 			Reply(M->CrewName, TEXT("Aye, I have the helm."));
 		}
-		break;
+		return true;
 	}
 	case EDCStationType::Cannons:
 	{
+		bool bAccepted = false;
 		// No side given: both batteries if already manned, otherwise the starboard one.
 		TArray<EDCSide> Sides;
 		if (I.Side != EDCSide::None) { Sides.Add(I.Side); }
@@ -603,9 +604,10 @@ void UDCCrewSubsystem::ExecuteIntent(const FDCIntent& I)
 					{ Station.Operator->SetHoldFire(I.Action == EDCAction::HoldFire); bOrdered = true; }
 				}
 			}
-			if (bOrdered) { Reply(TEXT("Crew"), I.Action == EDCAction::HoldFire ? TEXT("Holding fire, Captain.") : TEXT("Guns ready, Captain.")); continue; }
+			if (bOrdered) { bAccepted = true; Reply(TEXT("Crew"), I.Action == EDCAction::HoldFire ? TEXT("Holding fire, Captain.") : TEXT("Guns ready, Captain.")); continue; }
 			ADCCrewMember* M = EnsureOperator(FindCrewGun(Side, I.CrewName), I.CrewName);
 			if (!M) { continue; }
+			bAccepted = true;
 			const TCHAR* S = Side == EDCSide::Port ? TEXT("Port") : TEXT("Starboard");
 			if (I.Action == EDCAction::HoldFire)
 			{
@@ -618,7 +620,7 @@ void UDCCrewSubsystem::ExecuteIntent(const FDCIntent& I)
 				Reply(M->CrewName, I.Action == EDCAction::Fire ? FString::Printf(TEXT("%s battery, firing!"), S) : FString::Printf(TEXT("%s guns manned and ready."), S));
 			}
 		}
-		break;
+		return bAccepted;
 	}
 	case EDCStationType::Fire:
 	case EDCStationType::Rigging:
@@ -628,11 +630,12 @@ void UDCCrewSubsystem::ExecuteIntent(const FDCIntent& I)
 		{
 			Reply(M->CrewName, I.Station == EDCStationType::Fire ? TEXT("Smothering the flames, Captain!") : TEXT("At the repair lines, aye."));
 		}
-		break;
+		return M != nullptr;
 	}
 	default:
 		break;
 	}
+	return false;
 }
 
 static FAutoConsoleCommandWithWorldAndArgs GDCOrderCmd(

@@ -33,9 +33,12 @@ class ADCVoice : public AActor
 	friend class ADCDialogueReviewGameMode;
 	friend class UDCACEIntegrationReview;
 	friend class UDCConversationReview;
+	friend class UDCCommandExecutionReview;
 	friend class UDCACESpeechCallback;
 	friend class FDCStreamedSpeechLifecycleTest;
 	friend class FDCReportSpeechFreshnessTest;
+	friend class UDCCrewSubsystem;
+	friend class FDCVoiceCommandSuccessTest;
 
 public:
 	ADCVoice();
@@ -56,7 +59,8 @@ public:
 	const FString& GetSpeakingText() const { return SpeakingText; }
 	float GetSpeechRemainingSeconds() const;
 	/** Asks the language model to make sense of an order the keyword grammar could not, then carries it out. */
-	void ResolveOrder(const FString& Text);
+	void ResolveOrder(const FString& Text, bool bFromMicrophone = false);
+	bool HasIssuedSuccessfulVoiceCommand() const { return bIssuedSuccessfulVoiceCommand; }
 	/** Returns true when typed/voiced input is handled as conversation instead of an order. */
 	bool TryConversationInput(const FString& Text);
 	/** Transcribe a wav file from disk as if it had been spoken. For unattended tests. */
@@ -120,8 +124,9 @@ protected:
 
 	void StartRecording();
 	void StopRecordingAndTranscribe();
-	void SendToWhisper(const TArray<float>& Mono, int32 SampleRate);
-	void OnHeard(const FString& Text);
+	void SendToWhisper(const TArray<float>& Mono, int32 SampleRate, bool bFromMicrophone = false);
+	void OnHeard(const FString& Text, bool bFromMicrophone = false);
+	bool bIssuedSuccessfulVoiceCommand = false;
 
 	void FinishLine(const FString& Speaker, const FString& Text, bool bReport = false, TFunction<bool()> IsStillRelevant = {});
 	void ExpireReports();

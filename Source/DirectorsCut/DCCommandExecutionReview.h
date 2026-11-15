@@ -17,7 +17,7 @@ private:
     double Started=0, CaseStarted=0;
     int32 CaseIndex=0, OrdersBefore=0, PreviousStation=INDEX_NONE, Passed=0;
     float ScoreBefore=0;
-    bool bPending=false, bFireWalk=false, bDone=false, bMoved=false;
+    bool bPending=false, bFireWalk=false, bDone=false, bMoved=false, bVoiceChecked=false;
     FVector CannonStart=FVector::ZeroVector;
     void Finish(const FString& Error);
 };

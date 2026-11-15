@@ -93,6 +93,28 @@ void UDCCommandExecutionReview::Tick(float DeltaTime)
     }
     if (CaseIndex>=UE_ARRAY_COUNT(Cases))
     {
+        if (!bVoiceChecked)
+        {
+            if (Voice->HasIssuedSuccessfulVoiceCommand()) { Finish(TEXT("Typed review commands counted as microphone input")); return; }
+            Voice->OnHeard(TEXT("[BLANK_AUDIO]"),true);
+            Voice->OnHeard(TEXT("Rex, tell me about the fog"),true);
+            if (Voice->HasIssuedSuccessfulVoiceCommand()) { Finish(TEXT("Noise/conversation counted as microphone command")); return; }
+            Voice->ResetPendingSpeech();
+            const int32 Helm=Crew->FindStation(S::Helm,D::None);
+            FDCStation* HelmStation=Crew->GetStation(Helm);
+            if (!HelmStation) { Finish(TEXT("Missing helm for voice success check")); return; }
+            HelmStation->bPlayerOperated=true;
+            Voice->OnHeard(TEXT("Rex, take the wheel"),true);
+            HelmStation->bPlayerOperated=false;
+            if (Voice->HasIssuedSuccessfulVoiceCommand()) { Finish(TEXT("Rejected occupied-station order counted as success")); return; }
+            Voice->OnHeard(TEXT("Rex, take the wheel"),false);
+            if (Voice->HasIssuedSuccessfulVoiceCommand()) { Finish(TEXT("WAV/test transcript counted as microphone command")); return; }
+            Voice->OnHeard(TEXT("Rex, take the wheel"),true);
+            if (!Voice->HasIssuedSuccessfulVoiceCommand()) { Finish(TEXT("Accepted microphone transcript did not count")); return; }
+            bVoiceChecked=true;
+            UE_LOG(LogDC,Display,TEXT("VOICE_COMMAND_SUCCESS_REVIEW passed=1 typed_ignored=1 chat_ignored=1 rejected_ignored=1 wav_ignored=1 mic_dispatch=1"));
+            Voice->ResetPendingSpeech();
+        }
         Troubles->ResetEncounterTroubles(); Troubles->FireBurnTime=120.f;
         if (Troubles->DeckPoints.Num()<2) { Finish(TEXT("Missing authored fire points")); return; }
         Troubles->StartFire(Troubles->DeckPoints[0]);
