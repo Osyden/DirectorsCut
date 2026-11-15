@@ -12,6 +12,7 @@ The water core, surface foam and individual near-camera droplets remain separate
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import math
@@ -453,6 +454,43 @@ class FittedWaterfall(Waterfall):
         return low - 4, high + 4
 
 
+class CrestWaterfalls(FittedWaterfall):
+    """Several separately fitted outlets in one unchanged physical SVT frame."""
+    def __init__(self,args,profile):
+        self.a=args;self.profile=profile;self.models=[];self.transforms=[]
+        origin=np.asarray(profile['local_origin_arena_cm'])/100
+        basis=np.array([profile['basis_x_arena'],profile['basis_y_arena'],profile['basis_z_arena']]).T
+        outlets=profile['ballistic_outlets']
+        total_width=sum(float(p['source_half_width_cm'])*.02 for p in outlets)
+        for i,p in enumerate(outlets):
+            local=copy.copy(args);local.width_m=float(p['source_half_width_cm'])*.02
+            local.emission_rate=args.emission_rate*local.width_m/total_width
+            local.seed=args.seed+104729*i
+            model=FittedWaterfall(local,p);self.models.append(model)
+            b=np.array([p['basis_x_arena'],p['basis_y_arena'],p['basis_z_arena']]).T
+            self.transforms.append((b.T@basis,(np.asarray(p['local_origin_arena_cm'])/100-origin)@basis))
+        # The first outlet is the reference frame and its measured receiving
+        # surface spans the entire group. Keep coverage, not just height.
+        if not np.allclose(self.transforms[0][0],np.eye(3)) or not np.allclose(self.transforms[0][1],0):
+            raise ValueError('First crest outlet must define the shared frame')
+        self.flight=np.concatenate([m.flight for m in self.models])
+        self.ballistic_launch=profile['ballistic_launch']
+        self.contact_stats=dict(strands=sum(m.contact_stats['strands'] for m in self.models),
+            strands_with_water_entry=sum(m.contact_stats['strands_with_water_entry'] for m in self.models),
+            unmatched_source_mass_fraction=max(m.contact_stats['unmatched_source_mass_fraction'] for m in self.models),
+            entry_depth_m_max=max(m.contact_stats['entry_depth_m_max'] for m in self.models),
+            separate_outlets=len(outlets),outlet_contact_stats=[m.contact_stats for m in self.models])
+
+    def water_surface(self,xy):
+        return self.models[0].water_surface(xy)
+
+    def particles(self,time_s,component):
+        points=[];masses=[]
+        for model,(rotation,offset) in zip(self.models,self.transforms):
+            p,m=model.particles(time_s,component);points.append(p@rotation+offset);masses.append(m)
+        return np.concatenate(points),np.concatenate(masses)
+
+
 class Raster:
     def __init__(self, args, component, model=None):
         self.a = args
@@ -589,7 +627,7 @@ def main():
         if profile.get("schema") != "directorscut.waterfall_profile.v1" or profile.get("units") != "centimeters":
             parser.error("Unsupported waterfall profile schema or units")
         args.width_m = min(args.width_m, float(profile["source_half_width_cm"]) * .02)
-        model = FittedWaterfall(args, profile)
+        model = CrestWaterfalls(args,profile) if profile.get('ballistic_outlets') else FittedWaterfall(args, profile)
     else:
         if args.hero_breakup:
             parser.error("--hero-breakup requires an explicit ballistic --profile")
@@ -628,6 +666,10 @@ def main():
             manifest["physics"]["ballistic_launch"] = profile["ballistic_launch"]
             manifest["physics"].pop("terminal_velocity_m_s",None)
             manifest["physics"]["core_drag"] = "none; source momentum plus gravity; drag applies to secondary spray"
+            if profile.get('ballistic_outlets'):
+                manifest['physics']['separate_outlets']=[dict(source_cm=p['source_local_cm'],
+                    origin_arena_cm=p['local_origin_arena_cm'],width_m=p['source_half_width_cm']*.02,
+                    launch=p['ballistic_launch']) for p in profile['ballistic_outlets']]
             if args.hero_breakup:
                 manifest["physics"]["hero_breakup"] = {
                     "source_channels": 3, "source_density_mass_preserved": True,

@@ -183,7 +183,7 @@ def main():
                 path=np.vstack((path[:i],np.asarray(samples),end));break
         if jet is not None:break
     if a.hero_source_index is not None:
-        if not ring or not 10<=a.hero_speed<=20:raise ValueError('Hero source requires actual ring and10–20m/s horizontal momentum')
+        if not ring or not 8<=a.hero_speed<=20:raise ValueError('Hero source requires actual ring and8–20m/s horizontal momentum')
         source=q[a.hero_source_index];world=cliff['vertices_m'][a.hero_source_index]
         direction=np.array((-world[0],-world[1],0));direction/=np.linalg.norm(direction);direction=direction@B
         vel=direction*a.hero_speed;vel[2]=-1.

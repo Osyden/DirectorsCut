@@ -78,7 +78,8 @@ def main():
     support['source_mesh_edge_path']=np.array([vertex_id(int(i)) for i in support['source_mesh_edge_path']])
     old['canonical_source_vertex_index']=old['source_vertex_index']
     old['source_vertex_index']=vertex_id(old['source_vertex_index'])
-    for jet in (old['terminal_jet'],profile['terminal_ballistic_jet']):
+    physical_profiles=[profile]+profile.get('ballistic_outlets',[])
+    for jet in [old['terminal_jet']]+[p['terminal_ballistic_jet'] for p in physical_profiles]:
         if 'source_support_vertex' in jet:
             jet['canonical_source_support_vertex']=jet['source_support_vertex']
             jet['source_support_vertex']=vertex_id(jet['source_support_vertex'])
@@ -91,8 +92,9 @@ def main():
     for name in ('core.npz','receiving_foam.npz','waterfall_core.foam.fbx'):
         shutil.copy2(args.attachment/name,args.output/name)
     np.savez_compressed(args.output/'support.npz',**support)
-    profile['source_mesh_path']=str(args.cliff.resolve());profile['source_mesh_sha256']=proof['target_sha256']
-    profile['profile_sha1']=hashlib.sha1(json.dumps({k:v for k,v in profile.items() if k!='profile_sha1'},sort_keys=True).encode()).hexdigest()
+    for p in reversed(physical_profiles):
+        p['source_mesh_path']=str(args.cliff.resolve());p['source_mesh_sha256']=proof['target_sha256']
+        p['profile_sha1']=hashlib.sha1(json.dumps({k:v for k,v in p.items() if k!='profile_sha1'},sort_keys=True).encode()).hexdigest()
     profile_path=args.output/'waterfall_profile.json';profile_path.write_text(json.dumps(profile,indent=2))
     old.update(source_path=str(args.cliff.resolve()),source_sha256=proof['target_sha256'],profile_sha1=profile['profile_sha1'],
                geometry_rebind=proof)
