@@ -2,6 +2,7 @@
 
 | Task | Status | Owner | Done when |
 | --- | --- | --- | --- |
+| Post-upload balance, water obstacles and dialogue | Parallel source work; build waits for Butler upload completion | Root plus three workers | [Scope, ownership and acceptance](POST-UPLOAD-POLISH-15NOV.md). Preserve uploading23:10 package. |
 | Combined playtest fixes | 23:10 package accepted and selected; GPU free for human/trailer | Root | Credits, lanterns, creature health, encounter markers/report freshness and voice onboarding; [Accepted package and exact checks](LATE-POLISH-15NOV.md). |
 | Initial hold-V voice hint | Packaged command-success and native60-second expiry pass | voice_audio and AI NPCs chat; root integration | [Implementation and evidence](VOICE-ONBOARDING-15NOV.md). Dismiss only accepted voice command or one gameplay minute. |
 | Installer-free Windows runtime and system requirements | Portable copy staged; 244-file import audit passes; future packaging updated | Butler/credits chat, `codex/portable-runtime-15nov`; packaging helper and requirements only | [Payload, checks and build handoff](PORTABLE-RUNTIME-15NOV.md). Official x64 CRT/OpenMP beside executables; expected 12 GB VRAM text included. Selected build preserved; no upload. |
