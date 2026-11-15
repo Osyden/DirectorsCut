@@ -108,3 +108,11 @@ The macro landform, drainage and joint orientations need to agree before a
 sector-wide fracture pass. The existing open-surface audit passes, with all
 992 outer boundary edges unchanged; topology success is separate from this
 visual limitation. No source geometry was mutated by the reviewer.
+
+Follow-up coast clarification: the independent receiving-water audit found the
+251 first-valid coastal vertices 5.76–8.11 m inside mean-water coverage. Their
+height relative to that water was -8.78 to +0.536 m (median +0.252 m). The
+isolated lower fringe therefore largely exposes a cropped, submerged toe. It
+must not be treated as proof of a visible in-game coast defect or used to
+justify changing locked coast geometry. The broad fluted face and inconsistent
+fracture hierarchy criticism is independent of this isolated edge.
