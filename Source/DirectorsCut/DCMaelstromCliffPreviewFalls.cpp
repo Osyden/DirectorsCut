@@ -1,6 +1,7 @@
 #include "DCMaelstrom.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/HeterogeneousVolumeComponent.h"
+#include "Components/LocalFogVolumeComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "SparseVolumeTexture/SparseVolumeTexture.h"
 #include "Engine/StaticMesh.h"
@@ -40,7 +41,100 @@ bool FallPreviewHash(const FString& Hash)
 
 void ADCMaelstrom::UpdateCliffPreviewFalls()
 {
-    if((!bCompleteCliffArena&&!FParse::Param(FCommandLine::Get(),TEXT("DCCliffPreviewFall")))||!CliffPreviewMesh||!bActive||Elapsed<0.f)
+    if(IsCalderaLake())
+    {
+        // The six imported sidefalls target the retired bowl. The lake is
+        // supplied only by the new tunnel cataract; retain its local mist.
+        ClearCliffPreviewFalls();
+        if(!bActive||Elapsed<-7.f) { return; }
+        const FName CataractMistTag(TEXT("DCCalderaCataractMist"));
+        const FName ShoreMistTag(TEXT("DCCalderaShoreMist"));
+        const FName SlopeMistTag(TEXT("DCCalderaSlopeMist"));
+        const bool bHasCataractMist=CliffImpactMist.ContainsByPredicate(
+            [CataractMistTag](const TObjectPtr<ULocalFogVolumeComponent>& Mist)
+            { return Mist&&Mist->ComponentHasTag(CataractMistTag); });
+        if(!bHasCataractMist)
+        {
+            const FVector FootM(-855.f,361.f,-400.f);
+            const FVector IntoLake=FVector(855.f,-361.f,0.f).GetSafeNormal();
+            for(int32 Layer=0;Layer<2;++Layer)
+            {
+                ULocalFogVolumeComponent* Mist=NewObject<ULocalFogVolumeComponent>(this);
+                Mist->SetupAttachment(Arena); Mist->SetMobility(EComponentMobility::Movable);
+                const float RadiusM=Layer?78.f:55.f;
+                Mist->SetRelativeLocation((FootM+IntoLake*(Layer?45.f:0.f)
+                    +FVector(0.f,0.f,Layer?26.f:18.f))*100.f);
+                Mist->SetRelativeScale3D(FVector(RadiusM*100.f/ULocalFogVolumeComponent::GetBaseVolumeSize()));
+                Mist->RadialFogExtinction=Layer?.065f:.10f;
+                Mist->HeightFogExtinction=0.f;
+                Mist->FogAlbedo=FLinearColor(.82f,.88f,.91f);
+                Mist->FogEmissive=FLinearColor::Black; Mist->FogPhaseG=.45f;
+                Mist->FogSortPriority=20;
+                Mist->ComponentTags.Add(CataractMistTag);
+                Mist->RegisterComponent(); CliffImpactMist.Add(Mist);
+            }
+            UE_LOG(LogTemp,Display,TEXT("DC_CALDERA_CATARACT_MIST scene_lit_volumes=2 foot_m=-855,361,-400"));
+            auto AddMist=[&](const FVector& PositionM,float RadiusM,FName Tag,float Density)
+            {
+                ULocalFogVolumeComponent* Mist=NewObject<ULocalFogVolumeComponent>(this);
+                Mist->SetupAttachment(Arena); Mist->SetMobility(EComponentMobility::Movable);
+                Mist->SetRelativeLocation(PositionM*100.f);
+                Mist->SetRelativeScale3D(FVector(RadiusM*100.f/ULocalFogVolumeComponent::GetBaseVolumeSize()));
+                Mist->RadialFogExtinction=Density;
+                Mist->HeightFogExtinction=Tag==ShoreMistTag?.10f:0.f;
+                Mist->HeightFogFalloff=12.f;
+                Mist->FogAlbedo=FLinearColor(.72f,.79f,.83f);
+                Mist->FogEmissive=FLinearColor::Black; Mist->FogPhaseG=.35f;
+                Mist->FogSortPriority=Tag==ShoreMistTag?-20:100;
+                Mist->ComponentTags.Add(Tag); Mist->RegisterComponent(); CliffImpactMist.Add(Mist);
+            };
+            // A shallow, scene-lit veil breaks the hard perimeter waterline.
+            // Architecture remains clear above it; no changes to the shared sky.
+            TSharedPtr<FJsonObject> ArenaData;
+            const TArray<TSharedPtr<FJsonValue>>* ShoreCenters=nullptr;
+            if(ReadFallPreview(CliffArenaDataDirectory/TEXT("CompleteArena.json"),ArenaData))
+            { ArenaData->TryGetArrayField(TEXT("shore_mist_centers_m"),ShoreCenters); }
+            // Stay below the renderer's 32 visible-volume budget including
+            // the slope, foot and exit banks; prioritize the nearby spray.
+            for(int32 Sector=0;Sector<16;++Sector)
+            {
+                const float A=UE_TWO_PI*(Sector+.23f)/16.f;
+                const float R=GetRimRadius(A)*.01f*.67f;
+                FVector Center(FMath::Cos(A)*R,FMath::Sin(A)*R,-410.f);
+                if(ShoreCenters&&ShoreCenters->IsValidIndex(Sector*2))
+                {
+                    const TArray<TSharedPtr<FJsonValue>>* XYZ=nullptr;
+                    if((*ShoreCenters)[Sector*2]->TryGetArray(XYZ)&&XYZ->Num()==3)
+                    { Center=FVector((*XYZ)[0]->AsNumber(),(*XYZ)[1]->AsNumber(),(*XYZ)[2]->AsNumber()); }
+                }
+                AddMist(Center,
+                    300.f+25.f*FMath::Sin(Sector*1.7f),ShoreMistTag,.055f);
+            }
+            // After the descent, wind-blown mist gathers behind the ship.
+            for(int32 Layer=0;Layer<8;++Layer)
+            {
+                const float R=FMath::Lerp(1570.f,950.f,Layer/7.f);
+                const float Q=FMath::SmoothStep(.58f,.985f,R/1600.f);
+                const float A=UE_PI-.40f*(1.f-Q);
+                AddMist(FVector(FMath::Cos(A)*R,FMath::Sin(A)*R,-400.f+400.f*Q+25.f),
+                    160.f+15.f*FMath::Sin(Layer*2.f),SlopeMistTag,0.f);
+            }
+        }
+        for(ULocalFogVolumeComponent* Mist:CliffImpactMist)
+        {
+            if(!Mist) { continue; }
+            if(Mist->ComponentHasTag(CataractMistTag)||Mist->ComponentHasTag(ShoreMistTag))
+            { Mist->SetVisibility(true); }
+            if(Mist->ComponentHasTag(SlopeMistTag))
+            {
+                const float Gather=FMath::SmoothStep(26.f,42.f,Elapsed);
+                Mist->SetRadialFogExtinction(1.35f*Gather);
+                Mist->SetVisibility(Gather>0.f);
+            }
+        }
+        return;
+    }
+    if((!bCompleteCliffArena&&!FParse::Param(FCommandLine::Get(),TEXT("DCCliffPreviewFall")))||!CliffPreviewMesh||!bActive||Elapsed<(bCompleteCliffArena?-7.f:0.f))
     { ClearCliffPreviewFalls(); return; }
     if(!bCliffPreviewFallsTried)
     {
@@ -100,6 +194,34 @@ void ADCMaelstrom::UpdateCliffPreviewFalls()
         }
         if(!CliffPreviewFallCore)
         { UE_LOG(LogTemp,Warning,TEXT("DC_CLIFF_PREVIEW_FALL core rejected; volume-only capture is not the complete waterfall")); }
+        // Scene-lit participating mist gives the fitted impact spray actual
+        // depth. Keep it local to receiving water, with no emissive cloud mass.
+        const TArray<TSharedPtr<FJsonValue>>* Outlets=nullptr;
+        if(bCompleteCliffArena&&CliffPreviewFallCore&&Data->TryGetArrayField(TEXT("outlets"),Outlets))
+        {
+            for(const TSharedPtr<FJsonValue>& Value:*Outlets)
+            {
+                const TSharedPtr<FJsonObject>* Outlet=nullptr;
+                FVector Foot; double Width=40.;
+                if(!Value->TryGetObject(Outlet)||!FallPreviewVector(*Outlet,TEXT("contact_arena_m"),Foot)) { continue; }
+                (*Outlet)->TryGetNumberField(TEXT("width_m"),Width);
+                const FVector Drift=FVector(Foot.Y,-Foot.X,0.).GetSafeNormal();
+                for(int32 Layer=0;Layer<2;++Layer)
+                {
+                    ULocalFogVolumeComponent* Mist=NewObject<ULocalFogVolumeComponent>(this);
+                    Mist->SetupAttachment(Arena); Mist->SetMobility(EComponentMobility::Movable);
+                    const float RadiusM=FMath::Clamp(static_cast<float>(Width)*.65f+18.f,45.f,90.f)*(Layer?1.15f:1.f);
+                    Mist->SetRelativeLocation((Foot+Drift*(Layer?RadiusM*.8f:0.f)+FVector(0.,0.,RadiusM*.28f))*100.);
+                    Mist->SetRelativeScale3D(FVector(RadiusM*100.f/ULocalFogVolumeComponent::GetBaseVolumeSize()));
+                    Mist->RadialFogExtinction=Layer?.12f:.22f;
+                    Mist->HeightFogExtinction=0.f;
+                    Mist->FogAlbedo=FLinearColor(.82f,.87f,.90f);
+                    Mist->FogEmissive=FLinearColor::Black; Mist->FogPhaseG=.55f;
+                    Mist->RegisterComponent(); CliffImpactMist.Add(Mist);
+                }
+            }
+            UE_LOG(LogTemp,Display,TEXT("DC_CLIFF_IMPACT_MIST scene_lit_volumes=%d"),CliffImpactMist.Num());
+        }
         const TArray<TSharedPtr<FJsonValue>>* Volumes=nullptr;
         if(Data->TryGetArrayField(TEXT("volumes"),Volumes)&&Volumes->Num()<=8)
         {
@@ -160,6 +282,7 @@ void ADCMaelstrom::UpdateCliffPreviewFalls()
         CliffPreviewFallCore->SetVisibility(!FParse::Param(FCommandLine::Get(),TEXT("DCCliffFallHideCore")));
         CliffPreviewFallCore->SetScalarParameterValueOnMaterials(TEXT("PreviewTime"),FMath::Max(0.f,Elapsed));
     }
+    for(ULocalFogVolumeComponent* Mist:CliffImpactMist) { if(Mist) { Mist->SetVisibility(true); } }
     if(!CliffPreviewVolumes.IsEmpty())
     {
         if(IConsoleVariable* Range=IConsoleManager::Get().FindConsoleVariable(TEXT("r.HeterogeneousVolumes.MaxTraceDistance")))
@@ -216,6 +339,7 @@ void ADCMaelstrom::ClearCliffPreviewFalls()
 {
     // Preserve loaded assets/actors for backward seeks; no repeated import or spawn.
     if(CliffPreviewFallCore) { CliffPreviewFallCore->SetVisibility(false); }
+    for(ULocalFogVolumeComponent* Mist:CliffImpactMist) { if(Mist) { Mist->SetVisibility(false); } }
     for(FCliffPreviewVolume& Fall:CliffPreviewVolumes)
     {
         if(AHeterogeneousVolume* Actor=Fall.Actor.Get())

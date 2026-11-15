@@ -32,22 +32,63 @@ bool PreviewVector(const TArray<TSharedPtr<FJsonValue>>& Values,FVector& Out)
     Out=FVector(X,Y,Z);
     return !Out.ContainsNaN();
 }
+bool CompleteFallsReady(const FString& Directory,const TSharedPtr<FJsonObject>& Import,const FString& FBXHash)
+{
+    TSharedPtr<FJsonObject> Data;
+    const TSharedPtr<FJsonObject>* Core=nullptr;
+    FString Schema,FallFBX,FallSource,ActiveSource,Asset;
+    if(!ReadPreviewJson(Directory/TEXT("CliffPreviewWaterfall.json"),Data)
+        ||!Data->TryGetStringField(TEXT("schema"),Schema)||Schema!=TEXT("directorscut.cliff_preview_waterfall.v1")
+        ||!Data->TryGetStringField(TEXT("cliff_fbx_sha256"),FallFBX)||FallFBX!=FBXHash||FallFBX.Len()!=64
+        ||!Data->TryGetStringField(TEXT("source_candidate_sha256"),FallSource)||FallSource.Len()!=64
+        ||!Import->TryGetStringField(TEXT("source_candidate_sha256"),ActiveSource)||FallSource!=ActiveSource
+        ||!Data->TryGetObjectField(TEXT("core"),Core)
+        ||!(*Core)->TryGetStringField(TEXT("asset"),Asset)
+        ||!Asset.StartsWith(TEXT("/Game/DC/Maelstrom/GeneratedCliffPreview/"))) { return false; }
+    const auto Vector=[&](const TCHAR* Key,FVector& Out)
+    {
+        const TArray<TSharedPtr<FJsonValue>>* Values=nullptr;
+        return (*Core)->TryGetArrayField(Key,Values)&&PreviewVector(*Values,Out);
+    };
+    FVector Origin,U,V,Z;
+    if(!Vector(TEXT("origin_arena_m"),Origin)||!Vector(TEXT("basis_u_arena"),U)
+        ||!Vector(TEXT("basis_v_arena"),V)||!Vector(TEXT("basis_z_arena"),Z)
+        ||!FMath::IsNearlyEqual(U.SizeSquared(),1.,1.e-6)||!FMath::IsNearlyEqual(V.SizeSquared(),1.,1.e-6)
+        ||!FMath::IsNearlyEqual(Z.SizeSquared(),1.,1.e-6)||FMath::Abs(U|V)>=1.e-6
+        ||FMath::Abs(U|Z)>=1.e-6||FMath::Abs(V|Z)>=1.e-6
+        ||FVector::DotProduct(FVector::CrossProduct(U,V),Z)<=.999999) { return false; }
+    UStaticMesh* Mesh=LoadObject<UStaticMesh>(nullptr,*Asset);
+    if(!Mesh||(Mesh->GetStaticMaterials().Num()!=3&&Mesh->GetStaticMaterials().Num()!=4)) { return false; }
+    for(int32 Slot=0;Slot<Mesh->GetStaticMaterials().Num();++Slot)
+    { if(!Mesh->GetMaterial(Slot)) { return false; } }
+    return true;
+}
 }
 
 void ADCMaelstrom::BuildCliffPreview()
 {
-    if(!FParse::Param(FCommandLine::Get(),TEXT("DCCliffPreview"))) { return; }
-    if(!FParse::Param(FCommandLine::Get(),TEXT("DCSceneReview"))
+    const bool ExplicitPreview=FParse::Param(FCommandLine::Get(),TEXT("DCCliffPreview"));
+    const FString Installed=FPaths::ProjectContentDir()/TEXT("DC/Maelstrom/GeneratedCliffPreview/Runtime");
+    TSharedPtr<FJsonObject> Complete;
+    FString CompleteSchema,CompleteHash;
+    const bool InstalledComplete=!FParse::Param(FCommandLine::Get(),TEXT("DCLegacyCrater"))
+        &&ReadPreviewJson(Installed/TEXT("CompleteArena.json"),Complete)
+        &&Complete->TryGetStringField(TEXT("schema"),CompleteSchema)
+        &&CompleteSchema==TEXT("directorscut.complete_crater.v1")
+        &&Complete->TryGetStringField(TEXT("cliff_fbx_sha256"),CompleteHash);
+    if(!ExplicitPreview&&!InstalledComplete) { return; }
+    if((ExplicitPreview&&!FParse::Param(FCommandLine::Get(),TEXT("DCSceneReview")))
         || FParse::Param(FCommandLine::Get(),TEXT("DCFallCamera"))
         || FParse::Param(FCommandLine::Get(),TEXT("DCProceduralFalls")))
     {
         UE_LOG(LogTemp,Warning,TEXT("DC_CLIFF_PREVIEW requires DCSceneReview and excludes DCFallCamera/DCProceduralFalls"));
         return;
     }
-    // Preview an imported sector or complete ring without replacing gameplay
-    // contacts. Landmarks and optional falls follow the imported source.
+    // Complete installed terrain is the playable scene, not a camera-only
+    // replacement. Explicit preview continues to use the authoring data.
     TSharedPtr<FJsonObject> Audit,Import;
-    const FString Saved=FPaths::ProjectSavedDir();
+    const FString Saved=ExplicitPreview?FPaths::ProjectSavedDir():Installed;
+    CliffArenaDataDirectory=Saved;
     if(!ReadPreviewJson(Saved/TEXT("CliffPreviewSourceAudit.json"),Audit)
         || !ReadPreviewJson(Saved/TEXT("CliffLandformPreviewImport.json"),Import))
     { UE_LOG(LogTemp,Warning,TEXT("DC_CLIFF_PREVIEW missing import/source audit; preview disabled")); return; }
@@ -59,6 +100,7 @@ void ADCMaelstrom::BuildCliffPreview()
         || !Audit->TryGetStringField(TEXT("source_fbx_sha256"),SourceHash)
         || !Import->TryGetStringField(TEXT("source_sha256"),ImportHash)||SourceHash!=ImportHash)
     { UE_LOG(LogTemp,Warning,TEXT("DC_CLIFF_PREVIEW audit invalid or mismatched; preview disabled")); return; }
+    if(!ExplicitPreview&&CompleteHash!=ImportHash) { return; }
     const TSharedPtr<FJsonObject>* Geometry=nullptr,*Frame=nullptr;
     const TArray<TSharedPtr<FJsonValue>>* OriginValues=nullptr,*Basis=nullptr;
     if(!Audit->TryGetObjectField(TEXT("geometry"),Geometry)
@@ -80,12 +122,18 @@ void ADCMaelstrom::BuildCliffPreview()
     if(AuditedPath!=MeshPath&&AuditedPath!=PackagePath) { return; }
     UStaticMesh* Mesh=LoadObject<UStaticMesh>(nullptr,*MeshPath);
     const bool Rock=FParse::Param(FCommandLine::Get(),TEXT("DCCliffPreviewRock"));
-    const bool Scan=FParse::Param(FCommandLine::Get(),TEXT("DCCliffPreviewScan"));
+    const bool Scan=!ExplicitPreview||FParse::Param(FCommandLine::Get(),TEXT("DCCliffPreviewScan"));
     UMaterialInterface* Material=LoadObject<UMaterialInterface>(nullptr,Scan
         ? TEXT("/Game/DC/Maelstrom/GeneratedCliffPreview/M_CliffScanSurface.M_CliffScanSurface") : Rock
         ? TEXT("/Game/DC/Maelstrom/GeneratedCliffPreview/M_CliffRock.M_CliffRock")
         : TEXT("/Game/DC/Maelstrom/GeneratedCliffPreview/M_CliffClay.M_CliffClay"));
     if(!Mesh||!Material) { UE_LOG(LogTemp,Warning,TEXT("DC_CLIFF_PREVIEW missing isolated assets")); return; }
+    if(!ExplicitPreview&&!IsCalderaLake()&&!CompleteFallsReady(Saved,Import,ImportHash))
+    {
+        UE_LOG(LogTemp,Error,TEXT("DC_CLIFF_ARENA replacement waterfall/core materials unavailable; retaining legacy scene"));
+        return;
+    }
+    bCompleteCliffArena=!ExplicitPreview;
     CliffPreviewMesh=NewObject<UStaticMeshComponent>(this,TEXT("IsolatedCliffPreview"));
     CliffPreviewMesh->SetupAttachment(Arena);
     CliffPreviewMesh->SetMobility(EComponentMobility::Movable);
@@ -107,7 +155,7 @@ void ADCMaelstrom::BuildCliffPreview()
     CliffPreviewMesh->SetRelativeTransform(Pose);
     CliffPreviewMesh->SetVisibility(false);
     CliffPreviewMesh->RegisterComponent();
-    if(FParse::Param(FCommandLine::Get(),TEXT("DCCliffPreviewSupports")))
+    if(bCompleteCliffArena||FParse::Param(FCommandLine::Get(),TEXT("DCCliffPreviewSupports")))
     {
         TSharedPtr<FJsonObject> Supports;
         FString SupportSchema,SupportHash;
@@ -115,7 +163,7 @@ void ADCMaelstrom::BuildCliffPreview()
         if(ReadPreviewJson(Saved/TEXT("CliffPreviewSupports.json"),Supports)
             &&Supports->TryGetStringField(TEXT("schema"),SupportSchema)&&SupportSchema==TEXT("directorscut.cliff_preview_supports.v1")
             &&Supports->TryGetStringField(TEXT("source_fbx_sha256"),SupportHash)&&SupportHash==SourceHash
-            &&Supports->TryGetArrayField(TEXT("actors"),Actors))
+            &&(bCompleteCliffArena||Supports->TryGetArrayField(TEXT("actors"),Actors)))
         {
             // Sample the actual imported triangles, including new overhangs.
             // Angular bins accelerate queries without assuming polar topology.
@@ -167,6 +215,12 @@ void ADCMaelstrom::BuildCliffPreview()
                     }
                 }
             }
+            if(bCompleteCliffArena&&Surface.IsEmpty())
+            {
+                UE_LOG(LogTemp,Error,TEXT("DC_CLIFF_ARENA actual ruin support surface unavailable; retaining legacy scene"));
+                CliffPreviewMesh->DestroyComponent(); CliffPreviewMesh=nullptr; bCompleteCliffArena=false;
+                return;
+            }
             const auto GroundAt=[&](const FVector2D& P)
             {
                 double Ground=-DBL_MAX;
@@ -189,17 +243,24 @@ void ADCMaelstrom::BuildCliffPreview()
                 }
                 return Ground;
             };
-            for(const TSharedPtr<FJsonValue>& Value:*Actors)
+            for(AActor* Landmark:Landmarks)
             {
+                if(!Landmark) { continue; }
                 const TSharedPtr<FJsonObject>* A=nullptr;
-                FString Id; double Bottom;
+                const FString Id=Landmark->GetName(); double Bottom=0.;
                 const TArray<TSharedPtr<FJsonValue>>* Centre=nullptr;
-                if(!Value->TryGetObject(A)||!(*A)->TryGetStringField(TEXT("id"),Id)
-                    ||!(*A)->TryGetNumberField(TEXT("footing_bottom_m"),Bottom)
-                    ||!(*A)->TryGetArrayField(TEXT("centre_xy_m"),Centre)||Centre->Num()!=2) { continue; }
-                for(AActor* Landmark:Landmarks)
+                if(!bCompleteCliffArena)
                 {
-                    if(!Landmark||Landmark->GetName()!=Id) { continue; }
+                    for(const TSharedPtr<FJsonValue>& Value:*Actors)
+                    {
+                        const TSharedPtr<FJsonObject>* Candidate=nullptr; FString CandidateId;
+                        if(Value->TryGetObject(Candidate)&&(*Candidate)->TryGetStringField(TEXT("id"),CandidateId)&&CandidateId==Id)
+                        { A=Candidate; break; }
+                    }
+                    if(!A||!(*A)->TryGetNumberField(TEXT("footing_bottom_m"),Bottom)
+                        ||!(*A)->TryGetArrayField(TEXT("centre_xy_m"),Centre)||Centre->Num()!=2) { continue; }
+                }
+                {
                     // Recreate the pre-placement local bounds used by the
                     // support exporter. A yawed asymmetric group has a different
                     // world-AABB centre even when its transform is unchanged.
@@ -257,13 +318,13 @@ void ADCMaelstrom::BuildCliffPreview()
         }
         UE_LOG(LogTemp,Display,TEXT("DC_CLIFF_PREVIEW verified landmark count=%d; partial/unverified footprints hidden"),CliffPreviewSupportedLandmarks.Num());
     }
-    UE_LOG(LogTemp,Display,TEXT("DC_CLIFF_PREVIEW ready material=%s source=%s isolated=1 runtime_contacts_unchanged=1"),*Material->GetName(),*SourceHash);
+    UE_LOG(LogTemp,Display,TEXT("DC_CLIFF_ARENA ready material=%s source=%s complete=%d shoreline_preserved=1"),*Material->GetName(),*SourceHash,bCompleteCliffArena);
 }
 
 void ADCMaelstrom::UpdateCliffPreview()
 {
     if(!CliffPreviewMesh) { return; }
-    if(!bActive||Elapsed<0.f) { ClearCliffPreview(); return; }
+    if(!bActive||Elapsed<(bCompleteCliffArena?-7.f:0.f)) { ClearCliffPreview(); return; }
     CliffPreviewMesh->SetVisibility(true);
     UpdateCliffPreviewFalls();
     UpdateCliffDetailPreview();
@@ -294,7 +355,7 @@ void ADCMaelstrom::UpdateCliffPreview()
     // A complete candidate ring needs to be judged from the playable ship,
     // including its changing rim silhouette during descent. The close tile
     // camera remains the default for individual authoring patches.
-    if(FParse::Param(FCommandLine::Get(),TEXT("DCCliffPreviewPlayerView"))) { return; }
+    if(bCompleteCliffArena||FParse::Param(FCommandLine::Get(),TEXT("DCCliffPreviewPlayerView"))) { return; }
     APlayerController* PC=GetWorld()->GetFirstPlayerController();
     if(!CliffPreviewCamera.IsValid())
     {

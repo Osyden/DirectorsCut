@@ -14,6 +14,7 @@ import struct
 import time
 import zlib
 import numpy as np
+from bake_cliff_geology import resize, runoff
 
 
 ARC_METRES = 497.418836818384
@@ -100,6 +101,7 @@ def main():
     p.add_argument('--width', type=int, default=8192)
     p.add_argument('--height', type=int, default=2048)
     p.add_argument('--fractured', action='store_true', help='V2 darker coastal palette and readable meso fracture normals')
+    p.add_argument('--fields',type=Path,help='Actual full-ring geometry fields for elevation, exposure and runoff')
     args = p.parse_args()
     if not 512 <= args.width <= 8192 or not 128 <= args.height <= 8192:
         raise ValueError('Expected width512..8192 and height128..8192')
@@ -113,10 +115,24 @@ def main():
     color = np.empty((h,w,3), np.uint8)
     rough = np.empty((h,w), np.uint8)
     height = np.empty((h,w), np.float32)
+    actual=None
+    if args.fields:
+        with np.load(args.fields,allow_pickle=False) as archive:
+            actual={k:archive[k] for k in archive.files}
+        field_meta=json.loads(str(actual['metadata_json']))
+        if not field_meta.get('full_ring') or not np.allclose(field_meta['source_uv_min'],UV_MIN) or not np.allclose(field_meta['source_uv_max'],UV_MAX):
+            raise ValueError('Context maps require fields rasterized in the full-ring domain')
+        accumulation,_=runoff(actual)
+        flow=resize(accumulation,(h,w))
+        valid=resize(actual['valid'].astype(np.float32),(h,w))>.5
+        actual_z=resize(actual['position_m'][:,:,2],(h,w))
+        normal_z=resize(actual['normal'][:,:,2],(h,w))
     luminance_min, luminance_max = 1., 0.
     for row in range(0, h, 128):
         end = min(row+128, h)
         uu, zz = np.meshgrid(u, zs[row:end])
+        if actual is not None:
+            zz=np.where(valid[row:end],actual_z[row:end],zz)
         broad = noise(uu,zz,380.,180.,3)
         fold = 12.*noise(uu,zz,710.,310.,11)
         # No linear U tilt: it would create a seam at the ring closure.
@@ -125,8 +141,21 @@ def main():
         meso = noise(uu,zz,47.,29.,37)
         mineral = np.maximum(noise(uu,zz,160.,71.,43)-.3,0.)/.7
         facet,joints = fractured_field(uu,zz) if args.fractured else (None,0.)
-        base = (.170 if args.fractured else .222)+.022*broad+.011*bed+.006*meso
-        base -= .009*joints
+        # Whole-face reflectance needs distinct geological regions at kilometre
+        # viewing distance. The previous context intentionally faded everything
+        # to flat grey because it was only background around a detailed pilot.
+        exposure=np.clip((noise(uu,zz,46.,31.,202)+.04)/.36,0,1)
+        exposure*=np.clip((noise(uu,zz,16.,9.,819)+.27)/.45,0,1)
+        fine_meso=noise(uu,zz,18.,11.,37)+.38*noise(uu,zz,6.,3.5,51)
+        base = (.178 if args.fractured else .222)+.045*broad+.017*bed*exposure+.023*fine_meso
+        base -= .012*joints
+        moisture=np.zeros_like(base)
+        if actual is not None:
+            moisture=np.clip((flow[row:end]-.15)/.7,0,1)*valid[row:end]
+            # Retain locally damp drainage faces and dry exposed stone. This
+            # is material weathering from the real surface, not baked shadows.
+            base*=1.-.27*moisture
+            base+=.008*np.clip(normal_z[row:end],0,1)*valid[row:end]
         linear = base[...,None]*np.array([.981,1.008,1.027])
         linear += mineral[...,None]*np.array([.008,.003,-.004])
         linear = np.clip(linear,.10,.32)
@@ -134,7 +163,7 @@ def main():
         luminance_max = max(luminance_max,float(linear.max()))
         srgb = np.where(linear<=.0031308,linear*12.92,1.055*linear**(1/2.4)-.055)
         color[row:end] = quantize(srgb)
-        rough[row:end] = quantize(np.clip(.79+.026*meso+.014*bed-.018*mineral+.015*joints,.70,.88))
+        rough[row:end] = quantize(np.clip(.80+.045*fine_meso+.025*broad-.018*mineral+.015*joints-.28*moisture,.46,.90))
         if args.fractured:
             ledges = .28*np.tanh(3.*noise(uu,formation,38.,5.,97))
             height[row:end] = facet+ledges+.04*noise(uu,zz,7.,3.2,53)
@@ -189,6 +218,11 @@ def main():
         audit=dict(full_ring_seam_max_error=seam_error,shift497m_noise_rms_difference=shift_difference),
         texture_files=files,files={name:hashlib.sha256((out/name).read_bytes()).hexdigest() for name in files.values()},
         generator_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),seconds=time.time()-started)
+    if args.fields:
+        manifest['geometry_fields']=str(args.fields.resolve())
+        manifest['geometry_fields_sha256']=hashlib.sha256(args.fields.read_bytes()).hexdigest()
+        manifest['full_ring_geometry_source']=field_meta['source_sha256']
+        manifest['limitation']='Actual full-ring surface exposure and authored runoff guide; not calibrated hydrology. Fine native-scale measured normals are supplied by the material.'
     (out/'tile_manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
     print(json.dumps(dict(output=str(out),**manifest)),flush=True)
 

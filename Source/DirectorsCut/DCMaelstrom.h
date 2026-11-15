@@ -25,6 +25,7 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
 	static ADCMaelstrom* Get(const UObject* Context);
 	bool IsActive() const { return bActive; }
+	bool IsCalderaLake() const { return true; }
 	float GetElapsed() const { return Elapsed; }
 	float GetRouteOffset() const { return RouteOffset; }
 	void EmitWaterContact(const FVector& Position, float Strength = 1.f, bool ProjectToSurface = true);
@@ -56,7 +57,10 @@ private:
 	float CliffHeightAt(const FVector2D& Point) const;
 	FVector CliffSurfacePoint(float Angle,float V) const;
 	void BuildTerrain();
-	// Explicit authoring view only; it never supplies gameplay surface queries.
+	// Installed complete terrain uses the same arena frame and preserved water
+	// shoreline. Explicit authoring flags retain a separate inspection camera.
+	bool bCompleteCliffArena=false;
+	FString CliffArenaDataDirectory;
 	void BuildCliffPreview();
 	void UpdateCliffPreview();
 	void ClearCliffPreview();
@@ -75,6 +79,12 @@ private:
 	UPROPERTY() TArray<TObjectPtr<class UInstancedStaticMeshComponent>> CliffDetailPreviewMeshes;
 	bool bCliffDetailPreviewTried=false;
 	UPROPERTY() TObjectPtr<class UStaticMeshComponent> CliffPreviewFallCore;
+	UPROPERTY() TArray<TObjectPtr<class ULocalFogVolumeComponent>> CliffImpactMist;
+	void UpdateInletMist();
+	void ClearInletMist();
+	UPROPERTY() TArray<TObjectPtr<class UStaticMeshComponent>> InletMistCards;
+	UPROPERTY() TArray<TObjectPtr<UMaterialInstanceDynamic>> InletMistMIDs;
+	bool bInletMistTried=false;
 	struct FCliffPreviewVolume { TWeakObjectPtr<class AHeterogeneousVolume> Actor; int32 Frames=1; float FPS=12.f; };
 	TArray<FCliffPreviewVolume> CliffPreviewVolumes;
 	bool bCliffPreviewFallsTried=false;
@@ -83,6 +93,11 @@ private:
 	void UpdateTerrainShadows();
 	float NextTerrainShadowUpdate=-1.f;
 	void BuildBasin();
+	void BuildCataract();
+	UPROPERTY() TObjectPtr<UProceduralMeshComponent> Cataract;
+	void BuildInletBed();
+	UPROPERTY() TObjectPtr<UProceduralMeshComponent> InletBed;
+	UPROPERTY() TArray<TObjectPtr<class UInstancedStaticMeshComponent>> InletBoulders;
 	void BuildBreakers();
 	void BuildFoamSource();
 	void BuildWhitewater();
@@ -151,11 +166,20 @@ private:
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Tunnel;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UPostProcessComponent> Exposure;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> WaterMID;
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> CataractMID;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> TunnelMID;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> CascadeMID;
 	FDCMaelstromWaterBridge WaterBridge;
 	UPROPERTY() TObjectPtr<ADCLeviathan> Boss;
 	UPROPERTY() TObjectPtr<ADCMaelstromAtmosphere> Atmosphere;
+	// This encounter's exit fog masks its sea/sky handoff without changing the
+	// earlier route's weather. Absolute ride time also supports direct seeks.
+	void UpdateExitTransition();
+	void ResetExitTransition();
+	UPROPERTY() TArray<TObjectPtr<class ULocalFogVolumeComponent>> ExitFogVolumes;
+	TWeakObjectPtr<class APlayerCameraManager> ExitFogCamera;
+	bool bExitFogOwnsFade=false;
+	int32 ExitFogPhase=INDEX_NONE;
 	UPROPERTY() TArray<TObjectPtr<AActor>> Landmarks;
 	TWeakObjectPtr<AActor> Ocean;
 	TWeakObjectPtr<AActor> LegacyWeather;

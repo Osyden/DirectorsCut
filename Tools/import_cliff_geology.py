@@ -165,7 +165,8 @@ def main():
                     # Strong full-ring cell facets resembled masonry in the
                     # native review. Keep only broad geological perturbation;
                     # measured fractured stone supplies the local detail.
-                    sample = custom('return normalize(float3(N.xy*.18,N.z));',
+                    context_strength=.55 if manifests['context'].get('full_ring_geometry_source') else .18
+                    sample = custom('return normalize(float3(N.xy*%s,N.z));' % context_strength,
                                     types.CMOT_FLOAT3, {'N': (sample, '')})
             elif role == 'normal':
                 sample = custom('return normalize(float3(N.xy*.55,N.z));',

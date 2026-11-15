@@ -54,6 +54,16 @@ ADCMaelstrom::ADCMaelstrom()
 	Arena->SetupAttachment(RootComponent);
 	Basin = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("Basin"));
 	Basin->SetupAttachment(Arena);
+	Cataract=CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("EntryCataract"));
+	Cataract->SetupAttachment(Arena);
+	Cataract->SetMobility(EComponentMobility::Movable);
+	Cataract->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Cataract->SetCastShadow(false);
+	InletBed=CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("EntryRockLandform"));
+	InletBed->SetupAttachment(Arena);
+	InletBed->SetMobility(EComponentMobility::Movable);
+	InletBed->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	InletBed->SetCastShadow(true);
 	Whitewater=CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("SpiralWhitewaterFeeds"));
 	Whitewater->SetupAttachment(Arena);
 	Whitewater->SetMobility(EComponentMobility::Movable);
@@ -148,11 +158,17 @@ void ADCMaelstrom::BeginPlay()
 	if (UMaterialInterface* Water = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Maelstrom/M_MaelstromWater.M_MaelstromWater")))
 	{
 		WaterMID = UMaterialInstanceDynamic::Create(Water, this);
+		CataractMID = UMaterialInstanceDynamic::Create(Water, this);
 		TunnelMID = UMaterialInstanceDynamic::Create(Water, this);
 		WaterMID->SetScalarParameterValue(TEXT("WaveHeight"),400.f);
+		WaterMID->SetScalarParameterValue(TEXT("CalmCaldera"),1.f);
 		WaterMID->SetScalarParameterValue(TEXT("BasinRadius"),Radius*.01f);
 		WaterMID->SetScalarParameterValue(TEXT("FlowHandedness"),-1.f);
 		Basin->SetMaterial(0, WaterMID);
+		CataractMID->CopyInterpParameters(WaterMID);
+		CataractMID->SetScalarParameterValue(TEXT("CataractFlow"),1.f);
+		CataractMID->SetScalarParameterValue(TEXT("FoamCoverage"),.62f);
+		Cataract->SetMaterial(0, CataractMID);
 		Tunnel->SetMaterial(0, TunnelMID);
 	}
 	if (UMaterialInterface* Cascade = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Maelstrom/M_MaelstromCascade.M_MaelstromCascade")))
@@ -160,11 +176,10 @@ void ADCMaelstrom::BeginPlay()
 		CascadeMID = UMaterialInstanceDynamic::Create(Cascade, this);
 		Falls->SetMaterial(0, CascadeMID);
 	}
-	BuildBreakers();
 	BuildBasin();
+	BuildCataract();
+	BuildInletBed();
 	BuildTerrain();
-	BuildWhitewater();
-	BuildFoamSource();
 	BuildTunnel();
 	BuildLandmarks();
 	BuildCliffPreview();
@@ -280,54 +295,15 @@ float ADCMaelstrom::BaseHeightAt(const FVector2D& Point) const
 
 float ADCMaelstrom::HeightAt(const FVector2D& Point, bool bWaves) const
 {
-    float Height = BaseHeightAt(Point);
-    const float R = Point.Size(), A = FMath::Atan2(Point.Y, Point.X);
-    const float U = R / GetRimRadius(A);
-    const float Arc = FMath::Fmod(UE_PI - A + UE_TWO_PI, UE_TWO_PI);
-    // The orbit's shoulders are broken standing waves, with an open inner view.
-    const float RouteT = DCMaelstromRoute::SecondsAtAngle(A);
-    const float RouteR = Radius * DCMaelstromRoute::RadialFraction(RouteT);
-    const float Across = R - RouteR;
-    // Let the banks dissolve into the central plunge. Keeping a full-width
-    // spiral shelf at a 200m radius folds its cross-section into a tall wall.
-    const float Lane = FMath::SmoothStep(.025f,.16f,Arc)*(1.f-FMath::SmoothStep(145.f,178.f,RouteT));
-    const float Width=DCMaelstromRoute::WidthScale(RouteT);
-    // One connected spiral ribbon sculpted into the basin. A broad merge at
-    // either side avoids a separate overlapping mesh or a hard terrace edge.
-    const float CenterHeight=BaseHeightAt(FVector2D(FMath::Cos(A),FMath::Sin(A))*RouteR);
-    const float Channel=Across>=0.f
-        ? 1.f-FMath::SmoothStep(17000.f*Width,33000.f*Width,Across)
-        // A flat 35m shelf followed by a 95m return amplified the bowl grade
-        // into a continuous dark cliff. An exponential shoulder has no lip or
-        // end boundary; its maximum extra grade is only exp(-2) of the local
-        // bowl/channel grade difference. Centre height and outer shore match.
-        : FMath::Exp(Across/(4200.f*Width));
-    const float ChannelHeight=CenterHeight+DCMaelstromRoute::BankedHeight(Across,RouteT);
-    Height=FMath::Lerp(Height,ChannelHeight,Lane*Channel);
-    // The ship samples this surface at its actual steering offset. Keep the
-    // outer steering range exact; unequal finite reaches beyond it vary width
-    // than drawing one constant-width raised ribbon around the whole descent.
-    // The35m shore fade preserves all existing waterfall/contact elevations.
-    const float Protected=FMath::SmoothStep(12500.f,16500.f,Across);
-    const float ShoreFade=FMath::SmoothStep(0.f,3500.f,WaterEdgeRadius(A)-R);
-    if(Protected>0.f && ShoreFade>0.f && Lane>0.f)
-    {
-        const float Reach=FMath::PerlinNoise2D(Point/18000.f+FVector2D(31.7f,12.3f));
-        const float WidthVariation=1.f+.24f*Reach;
-        const float BrokenChannel=1.f-FMath::SmoothStep(17000.f*Width*WidthVariation,
-            33000.f*Width*WidthVariation,Across);
-        const float Target=FMath::Lerp(BaseHeightAt(Point),ChannelHeight,Lane*BrokenChannel);
-        const float Delta=Target-Height;
-        Height+=Delta/FMath::Sqrt(1.f+FMath::Square(Delta/1500.f))*Protected*ShoreFade;
-    }
-    if (!bWaves) { return Height; }
-    // Low relief carries the flowing banks. The former 16m crossing sine waves
-    // read as mountains from across the crater; ordinary wave scale must stay
-    // small in physical units, not be enlarged to remain legible kilometres away.
-    const float Wave = 40.f*FMath::PerlinNoise2D(Point/5500.f)
-        + 20.f*FMath::PerlinNoise2D(Point/2300.f+FVector2D(9,17));
-    const float CalmLane = 1.f - .45f*Lane*FMath::Exp(-FMath::Square(Across/(6500.f*Width)));
-    return Height + BreakerHeight(Point) + Wave*CalmLane*(1.f-FMath::SmoothStep(.88f,1.03f,U)*.8f)*FMath::SmoothStep(.08f,.22f,U);
+    // One level lake, reached by one finite river. No sculpted spiral banks.
+    constexpr float LakeZ=-40000.f;
+    const float R=Point.Size();
+    const float Q=FMath::SmoothStep(.58f,.985f,R/Radius);
+    const float A=UE_PI-.40f*(1.f-Q);
+    const float Across=FMath::Abs(FMath::UnwindRadians(FMath::Atan2(Point.Y,Point.X)-A))*R;
+    if(R>=Radius*.58f&&Across<=22000.f&&R<=Radius*1.08f)
+    { return FMath::Lerp(LakeZ,0.f,Q); }
+    return LakeZ;
 }
 
 float ADCMaelstrom::RimGroundHeight(float R, float Angle) const
@@ -347,8 +323,8 @@ TArray<ADCMaelstrom::FWaterfallContact> ADCMaelstrom::GetWaterfallContacts() con
 
 void ADCMaelstrom::BuildBasin()
 {
-	constexpr int32 Rings = 448;
-	constexpr int32 Sectors = 1536;
+	constexpr int32 Rings = 160;
+	constexpr int32 Sectors = 768;
 	TArray<FVector> Vertices, Normals;
 	TArray<FVector2D> UVs;
 	TArray<FColor> Colors;
@@ -361,11 +337,11 @@ void ADCMaelstrom::BuildBasin()
             // Evaluate the duplicate seam column at exactly zero, avoiding
             // sin(2PI) round-off in position, normal and advected water UVs.
             const float A=Side==Sectors ? 0.f : UE_TWO_PI*static_cast<float>(Side)/Sectors;
-			const float R = FMath::Lerp(120.f, WaterEdgeRadius(A), static_cast<float>(Ring) / Rings);
+			const float R = FMath::Lerp(120.f, GetRimRadius(A)*1.10f, static_cast<float>(Ring) / Rings);
 			const FVector2D P(FMath::Cos(A) * R, FMath::Sin(A) * R);
-			const float Z = HeightAt(P);
-			const float DX = (HeightAt(P + FVector2D(60.f, 0.f)) - HeightAt(P - FVector2D(60.f, 0.f))) / 120.f;
-			const float DY = (HeightAt(P + FVector2D(0.f, 60.f)) - HeightAt(P - FVector2D(0.f, 60.f))) / 120.f;
+			const float Z = -40000.f;
+			const float DX = 0.f;
+			const float DY = 0.f;
 			Vertices.Add(FVector(P.X, P.Y, Z));
 			Normals.Add(FVector(-DX, -DY, 1.f).GetSafeNormal());
 			Tangents.Add(FProcMeshTangent(FVector(1.f, 0.f, DX).GetSafeNormal(), false));
@@ -373,7 +349,7 @@ void ADCMaelstrom::BuildBasin()
 			// Only swell displacement is a crest. Channel shaping must not paint
 			// the entire raised bank with an uninterrupted band of foam.
 			float Crest=0.f;
-			BreakerHeight(P,&Crest);
+			// Ordinary ocean whitecaps come from the live ocean simulation.
 			const float UpstreamAngle = A - (12.f / 3.5f) * FMath::Loge(FMath::Clamp(R / GetRimRadius(A), 0.08f, 1.f));
 			Colors.Add(FLinearColor(Crest, R / GetRimRadius(A), FMath::Clamp(-Z / Depth, 0.f, 1.f),
 				GetOverflowAmount(UpstreamAngle)*RimVariation(A)).ToFColor(false));
@@ -388,7 +364,7 @@ void ADCMaelstrom::BuildBasin()
     // Close the former1.2m centre opening with the same continuous water
     // surface. Shared first-ring vertices prevent a crack at the throat.
     const int32 Center=Vertices.Num();
-    Vertices.Add(FVector(0.f,0.f,HeightAt(FVector2D(0.f,0.f))));
+    Vertices.Add(FVector(0.f,0.f,-40000.f));
     Normals.Add(FVector::UpVector); UVs.Add(FVector2D(0.f,0.f));
     Colors.Add(FLinearColor(0.f,0.f,1.f,0.f).ToFColor(false));
     Tangents.Add(FProcMeshTangent(FVector::ForwardVector,false));
@@ -397,6 +373,45 @@ void ADCMaelstrom::BuildBasin()
 
 	// Rock walls and discrete cliff falls are built separately from the water.
 
+}
+
+void ADCMaelstrom::BuildCataract()
+{
+    TArray<FVector> V,N; TArray<FVector2D> UV;
+    TArray<int32> I; TArray<FColor> C; TArray<FProcMeshTangent> Tangents;
+    constexpr int32 Rows=240,Sides=64;
+    for(int32 Row=0;Row<=Rows;++Row)
+    {
+        const float F=static_cast<float>(Row)/Rows;
+        const float R=Radius*FMath::Lerp(1.08f,.52f,F);
+        const float Q=FMath::SmoothStep(.58f,.985f,R/Radius);
+        const float A=UE_PI-.40f*(1.f-Q);
+        const FVector2D D(FMath::Cos(A),FMath::Sin(A));
+        for(int32 Side=0;Side<=Sides;++Side)
+        {
+            const float Across=FMath::Lerp(-22000.f,22000.f,static_cast<float>(Side)/Sides);
+            // Use the same polar corridor as the excavated bed and route.
+            const float SideAngle=A+Across/R;
+            const FVector2D P(FMath::Cos(SideAngle)*R,FMath::Sin(SideAngle)*R);
+            const float ActualQ=FMath::SmoothStep(.58f,.985f,static_cast<float>(P.Size())/Radius);
+            // Sink the terminal overlap below the lake; both surfaces share
+            // the same wave material and coordinates, with no exposed join.
+            const float Z=FMath::Lerp(-40000.f,0.f,ActualQ)
+                -(1.f-FMath::SmoothStep(.56f,.58f,static_cast<float>(P.Size())/Radius))*150.f;
+            V.Add(FVector(P,Z)); UV.Add(P/10000.f);
+            const float T=FMath::Clamp((static_cast<float>(P.Size())/Radius-.58f)/.405f,0.f,1.f);
+            const float Slope=40000.f*6.f*T*(1.f-T)/(.405f*Radius);
+            C.Add(FLinearColor(FMath::Clamp(Slope*.8f,0.f,1.f),P.Size()/Radius,.35f,0.f).ToFColor(false));
+            if(Row<Rows&&Side<Sides)
+            {
+                const int32 K=Row*(Sides+1)+Side,J=K+Sides+1;
+                I.Append({K,J,K+1,K+1,J,J+1});
+            }
+        }
+    }
+    UKismetProceduralMeshLibrary::CalculateTangentsForMesh(V,I,UV,N,Tangents);
+    Cataract->CreateMeshSection(0,V,I,N,UV,C,Tangents,false);
+    UE_LOG(LogDC,Log,TEXT("CALDERA lake_level=-400m inlet_width=440m flat_lake=1 spiral_banks=0"));
 }
 
 void ADCMaelstrom::BuildTunnel()
@@ -656,6 +671,8 @@ void ADCMaelstrom::DisableLegacyEncounter()
 void ADCMaelstrom::SetStageVisible(bool bVisible)
 {
 	Basin->SetVisibility(bVisible);
+	Cataract->SetVisibility(bVisible);
+	InletBed->SetVisibility(bVisible,true);
 	CrestSpray->SetVisibility(bVisible);
 	Whitewater->SetVisibility(bVisible);
 	Falls->SetVisibility(bVisible);
@@ -751,15 +768,15 @@ void ADCMaelstrom::Tick(float DeltaSeconds)
 	{
 		if (bOceanHidden) { SetOceanVisible(true); }
 		const float ExitTime = Director->RideTime - EndingStart;
-		Exposure->BlendWeight = ExitTime >= 0.f && ExitTime < 2.f ? 1.f : 0.f;
-		Exposure->Settings.AutoExposureBias = 1.f + 5.f * FMath::Square(FMath::Clamp(1.f - ExitTime / 1.7f, 0.f, 1.f));
+		// The local exit fog masks the handoff; do not flash the exposure white.
+		Exposure->BlendWeight = 0.f;
 		if (ExitTime >= 0.f && Ocean.IsValid())
 		{
 			Ocean->SetActorHiddenInGame(false);
 			if (USceneComponent* OldSea = Director->GetSea()) { OldSea->SetVisibility(false, true); }
 		}
 	}
-	if (bActive) { UpdateBreakers(); UpdateWhitewater(); UpdateTerrainShadows(); }
+	if (bActive) { UpdateTerrainShadows(); }
 	UpdateProceduralFalls();
 	UpdateContacts(DeltaSeconds);
 	static const bool SceneReview=FParse::Param(FCommandLine::Get(),TEXT("DCSceneReview"));
@@ -778,12 +795,15 @@ void ADCMaelstrom::Tick(float DeltaSeconds)
 	} else if (Twisters.Num() || TwistersRaised || Boulders.Num() || BouldersThrown) { ClearTwisters(); }
 	if (Atmosphere) { Atmosphere->UpdateAtmosphere(this, Elapsed, bActive); }
 	WaterBridge.Update(GetWorld(), WaterMID, bActive);
-	if (bActive && Boss && Boss->ShouldExitEncounter(Elapsed))
+	if(CataractMID&&WaterMID)
 	{
-		// Let the defeated arms withdraw before the cut back to open sea.
-		Director->Seek(EndingStart);
+		CataractMID->CopyInterpParameters(WaterMID);
+		CataractMID->SetScalarParameterValue(TEXT("CataractFlow"),1.f);
+		CataractMID->SetScalarParameterValue(TEXT("FoamCoverage"),.62f);
 	}
+	UpdateExitTransition();
 	UpdateCliffPreview();
+	UpdateInletMist();
 	PreviousTime = Director->RideTime;
 }
 
@@ -920,6 +940,8 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
 	Tunnel->SetVisibility(Elapsed < 10.f);
 	UpdateThroat(ExitX);
 	Basin->SetVisibility(Elapsed >= -7.f);
+	Cataract->SetVisibility(Elapsed >= -7.f);
+	InletBed->SetVisibility(Elapsed >= -7.f,true);
 	Falls->SetVisibility(Elapsed >= -7.f);
 	RimLand->SetVisibility(Elapsed >= -7.f);
 	for (AActor* Landmark : Landmarks) { if (Landmark) { Landmark->SetActorHiddenInGame(Elapsed < -7.f); } }
@@ -1716,6 +1738,8 @@ void ADCMaelstrom::RestoreAtmosphere()
 
 void ADCMaelstrom::EndPlay(const EEndPlayReason::Type Reason)
 {
+	ClearInletMist();
+	ResetExitTransition();
 	ClearCliffPreview();
 	ClearProceduralFalls();
 	WaterBridge.Reset(WaterMID);

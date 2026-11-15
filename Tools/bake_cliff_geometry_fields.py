@@ -29,17 +29,21 @@ def vertex_fields(v, t):
     return normals,curvature
 
 
-def bake(source, output, width, height):
+def bake(source, output, width, height, full_ring=False):
     with np.load(source,allow_pickle=False) as f:
         v=f['vertices_m'].astype(float);t=f['triangles'].astype(np.int32)
         uv=f['uv0'].astype(float);color=f['vertex_rgba']
+    uv_min=np.array([-7.,-1.25]) if full_ring else np.zeros(2)
+    uv_max=np.array([13.3,2.35]) if full_ring else np.ones(2)
+    uv=(uv-uv_min)/(uv_max-uv_min)
     vn,vc=vertex_fields(v,t)
     n=width*height
     position=np.zeros((n,3),np.float32);normal=np.zeros((n,3),np.float32)
     curvature=np.zeros(n,np.float32);triangle=np.full(n,-1,np.int32)
     bary=np.zeros((n,3),np.float32);radius_min=np.full(n,np.inf);radius_max=np.full(n,-np.inf)
     pixeluv=uv*np.array([width,height])
-    selected=np.flatnonzero((color[t,0].max(axis=1)>0)&
+    coverage=np.ones(len(t),bool) if full_ring else color[t,0].max(axis=1)>0
+    selected=np.flatnonzero(coverage&
         (uv[t,0].max(axis=1)>=0)&(uv[t,0].min(axis=1)<=1)&
         (uv[t,1].max(axis=1)>=0)&(uv[t,1].min(axis=1)<=1))
     for begin in range(0,len(selected),40000):
@@ -92,7 +96,9 @@ def bake(source, output, width, height):
     error=np.linalg.norm(reconstructed-position[check],axis=1)
     metadata=dict(schema='directorscut.cliff_geometry_atlas.v1',source=str(source.resolve()),
         source_sha256=hashlib.sha256(source.read_bytes()).hexdigest(),width=width,height=height,
-        physical_width_m=497.418836818384,physical_height_m=280,z_min_m=-200,
+        physical_width_m=float(497.418836818384*(uv_max[0]-uv_min[0])),
+        physical_height_m=float(280*(uv_max[1]-uv_min[1])),z_min_m=float(280*uv_min[1]-200),
+        full_ring=full_ring,source_uv_min=uv_min.tolist(),source_uv_max=uv_max.tolist(),
         uv='pixel centres; rows increase +V; exact original uv0 including roof radial continuation',
         position_frame='arena XYZ metres',curvature='signed cotangent mean curvature, positive concavity, 1/metre',
         normal='area-weighted original triangle vertex normals, barycentrically interpolated; not imported split shading',
@@ -116,4 +122,5 @@ if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--source',type=Path,required=True);p.add_argument('--output',type=Path,required=True)
     p.add_argument('--width',type=int,default=2048);p.add_argument('--height',type=int,default=1024)
-    a=p.parse_args();bake(a.source,a.output,a.width,a.height)
+    p.add_argument('--full-ring',action='store_true')
+    a=p.parse_args();bake(a.source,a.output,a.width,a.height,a.full_ring)

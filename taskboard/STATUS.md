@@ -2,6 +2,14 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 15 Nov 11:45 Codex: simplified caldera lake, supported inlet and fog exit
+
+The owner's revised layout is implemented on `codex/maelstrom-saturday`: one level lake using DRW waves, one foaming descending inlet, a steady level ship orbit, and the selected maelstrom sky. Removed the spiral banks and retired perimeter falls. The inlet now has a continuous rock base and 68 bank boulders. The complete cliff toe extends below the lake, closing the open undersides exposed by the lower water level. Light shoreline mist and heavier drifting inlet mist gather after descent. Boss death is followed by local fog covering the scene swap, then clearing into open sea; no physical exit channel is required.
+
+Editor/Game builds, actual imported geometry/mask audit and installed-runtime validation pass. Native normal-game captures verify the opaque fog at 448–451, open sea restored at 458, and backward seek cleanup. [Current source identities, install/launch instructions, captures and limitations](CALDERA-LAKE-15NOV.md). `Play Caldera.cmd` launches the local game just before the reveal. This is a local playable change, not a newly packaged standalone release. Preserve the newer crew UI/names/voice work on main when integrating; this branch does not edit those systems.
+
+The lower cliff textures still stretch, the inlet remains visibly authored, and the boss needs a separate placement/gameplay pass for the lake. No claim that the reference's final visual quality or boss balance is achieved. Generated owned content stays ignored and must accompany integration locally. The earlier four pending cascade/mist/spray/whitewater material edits remain separate from this checkpoint.
+
 ## 15 Nov 10:23 Codex: unique cliff surface maps and measured stone detail
 
 Replaced the repeated scan colour with separate unique detailed-sector and full-ring geology maps. Added interrupted bedding, geometry-guided weathering, varied wet/dry roughness, and native-scale scan normal detail without the scan's colour motifs. Fixed context V mapping and capped layered normal slopes after actual close frames revealed excessive scratches. Geometry and crater scale are unchanged. [Actual screenshots, source inputs and reproduction](CLIFF-SURFACE-15NOV.md).
