@@ -1,6 +1,16 @@
 param([Parameter(Mandatory=$true)][string]$ProjectRoot)
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path -LiteralPath $ProjectRoot).Path
+$project = Get-Content -LiteralPath (Join-Path $root 'DirectorsCut.uproject') -Raw | ConvertFrom-Json
+if ($project.Plugins | Where-Object { $_.Name -eq 'LLMPlugin' -and $_.Enabled }) {
+    foreach ($relative in @('Plugins/LLMPlugin/LLMPlugin.uplugin','Plugins/LLMPlugin/ThirdParty/bin/Win64/ACE.SDK.dll')) {
+        if (!(Test-Path -LiteralPath (Join-Path $root $relative))) { throw "Missing ACE LLM dependency: $relative; run Tools/ACE/setup_llm_plugin.ps1" }
+    }
+    $engineSource = Get-Content -LiteralPath (Join-Path $root 'Plugins/LLMPlugin/Source/LLMPlugin/Private/LLMEngine.cpp') -Raw
+    if (!$engineSource.Contains('const EACELLMBackend PreferredBackend = EACELLMBackend::CUDA;')) {
+        throw 'ACE LLM separate-CUDA patch is missing. Apply Tools/ACE/setup_llm_plugin.ps1 before packaging.'
+    }
+}
 # These dynamically loaded assets are essential to the voyage, but licensed
 # source content is intentionally absent from Git-only checkouts.
 $required = @(

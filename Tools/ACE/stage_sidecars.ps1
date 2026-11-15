@@ -21,6 +21,9 @@ $project = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $notices = Join-Path $game 'ThirdPartyNotices'
 New-Item -ItemType Directory -Force -Path $notices | Out-Null
 Copy-Item -LiteralPath (Join-Path $project 'Docs/ThirdPartyVoices') -Destination $notices -Recurse
+if (Test-Path -LiteralPath (Join-Path $project 'Docs/ThirdPartyACELLM')) {
+    Copy-Item -LiteralPath (Join-Path $project 'Docs/ThirdPartyACELLM') -Destination $notices -Recurse
+}
 foreach ($plugin in @('NV_ACE_Reference','NvAudio2FaceMarkRegressive')) {
     $destination = Join-Path $notices $plugin
     New-Item -ItemType Directory -Force -Path $destination | Out-Null

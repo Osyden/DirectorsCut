@@ -1,0 +1,29 @@
+NVIDIA Game Agent SDK
+Copyright (c) 2026 NVIDIA Corporation & Affiliates
+
+Licensed under the Apache License, Version 2.0.
+See LICENSE.txt for the full license text. LICENSE.txt covers
+only NVIDIA-authored SDK code in this distribution.
+
+------------------------------------------------------------
+
+This distribution also includes third-party components under
+external/ and data/models/, in three categories:
+
+  - Open-source components (e.g. cpp-httplib, faiss, llama.cpp,
+    ONNX Runtime, OpenBLAS), each under its own upstream OSS
+    license.
+
+  - NVIDIA proprietary redistributables: CUDA Runtime DLLs under
+    the NVIDIA CUDA EULA. Not open source.
+
+  - Bundled model artifacts (Qwen3.5-4B, all-MiniLM-L6-v2,
+    multilingual-e5-base, ms-marco-MiniLM-L6-v2 cross-encoder),
+    each under its upstream model-card license plus any
+    additional usage notes from the model card.
+
+The complete enumeration, including upstream source URLs and
+full license text per component, is in THIRD-PARTY-LICENSES.md.
+
+The vendored llama.cpp fork carries additional NVIDIA modifications;
+see external/llamacpp/THIRD-PARTY-NOTICES.md for details.

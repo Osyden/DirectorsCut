@@ -1,5 +1,8 @@
 #include "DCVoice.h"
 #include "DCSpeech.h"
+#include "DCACEDialogue.h"
+#include "DCLanguageModelResponse.h"
+#include "DCDialoguePrompts.h"
 #include "ACEAudioCurveSourceComponent.h"
 #include "ACEBlueprintLibrary.h"
 #include "AsyncActionAnimateCharacter.h"
@@ -139,6 +142,7 @@ void ADCVoice::ShowSpeech(const FString& Speaker, const FString& Text, double Du
 
 void ADCVoice::ResetPendingSpeech()
 {
+	if (ACEDialogue) { ACEDialogue->CancelPending(); }
 	++SpeechEpoch;
 	SpeechQueue.Empty();
 	ClearACE();
@@ -194,6 +198,7 @@ void ADCVoice::BeginPlay()
 	FParse::Value(FCommandLine::Get(), TEXT("DCVoiceSmokeRepeats="), SmokeRepeats);
 	SmokeRepeats = FMath::Clamp(SmokeRepeats, 1, 10);
 	if (bSmokeTest) { bUseLLM = false; }
+	InitializeDialogueBackend();
 	if (bUseACE && (!ACEProvider.ToString().StartsWith(TEXT("LocalA2F-")) ||
 		!UACEBlueprintLibrary::GetAvailableA2FProviderNames().Contains(ACEProvider)))
 	{
@@ -249,7 +254,13 @@ void ADCVoice::CheckHealth()
 {
 	TWeakObjectPtr<ADCVoice> Weak(this);
 
-	if (!bLLMReady && bUseLLM)
+	if (bUseACEDialogue && bUseLLM)
+	{
+		const bool bReady = ACEDialogue && ACEDialogue->IsLLMReady();
+		if (bReady && !bLLMReady) { UE_LOG(LogDC, Display, TEXT("DIALOGUE_READY backend=ACE")); }
+		bLLMReady = bReady;
+	}
+	else if (!bLLMReady && bUseLLM)
 	{
 		auto Req = FHttpModule::Get().CreateRequest();
 		Req->SetURL(FString::Printf(TEXT("http://127.0.0.1:%d/health"), LLMPort));
@@ -268,7 +279,7 @@ void ADCVoice::CheckHealth()
 		Req->ProcessRequest();
 	}
 
-	if (!bSTTReady)
+	if (!bSTTReady && !FParse::Param(FCommandLine::Get(), TEXT("DCDialogueProbe")))
 	{
 		auto Req = FHttpModule::Get().CreateRequest();
 		Req->SetURL(FString::Printf(TEXT("http://127.0.0.1:%d/"), STTPort));
@@ -296,7 +307,7 @@ void ADCVoice::LaunchSidecars()
 
 	const FString LLMExe = Dir / TEXT("bin/llama/llama-server.exe");
 	const FString LLMModelPath = Dir / TEXT("models") / LLMModel;
-	if (bUseLLM && !bLLMReady && FPaths::FileExists(LLMExe) && FPaths::FileExists(LLMModelPath))
+	if (bUseLLM && !bUseACEDialogue && !bLLMReady && FPaths::FileExists(LLMExe) && FPaths::FileExists(LLMModelPath))
 	{
 		const FString Args = FString::Printf(TEXT("-m \"%s\" --host 127.0.0.1 --port %d -ngl 99 -c 4096"), *LLMModelPath, LLMPort);
 		LLMProc = FPlatformProcess::CreateProc(*LLMExe, *Args, false, true, true, nullptr, 0, *(Dir / TEXT("bin/llama")), nullptr);
@@ -305,7 +316,7 @@ void ADCVoice::LaunchSidecars()
 
 	const FString STTExe = Dir / TEXT("bin/whisper/Release/whisper-server.exe");
 	const FString STTModelPath = Dir / TEXT("models") / STTModel;
-	if (!bSTTReady && FPaths::FileExists(STTExe) && FPaths::FileExists(STTModelPath))
+	if (!bSTTReady && !FParse::Param(FCommandLine::Get(), TEXT("DCDialogueProbe")) && FPaths::FileExists(STTExe) && FPaths::FileExists(STTModelPath))
 	{
 		const FString Args = FString::Printf(TEXT("-m \"%s\" --host 127.0.0.1 --port %d -t 8"), *STTModelPath, STTPort);
 		STTProc = FPlatformProcess::CreateProc(*STTExe, *Args, false, true, true, nullptr, 0, *(Dir / TEXT("bin/whisper/Release")), nullptr);
@@ -636,62 +647,17 @@ void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const 
 		? FString::Printf(TEXT("What you saw: %s\nSituation: %s"), *Fallback, *Situation)
 		: FString::Printf(TEXT("Captain's order: \"%s\"\nWhat you are doing: %s\nSituation: %s"), *Context, *Fallback, *Situation);
 
-	TSharedRef<FJsonObject> Root = MakeShared<FJsonObject>();
-	TArray<TSharedPtr<FJsonValue>> Messages;
-	auto Msg = [&Messages](const TCHAR* InRole, const FString& Content)
-	{
-		TSharedRef<FJsonObject> M = MakeShared<FJsonObject>();
-		M->SetStringField(TEXT("role"), InRole);
-		M->SetStringField(TEXT("content"), Content);
-		Messages.Add(MakeShared<FJsonValueObject>(M));
-	};
-	Msg(TEXT("system"), System);
-	Msg(TEXT("user"), User);
-	Root->SetArrayField(TEXT("messages"), Messages);
-	Root->SetNumberField(TEXT("max_tokens"), 32);
-	Root->SetNumberField(TEXT("temperature"), 0.6);
-	TSharedRef<FJsonObject> Kwargs = MakeShared<FJsonObject>();
-	Kwargs->SetBoolField(TEXT("enable_thinking"), false);
-	Root->SetObjectField(TEXT("chat_template_kwargs"), Kwargs);
-
-	FString BodyStr;
-	const TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&BodyStr);
-	FJsonSerializer::Serialize(Root, Writer);
-
 	TWeakObjectPtr<ADCVoice> Weak(this);
 	const double Sent = FPlatformTime::Seconds();
 	const int32 Epoch = SpeechEpoch;
-	auto Req = FHttpModule::Get().CreateRequest();
-	Req->SetURL(FString::Printf(TEXT("http://127.0.0.1:%d/v1/chat/completions"), LLMPort));
-	Req->SetVerb(TEXT("POST"));
-	Req->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
-	Req->SetContentAsString(BodyStr);
-	Req->SetTimeout(LLMTimeout);
-	Req->OnProcessRequestComplete().BindLambda([Weak, Speaker, Fallback, Sent, Epoch](FHttpRequestPtr, FHttpResponsePtr Resp, bool bOk)
+	RequestDialogue(System, User, 32, .6f, false, LLMTimeout,
+		[Weak, Speaker, Fallback, Sent, Epoch](bool bOK, const FString& Content)
 	{
 		ADCVoice* V = Weak.Get();
 		if (!V || V->bEnding) { return; }
 		V->SynchronizeScene();
 		if (Epoch != V->SpeechEpoch || V->IsMenuOpen() || FPlatformTime::Seconds() - Sent > 12.0) { return; }
-		FString Line;
-		if (bOk && Resp.IsValid() && Resp->GetResponseCode() == 200)
-		{
-			TSharedPtr<FJsonObject> Json;
-			const TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(Resp->GetContentAsString());
-			if (FJsonSerializer::Deserialize(Reader, Json) && Json.IsValid())
-			{
-				const TArray<TSharedPtr<FJsonValue>>* Choices = nullptr;
-				if (Json->TryGetArrayField(TEXT("choices"), Choices) && Choices && Choices->Num())
-				{
-					const TSharedPtr<FJsonObject>* MsgObj = nullptr;
-					const TSharedPtr<FJsonObject> Choice = (*Choices)[0].IsValid() && (*Choices)[0]->Type == EJson::Object ? (*Choices)[0]->AsObject() : nullptr;
-					if (Choice.IsValid() && Choice->TryGetObjectField(TEXT("message"), MsgObj) && MsgObj)
-					{
-						(*MsgObj)->TryGetStringField(TEXT("content"), Line);
-					}
-				}
-			}
-		}
+		FString Line = bOK ? Content : FString();
 		// Keep only a clean single spoken line.
 		int32 ThinkEnd = Line.Find(TEXT("</think>"));
 		if (ThinkEnd != INDEX_NONE) { Line = Line.Mid(ThinkEnd + 8); }
@@ -708,7 +674,6 @@ void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const 
 		UE_LOG(LogDC, Verbose, TEXT("Voice: LLM line in %.0f ms"), (FPlatformTime::Seconds() - Sent) * 1000.0);
 		V->FinishLine(Speaker, Line);
 	});
-	Req->ProcessRequest();
 }
 
 void ADCVoice::FinishLine(const FString& Speaker, const FString& Text, bool bReport)
@@ -912,110 +877,21 @@ void ADCVoice::ResolveOrder(const FString& Text)
 {
 	// The keyword grammar did not recognise this. Ask the language model to turn it into the same
 	// structured intent, so loose phrasing ("somebody get on that wheel!") still works.
-	const FString System =
-		TEXT("You turn a ship captain's spoken order into JSON for the crew. The crew are Rex, Duncan and Ruby. ")
-		TEXT("Reply with JSON only, with exactly these keys: ")
-		TEXT("\"crew\" (Rex, Duncan, Ruby, or empty if nobody is named), ")
-		TEXT("\"station\" (helm, cannons, fire, rigging, none), ")
-		TEXT("\"side\" (port, starboard, none; left means port, right means starboard), ")
-		TEXT("\"action\" (man, fire, hold_fire, turn_port, turn_starboard, steady, extinguish, repair, report, none). ")
-		TEXT("helm: steering, the wheel, dodging, turning. cannons: guns, shooting, attacking ships or the monster. ")
-		TEXT("fire: putting out flames on deck (action extinguish). rigging: sails, ropes, mast (action repair). ")
-		TEXT("report: any question about the condition of the ship, the hull or the damage. Use action none if the words are not an order for the crew.");
-
-	TSharedRef<FJsonObject> Root = MakeShared<FJsonObject>();
-	TArray<TSharedPtr<FJsonValue>> Messages;
-	auto Msg = [&Messages](const TCHAR* InRole, const FString& Content)
-	{
-		TSharedRef<FJsonObject> M = MakeShared<FJsonObject>();
-		M->SetStringField(TEXT("role"), InRole);
-		M->SetStringField(TEXT("content"), Content);
-		Messages.Add(MakeShared<FJsonValueObject>(M));
-	};
-	Msg(TEXT("system"), System);
-	Msg(TEXT("user"), Text);
-	Root->SetArrayField(TEXT("messages"), Messages);
-	Root->SetNumberField(TEXT("max_tokens"), 80);
-	Root->SetNumberField(TEXT("temperature"), 0.0);
-	TSharedRef<FJsonObject> Format = MakeShared<FJsonObject>();
-	Format->SetStringField(TEXT("type"), TEXT("json_object"));
-	Root->SetObjectField(TEXT("response_format"), Format);
-	TSharedRef<FJsonObject> Kwargs = MakeShared<FJsonObject>();
-	Kwargs->SetBoolField(TEXT("enable_thinking"), false);
-	Root->SetObjectField(TEXT("chat_template_kwargs"), Kwargs);
-
-	FString BodyStr;
-	const TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&BodyStr);
-	FJsonSerializer::Serialize(Root, Writer);
+	const FString System = DCDialoguePrompts::OrderSystem();
 
 	TWeakObjectPtr<ADCVoice> Weak(this);
 	const double Sent = FPlatformTime::Seconds();
-	auto Req = FHttpModule::Get().CreateRequest();
-	Req->SetURL(FString::Printf(TEXT("http://127.0.0.1:%d/v1/chat/completions"), LLMPort));
-	Req->SetVerb(TEXT("POST"));
-	Req->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
-	Req->SetContentAsString(BodyStr);
-	Req->SetTimeout(4.f);
-	Req->OnProcessRequestComplete().BindLambda([Weak, Text, Sent](FHttpRequestPtr, FHttpResponsePtr Resp, bool bOk)
+	const int32 Epoch = SpeechEpoch;
+	RequestDialogue(System, Text, 80, 0.f, true, 4.f,
+		[Weak, Text, Sent, Epoch](bool bOK, const FString& Content)
 	{
 		ADCVoice* V = Weak.Get();
 		if (!V || V->bEnding) { return; }
+		V->SynchronizeScene();
+		if (Epoch != V->SpeechEpoch || V->IsMenuOpen()) { return; }
 		FDCIntent Intent;
 		Intent.RawText = Text;
-
-		FString Content;
-		if (bOk && Resp.IsValid() && Resp->GetResponseCode() == 200)
-		{
-			TSharedPtr<FJsonObject> Json;
-			const TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(Resp->GetContentAsString());
-			if (FJsonSerializer::Deserialize(Reader, Json) && Json.IsValid())
-			{
-				const TArray<TSharedPtr<FJsonValue>>* Choices = nullptr;
-				if (Json->TryGetArrayField(TEXT("choices"), Choices) && Choices && Choices->Num())
-				{
-					const TSharedPtr<FJsonObject>* MsgObj = nullptr;
-					const TSharedPtr<FJsonObject> Choice = (*Choices)[0].IsValid() && (*Choices)[0]->Type == EJson::Object ? (*Choices)[0]->AsObject() : nullptr;
-					if (Choice.IsValid() && Choice->TryGetObjectField(TEXT("message"), MsgObj) && MsgObj)
-					{
-						(*MsgObj)->TryGetStringField(TEXT("content"), Content);
-					}
-				}
-			}
-		}
-		// The model's answer is itself JSON.
-		TSharedPtr<FJsonObject> Parsed;
-		const int32 Brace = Content.Find(TEXT("{"));
-		if (Brace != INDEX_NONE)
-		{
-			const TSharedRef<TJsonReader<>> Inner = TJsonReaderFactory<>::Create(Content.Mid(Brace));
-			FJsonSerializer::Deserialize(Inner, Parsed);
-		}
-		if (Parsed.IsValid())
-		{
-			FString CrewName, Station, Side, Action;
-			Parsed->TryGetStringField(TEXT("crew"), CrewName);
-			Parsed->TryGetStringField(TEXT("station"), Station);
-			Parsed->TryGetStringField(TEXT("side"), Side);
-			Parsed->TryGetStringField(TEXT("action"), Action);
-			Station = Station.ToLower(); Side = Side.ToLower(); Action = Action.ToLower();
-
-			Intent.CrewName = DCSpeech::CanonicalCrewName(CrewName);
-			Intent.Side = Side == TEXT("port") ? EDCSide::Port : (Side == TEXT("starboard") ? EDCSide::Starboard : EDCSide::None);
-			Intent.Station = Station == TEXT("helm") ? EDCStationType::Helm : Station == TEXT("cannons") ? EDCStationType::Cannons
-				: Station == TEXT("fire") ? EDCStationType::Fire : Station == TEXT("rigging") ? EDCStationType::Rigging : EDCStationType::None;
-			Intent.Action = Action == TEXT("man") ? EDCAction::Man : Action == TEXT("fire") ? EDCAction::Fire : Action == TEXT("hold_fire") ? EDCAction::HoldFire
-				: Action == TEXT("turn_port") ? EDCAction::TurnPort : Action == TEXT("turn_starboard") ? EDCAction::TurnStarboard : Action == TEXT("steady") ? EDCAction::Steady
-				: Action == TEXT("extinguish") ? EDCAction::Extinguish : Action == TEXT("repair") ? EDCAction::Repair : Action == TEXT("report") ? EDCAction::Report : EDCAction::None;
-
-			// Fill the obvious gaps so a half-specified answer still does something sensible.
-			if (Intent.Action == EDCAction::TurnPort || Intent.Action == EDCAction::TurnStarboard || Intent.Action == EDCAction::Steady) { Intent.Station = EDCStationType::Helm; }
-			if (Intent.Action == EDCAction::Extinguish) { Intent.Station = EDCStationType::Fire; }
-			if (Intent.Action == EDCAction::Repair) { Intent.Station = EDCStationType::Rigging; }
-			if (Intent.Action == EDCAction::Fire || Intent.Action == EDCAction::HoldFire) { Intent.Station = EDCStationType::Cannons; }
-			if (Intent.Station == EDCStationType::Fire && Intent.Action == EDCAction::Man) { Intent.Action = EDCAction::Extinguish; }
-			if (Intent.Station == EDCStationType::Rigging && Intent.Action == EDCAction::Man) { Intent.Action = EDCAction::Repair; }
-			Intent.bValid = Intent.Action != EDCAction::None && (Intent.Station != EDCStationType::None || Intent.Action == EDCAction::Report);
-		}
+		if (bOK) { DCLanguageModelResponse::ParseIntent(Content, Text, Intent); }
 		UDCCrewSubsystem* CrewSub = V->GetWorld()->GetSubsystem<UDCCrewSubsystem>();
 		if (!Intent.bValid && CrewSub)
 		{
@@ -1030,5 +906,4 @@ void ADCVoice::ResolveOrder(const FString& Text)
 			Crew->ExecuteIntent(Intent);
 		}
 	});
-	Req->ProcessRequest();
 }
