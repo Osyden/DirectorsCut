@@ -10,6 +10,9 @@ ignored by neutral clay. Both meshes must use the same orthonormal frame.
 Only a rigid frame transform is applied. No heightfield projection, repair,
 decimation, displacement or geometry smoothing is performed. Render labels and
 report distinguish flat versus optional angle-based shading. No Unreal launch.
+Optional --rock-source uses co-registered marble_cliff_01 surface maps only on
+explicit face_kind=1 triangles, at source physical U/Z tile size. It never adds
+renderer displacement; neutral clay remains the default and geometry control.
 """
 import argparse
 import hashlib
@@ -45,7 +48,8 @@ def load_mesh(path):
     chart = (vertices-origin)@basis
     return {"path": str(Path(path).resolve()), "sha256": hashlib.sha256(Path(path).read_bytes()).hexdigest(),
             "vertices": vertices, "triangles": triangles, "chart": chart, "origin": origin, "basis": basis,
-            "metadata": json.loads(str(data.get("metadata_json", "{}")))}
+            "metadata": json.loads(str(data.get("metadata_json", "{}"))),
+            "face_kind": data.get("face_kind")}
 
 
 def topology_audit(mesh, surface_mode=False):
@@ -170,7 +174,43 @@ def surface_views(baseline, candidate, close_center=None):
     }
 
 
-def render_pair(baseline, candidate, output, cameras, samples, mode, angle, context_water=None):
+def rock_review_material(source_dir, tile_metres):
+    """Optional co-registered Poly Haven surface shading; never displace geometry."""
+    import bpy
+    material = bpy.data.materials.new("Poly Haven marble_cliff_01; native physical tile")
+    material.use_nodes = True
+    nodes, links = material.node_tree.nodes, material.node_tree.links
+    shader = nodes.get("Principled BSDF")
+    uv = nodes.new("ShaderNodeUVMap")
+    uv.uv_map = "CliffSourceUZ"
+    report = {"source_dir": str(source_dir.resolve()), "tile_metres": tile_metres,
+              "coordinates": "Original source-chart U/Z metres, shared UV for every map",
+              "face_selection": "face_kind == 1 (exposed cut); other faces retain neutral clay",
+              "geometry_displacement": False, "normal_strength": 1., "maps": {}}
+    for role, filename, space in (
+            ("diffuse", "marble_cliff_01_diff_2k.jpg", "sRGB"),
+            ("normal", "marble_cliff_01_nor_gl_2k.exr", "Non-Color"),
+            ("roughness", "marble_cliff_01_rough_2k.exr", "Non-Color")):
+        path = source_dir/filename
+        image = bpy.data.images.load(str(path.resolve()), check_existing=True)
+        image.colorspace_settings.name = space
+        texture = nodes.new("ShaderNodeTexImage")
+        texture.image, texture.extension = image, "REPEAT"
+        links.new(uv.outputs["UV"], texture.inputs["Vector"])
+        if role == "normal":
+            normal = nodes.new("ShaderNodeNormalMap")
+            normal.space, normal.uv_map = "TANGENT", "CliffSourceUZ"
+            normal.inputs["Strength"].default_value = 1.
+            links.new(texture.outputs["Color"], normal.inputs["Color"])
+            links.new(normal.outputs["Normal"], shader.inputs["Normal"])
+        else:
+            links.new(texture.outputs["Color"], shader.inputs["Base Color" if role == "diffuse" else "Roughness"])
+        report["maps"][role] = {"path": str(path.resolve()), "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                                "colorspace": space, "size_pixels": list(image.size)}
+    return material, report
+
+
+def render_pair(baseline, candidate, output, cameras, samples, mode, angle, context_water=None, rock_source=None, rock_tile=4.299351692199707):
     import bpy
     from mathutils import Vector
     scene = reset_scene(1440, 960, samples)
@@ -196,6 +236,7 @@ def render_pair(baseline, candidate, output, cameras, samples, mode, angle, cont
         water_shader.inputs['Base Color'].default_value = (.035, .09, .12, 1)
         water_shader.inputs['Roughness'].default_value = .6
         water_mesh.materials.append(water_material)
+    rock_material, rock_report = rock_review_material(rock_source, rock_tile) if rock_source else (None, None)
     objects, normal_reports = {}, {}
     for stage, data in (("baseline", baseline), ("fractured", candidate)):
         mesh = bpy.data.meshes.new(stage)
@@ -204,6 +245,15 @@ def render_pair(baseline, candidate, output, cameras, samples, mode, angle, cont
         obj = bpy.data.objects.new(stage, mesh)
         scene.collection.objects.link(obj)
         mesh.materials.append(material)
+        if rock_material:
+            kinds = data.get("face_kind")
+            if kinds is None or np.asarray(kinds).shape != (len(mesh.polygons),):
+                raise RuntimeError("Rock review requires an explicit face_kind for each source triangle")
+            mesh.materials.append(rock_material)
+            mesh.polygons.foreach_set("material_index", (np.asarray(kinds) == 1).astype(np.int32))
+            uv = mesh.uv_layers.new(name="CliffSourceUZ")
+            coordinates = data["chart"][data["triangles"].ravel()][:, [0, 2]]/rock_tile
+            uv.data.foreach_set("uv", coordinates.astype(np.float32).ravel())
         normal_reports[stage] = configure_mesh_normals(mesh, mode, angle)
         obj.hide_render = True
         objects[stage] = obj
@@ -237,7 +287,8 @@ def render_pair(baseline, candidate, output, cameras, samples, mode, angle, cont
                           f"Physical bounds {dims[0]:.1f} x {dims[1]:.1f} x {dims[2]:.1f} m | identical camera and raking light"),
                          f"Source {data['sha256'][:10]} | normals {mode}"+(f" {angle:g}deg" if mode=="angle" else "")+
                          (" | measured mean water, no waves" if context_water is not None else
-                          " | renderer adds no displacement or geometry smoothing"))
+                          " | renderer adds no displacement or geometry smoothing")+
+                         (f" | cut: actual rock maps, {rock_tile:.3f}m tile" if rock_material else ""))
             scene.render.filepath = str(output/f"{name}_{stage}.png")
             bpy.ops.render.render(write_still=True)
             for child in list(camera.children):
@@ -246,6 +297,8 @@ def render_pair(baseline, candidate, output, cameras, samples, mode, angle, cont
         bpy.data.objects.remove(camera, do_unlink=True)
         for marker in markers:
             bpy.data.objects.remove(marker, do_unlink=True)
+    if rock_report:
+        normal_reports["surface_material"] = rock_report
     return normal_reports
 
 
@@ -263,12 +316,16 @@ def main():
     parser.add_argument("--views", nargs="+", help="Render selected named cameras only")
     parser.add_argument("--audit-only", action="store_true")
     parser.add_argument("--context-water", type=Path, help="Optional original-frame measured mean-water mesh; context only, no terrain edits")
+    parser.add_argument("--rock-source", type=Path, help="Optional verified Poly Haven marble_cliff_01 maps; exposed face_kind1 only, no displacement")
+    parser.add_argument("--rock-tile-metres", type=float, default=4.299351692199707, help="Physical tile width/height from the source blend; never scene-scale texture magnification")
     args = parser.parse_args(sys.argv[sys.argv.index("--")+1:] if "--" in sys.argv else None)
     output = args.output.resolve()
     if "saved" not in [p.lower() for p in output.parts]:
         parser.error("Generated output must be under ignored Saved")
     if not 1 <= args.samples <= 128 or not 0 < args.normal_angle_deg < 180:
         parser.error("Invalid samples or normal angle")
+    if not np.isfinite(args.rock_tile_metres) or args.rock_tile_metres <= 0:
+        parser.error("Physical rock tile size must be positive and finite")
     baseline, candidate = load_mesh(args.baseline), load_mesh(args.candidate)
     context_water = load_mesh(args.context_water) if args.context_water else None
     if context_water is not None:
@@ -302,7 +359,7 @@ def main():
     # Invalid candidates may be rendered diagnostically, but never silently
     # repaired or certified. Their exact defects stay visible in the report.
     if not args.audit_only:
-        report["normals"] = render_pair(baseline, candidate, output, cameras, args.samples, args.normal_mode, args.normal_angle_deg, context_water)
+        report["normals"] = render_pair(baseline, candidate, output, cameras, args.samples, args.normal_mode, args.normal_angle_deg, context_water, args.rock_source, args.rock_tile_metres)
         report["render"] = {"engine": "Cycles", "device": "CPU", "threads": 8, "samples": args.samples, "normal_mode": args.normal_mode}
     (output/"review.json").write_text(json.dumps(report, indent=2)+"\n", encoding="utf-8")
     print(json.dumps({"output": str(output), "audit_passed": report["audit_passed"],
