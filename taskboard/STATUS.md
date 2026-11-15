@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 15 Nov Codex: source-shaped fractured bedrock, larger coherent rock masses
+
+- Corrected the reference's inactive fracture normals and unreliable bounds, then generated real clusters inside the measured curved cliff. Cube/panel placement and a dense rubble variant were rejected. Larger source-shaped masses now give useful planes and ledges; the abrupt exposure boundary and thin fins still prevent final visual approval. [Actual work, renders and next step](CRATER-CURVED-BEDROCK-15NOV.md).
+- The final repaired solid is one connected component with all7,488 crop-guard vertices preserved. Its original open face has28,936 triangles and exactly matching source boundary edges. Actual flat/angle and1500m reviews are retained; no normal-game terrain, water, sky/light, boss or early-game changes. No Unreal import/build or performance claim this pass.
+
 ## 15 Nov Codex: surface-detail trials rejected; rock-fracturing reference reproduced
 
 - Refined the full 500 m sector and rendered two procedural-detail trials, then a separate radial-shear crop. All remain too soft/repetitive; none entered the game. Guards, masks and original-triangle contact checks distinguish numerical validity from the failed appearance. [Current evidence and next algorithm](CRATER-ROCK-STRUCTURE-15NOV.md).
