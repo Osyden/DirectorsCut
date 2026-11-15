@@ -43,6 +43,49 @@ function Read-Text([string]$Path) {
     return ''
 }
 
+function Get-ConversationSpeechTimings([string]$Log, $Cases) {
+    $rows = @()
+    for ($index=0; $index -lt @($Cases).Count; $index++) {
+        $rows += [pscustomobject]@{ index=$index; speaker=$Cases[$index].speaker; question=$Cases[$index].question;
+            time_to_speech_ms=$null; request_utc=$null; speaking_utc=$null }
+    }
+    $pending = $null
+    foreach ($line in $Log -split "`n") {
+        $eventTime = $null
+        if ($line -match '^\[(\d{4}\.\d{2}\.\d{2}-\d{2}\.\d{2}\.\d{2}:\d{3})\]') {
+            $parsed = [DateTime]::MinValue
+            $styles = [Globalization.DateTimeStyles]::AssumeUniversal -bor [Globalization.DateTimeStyles]::AdjustToUniversal
+            if ([DateTime]::TryParseExact($Matches[1], 'yyyy.MM.dd-HH.mm.ss:fff', [Globalization.CultureInfo]::InvariantCulture, $styles, [ref]$parsed)) { $eventTime=$parsed }
+        }
+        if ($line -match 'CONVERSATION_REQUEST speaker=(Rex|Duncan|Ruby) ') {
+            $pending = @{ speaker=$Matches[1]; requested=$eventTime; reply=$null; queued=0; starts=0; speaking=$null }
+        } elseif ($pending -and $line -match 'CONVERSATION_REPLY speaker=(Rex|Duncan|Ruby) .* text=(.*)$') {
+            if ($Matches[1] -eq $pending.speaker) { $pending.reply=$Matches[2].TrimEnd() }
+        } elseif ($pending -and $pending.reply -and $line -match 'Voice: ACE queued (Rex|Duncan|Ruby) ') {
+            if ($Matches[1] -eq $pending.speaker) { $pending.queued++ }
+        } elseif ($pending -and $pending.reply -and $line -match 'Voice: ACE speaking (Rex|Duncan|Ruby)\s*$') {
+            if ($Matches[1] -eq $pending.speaker -and $pending.queued -gt 0) {
+                $pending.starts++; $pending.speaking=$eventTime
+            }
+        } elseif ($line -match 'CONVERSATION_REVIEW_CASE index=(\d+) speaker=(Rex|Duncan|Ruby) .* answer=(.*)$') {
+            $caseIndex=[int]$Matches[1]; $speaker=$Matches[2]; $answer=$Matches[3].TrimEnd()
+            # Only a completed reviewed case can admit a timing. Extra playback markers
+            # make the interval ambiguous; initial warmup/authored reports never count.
+            if ($pending -and $caseIndex -lt $rows.Count -and $speaker -eq $pending.speaker -and
+                $speaker -eq $Cases[$caseIndex].speaker -and $answer -ceq $pending.reply -and
+                $answer -ceq $Cases[$caseIndex].answer -and $pending.queued -eq 1 -and $pending.starts -eq 1 -and
+                $null -ne $pending.requested -and $null -ne $pending.speaking -and $null -ne $eventTime -and
+                $pending.speaking -ge $pending.requested -and $eventTime -ge $pending.speaking) {
+                $rows[$caseIndex].time_to_speech_ms=[Math]::Round(($pending.speaking-$pending.requested).TotalMilliseconds,2)
+                $rows[$caseIndex].request_utc=$pending.requested.ToString('o')
+                $rows[$caseIndex].speaking_utc=$pending.speaking.ToString('o')
+            }
+            $pending=$null
+        }
+    }
+    return $rows
+}
+
 function Update-OwnedTree($Owned) {
     $snapshot = @(Get-CimInstance Win32_Process -ErrorAction Stop)
     # Expand only from a currently live parent whose creation time matches our record.
@@ -140,7 +183,10 @@ function Invoke-NativeReview([string]$SelectedPhase, $Model, [string]$Directory)
         $record.wall_ms = [Math]::Round($timer.Elapsed.TotalMilliseconds,2)
         $runtime = Read-Text $runtimePath
         $evidence = $runtime + (Read-Text $stdoutPath) + (Read-Text $stderrPath)
-        $record.gpu_offload_verified = $evidence -match 'offloaded [1-9][0-9]*/[0-9]+ layers to GPU'
+        $record.gpu_offload_layers = @([regex]::Matches($evidence, 'offloaded ([0-9]+)/([0-9]+) layers to GPU') | ForEach-Object {
+            [pscustomobject]@{ offloaded=[int]$_.Groups[1].Value; total=[int]$_.Groups[2].Value; evidence=$_.Value }
+        })
+        $record.gpu_offload_verified = @($record.gpu_offload_layers | Where-Object offloaded -gt 0).Count -gt 0
         $record.selected_ace_verified = $runtime -match 'DIALOGUE_BACKEND selected=ACE enabled=1'
         if (!$record.gpu_offload_verified) { $record.errors += 'No actual GPU layer-offload evidence' }
         if (!$record.selected_ace_verified) { $record.errors += 'Selected ACE backend not confirmed' }
@@ -174,6 +220,9 @@ function Invoke-NativeReview([string]$SelectedPhase, $Model, [string]$Directory)
             $record.completed_questions = @($report.results).Count
             $record.generation_latency = Get-Latencies @($report.results | ForEach-Object generation_ms)
             $record.latency_scope = 'Question submission to history observation, including any queue wait; not token throughput or first-token latency'
+            $record.speech_timings = @(Get-ConversationSpeechTimings $runtime @($report.results))
+            $record.time_to_speech_latency = Get-Latencies @($record.speech_timings | ForEach-Object time_to_speech_ms)
+            $record.time_to_speech_scope = 'UTC CONVERSATION_REQUEST to matching ACE speaking, bracketed by generated reply and completed review case; includes generation, Piper and A2F buffering. Missing/ambiguous markers are null, not zero.'
             $samples = @{}
             $avatars = @{ BP_Finch_C='Rex'; BP_Marlow_C='Duncan'; BP_Odessa_C='Ruby' }
             $verifiedClips = 0
