@@ -38,6 +38,12 @@ int main(){
    Check(p.X>=0&&p.X<=width&&p.Y>=0&&p.Y<=height,"marker stays on viewport");
    Check(p.LabelX>=0&&p.LabelY>=0&&p.LabelX+288*scale<=width&&p.LabelY+66*scale<=height,"readable label stays in viewport");
    Check(p.AtEdge==(std::abs(p.X-x)>1||std::abs(p.Y-y)>1),"clamped target gets directional arrow");
+   for(bool urgent:{false,true})for(bool projected:{false,true}){
+    auto b=PlaceBody(x,y,projected,width,height,scale,urgent);
+    Check(b.X>=0&&b.X<=width&&b.Y>=0&&b.Y+47*scale<=height,"body awareness stays visible at all view edges");
+    Check(projected||b.AtEdge,"body behind any station camera retains an edge arrow");
+    Check(!urgent||!b.AtEdge||std::abs(b.Y-(height-260*scale))<.01f,"quiet body arrow moves below urgent attack guidance");
+   }
   }
  }
  Check(Place(800,450,false,1600,900,1).AtEdge,"behind-camera target retains directional cue");

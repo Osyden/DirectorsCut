@@ -18,6 +18,13 @@ namespace DCBossMarkerPolicy
             !Projected || std::abs(PX-X)>1 || std::abs(PY-Y)>1};
     }
     inline float Urgency(float Remaining) { return std::clamp((3.f-Remaining)/3.f,0.f,1.f); }
+    inline FPlacement PlaceBody(float X,float Y,bool Projected,float Width,float Height,float Scale,bool Urgent)
+    {
+        auto P=Place(X,Y,Projected,Width,Height,Scale);
+        // Keep the quiet body edge cue below the urgent attack's edge cue.
+        if(Urgent && P.AtEdge) P.Y=Height-260.f*Scale;
+        return P;
+    }
     inline bool ShowTarget(bool HasTarget,bool Open,bool Interrupted,bool Cancelled,bool Applied)
     { return HasTarget && Open && !Interrupted && !Cancelled && !Applied; }
 }

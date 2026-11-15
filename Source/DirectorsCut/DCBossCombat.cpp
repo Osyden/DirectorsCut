@@ -539,11 +539,20 @@ void ADCBossCombat::DrawStatus(AHUD* HUD,UCanvas* Canvas)
     }
     if(BodyTarget.IsValid() && PC && PC->PlayerCameraManager)
     {
-        FVector2D BodyScreen, WeakScreen;
+        FVector2D BodyScreen=FVector2D::ZeroVector, WeakScreen;
         const bool Projected=PC->ProjectWorldLocationToScreen(BodyTarget->GetActorLocation(),BodyScreen);
-        const bool NearWeak=ShowTarget && PC->ProjectWorldLocationToScreen(Attack.Target->GetActorLocation(),WeakScreen)
+        if(!Projected)
+        {
+            const FVector Delta=BodyTarget->GetActorLocation()-PC->PlayerCameraManager->GetCameraLocation();
+            const FRotationMatrix View(PC->PlayerCameraManager->GetCameraRotation());
+            BodyScreen=FVector2D(FVector::DotProduct(Delta,View.GetUnitAxis(EAxis::Y))<0?-100.f:Canvas->SizeX+100.f,Canvas->SizeY*.45f);
+        }
+        const bool NearWeak=Projected && ShowTarget && PC->ProjectWorldLocationToScreen(Attack.Target->GetActorLocation(),WeakScreen)
             && FVector2D::Distance(BodyScreen,WeakScreen)<145.f*S;
-        if(Projected && !NearWeak && BodyScreen.X>36*S && BodyScreen.X<Canvas->SizeX-36*S && BodyScreen.Y>215*S && BodyScreen.Y<Canvas->SizeY-200*S)
+        const auto BodyPlacement=DCBossMarkerPolicy::PlaceBody(BodyScreen.X,BodyScreen.Y,Projected,Canvas->SizeX,Canvas->SizeY,S,ShowTarget);
+        const FVector2D UnclampedBody=BodyScreen;
+        BodyScreen=FVector2D(BodyPlacement.X,BodyPlacement.Y);
+        if(!NearWeak)
         {
             const FLinearColor C=Now-BodyHitAt<.6f?FLinearColor(.45f,1.f,.75f):FLinearColor(.65f,.87f,.90f,.85f);
             const float R=17.f*S;
@@ -554,9 +563,22 @@ void ADCBossCombat::DrawStatus(AHUD* HUD,UCanvas* Canvas)
                 HUD->DrawLine(BodyScreen.X-R,BodyScreen.Y,BodyScreen.X,BodyScreen.Y+Sign*R,C,2*S);
                 HUD->DrawLine(BodyScreen.X,BodyScreen.Y+Sign*R,BodyScreen.X+R,BodyScreen.Y,C,2*S);
             }
-            const FString Label=Now-BodyHitAt<.6f?TEXT("BODY HIT"):(ShowTarget?TEXT("BODY"):TEXT("BODY - KEEP FIRING"));
-            const float LabelX=FMath::Clamp(static_cast<float>(BodyScreen.X-78*S),20*S,Canvas->SizeX-180*S);
-            HUD->DrawRect(FLinearColor(.012f,.022f,.03f,.8f),LabelX,BodyScreen.Y+22*S,160*S,25*S);
+            if(BodyPlacement.AtEdge)
+            {
+                const FVector2D D=(UnclampedBody-BodyScreen).GetSafeNormal(),Side(-D.Y,D.X);
+                const FVector2D Tip=BodyScreen+D*12*S,Tail=BodyScreen-D*6*S;
+                for(int Sign:{-1,1})
+                {
+                    const FVector2D End=Tail+Side*Sign*9*S;
+                    HUD->DrawLine(Tip.X,Tip.Y,End.X,End.Y,FLinearColor::Black,5*S);
+                    HUD->DrawLine(Tip.X,Tip.Y,End.X,End.Y,C,2*S);
+                }
+            }
+            const bool Port=Director->DeckTransform.InverseTransformPosition(BodyTarget->GetActorLocation()).Y<0;
+            const FString Label=Now-BodyHitAt<.6f?TEXT("BODY HIT"):(ShowTarget?TEXT("BODY"):
+                FString::Printf(TEXT("BODY - %s CANNONS"),Port?TEXT("PORT"):TEXT("STARBOARD")));
+            const float LabelX=FMath::Clamp(static_cast<float>(BodyScreen.X-100*S),20*S,Canvas->SizeX-238*S);
+            HUD->DrawRect(FLinearColor(.012f,.022f,.03f,.8f),LabelX,BodyScreen.Y+22*S,218*S,25*S);
             HUD->DrawText(Label,C,LabelX+7*S,BodyScreen.Y+25*S,GEngine->GetSmallFont(),S);
         }
     }
@@ -609,7 +631,10 @@ void ADCBossCombat::DrawStatus(AHUD* HUD,UCanvas* Canvas)
         FString Title=HitMarkerText, Instruction;
         if(!ShowHit)
         {
-            const TCHAR* Battery=Point.Y<0?TEXT("PORT"):TEXT("STARBOARD");
+            const bool Port=Director->DeckTransform.InverseTransformPosition(Point).Y<0;
+            const TCHAR* Battery=Port?TEXT("PORT"):TEXT("STARBOARD");
+            const auto* Guns=ADCGunnery::Get(this);
+            const bool InCannonArc=Guns && Guns->CanAimGun(Guns->GetPlayerGun(Port?EDCSide::Port:EDCSide::Starboard),Attack.Target->GetActorLocation());
             Title=Rising?TEXT("!  TENTACLE RISING"):(Attack.Kind==DCBossTimeline::EAttack::Mouth?TEXT("SHOOT THE MOUTH"):
                 (Attack.Kind==DCBossTimeline::EAttack::Slam?TEXT("SHOOT SLAM JOINT"):TEXT("SHOOT THIS JOINT")));
             if(P.AtEdge) Title=Rising?FString::Printf(TEXT("%s: TENTACLE RISING"),Battery):
@@ -619,6 +644,16 @@ void ADCBossCombat::DrawStatus(AHUD* HUD,UCanvas* Canvas)
             if(RecentHit && !Rising) Instruction=FString::Printf(TEXT("HIT! %.0f MORE  |  %.1fs TO STOP IT"),FMath::CeilToFloat(Attack.Remaining),Seconds);
             if(Attack.Kind==DCBossTimeline::EAttack::Obstacle)
                 Instruction=FString::Printf(TEXT("1 HIT or STEER %s  |  %.1fs"),Attack.Side>0?TEXT("PORT"):TEXT("STARBOARD"),FMath::Max(0.f,Seconds-3.f));
+            if(!Rising && (P.AtEdge || !InCannonArc))
+            {
+                const TCHAR* Kind=Attack.Kind==DCBossTimeline::EAttack::Mouth?TEXT("MOUTH"):
+                    Attack.Kind==DCBossTimeline::EAttack::Slam?TEXT("SLAM JOINT"):TEXT("TENTACLE JOINT");
+                Title=FString::Printf(TEXT("%s: %s"),Battery,Kind);
+                if(Attack.Kind==DCBossTimeline::EAttack::Obstacle)
+                    Instruction=FString::Printf(TEXT("STEER %s or prepare cannon | %.1fs"),Attack.Side>0?TEXT("PORT"):TEXT("STARBOARD"),FMath::Max(0.f,Seconds-3.f));
+                else Instruction=InCannonArc?FString::Printf(TEXT("TURN TO %s CANNONS | %.1fs"),Battery,Seconds):
+                    FString::Printf(TEXT("WAIT FOR CANNON SHOT | %.1fs"),Seconds);
+            }
         }
         else Instruction=Attack.Interrupted?TEXT("ATTACK STOPPED - READY NEXT GUN"):TEXT("RELOAD OR ORDER CREW TO FIRE");
         HUD->DrawText(Title,Color,P.LabelX+13*S,P.LabelY+9*S,GEngine->GetSmallFont(),1.35f*S);

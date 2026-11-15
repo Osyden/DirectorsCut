@@ -113,7 +113,7 @@ void ADCLeviathan::ResetEncounter()
     PainAudio->Stop(); Arms->ClearAllMeshSections();
     if(AuthoredArm) AuthoredArm->SetVisibility(false);
     for(FArm& Arm:ArmState) Arm=FArm();
-    ArmsBroken=0; DefeatedAt=-1.f; bAnnounced=false; LastElapsed=-1.f;
+    ArmsBroken=0; DefeatedAt=-1.f; bSighted=false; bAnnounced=false; LastElapsed=-1.f;
     CurrentPose=INDEX_NONE; LastHitAt=-100.f; NextBodyContact=-100.f;
 }
 
@@ -148,6 +148,16 @@ void ADCLeviathan::UpdateEncounter(float Elapsed, const FTransform& Arena, float
     const bool JustDefeated=DefeatedAt<0.f && Elapsed>=FinaleAt;
     if(JustDefeated) DefeatedAt=FinaleAt;
     UpdateBody(Elapsed,Arena);
+	// Announce the actual reveal, never the earlier caldera phase transition.
+	// Do not replay introductory warnings when a review/seek starts mid-fight.
+	if (!bSighted && !IsHidden() && Elapsed >= FirstPeekAt && Elapsed < FirstPeekAt + 6.f)
+	{
+		if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
+		{
+			bSighted = true;
+			Crew->Report(TEXT("Kraken rising! Ready the cannons!"), true);
+		}
+	}
 
     if(Combat) Combat->Update(Elapsed,FinaleAt,Arena,Radius,bActive,bSeeking);
     FVector Base,Bend,Joint,Tip;
@@ -199,12 +209,12 @@ void ADCLeviathan::UpdateEncounter(float Elapsed, const FTransform& Arena, float
 		}
 		UE_LOG(LogDC, Log, TEXT("Leviathan: beaten on the clock at %.1f s after the breach, %d arms broken"), Elapsed, ArmsBroken);
 	}
-	if (!bAnnounced && Elapsed >= FirstPeekAt + 6.f)
+	if (!bAnnounced && !IsHidden() && Elapsed >= FirstPeekAt + 6.f && Elapsed < DCBossTimeline::Events[0].At)
 	{
 		bAnnounced = true;
 		if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
 		{
-			Crew->Report(TEXT("Tentacles ahead: steer clear or shoot their joints. Save a broadside for its mouth!"), true);
+			Crew->Report(TEXT("Watch for tentacles: steer clear or shoot their joints. Save a broadside for its mouth!"), true);
 		}
 	}
 	LastElapsed = Elapsed;

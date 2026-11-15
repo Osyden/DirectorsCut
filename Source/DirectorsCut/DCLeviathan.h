@@ -69,5 +69,6 @@ private:
 	FVector MeshBoundsExtent = FVector::ZeroVector;
 	bool bWasActive = false;
 	bool bAssetsReady = false;
+	bool bSighted = false;
 	bool bAnnounced = false;
 };
