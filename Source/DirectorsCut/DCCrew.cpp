@@ -7,7 +7,6 @@
 #include "DCTroubles.h"
 #include "DCCrewWorkAnim.h"
 #include "DCCrewWorkPolicy.h"
-#include "ProceduralMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -283,7 +282,6 @@ void ADCCrewMember::Tick(float DeltaSeconds)
 	}
 	TickCrew(DeltaSeconds);
 	SetActorLocationAndRotation(Deck.TransformPosition(DeckPos), Deck.GetRotation() * DeckRot.Quaternion());
-	UpdateWorkRag();
 	LastPlaced = GetActorLocation();
 }
 
@@ -793,7 +791,7 @@ void ADCCrewMember::TickTroubles(float DeltaSeconds, FDCStation* Station)
 		return;
 	}
 
-	// Three visible rag strokes use the same retained suppression as the captain.
+	// Three visible swatting strokes use the same retained suppression as the captain.
 	// A reassignment, vanished fire or lost reach cancels before another contact.
 	if (CrewSwatAge < DCCrewWorkPolicy::Duration)
 	{
@@ -844,91 +842,4 @@ void ADCCrewMember::CancelFireWork()
 {
 	CrewSwatAge=10.f; WorkTime=0.f; bCrewSwatContact=false;
 	if (Figure) { if (auto* Anim=Cast<UDCCrewWorkAnim>(Figure->GetAnimInstance())) { Anim->SwatAge=10.f; } }
-	if (WorkRag) { WorkRag->SetVisibility(false); }
-}
-
-void ADCCrewMember::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-	if (Figure && WorkRagPoseHandle.IsValid())
-	{
-		Figure->UnregisterOnBoneTransformsFinalizedDelegate(WorkRagPoseHandle);
-		WorkRagPoseHandle.Reset();
-	}
-	Super::EndPlay(EndPlayReason);
-}
-
-void ADCCrewMember::UpdateWorkRagTransform()
-{
-	if (!WorkRag || CrewSwatAge >= DCCrewWorkPolicy::Duration) { return; }
-	USkeletalMeshComponent* PoseMesh = WorkRagPoseMesh.Get();
-	if (!PoseMesh) { WorkRag->SetVisibility(false); return; }
-	const int32 Hand = PoseMesh->GetBoneIndex(TEXT("hand_r"));
-	if (Hand == INDEX_NONE) { WorkRag->SetVisibility(false); return; }
-	// A pirate is a leader-pose follower with its own component transform.
-	// Read that rendered body's mapped bone after the driver's pose buffers flip,
-	// not a pre-animation socket on the hidden mannequin in the actor tick.
-	const FVector Grip = PoseMesh->GetBoneTransform(Hand).GetLocation();
-	WorkRag->SetWorldLocationAndRotation(Grip,GetActorQuat());
-	if (FParse::Param(FCommandLine::Get(),TEXT("DCCrewRagReview")) && GetWorld()->GetTimeSeconds() >= NextWorkRagReviewTime)
-	{
-		NextWorkRagReviewTime=GetWorld()->GetTimeSeconds()+.1f;
-		const FVector DriverGrip=Figure->GetBoneTransform(Figure->GetBoneIndex(TEXT("hand_r"))).GetLocation();
-		UE_LOG(LogDC,Log,TEXT("CREW_RAG name=%s age=%.3f mesh=%s grip=%s anchorError=%.3f driverGap=%.3f"),
-			*CrewName,CrewSwatAge,*PoseMesh->GetPathName(),*Grip.ToCompactString(),
-			FVector::Distance(Grip,WorkRag->GetComponentLocation()),FVector::Distance(Grip,DriverGrip));
-	}
-}
-
-void ADCCrewMember::UpdateWorkRag()
-{
-	const bool Active=CrewSwatAge<DCCrewWorkPolicy::Duration;
-	if (!Active) { if (WorkRag) { WorkRag->SetVisibility(false); } return; }
-	if (!WorkRag)
-	{
-		WorkRagPoseMesh=Figure;
-		TArray<AActor*> CastChildren;
-		GetAllChildActors(CastChildren,true);
-		for (AActor* Child : CastChildren)
-		{
-			TInlineComponentArray<USkeletalMeshComponent*> Meshes(Child);
-			for (USkeletalMeshComponent* Mesh : Meshes)
-			{
-				if (Mesh->GetName().Equals(TEXT("Body"),ESearchCase::IgnoreCase)
-					&& Mesh->LeaderPoseComponent.Get()==Figure && Mesh->GetBoneIndex(TEXT("hand_r"))!=INDEX_NONE)
-				{ WorkRagPoseMesh=Mesh; }
-			}
-		}
-		WorkRag=NewObject<UProceduralMeshComponent>(this,TEXT("CrewWorkRag"));
-		WorkRag->SetupAttachment(GetRootComponent());
-		// Bone-finalization callback supplies the complete world transform.
-		WorkRag->SetAbsolute(true,true,true);
-		WorkRag->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		WorkRag->SetCastShadow(false);
-		WorkRag->SetCanEverAffectNavigation(false);
-		WorkRag->RegisterComponent();
-		WorkRagPoseHandle=Figure->RegisterOnBoneTransformsFinalizedDelegate(
-			FOnBoneTransformsFinalizedMultiCast::FDelegate::CreateUObject(this,&ADCCrewMember::UpdateWorkRagTransform));
-		if (auto* Base=LoadObject<UMaterialInterface>(nullptr,TEXT("/Game/DC/Materials/M_Stone.M_Stone")))
-		{
-			auto* Mat=UMaterialInstanceDynamic::Create(Base,this);
-			Mat->SetVectorParameterValue(TEXT("Color"),FLinearColor(.32f,.24f,.14f));
-			Mat->SetVectorParameterValue(TEXT("Glow"),FLinearColor::Black);
-			WorkRag->SetMaterial(0,Mat);
-		}
-	}
-	WorkRag->SetVisibility(true);
-	TArray<FVector> V; TArray<int32> Tri; TArray<FVector2D> UV;
-	for (int32 Row=0;Row<5;++Row) for (int32 Col=0;Col<3;++Col)
-	{
-		const float T=Row/4.f, Side=Col-1.f;
-		V.Add(FVector(T*10.f+FMath::Sin(T*8.f-CrewSwatAge*10.f)*T*3.f,Side*(2.f+7.f*T),-T*30.f));
-		UV.Add(FVector2D(Col/2.f,T));
-	}
-	for (int32 R=0;R<4;++R) for (int32 C=0;C<2;++C)
-	{
-		const int32 N=R*3+C;
-		Tri.Append({N,N+3,N+1,N+1,N+3,N+4,N+1,N+3,N,N+4,N+3,N+1});
-	}
-	if (WorkRag->GetProcMeshSection(0)) { WorkRag->UpdateMeshSection_LinearColor(0,V,TArray<FVector>(),UV,TArray<FLinearColor>(),TArray<FProcMeshTangent>()); }
-	else { WorkRag->CreateMeshSection_LinearColor(0,V,Tri,TArray<FVector>(),UV,TArray<FLinearColor>(),TArray<FProcMeshTangent>(),false); }
 }

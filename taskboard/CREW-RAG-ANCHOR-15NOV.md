@@ -1,5 +1,15 @@
 # Crew rag hand anchor
 
+## Final disposition: remove the procedural prop
+
+The native `CrewRag` A/B still showed cloth across Ruby's lower face in frame236, despite `anchorError=0` and `driverGap=0` on the pirate Body. Timing/body-offset hypotheses are therefore unsupported. The 30cm cloth hangs vertically with its wide end 10cm forward; at this close camera its upper span can be hidden by the head while the wide end appears below the chin. That geometry/occlusion explanation matches the image, but is not independently proven by skeleton overlay.
+
+Root authorized the bounded fallback: remove the procedural rag and all experimental anchoring callbacks/fields. Keep the existing animated right-arm swats and the unchanged three suppression contacts. Branch `codex/crew-swat-no-prop` starts at main634430e. The final change has no animation, timing, gameplay, material or asset modification. Rerun the existing CrewFixed visual case to confirm the face artifact is gone and fire still extinguishes. Existing18 crew-work CPU checks pass.
+
+If a cloth is revisited later, first overlay projected `hand_r`/`hand_l` and both wrist positions on the actual clothed mesh, and show the full rag wireframe through occluders. This distinguishes skin/clothing mapping from a long cloth hidden behind the head; do not make another timing adjustment based only on anchor-error logs.
+
+## Superseded candidate
+
 Owner: cannons_helm, branch `codex/crew-rag-anchor`. Root owns native builds and GPU.
 
 `Saved/FourthPlaytest/CrewFixed/shot_00236.png` visibly places Ruby's cloth across her lower face while her swatting hand is raised above her head. The crew nevertheless completes three suppression contacts and the fire clears at 24s; Duncan's repair also completes. Those functional passes do not establish cloth attachment or deck contact.
