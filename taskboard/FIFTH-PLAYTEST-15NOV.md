@@ -39,3 +39,9 @@ Final landing rerender on d0529c9 passed: same single293.19 onset (elapsed23.19)
 ## Expanded next-test-build scope
 
 Direct user instruction relayed by AI NPCs chat selects Phonon31M + Gemma E4B + streaming for the next local test build. Source/default/payload work integrated into main; existing20:48 playable still unchanged. Selected model found in user Downloads and hash-verified; no blocked download workaround. Initial native compile found four source/API issues, corrected by1df5735. Exit-worker/module lifetime audit found a P1; pre-exit drain barrier8c66b5f and late-health callback guardd0529c9 are integrated and compile. Root retains serialized lane for final game checks, then explicitly hands it to AI NPCs chat for model/voice/cancel/exit validation. Package only after concrete selected-backend evidence.
+
+Selected-backend progress: native chunker caught an empty-prefix FString edge case, corrected byc9cec9b; all8 automation checks now pass. Gemma initially spent its entire80-token allowance on reasoning despite the template hint; explicit zero reasoning budget29ccbf3 passes all27 native orders/acknowledgements under unchanged deadlines. Actual Phonon three-crew smoke passes with positive audio/face samples; eight conversations pass across22 clips. Mid-speech cancellation and fresh critical-call recovery pass. Exit/failure/reload probes remain with AI NPCs chat before package acceptance. Portable staging guards49c846a and refreshed metadata pass ValidateOnly with all runtime/model/voice dependencies present.
+
+## Added menu track
+
+User requested The Atlantean Adventure as menu music, fading immediately at Start Game. Source487910a plus direct StartVoyage hook5bd5dfb adds a looping0.26-gain menu component and0.30-second audio-thread fade. The supplied224.48-second stereo master is prepared unchanged; import and native start/restart checks are pending the serialized engine lane. See [menu music](MENU-MUSIC-15NOV.md).
