@@ -343,6 +343,16 @@ void ADCWake::Tick(float DeltaSeconds)
 	}
 	// The wash stays against the hull as her head swings under helm.
 	SetActorRotation(FRotator(0.f, Director->DeckTransform.GetRotation().Rotator().Yaw, 0.f));
+	if (bRibbon && !bFlat && Director->TroughRise > 0.f)
+	{
+		// Display-only offset: Heights remains the raw FFT plane used by the
+		// ship fit, which adds its bank slope separately. Z is rebuilt above
+		// each frame, so this cannot accumulate while the ribbon is visible.
+		for (FVector& Vertex : Verts)
+		{
+			Vertex.Z += DCOcean::RenderedHeightOffset(this, GetActorTransform().TransformPosition(Vertex));
+		}
+	}
 	Mesh->UpdateMeshSection(0, Verts, TArray<FVector>(), TArray<FVector2D>(), TArray<FColor>(), TArray<FProcMeshTangent>());
 
 	// More white water the faster she goes and the rougher the sea; lit by the day.
@@ -460,7 +470,10 @@ void ADCWake::TickBowSpray(float DeltaSeconds)
 		// Keep asynchronous water queries warm every frame, not only at emission.
 		// Measure water relative to the pitching hull: a lifting bow sheds spray,
 		// while a rising wave striking a descending bow gives a stronger burst.
-		const float Surface = SurfaceAt(FVector2D(Anchor.X, Anchor.Y), 221 + Index);
+		// DRW queries only the simulated waves; the ocean material adds the
+		// city trough afterwards. Match that visible surface at the stage anchor.
+		const float Surface = SurfaceAt(FVector2D(Anchor.X, Anchor.Y), 221 + Index)
+			+ DCOcean::RenderedHeightOffset(this, Anchor);
 		const float Depth = Surface - Anchor.Z;
 		const float Closing = Contact.bValid ? FMath::Clamp((Depth - Contact.PreviousDepth) / FMath::Max(DeltaSeconds, .001f), -400.f, 400.f) : 0.f;
 		Contact.Closing = FMath::FInterpTo(Contact.Closing, Closing, DeltaSeconds, 7.f);
