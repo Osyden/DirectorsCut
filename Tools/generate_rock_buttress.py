@@ -78,12 +78,25 @@ def splice_full_ring(source, patch_vertices_world, patch_triangles, metadata, ou
     triangles=np.concatenate((faces[~remove],np.asarray(mapping)[patch_triangles]))
     used=np.unique(triangles);remap=np.full(len(vertices),-1,int);remap[used]=np.arange(len(used))
     parent_index=np.where(used<len(original),used,-1)
-    frame=dict(frame_origin_world_m=np.zeros(3),basis_u_world=np.array([1.,0,0]),basis_v_world=np.array([0.,1,0]),basis_z_world=np.array([0.,0,1]))
+    # Keep small fracture edges near the authoring origin. Arena-centred
+    # float32 metres then float32 centimetres collapsed212 valid triangles in
+    # the first native import. Translation alone preserves world geometry and
+    # connectivity, unlike deleting the faces or weakening the import audit.
+    export_origin=np.round(original[4*1537+(crop['column_start']+crop['column_end'])//2]).copy()
+    export_origin[2]=-25.
+    local_cm=((vertices[used]-export_origin).astype(np.float32).astype(np.float64)*[100.,-100.,100.]).astype(np.float32)
+    export_faces=remap[triangles]
+    cross_cm=np.cross(local_cm[export_faces[:,1]]-local_cm[export_faces[:,2]],local_cm[export_faces[:,0]]-local_cm[export_faces[:,2]])
+    collapsed=int(np.count_nonzero(np.einsum('ij,ij->i',cross_cm,cross_cm)==0))
+    if collapsed:raise ValueError(f'{collapsed} source triangles collapse in actual float32 export coordinates')
+    frame=dict(frame_origin_world_m=export_origin,basis_u_world=np.array([1.,0,0]),basis_v_world=np.array([0.,1,0]),basis_z_world=np.array([0.,0,1]))
     m=dict(metadata,full_ring_splice=dict(removed_original_triangles=int(remove.sum()),
         added_patch_triangles=len(patch_triangles),new_vertices=len(added),
         original_grid_contact_limit='Valid only outside canonical replacement crop; use actual new triangles for the buttress.',
         unchanged_source_triangles=len(faces)-int(remove.sum())),
-        changed_column_range=[crop['column_start'],crop['column_end']])
+        changed_column_range=[crop['column_start'],crop['column_end']],
+        export_precision=dict(local_origin_arena_m=export_origin.tolist(),float32_cm_collapsed_triangles=collapsed,
+                              operation='Rigid translation only; all world positions and triangle indices unchanged'))
     np.savez_compressed(output,vertices_m=vertices[used],triangles=remap[triangles],
         source_ring_vertex_index=parent_index,original_ring_vertices_m=original,original_ring_triangles=faces,
         metadata_json=np.asarray(json.dumps(m)),**frame)
