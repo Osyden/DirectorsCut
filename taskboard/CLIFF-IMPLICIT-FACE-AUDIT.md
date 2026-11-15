@@ -98,3 +98,18 @@ The closed original mesh has28,627 vertices and57,354 triangles, with zero bound
 The initial `visible_candidate.npz` extraction (SHA256 `e99939b37fc542bf32b76af796199c2acb402402958e1ab219776208b854cdfe`) has16,882 vertices and33,418 triangles. Every vertex is an unchanged original closed-mesh vertex within0.1 micrometre. Its448 boundary edges have degree-two boundary vertices and no winding/nonmanifold defects. It still includes the three enclosed cavity shells,532 triangles total, alongside the open exterior. Those are hidden internals, not disconnected positive-volume floating rocks; exclude them from a final visible preview/export while retaining the authoritative closed original for provenance.
 
 A further229,416 triangle-centre and edge-midpoint samples show no underside leakage beyond10 micrometres relative to the old24 m backing. Original convex hull faces bridge local concavities by up to1.484115 m above the former source top at these samples, despite vertices remaining inside the sampled source volume. That is a real changed exposure and must be judged in clay/native views; preserved boundaries do not imply unchanged interior contact. Reports are retained in ignored `Saved/WeatheredAudit/joint_boundary_audit.json` and `joint_boundary_backing.json`. No Unreal job, runtime replacement or final visual acceptance was performed by this audit.
+
+## Final corrected union-boundary gate
+
+The accepted artifact for **bounded native-context inspection only** is `Crater-Workers/Flow-Seams/Saved/ImplicitFaceProof/JointBoundaryUnion`, superseding the first JointBoundary. Both final hashes were independently verified:
+
+- Closed `candidate.npz`: `0c4814c37e34f9e4c1892a04705496c8b28b0115bd0eb5e0e468b2de86d37e3e`.
+- Visible `visible_candidate.npz`: `b889d3a18a74dcf0c7b2b5b4d9bb271c7907a16ae795ae571bff979fe6c48c4c`.
+
+The closed original has26,584 vertices and53,176 triangles, one connected consistently oriented solid, positive volume66,933.84 m³, and zero boundary/nonmanifold/inconsistent-winding/degenerate/duplicate faces. The earlier cavity shells are absent. Its visible extraction has14,839 vertices and29,240 triangles, one valid open manifold and448 boundary edges. The complete boundary-edge coordinate set matches the original visible baseline within10 micrometres; every visible vertex remains an original closed-mesh vertex within0.1 micrometre. No hidden internal component needs removal from this final export.
+
+All7,488 original4 m guard vertices remain within10 micrometres. Frame arrays are bitwise identical to LargeMassClean.212,704 triangle-centre/edge-midpoint samples show no penetration below the original24 m underside by more than10 micrometres; maximum sampled bridging above the old surface remains1.484115 m. These checks preserve the exterior join and physical frame, not the old interior contact surface.
+
+Final support records differ from the rejected first transition:139 original hulls remain unchanged,9 receive short local downward anchors (maximum2.426592 m),6 unsupported thin fragments and1 unsupported long-anchor fragment are additionally detached. Including22 release-region removals,148 hulls remain and29 are detached.
+
+Author and independent clay reviewer report that the corrected footprint-union perimeter removes the sawtooth skirts and clears their limited preview gate. This numerical audit independently clears guard, frame, connectedness and closure extraction for that same exact mesh. It is not a full self-intersection proof, runtime collision/waterfall integration, temple support approval, or final geological-art acceptance. The authoritative report is retained in ignored `Saved/WeatheredAudit/joint_boundary_union_audit.json`.
