@@ -14,6 +14,9 @@ Default is original procedural stone: no cliff atlas or copied pixels.
 DC_CLIFF_STONE=slate uses installed Paragon tileable albedo/normal by reference,
 at an authored4m tile size. Vendor pixels never enter the repository. Roughness
 remains authored: no unverified packed-map channels are used.
+DC_CLIFF_STONE=scan uses the verified CC0 material imported by
+import_cliff_scan_textures.py at its source-reported physical tile size.
+Exposed-face U/Z coordinates match the mesh displacement; no tile enlargement.
 Large fracture volume belongs to the mesh. Detail is shallow centimetre/metre
 surface relief with derivative filtering; no displaced vertices or fake blocks.
 """
@@ -171,9 +174,23 @@ def create_material():
     if assign not in ("0", "1"):
         raise RuntimeError("DC_CLIFF_PREVIEW_ASSIGN must be 0 or 1")
     preset = os.environ.get('DC_CLIFF_STONE', 'procedural')
-    if preset not in ('procedural', 'slate'):
-        raise RuntimeError('DC_CLIFF_STONE must be procedural or slate')
+    if preset not in ('procedural', 'slate', 'scan'):
+        raise RuntimeError('DC_CLIFF_STONE must be procedural, slate or scan')
     texture_assets = {}
+    scan = None
+    if preset == 'scan':
+        scan = json.loads((Path(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_saved_dir())) /
+                           'CliffScanImport.json').read_text(encoding='utf-8'))
+        for suffix, path in scan['texture_references'].items():
+            if not path.startswith(ROOT + '/Scan/'):
+                raise RuntimeError('Scan texture outside isolated preview directory')
+            asset = unreal.load_asset(path)
+            if not isinstance(asset, unreal.Texture2D) or bool(asset.get_editor_property('srgb')) != (suffix == 'D'):
+                raise RuntimeError('Scan texture type/colour-space mismatch: ' + path)
+            if suffix == 'N' and (asset.get_editor_property('compression_settings') != unreal.TextureCompressionSettings.TC_NORMALMAP
+                                  or not asset.get_editor_property('flip_green_channel')):
+                raise RuntimeError('Scan GL normal needs normal compression and green flip')
+            texture_assets[suffix] = asset
     if preset == 'slate':
         for suffix in ('D', 'N'):
             path = '/Game/ParagonRampage/Characters/Global/MaterialLayers/Rock/T_SlateTextureTile_000_'+suffix
@@ -279,6 +296,30 @@ float3 stone=x*w.x+y*w.y+z*w.z;
 stone=lerp(stone,float3(.265,.260,.250),Weather.z*.25);
 return stone*lerp(1,.62,Weather.y);
 """, types.CMOT_FLOAT3, {'P':position,'N':normal,'Albedo':texture_nodes['D'],'TileMetres':tile_size,'Weather':weather})
+    scan_nodes = {}
+    scan_tile_size = None
+    if preset == 'scan':
+        for suffix, asset in texture_assets.items():
+            texture = node(unreal.MaterialExpressionTextureObjectParameter)
+            texture.set_editor_property('parameter_name', 'ScanTexture' + suffix)
+            texture.set_editor_property('texture', asset)
+            scan_nodes[suffix] = texture
+        scan_tile_size = parameter('ScanTileMetres', scan['width_metres'])
+        # U/Z on the exposed face matches the geometry displacement exactly.
+        # Unreal imports source chart V with reflected Y. PNG rows and DX
+        # normal convention require -Z texture V and -normal.y below.
+        color = custom(r"""
+float3 p=P*.01/max(TileMetres,.1), n=normalize(N);
+float top=smoothstep(.55,.88,abs(n.z));
+float2 faceUV=float2(p.x,-p.z), topUV=p.xy;
+float3 face=Albedo.SampleGrad(AlbedoSampler,faceUV,ddx(faceUV),ddy(faceUV)).rgb;
+float3 upper=Albedo.SampleGrad(AlbedoSampler,topUV,ddx(topUV),ddy(topUV)).rgb;
+float3 stone=lerp(face,upper,top);
+// Restrained cool mineral tint; preserve measured fine-scale colour.
+stone=lerp(dot(stone,float3(.2126,.7152,.0722)).xxx,stone,.4);
+return stone*float3(.80,.86,.91)*lerp(.90,1.06,Weather.x);
+""", types.CMOT_FLOAT3, {'P':position,'N':normal,'Albedo':scan_nodes['D'],
+                         'TileMetres':scan_tile_size,'Weather':weather})
     output(color, unreal.MaterialProperty.MP_BASE_COLOR)
     local_normal = custom(r"""
 float3 n=normalize(N);
@@ -302,6 +343,17 @@ float3 perturb=(float3(0,x.x*s.x,x.y)/max(x.z,.2))*w.x
 perturb-=n*dot(n,perturb);
 return normalize(n+perturb*max(Strength,0));
 """, types.CMOT_FLOAT3, {'P':position,'N':normal,'NormalTex':texture_nodes['N'],'TileMetres':tile_size,'Strength':parameter('SlateNormalStrength', .7)})
+    if preset == 'scan':
+        local_normal = custom(r"""
+float3 p=P*.01/max(TileMetres,.1), n=normalize(N);
+float2 uv=float2(p.x,-p.z);
+float3 map=UnpackNormalMap(NormalTex.SampleGrad(NormalTexSampler,uv,ddx(uv),ddy(uv))).xyz;
+float3 perturb=float3(map.x,0,-map.y)/max(map.z,.25);
+perturb-=n*dot(n,perturb);
+float face=1-smoothstep(.55,.88,abs(n.z));
+return normalize(n+perturb*Strength*face);
+""", types.CMOT_FLOAT3, {'P':position,'N':normal,'NormalTex':scan_nodes['N'],
+                         'TileMetres':scan_tile_size,'Strength':parameter('ScanNormalStrength', .5)})
     world_normal = node(unreal.MaterialExpressionTransform)
     world_normal.set_editor_property("transform_source_type", unreal.MaterialVectorCoordTransformSource.TRANSFORMSOURCE_LOCAL)
     world_normal.set_editor_property("transform_type", unreal.MaterialVectorCoordTransform.TRANSFORM_WORLD)
@@ -309,10 +361,18 @@ return normalize(n+perturb*max(Strength,0));
     output(world_normal, unreal.MaterialProperty.MP_NORMAL)
     roughness = custom("return clamp(.82+.08*Weather.x+.06*Weather.z-.05*Weather.w-.24*Weather.y,.53,.94);",
                        types.CMOT_FLOAT1, {"Weather":weather})
+    if preset == 'scan':
+        roughness = custom(r"""
+float3 p=P*.01/max(TileMetres,.1),n=normalize(N);
+float2 uv=float2(p.x,-p.z),topUV=p.xy;
+float face=Rough.SampleGrad(RoughSampler,uv,ddx(uv),ddy(uv)).r;
+float top=Rough.SampleGrad(RoughSampler,topUV,ddx(topUV),ddy(topUV)).r;
+return clamp(lerp(face,top,smoothstep(.55,.88,abs(n.z))),.52,.94);
+""", types.CMOT_FLOAT1, {'P':position,'N':normal,'Rough':scan_nodes['R'],'TileMetres':scan_tile_size})
     output(roughness, unreal.MaterialProperty.MP_ROUGHNESS)
     output(constant(.35), unreal.MaterialProperty.MP_SPECULAR)
     output(constant(0), unreal.MaterialProperty.MP_METALLIC)
-    output(constant(1.) if preset=='slate' else custom("return lerp(1,.95,Fractures.w);", types.CMOT_FLOAT1, {"Fractures":fractures}), unreal.MaterialProperty.MP_AMBIENT_OCCLUSION)
+    output(constant(1.) if preset in ('slate','scan') else custom("return lerp(1,.95,Fractures.w);", types.CMOT_FLOAT1, {"Fractures":fractures}), unreal.MaterialProperty.MP_AMBIENT_OCCLUSION)
     M.recompile_material(material)
     if not unreal.EditorAssetLibrary.save_loaded_asset(material, only_if_is_dirty=False):
         raise RuntimeError("Could not save isolated cliff material")
@@ -329,18 +389,21 @@ return normalize(n+perturb*max(Strength,0));
         if not unreal.EditorAssetLibrary.save_loaded_asset(mesh):
             raise RuntimeError("Could not save preview mesh material assignment")
     report = dict(material=MATERIAL_PATH, assigned_preview_mesh=assign=="1", vendor_textures_used=preset=='slate',
+                  cc0_scan_used=preset=='scan', scan_source=scan,
                   preset=preset, texture_references={key:asset.get_path_name() for key,asset in texture_assets.items()},
-                  texture_tile_metres=4. if preset=='slate' else None,
-                  texture_scale_note='Authored physical tile size, not a claimed scan measurement',
-                  roughness_source='Authored response; packed vendor mask channels not used',
+                  texture_tile_metres=scan['width_metres'] if preset=='scan' else (4. if preset=='slate' else None),
+                  texture_scale_note='Source-reported physical width' if preset=='scan' else 'Authored physical tile size, not a claimed scan measurement',
+                  roughness_source='Verified linear scan roughness, clamped .52..94' if preset=='scan' else 'Authored response; packed vendor mask channels not used',
                   units="Local UE centimetres converted to metres; unit actor scale required",
                   vertex_contract="linear R normalized log-flow; G gross-deposition; B gross-erosion",
                   relief_bands_m=[.75,.18,.045] if preset=='procedural' else [], relief_heights_m=[.012,.002,.00055] if preset=='procedural' else [],
                   fracture_length_m=[.9,2.3] if preset=='procedural' else [], fracture_width_m=[.036,.086] if preset=='procedural' else [], fracture_depth_m=[.003,.009] if preset=='procedural' else [],
                   normal_fully_filtered_above_metres_per_pixel=.38 if preset=='procedural' else None, cracks_filtered_above_metres_per_pixel=.0645 if preset=='procedural' else None,
                   slate_normal_strength=.7 if preset=='slate' else None,
+                  scan_normal_strength=.5 if preset=='scan' else None,
+                  scan_sampling='Registered source-chart U/Z, native physical tile, top projection blend; DX normal mapped back to source axes' if preset=='scan' else None,
                   slate_sampling='Three-offset triangular blend per local triplanar projection; same albedo/normal offsets, explicit continuous UV mip gradients' if preset=='slate' else None,
-                  roughness_bounds=[.53,.94], emissive=False, displacement=False,
+                  roughness_bounds=[.52 if preset=='scan' else .53,.94], emissive=False, displacement=False,
                   runtime_integrated=False, actual_shader_compile_and_visual_review_pending=True)
     destination = Path(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_saved_dir())) / "CliffRockMaterialPreview.json"
     destination.write_text(json.dumps(report, indent=2)+"\n", encoding="utf-8")
