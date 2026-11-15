@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 15 Nov Codex: connected massif, measured supports and corrected native preview
+
+- Replaced the offline locked cap/apron with a connected massif fitted to actual coast/seams and ruin footprints. Protected land drops from65.51% to15.29%; bounded erosion and independent exact-triangle support checks pass. [Actual evidence and next fracture work](CRATER-MASSIF-15NOV.md).
+- Corrected white masks caused by an existing-asset reimport route and missing Nanite material usage. Previous pass7 native stone comparisons used a fallback material; final pass8 does not. Actual view shows the new silhouette and two matching supported landmarks, but soft faces remain far from the target. One randomized colonnade is deliberately excluded from the preview because its bounds no longer match the export.
+- Final Editor/Game builds and active backward-seek/exit checks pass. Normal gameplay geometry, water/falls, clouds/light and boss remain unchanged; this is still an isolated authoring proof. Next is genuine joint/fracture geometry, reproducible skyline placement and exact surface integration. No main merge/package.
+
 ## 14 Nov Codex: actual eroded-cliff preview; shape rejected for integration
 
 - Imported terrain now renders in an isolated Unreal view with source-audited orientation/masks, original procedural stone and an exact source-triangle query utility. Editor/Game builds pass; actual active backward-seek and exit restoration pass. [Evidence and next shape plan](CRATER-ENGINE-CLIFF-PREVIEW-14NOV.md).

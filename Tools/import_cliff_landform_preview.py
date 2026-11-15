@@ -9,6 +9,7 @@ import hashlib
 import json
 import math
 import os
+import re
 from pathlib import Path
 
 import unreal
@@ -22,6 +23,16 @@ source = Path(source_text).resolve()
 if not source.is_file() or source.suffix.lower() != ".fbx":
     raise RuntimeError("Missing FBX: " + str(source))
 source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
+asset_name = os.environ.get("DC_CLIFF_PREVIEW_NAME", "SM_CliffSector_" + source_hash[:12])
+if not re.fullmatch(r"SM_CliffSector_[A-Za-z0-9_]+", asset_name):
+    raise RuntimeError("Choose a named isolated SM_CliffSector_* preview")
+if unreal.EditorAssetLibrary.does_asset_exist(ROOT + "/" + asset_name):
+    raise RuntimeError("Use a fresh preview name: unattended FBX reimport can restore an Ignore vertex-color policy")
+# ExecCmds can run after the Python commandlet. Kismet processes console
+# variables synchronously, before needing a world; this is process-local only.
+unreal.SystemLibrary.execute_console_command(None, "Interchange.FeatureFlags.Import.FBX 0")
+if unreal.SystemLibrary.get_console_variable_int_value("Interchange.FeatureFlags.Import.FBX") != 0:
+    raise RuntimeError("Could not select the explicit legacy FBX options before import")
 sidecar_path = source.with_suffix(".json")
 sidecar = json.loads(sidecar_path.read_text(encoding="utf-8")) if sidecar_path.is_file() else {}
 if sidecar and (sidecar.get("schema") != "directorscut.cliff_preview_fbx.v1" or sidecar.get("fbx_sha256") != source_hash):
@@ -47,9 +58,9 @@ options.static_mesh_import_data.normal_import_method = unreal.FBXNormalImportMet
 task = unreal.AssetImportTask()
 task.filename = str(source)
 task.destination_path = ROOT
-task.destination_name = "SM_CliffSector"
+task.destination_name = asset_name
 task.automated = True
-task.replace_existing = True
+task.replace_existing = False
 task.save = False
 task.factory = unreal.FbxFactory()
 task.options = options
@@ -84,6 +95,7 @@ mel = unreal.MaterialEditingLibrary
 clay = unreal.load_asset(ROOT + "/M_CliffClay")
 if clay is None:
     clay = tools.create_asset("M_CliffClay", ROOT, unreal.Material, unreal.MaterialFactoryNew())
+clay.set_editor_property("used_with_nanite", True)
 mel.delete_all_material_expressions(clay)
 base = mel.create_material_expression(clay, unreal.MaterialExpressionConstant3Vector, -200, 0)
 base.constant = unreal.LinearColor(.3, .3, .3, 1)
@@ -103,6 +115,7 @@ report = {
     "source_kind": sidecar.get("source_kind", "explicit unit/import probe"),
     "export_sidecar": str(sidecar_path) if sidecar else None,
     "asset": mesh.get_path_name(), "size_metres": size_m, "nanite_enabled": True,
+    "import_data_class": mesh.get_editor_property("asset_import_data").get_class().get_name(),
     "render_lod0_triangles": mesh.get_num_triangles(0),
     "material": clay.get_path_name(), "runtime_integrated": False,
     "limitations": "Import/bounds/settings validation only; no GPU render, arena orientation/vertex-mask verification, surface sampler or waterfall integration.",

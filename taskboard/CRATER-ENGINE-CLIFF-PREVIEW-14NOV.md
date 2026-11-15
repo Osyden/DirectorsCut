@@ -2,6 +2,8 @@
 
 14 November, continuation from `bba948a`, branch `codex/maelstrom-saturday`.
 
+**Later correction:** [pass8](CRATER-MASSIF-15NOV.md) found that both native materials in this pass lacked Nanite usage and were replaced by Unreal's default material. These native images remain geometry diagnostics but cannot establish stone-material appearance. Explicit usage and a capture failure check now prevent that fallback. CPU clay/source audits were unaffected.
+
 The user asked whether realistic mountain algorithms and terrain textures can be adapted to the crater. Yes: the useful pipeline is a designed macro landform, ridged/heterogeneous terrain, bounded hydraulic and thermal erosion, terrain-derived material masks, then actual three-dimensional fracture where needed. Shape constraints must precede the final erosion pass so drainage follows the finished landform. The current prototype demonstrates this pipeline technically, but the engine images **reject its current shape as finished geology**.
 
 ## What changed

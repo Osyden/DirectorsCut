@@ -183,7 +183,13 @@ def unreal_main():
         path = source["meta"].get(kind + "_path")
         if path and sha(path) != source["meta"][kind + "_sha256"]:
             raise RuntimeError(kind + " changed after reference preparation")
-    asset_path = os.environ.get("DC_CLIFF_AUDIT_ASSET", "/Game/DC/Maelstrom/GeneratedCliffPreview/SM_CliffSector")
+    asset_path = os.environ.get("DC_CLIFF_AUDIT_ASSET")
+    if not asset_path:
+        imported = json.loads((Path(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_saved_dir())) /
+                               "CliffLandformPreviewImport.json").read_text(encoding="utf-8"))
+        if imported["source_sha256"] != source["meta"]["fbx_sha256"]:
+            raise RuntimeError("Latest imported preview does not match audit reference")
+        asset_path = imported["asset"]
     report_path = Path(os.environ.get("DC_CLIFF_AUDIT_REPORT", str(Path(unreal.Paths.convert_relative_path_to_full(
         unreal.Paths.project_saved_dir())) / "CliffPreviewSourceAudit.json")))
     report = {"schema": "directorscut.cliff_import_audit.v1", "asset": asset_path,

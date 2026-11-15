@@ -71,7 +71,13 @@ void ADCMaelstrom::BuildCliffPreview()
     if(!FMath::IsNearlyEqual(X.SizeSquared(),1.,1.e-6)||!FMath::IsNearlyEqual(Y.SizeSquared(),1.,1.e-6)
         || !FMath::IsNearlyEqual(Z.SizeSquared(),1.,1.e-6)||FMath::Abs(X|Y)>1.e-6
         ||FMath::Abs(X|Z)>1.e-6||FMath::Abs(Y|Z)>1.e-6) { return; }
-    UStaticMesh* Mesh=LoadObject<UStaticMesh>(nullptr,TEXT("/Game/DC/Maelstrom/GeneratedCliffPreview/SM_CliffSector.SM_CliffSector"));
+    FString MeshPath,AuditedPath;
+    if(!Import->TryGetStringField(TEXT("asset"),MeshPath)||!Audit->TryGetStringField(TEXT("asset"),AuditedPath)
+        ||!MeshPath.StartsWith(TEXT("/Game/DC/Maelstrom/GeneratedCliffPreview/"))) { return; }
+    FString PackagePath=MeshPath; int32 Dot;
+    if(PackagePath.FindChar(TEXT('.'),Dot)) { PackagePath.LeftInline(Dot); }
+    if(AuditedPath!=MeshPath&&AuditedPath!=PackagePath) { return; }
+    UStaticMesh* Mesh=LoadObject<UStaticMesh>(nullptr,*MeshPath);
     const bool Rock=FParse::Param(FCommandLine::Get(),TEXT("DCCliffPreviewRock"));
     UMaterialInterface* Material=LoadObject<UMaterialInterface>(nullptr,Rock
         ? TEXT("/Game/DC/Maelstrom/GeneratedCliffPreview/M_CliffRock.M_CliffRock")
@@ -98,6 +104,50 @@ void ADCMaelstrom::BuildCliffPreview()
     CliffPreviewMesh->SetRelativeTransform(Pose);
     CliffPreviewMesh->SetVisibility(false);
     CliffPreviewMesh->RegisterComponent();
+    if(FParse::Param(FCommandLine::Get(),TEXT("DCCliffPreviewSupports")))
+    {
+        TSharedPtr<FJsonObject> Supports;
+        FString SupportSchema,SupportHash;
+        const TArray<TSharedPtr<FJsonValue>>* Actors=nullptr;
+        if(ReadPreviewJson(Saved/TEXT("CliffPreviewSupports.json"),Supports)
+            &&Supports->TryGetStringField(TEXT("schema"),SupportSchema)&&SupportSchema==TEXT("directorscut.cliff_preview_supports.v1")
+            &&Supports->TryGetStringField(TEXT("source_fbx_sha256"),SupportHash)&&SupportHash==SourceHash
+            &&Supports->TryGetArrayField(TEXT("actors"),Actors))
+        {
+            for(const TSharedPtr<FJsonValue>& Value:*Actors)
+            {
+                const TSharedPtr<FJsonObject>* A=nullptr;
+                FString Id; double Bottom;
+                const TArray<TSharedPtr<FJsonValue>>* Centre=nullptr;
+                if(!Value->TryGetObject(A)||!(*A)->TryGetStringField(TEXT("id"),Id)
+                    ||!(*A)->TryGetNumberField(TEXT("footing_bottom_m"),Bottom)
+                    ||!(*A)->TryGetArrayField(TEXT("centre_xy_m"),Centre)||Centre->Num()!=2) { continue; }
+                for(AActor* Landmark:Landmarks)
+                {
+                    if(!Landmark||Landmark->GetName()!=Id) { continue; }
+                    // Recreate the pre-placement local bounds used by the
+                    // support exporter. A yawed asymmetric group has a different
+                    // world-AABB centre even when its transform is unchanged.
+                    const FBox Bounds=Landmark->CalculateComponentsBoundingBoxInLocalSpace(true);
+                    const FTransform LandmarkPose=Landmark->GetActorTransform();
+                    const FVector Mid=LandmarkPose.TransformPosition(Bounds.GetCenter());
+                    // Build-time arena is unpitched. Check identity and actual
+                    // placement, not merely a reusable runtime actor name.
+                    const FVector LocalMid=GetArenaTransform().InverseTransformPosition(Mid);
+                    const FVector LocalBottom=GetArenaTransform().InverseTransformPosition(
+                        LandmarkPose.TransformPosition(FVector(Bounds.GetCenter().X,Bounds.GetCenter().Y,Bounds.Min.Z)));
+                    const FVector LocalTop=GetArenaTransform().InverseTransformPosition(
+                        LandmarkPose.TransformPosition(FVector(Bounds.GetCenter().X,Bounds.GetCenter().Y,Bounds.Max.Z)));
+                    const double DX=LocalMid.X*.01-(*Centre)[0]->AsNumber(),DY=LocalMid.Y*.01-(*Centre)[1]->AsNumber();
+                    if(FMath::Abs(DX)>.03||FMath::Abs(DY)>.03||FMath::Abs(LocalBottom.Z*.01-Bottom)>.03)
+                    { UE_LOG(LogTemp,Warning,TEXT("DC_CLIFF_PREVIEW support identity/placement mismatch %s"),*Id); continue; }
+                    CliffPreviewSupportedLandmarks.Add(Landmark);
+                    UE_LOG(LogTemp,Display,TEXT("DC_CLIFF_PREVIEW supported landmark=%s bottom_m=%.3f top_m=%.3f"),*Id,Bottom,LocalTop.Z*.01);
+                }
+            }
+        }
+        UE_LOG(LogTemp,Display,TEXT("DC_CLIFF_PREVIEW verified landmark count=%d; partial/unverified footprints hidden"),CliffPreviewSupportedLandmarks.Num());
+    }
     UE_LOG(LogTemp,Display,TEXT("DC_CLIFF_PREVIEW ready material=%s source=%s isolated=1 runtime_contacts_unchanged=1"),*Material->GetName(),*SourceHash);
 }
 
@@ -120,7 +170,8 @@ void ADCMaelstrom::UpdateCliffPreview()
     { Mesh->SetVisibility(false); }
     for(UInstancedStaticMeshComponent* Mesh:CliffRocks) { if(Mesh) { Mesh->SetVisibility(false); } }
     for(UInstancedStaticMeshComponent* Mesh:CliffShadowRocks) { if(Mesh) { Mesh->SetVisibility(false); } }
-    for(AActor* Landmark:Landmarks) { if(Landmark) { Landmark->SetActorHiddenInGame(true); } }
+    for(AActor* Landmark:Landmarks)
+    { if(Landmark) { Landmark->SetActorHiddenInGame(!CliffPreviewSupportedLandmarks.Contains(Landmark)); } }
     APlayerController* PC=GetWorld()->GetFirstPlayerController();
     if(!CliffPreviewCamera.IsValid())
     {

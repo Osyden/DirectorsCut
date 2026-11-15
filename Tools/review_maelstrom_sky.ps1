@@ -59,8 +59,8 @@ Write-Output ('Review process {0}. Screenshots: {1}/Saved/Screenshots/Auto; log:
 if ($Wait) {
     $reviewProcess.WaitForExit()
     if ($reviewProcess.ExitCode -ne 0) { throw "Review failed; inspect $logFile" }
-    if (Select-String -LiteralPath $logFile -Pattern 'Failed to compile Material.*Maelstrom|MAEL_SKY compile:|Fatal error:|Assertion failed:' -Quiet) {
-        throw "Maelstrom shader compilation failed; captures would show a fallback material. Inspect $logFile"
+    if (Select-String -LiteralPath $logFile -Pattern 'Failed to compile Material.*Maelstrom|Material.*GeneratedCliffPreview.*missing usage flag|MAEL_SKY compile:|Fatal error:|Assertion failed:' -Quiet) {
+        throw "Maelstrom material validation failed; captures may show a fallback material. Inspect $logFile"
     }
     $destination = Join-Path $projectRoot ("Saved/SceneReview/$ReviewName")
     New-Item -ItemType Directory -Path $destination -Force | Out-Null

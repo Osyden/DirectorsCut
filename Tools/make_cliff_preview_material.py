@@ -155,6 +155,15 @@ def create_material():
     material.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_DEFAULT_LIT)
     material.set_editor_property("tangent_space_normal", False)
     material.set_editor_property("two_sided", False)
+    material.set_editor_property("used_with_nanite", True)
+    # Commandlet-created materials do not automatically acquire editor usage.
+    # Repair the isolated clay too so geometry reviews never use a fallback.
+    clay = unreal.load_asset(ROOT + "/M_CliffClay")
+    if isinstance(clay, unreal.Material):
+        clay.set_editor_property("used_with_nanite", True)
+        M.recompile_material(clay)
+        if not unreal.EditorAssetLibrary.save_loaded_asset(clay):
+            raise RuntimeError("Could not save clay Nanite usage")
     def node(cls):
         return M.create_material_expression(material, cls)
     def connect(source, pin, target, input_pin):
@@ -232,7 +241,12 @@ return normalize(n-gradient);
     if not unreal.EditorAssetLibrary.save_loaded_asset(material, only_if_is_dirty=False):
         raise RuntimeError("Could not save isolated cliff material")
     if assign == "1":
-        mesh = unreal.load_asset(ROOT + "/SM_CliffSector")
+        imported = json.loads((Path(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_saved_dir())) /
+                               "CliffLandformPreviewImport.json").read_text(encoding="utf-8"))
+        mesh_path = imported["asset"]
+        if not mesh_path.startswith(ROOT + "/"):
+            raise RuntimeError("Preview import report names an asset outside the isolated folder")
+        mesh = unreal.load_asset(mesh_path)
         if not isinstance(mesh, unreal.StaticMesh):
             raise RuntimeError("Missing isolated SM_CliffSector")
         mesh.set_material(0, material)

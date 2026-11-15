@@ -37,6 +37,11 @@
 #include "Misc/Parse.h"
 #include "UObject/UnrealType.h"
 #include "Sound/SoundBase.h"
+#include "Dom/JsonObject.h"
+#include "Serialization/JsonSerializer.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
+#include "Misc/SecureHash.h"
 
 ADCMaelstrom::ADCMaelstrom()
 {
@@ -410,6 +415,8 @@ void ADCMaelstrom::BuildLandmarks()
     int32 SupportedPieces=0;
     const FProcMeshSection* CliffSection=Cliffs->GetProcMeshSection(0);
     if(!CliffSection) { return; }
+    const bool ExportAnchors=FParse::Param(FCommandLine::Get(),TEXT("DCExportCliffAnchors"));
+    TArray<TSharedPtr<FJsonValue>> SupportAnchors;
     // Query the rendered triangles, including flattened sanctuary pads. The
     // broad RimGroundHeight function does not describe those actual footings.
     const auto GroundAt=[CliffSection](const FVector2D& P)
@@ -436,7 +443,7 @@ void ADCMaelstrom::BuildLandmarks()
         }
         return Ground;
     };
-    auto Place=[this,&SupportedPieces,&GroundAt](AActor* Actor,float AngleDegrees,float Setback,float Yaw)
+    auto Place=[this,&SupportedPieces,&GroundAt,&SupportAnchors,ExportAnchors](AActor* Actor,float AngleDegrees,float Setback,float Yaw)
     {
         if(!Actor) { return; }
         const float A=FMath::DegreesToRadians(AngleDegrees);
@@ -477,6 +484,37 @@ void ADCMaelstrom::BuildLandmarks()
         Actor->SetActorRelativeLocation(Position);
         Actor->SetActorRelativeRotation(Rotation);
         Landmarks.Add(Actor);
+        if(ExportAnchors)
+        {
+            auto Anchor=MakeShared<FJsonObject>();
+            Anchor->SetStringField(TEXT("id"),Actor->GetName());
+            Anchor->SetNumberField(TEXT("support_height_m"),Ground*.01);
+            Anchor->SetNumberField(TEXT("footing_bottom_m"),(Position.Z+Bottom)*.01);
+            Anchor->SetNumberField(TEXT("margin_m"),10.);
+            Anchor->SetNumberField(TEXT("blend_m"),30.);
+            TArray<TSharedPtr<FJsonValue>> Polygon,Samples;
+            // Same oriented actor bounds used above to prove placement, not a
+            // world AABB enlarged by yaw, nor a guessed temple centre point.
+            for(const FVector2D Sign:{FVector2D(-1,-1),FVector2D(1,-1),FVector2D(1,1),FVector2D(-1,1)})
+            {
+                const FVector P=Position+Rotation.RotateVector(BoundOrigin+FVector(Sign.X*BoundExtent.X,Sign.Y*BoundExtent.Y,0));
+                Polygon.Add(MakeShared<FJsonValueArray>(TArray<TSharedPtr<FJsonValue>>{
+                    MakeShared<FJsonValueNumber>(P.X*.01),MakeShared<FJsonValueNumber>(P.Y*.01)}));
+            }
+            for(int32 X=-1;X<=1;++X) for(int32 Y=-1;Y<=1;++Y)
+            {
+                const FVector P=Position+Rotation.RotateVector(BoundOrigin+FVector(X*BoundExtent.X,Y*BoundExtent.Y,0));
+                auto Sample=MakeShared<FJsonObject>();
+                Sample->SetNumberField(TEXT("x_m"),P.X*.01); Sample->SetNumberField(TEXT("y_m"),P.Y*.01);
+                const float H=GroundAt(FVector2D(P));
+                Sample->SetBoolField(TEXT("covered"),H>-MAX_flt);
+                if(H>-MAX_flt) { Sample->SetNumberField(TEXT("ground_m"),H*.01); }
+                Samples.Add(MakeShared<FJsonValueObject>(Sample));
+            }
+            Anchor->SetArrayField(TEXT("footprint_xy_m"),Polygon);
+            Anchor->SetArrayField(TEXT("ground_samples"),Samples);
+            SupportAnchors.Add(MakeShared<FJsonValueObject>(Anchor));
+        }
         ++SupportedPieces;
     };
     // Unequal sanctuary districts, with paired and solitary buildings. The low
@@ -515,6 +553,29 @@ void ADCMaelstrom::BuildLandmarks()
         Place(DCRuins::SpawnColossus(GetWorld(),Height),A,Layout.FRandRange(1400.f,3200.f),A+180.f);
     }
     UE_LOG(LogTemp,Display,TEXT("DC_RIM_CITY %d supported groups: 9 sanctuaries, 16 broken colonnades, 5 arches, 8 debris courts, 12 statues; irregular skyline"),SupportedPieces);
+    if(ExportAnchors)
+    {
+        auto Data=MakeShared<FJsonObject>();
+        Data->SetStringField(TEXT("schema"),TEXT("directorscut.cliff_support_anchors.v1"));
+        Data->SetStringField(TEXT("coordinate_frame"),TEXT("arena_local_metres"));
+        Data->SetStringField(TEXT("source_surface"),TEXT("current rendered legacy polar BC triangles"));
+        Data->SetNumberField(TEXT("radius_m"),Radius*.01);
+        Data->SetNumberField(TEXT("depth_m"),Depth*.01);
+        Data->SetNumberField(TEXT("source_vertices"),CliffSection->ProcVertexBuffer.Num());
+        Data->SetNumberField(TEXT("source_triangles"),CliffSection->ProcIndexBuffer.Num()/3);
+        FSHA1 Hash;
+        for(const FProcMeshVertex& Vertex:CliffSection->ProcVertexBuffer)
+        { Hash.Update(reinterpret_cast<const uint8*>(&Vertex.Position),sizeof(Vertex.Position)); }
+        Hash.Update(reinterpret_cast<const uint8*>(CliffSection->ProcIndexBuffer.GetData()),CliffSection->ProcIndexBuffer.Num()*sizeof(uint32));
+        Hash.Final(); uint8 Bytes[20]; Hash.GetHash(Bytes);
+        Data->SetStringField(TEXT("source_geometry_sha1"),BytesToHex(Bytes,20));
+        Data->SetStringField(TEXT("hash_encoding"),TEXT("native little-endian FVector positions then uint32 indices"));
+        Data->SetArrayField(TEXT("anchors"),SupportAnchors);
+        FString Json; FJsonSerializer::Serialize(Data,TJsonWriterFactory<>::Create(&Json));
+        const FString Path=FPaths::ProjectSavedDir()/TEXT("CliffSupportAnchors.json");
+        const bool Saved=FFileHelper::SaveStringToFile(Json,*Path);
+        UE_LOG(LogTemp,Display,TEXT("DC_CLIFF_ANCHORS saved=%d count=%d path=%s"),Saved,SupportAnchors.Num(),*Path);
+    }
 }
 FTransform ADCMaelstrom::GetArenaTransform() const { return Arena->GetComponentTransform(); }
 

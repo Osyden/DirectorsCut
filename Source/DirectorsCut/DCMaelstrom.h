@@ -65,6 +65,7 @@ private:
 	TWeakObjectPtr<AActor> CliffPreviewPreviousTarget;
 	struct FCliffPreviewHidden { TWeakObjectPtr<USceneComponent> Component; bool bVisible=false; };
 	TArray<FCliffPreviewHidden> CliffPreviewHidden;
+	TSet<TWeakObjectPtr<AActor>> CliffPreviewSupportedLandmarks;
 	void UpdateTerrainShadows();
 	float NextTerrainShadowUpdate=-1.f;
 	void BuildBasin();
