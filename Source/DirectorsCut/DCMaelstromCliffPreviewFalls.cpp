@@ -5,6 +5,7 @@
 #include "SparseVolumeTexture/SparseVolumeTexture.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
+#include "Engine/GameViewportClient.h"
 #include "HAL/IConsoleManager.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
@@ -127,10 +128,19 @@ void ADCMaelstrom::UpdateCliffPreviewFalls()
                 Actor->SetActorRelativeTransform(FTransform(FRotator(0.f,Yaw,0.f),Origin));
                 UMaterialInstanceDynamic* MID=UMaterialInstanceDynamic::Create(Base,Actor);
                 MID->SetSparseVolumeTextureParameterValue(TEXT("SparseVolumeTexture"),Volume);
-                MID->SetScalarParameterValue(TEXT("Density"),Density);
-                MID->SetScalarParameterValue(TEXT("DiagnosticEmission"),0.f);
+                const bool bDensityDiagnostic=FParse::Param(FCommandLine::Get(),TEXT("DCCliffFallDiagnostic"));
+                float AppliedDensity=static_cast<float>(Density),Emission=bDensityDiagnostic?1.f:0.f;
+                FParse::Value(FCommandLine::Get(),Asset.Contains(TEXT("/Falling."))?TEXT("DCCliffFallDensity="):TEXT("DCCliffImpactDensity="),AppliedDensity);
+                if(bDensityDiagnostic) { AppliedDensity=0.f; FParse::Value(FCommandLine::Get(),TEXT("DCCliffFallDiagnosticEmission="),Emission); }
+                MID->SetScalarParameterValue(TEXT("Density"),FMath::Max(0.f,AppliedDensity));
+                MID->SetScalarParameterValue(TEXT("DiagnosticEmission"),FMath::Max(0.f,Emission));
                 MID->SetScalarParameterValue(TEXT("DiagnosticConstantDensity"),0.f);
-                C->SetMaterial(0,MID); C->bPivotAtCentroid=false; C->bIssueBlockingRequests=false;
+                C->SetMaterial(0,MID); C->bPivotAtCentroid=false;
+                // The opt-in blocking mode distinguishes sparse residency from
+                // placement/lighting after direct screenshot seeks.
+                C->bIssueBlockingRequests=FParse::Param(FCommandLine::Get(),TEXT("DCCliffFallBlocking"));
+                C->SetFrameRate(static_cast<float>(FPS));
+                C->ComponentTags.Add(TEXT("DCCliffFallAwaitBounds"));
                 C->StepFactor=1.f; C->ShadowStepFactor=2.f;
                 C->SetPlaying(false); C->SetLooping(true); C->SetStartFrame(0.f); C->SetEndFrame(Frames-1.f);
                 CliffPreviewVolumes.Add({Actor,Frames,static_cast<float>(FPS)});
@@ -162,7 +172,36 @@ void ADCMaelstrom::UpdateCliffPreviewFalls()
         {
             Actor->SetActorHiddenInGame(false);
             if(UHeterogeneousVolumeComponent* C=Actor->FindComponentByClass<UHeterogeneousVolumeComponent>())
-            { C->SetVisibility(true); C->SetFrame(FMath::Fmod(FMath::Max(0.f,Elapsed)*Fall.FPS,static_cast<float>(Fall.Frames))); }
+            {
+                C->SetVisibility(true);
+                float Frame=FMath::Fmod(FMath::Max(0.f,Elapsed)*Fall.FPS,static_cast<float>(Fall.Frames));
+                FParse::Value(FCommandLine::Get(),TEXT("DCCliffFallFixedFrame="),Frame);
+                C->SetFrame(FMath::Clamp(Frame,0.f,Fall.Frames-1.f));
+                // Wait for the component's native tick: spawn-time frame and
+                // bounds are placeholders and cannot diagnose VDB placement.
+                if(C->ComponentHasTag(TEXT("DCCliffFallAwaitBounds"))&&C->FrameTransform.GetScale3D().X>1.)
+                {
+                    C->ComponentTags.Remove(TEXT("DCCliffFallAwaitBounds"));
+                    UMaterialInterface* Material=C->GetMaterial(0);
+                    USparseVolumeTexture* BoundVolume=nullptr;
+                    float Density=-1.f,Emission=-1.f,Voxel=-1.f;
+                    if(Material)
+                    {
+                        Material->GetSparseVolumeTextureParameterValue(FMaterialParameterInfo(TEXT("SparseVolumeTexture")),BoundVolume);
+                        Material->GetScalarParameterValue(FMaterialParameterInfo(TEXT("Density")),Density);
+                        Material->GetScalarParameterValue(FMaterialParameterInfo(TEXT("DiagnosticEmission")),Emission);
+                        Material->GetScalarParameterValue(FMaterialParameterInfo(TEXT("VoxelSizeCm")),Voxel);
+                    }
+                    const FVector Foot=Actor->GetActorTransform().TransformPosition(FVector(0,1000,0));
+                    const UGameViewportClient* Viewport=GetWorld()->GetGameViewport();
+                    IConsoleVariable* Range=IConsoleManager::Get().FindConsoleVariable(TEXT("r.HeterogeneousVolumes.MaxTraceDistance"));
+                    UE_LOG(LogTemp,Display,TEXT("DC_CLIFF_FALL_BOUNDS actor=%s relative=%s component=%s frame=%s resolution=%s boundsOrigin=%s boundsExtent=%s expectedFootWorld=%s coreWorld=%s svt=%s density=%.6f emission=%.6f voxelCm=%.3f showHV=%d traceCm=%.1f blocking=%d"),
+                        *Actor->GetName(),*Actor->GetRootComponent()->GetRelativeTransform().ToString(),*C->GetComponentTransform().ToString(),
+                        *C->FrameTransform.ToString(),*C->VolumeResolution.ToString(),*C->Bounds.Origin.ToString(),*C->Bounds.BoxExtent.ToString(),
+                        *Foot.ToString(),CliffPreviewFallCore?*CliffPreviewFallCore->GetComponentTransform().ToString():TEXT("none"),
+                        *GetPathNameSafe(BoundVolume),Density,Emission,Voxel,Viewport?Viewport->EngineShowFlags.HeterogeneousVolumes:-1,Range?Range->GetFloat():-1.f,C->bIssueBlockingRequests);
+                }
+            }
         }
     }
 }
@@ -184,7 +223,7 @@ void ADCMaelstrom::ClearCliffPreviewFalls()
         if(IConsoleVariable* Range=IConsoleManager::Get().FindConsoleVariable(TEXT("r.HeterogeneousVolumes.MaxTraceDistance")))
         {
             if(FMath::IsNearlyEqual(Range->GetFloat(),CliffPreviewAppliedTraceDistance))
-            { Range->Set(CliffPreviewPreviousTraceDistance,ECVF_SetByCode); }
+            { Range->Set(CliffPreviewPreviousTraceDistance,ECVF_SetByCode); UE_LOG(LogTemp,Display,TEXT("DC_CLIFF_PREVIEW_FALL restored traceCm=%.1f"),CliffPreviewPreviousTraceDistance); }
         }
         CliffPreviewPreviousTraceDistance=CliffPreviewAppliedTraceDistance=-1.f;
     }
