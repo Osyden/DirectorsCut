@@ -23,10 +23,11 @@ namespace DCPhononReviewPrivate
     TUniquePtr<FRun> Run;
     struct FReportRun
     {
-        double Started=0;
-        int32 Case=0, Stage=0, ProtectedCommands=0;
-        bool bSawCommand=false;
+        double Started=0, PlaybackStarted=0;
+        int32 Case=0, Stage=0, ProtectedCommands=0, NaturalReports=0, CancelledReports=0;
+        bool bSawCommand=false, bSawReportRetired=false;
         TSharedPtr<bool> TargetCurrent=MakeShared<bool>(true);
+        TSharedPtr<bool> ContinuationCurrent=MakeShared<bool>(true);
     };
     TUniquePtr<FReportRun> ReportRun;
 }
@@ -47,38 +48,64 @@ bool ADCVoice::TickPhononLifecycleReview()
             Review.Stage=3; FPlatformMisc::RequestExitWithStatus(false,1);
         };
         if (auto* Director=ADCRideDirector::Get(this)) { Director->TimeScale=0.f; }
-        if (!bUsePhonon || !bUseACE || bSmokeTest || Now-Review.Started>120.0) { Fail(TEXT("Invalid configuration or timeout")); return true; }
+        if (!bUsePhonon || !bUseACE || bSmokeTest || Now-Review.Started>90.0) { Fail(TEXT("Invalid configuration or 90-second timeout")); return true; }
         const FString Warning=TEXT("Threat to port, Captain! Keep your eyes on that creature while I watch its approach beside the ruined temple.");
         const FString Command=TEXT("Holding fire, Captain. Waiting for your order.");
         if (Review.Stage==0 && bTTSReady && bLLMReady && Now-Review.Started>5.0)
         {
-            ResetPendingSpeech(); *Review.TargetCurrent=true; Review.bSawCommand=false;
+            ResetPendingSpeech(); *Review.TargetCurrent=true; *Review.ContinuationCurrent=true;
+            Review.bSawCommand=false; Review.bSawReportRetired=false; Review.PlaybackStarted=0;
             const auto Target=Review.TargetCurrent;
-            Speak(TEXT("Ruby"),Warning,true,[Target] { return *Target; });
+            const auto Continuation=Review.ContinuationCurrent;
+            TFunction<bool()> CanContinue;
+            if (Review.Case>=3) { CanContinue=[Continuation] { return *Continuation; }; }
+            Speak(TEXT("Ruby"),Warning,true,[Target] { return *Target; },MoveTemp(CanContinue));
             Speak(TEXT("Duncan"),Command);
             Review.Stage=1;
         }
         else if (Review.Stage==1 && bActivePhonon && ActiveCurves && ActiveSpeaker==TEXT("Ruby"))
         {
             if (Review.Case<2 && bACEStarted) { Fail(TEXT("Report began before pre-playback rejection")); return true; }
-            if (Review.Case==2 && !bACEStarted) { return true; }
+            if (Review.Case>=2 && !bACEStarted) { return true; }
             if (!ActiveReportGuard) { Fail(TEXT("Missing active report guard")); return true; }
-            if (Review.Case==0) { ActiveReportGuard->StartDeadline=Now-0.01; }
+            Review.PlaybackStarted=ActiveReportGuard->PlaybackStartedAt;
+            if (Review.Case==0 || Review.Case==4) { ActiveReportGuard->StartDeadline=Now-0.01; }
+            else if (Review.Case==5) { *Review.ContinuationCurrent=false; }
             else { *Review.TargetCurrent=false; }
-            UE_LOG(LogDC,Display,TEXT("REPORT_LIFECYCLE_INVALIDATE case=%d started=%d native_pending=%d command_queued=%d"),
-                Review.Case,bACEStarted,!bACESent,SpeechQueue.Num());
+            UE_LOG(LogDC,Display,TEXT("REPORT_LIFECYCLE_INVALIDATE case=%d started=%d native_pending=%d command_queued=%d admission=%d continuation=%d expect_natural=%d"),
+                Review.Case,bACEStarted,!bACESent,SpeechQueue.Num(),ActiveReportGuard->CanStart(Now),
+                ActiveReportGuard->CanContinue(),Review.Case==3 || Review.Case==4);
             Review.Stage=2;
         }
         else if (Review.Stage==2)
         {
-            if (ActiveSpeaker==TEXT("Duncan") && ActiveText==Command && ActiveCurves && bACEStarted) { Review.bSawCommand=true; }
+            const bool ExpectNatural=Review.Case==3 || Review.Case==4;
+            if (ActiveSpeaker==TEXT("Ruby") && ActiveText==Warning && !ActiveCurves && !Review.bSawReportRetired)
+            {
+                const bool FinishedNaturally=bACEStarted && bACESent && bACESendSucceeded && bACEEnded;
+                if (FinishedNaturally!=ExpectNatural) { Fail(TEXT("Report did not retire with the expected natural/cancelled lifecycle")); return true; }
+                if (ExpectNatural && (Review.PlaybackStarted<=0 || Now-Review.PlaybackStarted+.35<ActiveDuration))
+                { Fail(TEXT("Report ended before its full generated audio duration")); return true; }
+                Review.bSawReportRetired=true;
+                if (ExpectNatural) { ++Review.NaturalReports; } else { ++Review.CancelledReports; }
+                UE_LOG(LogDC,Display,TEXT("REPORT_LIFECYCLE_REPORT_RETIRED case=%d natural=%d elapsed=%.3f duration=%.3f"),
+                    Review.Case,FinishedNaturally,Review.PlaybackStarted>0 ? Now-Review.PlaybackStarted : 0.,ActiveDuration);
+            }
+            if (ActiveSpeaker==TEXT("Duncan") && ActiveText==Command && ActiveCurves && bACEStarted)
+            {
+                if (!Review.bSawReportRetired) { Fail(TEXT("Command started without observing the report lifecycle")); return true; }
+                Review.bSawCommand=true;
+            }
             if (Review.bSawCommand && ActiveSpeaker==TEXT("Duncan") && ActiveText==Command &&
                 bACESent && bACESendSucceeded && bACEEnded && !ActiveCurves && PhononSpeech && !PhononSpeech->IsBusy())
             {
                 ++Review.ProtectedCommands; ++Review.Case;
-                if (Review.Case==3)
+                if (Review.Case==6)
                 {
-                    UE_LOG(LogDC,Display,TEXT("REPORT_LIFECYCLE_SUCCESS expiry_before_playback=1 target_before_playback=1 target_during_playback=1 commands_preserved=%d"),Review.ProtectedCommands);
+                    if (Review.NaturalReports!=2 || Review.CancelledReports!=4 || Review.ProtectedCommands!=6)
+                    { Fail(TEXT("Incomplete lifecycle accounting")); return true; }
+                    UE_LOG(LogDC,Display,TEXT("REPORT_LIFECYCLE_SUCCESS expiry_before_playback=1 target_before_playback=1 target_during_playback=1 soft_admission_during_playback=1 expiry_during_playback=1 continuation_invalid_during_playback=1 natural_reports=%d cancelled_reports=%d commands_preserved=%d elapsed=%.2f"),
+                        Review.NaturalReports,Review.CancelledReports,Review.ProtectedCommands,Now-Review.Started);
                     Review.Stage=3; FPlatformMisc::RequestExitWithStatus(false,0);
                 }
                 else { Review.Stage=0; }
