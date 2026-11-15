@@ -45,3 +45,13 @@ Root runs `Tools/import_owned_cliff_atlas.py` with `DC_OWNED_CLIFF_ATLAS` set to
 The portable CLI replay completed in 22.2 seconds: all three TGA files were byte-identical to the original delivered candidate, and the complete depth array was bitwise identical. Container metadata differs by explicit generator hash/output provenance.
 
 The fine normal atlas currently transfers original texture perturbation, not every geometric frequency removed by the geometry worker's low-pass. Native visual acceptance is pending; successful baking and correspondence are not an art-quality claim.
+
+## One bounded exposure-color variant
+
+The actual unique-atlas frame removed the waffle but still read as a brown retaining wall. While the geometry worker authored intermediate rock forms, `Tools/bake_owned_cliff_exposure.py` made one color-only variant at `Saved/OwnedCliffProjection/vfmjadufa/UniquePilotExposure`. It evaluates the exact shared `intermediate_relief`/`lookup` functions from the geometry source after the same 0.35 m Gaussian filtering. Positive/outward areas move toward the low-chroma stone population measured in the owned tile (5,311 selected pixels, median sRGB 0.608/0.580/0.533). Fine luminance contrast remains; the maximum linear luminance multiplier is 1.15. There is no added AO or painted black recess, and no invented cool-light compensation.
+
+```powershell
+& 'E:/Utilities/Blender/5.3/python/bin/python.exe' Tools/bake_owned_cliff_exposure.py --source 'Saved/OwnedCliffProjection/vfmjadufa/UniquePilot' --output 'Saved/OwnedCliffProjection/vfmjadufa/UniquePilotExposure' --geometry-source 'E:/Projects/DirectorsCut/Crater-Workers/Cliff-Contact/Tools/generate_continuous_scan_cliff.py'
+```
+
+Only BaseColor changes; the depth NPZ, normal and roughness maps are copied byte-for-byte. The variant manifest records exact geometry-helper/source hashes and palette selection. Generation took 8.2 seconds. Root runs the same importer pointed at this directory; no importer modification is required. Appearance is still pending the combined native comparison, and this material cannot substitute for convincing macro geometry.
