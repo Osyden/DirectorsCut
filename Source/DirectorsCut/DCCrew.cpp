@@ -847,21 +847,67 @@ void ADCCrewMember::CancelFireWork()
 	if (WorkRag) { WorkRag->SetVisibility(false); }
 }
 
+void ADCCrewMember::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (Figure && WorkRagPoseHandle.IsValid())
+	{
+		Figure->UnregisterOnBoneTransformsFinalizedDelegate(WorkRagPoseHandle);
+		WorkRagPoseHandle.Reset();
+	}
+	Super::EndPlay(EndPlayReason);
+}
+
+void ADCCrewMember::UpdateWorkRagTransform()
+{
+	if (!WorkRag || CrewSwatAge >= DCCrewWorkPolicy::Duration) { return; }
+	USkeletalMeshComponent* PoseMesh = WorkRagPoseMesh.Get();
+	if (!PoseMesh) { WorkRag->SetVisibility(false); return; }
+	const int32 Hand = PoseMesh->GetBoneIndex(TEXT("hand_r"));
+	if (Hand == INDEX_NONE) { WorkRag->SetVisibility(false); return; }
+	// A pirate is a leader-pose follower with its own component transform.
+	// Read that rendered body's mapped bone after the driver's pose buffers flip,
+	// not a pre-animation socket on the hidden mannequin in the actor tick.
+	const FVector Grip = PoseMesh->GetBoneTransform(Hand).GetLocation();
+	WorkRag->SetWorldLocationAndRotation(Grip,GetActorQuat());
+	if (FParse::Param(FCommandLine::Get(),TEXT("DCCrewRagReview")) && GetWorld()->GetTimeSeconds() >= NextWorkRagReviewTime)
+	{
+		NextWorkRagReviewTime=GetWorld()->GetTimeSeconds()+.1f;
+		const FVector DriverGrip=Figure->GetBoneTransform(Figure->GetBoneIndex(TEXT("hand_r"))).GetLocation();
+		UE_LOG(LogDC,Log,TEXT("CREW_RAG name=%s age=%.3f mesh=%s grip=%s anchorError=%.3f driverGap=%.3f"),
+			*CrewName,CrewSwatAge,*PoseMesh->GetPathName(),*Grip.ToCompactString(),
+			FVector::Distance(Grip,WorkRag->GetComponentLocation()),FVector::Distance(Grip,DriverGrip));
+	}
+}
+
 void ADCCrewMember::UpdateWorkRag()
 {
 	const bool Active=CrewSwatAge<DCCrewWorkPolicy::Duration;
 	if (!Active) { if (WorkRag) { WorkRag->SetVisibility(false); } return; }
 	if (!WorkRag)
 	{
+		WorkRagPoseMesh=Figure;
+		TArray<AActor*> Children;
+		GetAllChildActors(Children,true);
+		for (AActor* Child : Children)
+		{
+			TInlineComponentArray<USkeletalMeshComponent*> Meshes(Child);
+			for (USkeletalMeshComponent* Mesh : Meshes)
+			{
+				if (Mesh->GetName().Equals(TEXT("Body"),ESearchCase::IgnoreCase)
+					&& Mesh->LeaderPoseComponent.Get()==Figure && Mesh->GetBoneIndex(TEXT("hand_r"))!=INDEX_NONE)
+				{ WorkRagPoseMesh=Mesh; }
+			}
+		}
 		WorkRag=NewObject<UProceduralMeshComponent>(this,TEXT("CrewWorkRag"));
-		WorkRag->SetupAttachment(Figure,TEXT("hand_r"));
-		// Follow the evaluated hand socket in this frame; keep cloth hanging in
-		// deck orientation rather than inheriting the wrist's twist.
-		WorkRag->SetAbsolute(false,true,true);
+		WorkRag->SetupAttachment(GetRootComponent());
+		// Bone-finalization callback supplies the complete world transform.
+		WorkRag->SetAbsolute(true,true,true);
 		WorkRag->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		WorkRag->SetCastShadow(false);
 		WorkRag->SetCanEverAffectNavigation(false);
 		WorkRag->RegisterComponent();
+		WorkRagPoseHandle=Figure->RegisterOnBoneTransformsFinalizedDelegate(
+			FOnBoneTransformsFinalizedMultiCast::FDelegate::CreateUObject(this,&ADCCrewMember::UpdateWorkRagTransform));
 		if (auto* Base=LoadObject<UMaterialInterface>(nullptr,TEXT("/Game/DC/Materials/M_Stone.M_Stone")))
 		{
 			auto* Mat=UMaterialInstanceDynamic::Create(Base,this);
@@ -871,8 +917,6 @@ void ADCCrewMember::UpdateWorkRag()
 		}
 	}
 	WorkRag->SetVisibility(true);
-	WorkRag->SetRelativeLocation(FVector::ZeroVector);
-	WorkRag->SetWorldRotation(GetActorQuat());
 	TArray<FVector> V; TArray<int32> Tri; TArray<FVector2D> UV;
 	for (int32 Row=0;Row<5;++Row) for (int32 Col=0;Col<3;++Col)
 	{

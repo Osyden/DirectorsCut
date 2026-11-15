@@ -43,6 +43,7 @@ class ADCCrewMember : public AActor
 public:
 	ADCCrewMember();
 	virtual void Tick(float DeltaSeconds) override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	/** Where this hand stands on the ship at rest. All the crew's own reckoning is done there; Tick
 	 *  then puts the body where the deck is this frame, so the hands move with the ship as she rides the sea. */
 	FVector DeckPos = FVector::ZeroVector;
@@ -78,6 +79,10 @@ protected:
 	float WorkTime = 0.f;
 	void CancelFireWork();
 	void UpdateWorkRag();
+	void UpdateWorkRagTransform();
+	FDelegateHandle WorkRagPoseHandle;
+	TWeakObjectPtr<class USkeletalMeshComponent> WorkRagPoseMesh;
+	float NextWorkRagReviewTime = 0.f;
 	float CrewSwatAge = 10.f;
 	bool bCrewSwatContact = false;
 	FVector CrewSwatTarget = FVector::ZeroVector;
