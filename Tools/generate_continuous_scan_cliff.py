@@ -95,15 +95,45 @@ def intermediate_relief(tile, u, z):
     return np.clip(result*22.,-12.,12.)
 
 
-def midscale_profile(tile, u, t, toe_radius, toe_z, span):
+def faceted_relief(tile, u, z):
+    """Fit raw scanned shape to unequal planar faces, with narrow joints."""
+    gx,gz=np.meshgrid(np.arange(-2,25),np.arange(-12,7))
+    rng=np.random.default_rng(721983)
+    sites=np.c_[gx.ravel()*24+12,gz.ravel()*24+12]+rng.uniform(-10.,10.,(gx.size,2))
+    dx,dz=np.meshgrid([-8.,0.,8.],[-8.,0.,8.])
+    offsets=np.c_[dx.ravel(),dz.ravel()]
+    samples=sites[:,None,:]+offsets[None,:,:]
+    h=intermediate_relief(tile,samples[:,:,0].ravel(),samples[:,:,1].ravel()).reshape(-1,9)
+    fit=np.linalg.lstsq(np.c_[np.ones(9),offsets],h.T,rcond=None)[0].T
+    fit[:,1:]=np.clip(fit[:,1:],-1.,1.)
+    # Only the pilot needs this field. Clamp remote unchanged ring queries.
+    qu=np.clip(u,-24.,552.);qz=np.clip(z,-264.,120.)
+    ix=np.clip(np.floor(qu/24).astype(int),-1,23)
+    iz=np.clip(np.floor(qz/24).astype(int),-11,5)
+    candidates=[];distances=[];values=[]
+    for oz in [-1,0,1]:
+        for ox in [-1,0,1]:
+            ids=(iz+oz+12)*27+(ix+ox+2)
+            du=qu-sites[ids,0];dv=qz-sites[ids,1]
+            distances.append(du*du+dv*dv)
+            values.append(fit[ids,0]+fit[ids,1]*du+fit[ids,2]*dv)
+    ds=np.asarray(distances);vs=np.asarray(values)
+    # Equal-distance boundaries blend over about one physical metre, not a
+    # Gaussian spanning each face. Stable soft weights keep triple joints continuous.
+    w=np.exp(np.maximum(-60.,-(ds-ds.min(axis=0))/(2*24.*1.)))
+    return np.clip(np.sum(w*vs,axis=0)/np.sum(w,axis=0),-12.,12.)
+
+
+def midscale_profile(tile, u, t, toe_radius, toe_z, span, faceted=False):
+    field=faceted_relief if faceted else intermediate_relief
     radius, crest = macro_profile(u,t,toe_radius,span)
     crest_radius, _ = macro_profile(u,np.ones_like(t),toe_radius,span)
     # A small scan-derived crest variation participates in the real silhouette.
-    crest += .30*intermediate_relief(tile,u,crest)
+    crest += .30*field(tile,u,crest)
     z = toe_z+(crest-toe_z)*t
-    relief = intermediate_relief(tile,u,z)*smooth(t/.16)
+    relief = field(tile,u,z)*smooth(t/.16)
     radius -= relief
-    crest_radius -= intermediate_relief(tile,u,crest)
+    crest_radius -= field(tile,u,crest)
     return radius,crest,crest_radius,relief
 
 
@@ -117,6 +147,7 @@ def main():
     p.add_argument('--edge-m', type=float, default=.85)
     p.add_argument('--unique-atlas', action='store_true', help='One full-pilot U/Z atlas, Z range−200..80m')
     p.add_argument('--midscale-rock', action='store_true', help='Add nonperiodic scan-derived intermediate rock forms')
+    p.add_argument('--faceted-rock', action='store_true', help='Fit raw scan medium forms to irregular planar faces')
     a = p.parse_args()
     if a.output.exists() or 'saved' not in [x.lower() for x in a.output.resolve().parts]:
         p.error('Use a new ignored Saved directory')
@@ -167,7 +198,7 @@ def main():
         radius,crest=macro_profile(u,t,toe_radius,span)
         crest_radius,_=macro_profile(u,np.ones_like(t),toe_radius,span)
         if a.midscale_rock:
-            radius,crest,crest_radius,mid_relief=midscale_profile(depth,u,t,toe_radius,toe[:,2],span)
+            radius,crest,crest_radius,mid_relief=midscale_profile(tile if a.faceted_rock else depth,u,t,toe_radius,toe[:,2],span,a.faceted_rock)
         z=toe[:,2]+(crest-toe[:,2])*t
     else:
         crest_radius=toe_radius+setback
@@ -216,6 +247,7 @@ def main():
         meta['midscale_rock']=dict(mapping='intermediate_relief on three unique scan windows; fine PBR unchanged',
             scales=[3.2,5.8,2.1],limit_m=12.,applied_range_m=[float(mid_relief.min()),float(mid_relief.max())],
             crest_height_factor=.30,authoring='Deliberate physical enlargement of scanned geometry, not erosion simulation')
+        meta['midscale_rock']['faceted_raw_scan']=a.faceted_rock
     a.output.mkdir(parents=True)
     for name, v in [('baseline',old),('candidate',final)]:
         np.savez_compressed(a.output/(name+'.npz'),vertices_m=v,triangles=triangles,uv0=uv,
@@ -236,7 +268,7 @@ def main():
     if a.unique_atlas:
         fcr,_=macro_profile(fu,np.ones_like(fu),np.linalg.norm(ftoe[:,:2],axis=1),span)
         if a.midscale_rock:
-            _,_,fcr,_=midscale_profile(depth,fu,np.ones_like(fu),np.linalg.norm(ftoe[:,:2],axis=1),ftz,span)
+            _,_,fcr,_=midscale_profile(tile if a.faceted_rock else depth,fu,np.ones_like(fu),np.linalg.norm(ftoe[:,:2],axis=1),ftz,span,a.faceted_rock)
         fm=smooth(np.minimum(fu,span-fu)/28.)
     full['uv0'] = uv_at(fv,c0,a.tile_width_m,a.tile_height_m,a.unique_atlas,fcr).astype(np.float32)
     rgba = np.zeros((len(fv),4),np.float32);rgba[:,0]=fm;rgba[:,3]=1.
