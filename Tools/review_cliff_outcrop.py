@@ -87,7 +87,8 @@ def topology_audit(mesh, surface_mode=False):
               "degenerate_triangles": degenerate, "duplicate_triangles": duplicates,
               "signed_volume_m3": None if surface_mode else volume, "surface_area_m2": float(twice_area.sum()*.5),
               "expected_topology": "open_surface" if surface_mode else "closed_solid",
-              "topology_limitations": "Edge-manifold/winding and signed-volume checks only; no exhaustive self-intersection or nested-shell containment test.",
+              "topology_limitations": ("Open edge-manifold/winding checks only; no enclosed-volume or exhaustive self-intersection test." if surface_mode else
+                                      "Edge-manifold/winding and signed-volume checks only; no exhaustive self-intersection or nested-shell containment test."),
               "front_downward_area_m2": float(twice_area[downward_front].sum()*.5),
               "front_area_m2": float(twice_area[front].sum()*.5),
               "front_downward_area_limitation": "Normal-selected diagnostic; closure geometry and internal cavity surfaces are not proof of visible overhangs.",
@@ -218,11 +219,12 @@ def render_pair(baseline, candidate, output, cameras, samples, mode, angle):
             objects[stage].hide_render = False
             dims = np.ptp(data["chart"], axis=0)
             title = "ORIGINAL TRIANGLE SURFACE" if data.get("surface_mode") else "TRUE 3D OUTCROP"
-            label_camera(scene, camera, f"{title} | {stage.upper()} | {name}",
+            stage_label = "CANDIDATE" if data.get("surface_mode") and stage == "fractured" else stage.upper()
+            label_camera(scene, camera, f"{title} | {stage_label} | {name}",
                          (f"Range {view['horizontal_range_m']:.0f}m | 35mm / 36mm sensor | bar100m, posts10m" if perspective else
                           f"Physical bounds {dims[0]:.1f} x {dims[1]:.1f} x {dims[2]:.1f} m | identical camera and raking light"),
                          f"Source {data['sha256'][:10]} | normals {mode}"+(f" {angle:g}deg" if mode=="angle" else "")+
-                         " | no projection, displacement or geometry smoothing")
+                         " | renderer adds no displacement or geometry smoothing")
             scene.render.filepath = str(output/f"{name}_{stage}.png")
             bpy.ops.render.render(write_still=True)
             for child in list(camera.children):
