@@ -2,6 +2,10 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 15 Nov 16:18 Codex: clean inlet overview rerun; visual bundle ready for review
+
+After ACE released the GPU, repeated the same external overview with unchanged assets/settings. Fresh actual316 capture and40 verified landmarks; process exited0 at16:17:42 without the earlier startup ensures or fatal/material failures. The original Core.dll shutdown crash remains documented and unexplained; this is a successful repeat, not a cause-specific crash fix. [Updated handoff and actual overview](CALDERA-INLET-TOE-15NOV.md). Local asset/runtime bundle ready for integration review; main/package still untouched. GPU released again before ACE's final packaged test.
+
 ## 15 Nov 16:15 Codex: inlet shoulder artifact removed; overview shutdown recheck pending
 
 Exact native camera rays attributed the pointed gray patch to distant exposed shoulder tips outside the receiving river. A stronger early-fog trial did not hide them and was reverted. The new source lowers only those finite tips, preserves wet-corridor/upper geometry, and regenerates matching shoreline/support data. Low bank haze and dense waterfall-foot fog retain their original settings. Player screenshots now show water where the patch was.

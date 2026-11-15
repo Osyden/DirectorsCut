@@ -1,6 +1,6 @@
 # Caldera inlet shoulder correction — 15 November, 16:15
 
-Review checkout: `E:/Projects/DirectorsCut/Maelstrom-Saturday`, branch `codex/maelstrom-saturday`, based on combined main `3368536`. **Player-view verification passes; the external overview rendered but crashed at shutdown. One clean overview rerun remains before integration acceptance.** Main and its packaged playable have not been changed.
+Review checkout: `E:/Projects/DirectorsCut/Maelstrom-Saturday`, branch `codex/maelstrom-saturday`, based on combined main `3368536`. **Player-view verification and the unchanged overview rerun now pass. Ready for local integration review.** The first overview's shutdown crash remains documented below; its root cause is unresolved. Main and its packaged playable have not been changed.
 
 ## Result and scope
 
@@ -10,6 +10,7 @@ The pointed gray patch near the ship was distant rock protruding beside the rece
 
 - [Before: pointed shoulder beside the port stern](review/caldera-inlet-toe-15nov/before.png).
 - [After: continuous visible water at the same native player shot](review/caldera-inlet-toe-15nov/after.png).
+- [Current overview from the successful unchanged rerun](review/caldera-inlet-toe-15nov/overview.png).
 - [Current overview, captured before failed process shutdown](review/caldera-inlet-toe-15nov/overview-shutdown-failed.png).
 
 These are unedited native1600x900 captures, not generated concepts. The overview still shows broad sculpted banks, uniform river width and visible impact-fog lobes. This is one defect correction, not final reference-quality art. Water, route, boss, sky and boulder placement were not changed.
@@ -30,7 +31,7 @@ The low bank veil retains160 volumes of46m radius, radial extinction0.09, height
 
 All paths above are relative to the review checkout. The generated mesh and its seven matching runtime files are frozen under `Saved/CalderaInletToe/Handoff/`, with sizes and SHA256 values in `files.json`. They belong under `Content/DC/Maelstrom/GeneratedCliffPreview/` and its `Runtime/` subdirectory respectively. Existing `M_CliffScanSurface` and texture dependencies remain required. Do not copy the whole Content folder or the four pending VFX material edits. Do not publish owned scan-derived files to Git.
 
-This bundle is for local integration review after the outstanding clean run, not automatic release promotion. Copy its runtime files as one set; do not mix the old source marker with the new mesh. `CliffPreviewWaterfall.json` remains historical data; perimeter waterfalls are disabled by `CompleteArena.json`. The old installed mesh and exact Saved/runtime rollback are preserved under `Saved/CalderaInletToeRollback/`.
+This bundle is now ready for local integration review, not automatic release promotion. Copy its runtime files as one set; do not mix the old source marker with the new mesh. `CliffPreviewWaterfall.json` remains historical data; perimeter waterfalls are disabled by `CompleteArena.json`. The old installed mesh and exact Saved/runtime rollback are preserved under `Saved/CalderaInletToeRollback/`.
 
 ## Verification and limits
 
@@ -42,7 +43,7 @@ The actual imported SourceModel audit checks863,513 vertices and1,720,320 triang
 
 `CalderaRoundedToeOverview` captured at actual316, 16:08:11, then requested normal exit and logged shutdown. Windows Application Error1000 independently records PID42028 crashing at16:08:14 with `0xc0000005` in `UnrealEditor-Core.dll`; the harness rejected that run. Earlier UE crash folders contain handled startup MTAccessDetector ensures and rendering continued afterward. Their relationship to the final crash is unproven. **Keep this image as visual evidence but do not call the overview a clean pass.** No speculative renderer or geometry fix is justified by the shutdown stack alone.
 
-The GPU slot was released to the ACE chat after all own jobs ended. Next check is one isolated overview rerun when that slot is available, preserving current content and original fog constants. Do not run it concurrently with ACE's GPU comparison or the main release test.
+At16:17, after the ACE chat explicitly released the GPU, `CalderaRoundedToeOverviewRecheck` repeated identical content, settings and camera. It produced the fresh actual316 overview at16:17:40, verified40 landmarks and exited0 at16:17:42, without the earlier handled ensures or fatal/material validation failures. This satisfies the requested clean repeat; it does not establish a fix or cause for the earlier shutdown crash. The GPU was immediately released again before ACE's final packaged check. No extra build, material, geometry or fog edits occurred between these two overview runs.
 
 ## Reproduction
 

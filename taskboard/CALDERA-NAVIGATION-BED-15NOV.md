@@ -1,6 +1,6 @@
 # Inlet bed investigation — 15 November, 15:35
 
-Review branch: `codex/maelstrom-saturday`, based on combined main `3368536`. **The deeper-bed trial is not accepted for integration.** Its byte-for-byte rollback below is historical. The later [bounded shoulder correction](CALDERA-INLET-TOE-15NOV.md) is now installed only in this review checkout; player verification passes and a clean overview rerun remains. Main and its packaged local playable were never changed.
+Review branch: `codex/maelstrom-saturday`, based on combined main `3368536`. **The deeper-bed trial is not accepted for integration.** Its byte-for-byte rollback below is historical. The later [bounded shoulder correction](CALDERA-INLET-TOE-15NOV.md) is now installed only in this review checkout; player verification and the16:17 unchanged overview rerun pass. Main and its packaged local playable were never changed.
 
 ## 16:15 follow-up: fog trial reverted, shoulder geometry corrected
 
