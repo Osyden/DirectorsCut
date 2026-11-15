@@ -933,7 +933,8 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
     const float Width=DCMaelstromRoute::WidthScale(Elapsed);
     const float PreviousWidth=DCMaelstromRoute::WidthScale(Elapsed-DT);
     RouteOffset/=PreviousWidth; RouteVelocity/=PreviousWidth;
-    DCMaelstromRoute::AdvanceSteering(Input,DT,Riding,HelmTurn,RouteOffset,RouteVelocity);
+    DCMaelstromRoute::AdvanceSteering(Input,DT,Riding,HelmTurn,RouteOffset,RouteVelocity,
+        DCMaelstromRoute::InletOutwardLimit(Elapsed,Radius)/Width);
     RouteOffset*=Width; RouteVelocity*=Width;
     const FVector2D P = DCMaelstromRoute::Point(Elapsed,Radius,RouteOffset);
     ShipRadius=P.Size();

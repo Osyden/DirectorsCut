@@ -6,14 +6,26 @@
  * The ship remains at the world origin; the arena's inverse pose expresses travel. */
 namespace DCMaelstromRoute
 {
-    inline void AdvanceSteering(float Input, float DT, float Riding, float& Helm, float& Offset, float& Velocity)
+    inline void AdvanceSteering(float Input, float DT, float Riding, float& Helm, float& Offset, float& Velocity,
+        float OutwardLimit=11000.f)
     {
+        const float PreviousOffset=Offset;
+        OutwardLimit=FMath::Clamp(OutwardLimit,0.f,11000.f);
         Helm = FMath::FInterpTo(Helm,Input,DT,1.5f);
-        const float Bank = FMath::SmoothStep(5000.f,9500.f,FMath::Abs(Offset));
+        const float Bank = Offset>0.f
+            ? FMath::SmoothStep(FMath::Max(0.f,OutwardLimit-6000.f),FMath::Max(1.f,OutwardLimit-1500.f),Offset)
+            : FMath::SmoothStep(5000.f,9500.f,FMath::Abs(Offset));
         const float Acceleration = Helm*850.f - Velocity*.85f - FMath::Sign(Offset)*Bank*1900.f;
         Velocity = FMath::Clamp(Velocity+Acceleration*DT,-1300.f,1300.f);
         Offset += Velocity*DT*Riding;
         if (FMath::Abs(Offset)>11000.f) { Offset=FMath::Clamp(Offset,-11000.f,11000.f); Velocity*=.25f; }
+        if(Offset>OutwardLimit)
+        {
+            Offset=OutwardLimit;
+            // If the river bank closes in, keep the velocity consistent with
+            // that carried inward motion instead of retaining an outward yaw.
+            Velocity=DT>0.f ? FMath::Min(0.f,(Offset-PreviousOffset)/DT) : 0.f;
+        }
     }
 
     constexpr float EntryStartSeconds=-8.f;
@@ -73,6 +85,20 @@ namespace DCMaelstromRoute
         const float A = Angle(Seconds);
         const float R = Radius * RadialFraction(Seconds) + Offset;
         return FVector2D(FMath::Cos(A), FMath::Sin(A)) * R;
+    }
+
+    inline float InletOutwardLimit(float Seconds,float Radius)
+    {
+        // Outward offset still sits uphill on the inlet when the centreline
+        // reaches the lake. Let the river carry it back before the lake turn;
+        // otherwise it rides a nonexistent side shelf and drops 13m at its end.
+        const float Approach=1.f-FMath::SmoothStep(16.f,30.f,Seconds);
+        // Restore full helm only once even the innermost part of that outward
+        // band has passed the inlet's 220m angular footprint plus bow margin.
+        const float Across=FMath::Abs(FMath::UnwindRadians(Angle(Seconds)-(UE_PI-.40f)))
+            *Radius*LakeRadiusFraction;
+        const float Clear=Seconds>=LakeEntrySeconds ? FMath::SmoothStep(25000.f,35000.f,Across) : 0.f;
+        return 11000.f*FMath::Max(Approach,Clear);
     }
 
     inline FVector2D Tangent(float Seconds, float Radius)

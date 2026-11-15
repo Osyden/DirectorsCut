@@ -14,6 +14,9 @@ bool FDCMaelstromRouteTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("Extreme grade cannot overturn the ship"),DeckPitch(-80.f,12.f)==-34.f);
     TestTrue(TEXT("Landing compresses before rebounding"),LandingHeave(.15f)<-50.f && LandingHeave(.5f)>0.f);
     TestTrue(TEXT("Landing has no residual heave after three seconds"),LandingHeave(-1.f)==0.f && LandingHeave(3.f)==0.f && LandingHeave(10.f)==0.f);
+    TestTrue(TEXT("Inlet starts with full steering corridor"),InletOutwardLimit(16.f,160000.f)==11000.f);
+    TestTrue(TEXT("Outward lane closes before the unsupported side shelf"),InletOutwardLimit(30.f,160000.f)==0.f && InletOutwardLimit(50.f,160000.f)==0.f);
+    TestTrue(TEXT("Outward steering restores after actual inlet clearance"),InletOutwardLimit(75.f,160000.f)==11000.f);
     // Continuous route through the drop, acceleration and phase boundaries.
     for (float T : {0.f,8.f,12.f,22.f,34.f,40.f,85.f,158.f,160.f,165.f,180.f})
     {
