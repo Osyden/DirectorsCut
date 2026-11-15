@@ -67,7 +67,6 @@ protected:
 	void ShowMainMenu();
 	void TickMainMenu(float DeltaSeconds);
 	bool bAwaitingStart = false;
-	bool bMenuPaused = false;
 	bool bMenuCaptured = false;
 	float MenuAge = 0.f;
 	TSharedPtr<class SWidget> MainMenuWidget;
