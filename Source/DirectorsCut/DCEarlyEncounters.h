@@ -20,6 +20,9 @@ private:
 	struct FThreat
 	{
 		TWeakObjectPtr<AActor> Body, Target, Charge, Marker;
+		TWeakObjectPtr<class UDCCombatCueComponent> AlertCue;
+		FName CurrentClip;
+		float GaitPhase = 0.f, LastAnimLog = -10.f;
 		TArray<TWeakObjectPtr<class UStaticMeshComponent>> Eyes, Beams;
 		FVector EyeLocal[2] = {};
 		FVector DeckTarget = FVector::ZeroVector;
@@ -35,6 +38,7 @@ private:
 		float Age = 0.f, Duration = 2.4f;
 	};
 	TArray<FThreat> Threats;
+	UPROPERTY() TMap<FName, TObjectPtr<class UAnimSequence>> CreatureClips;
 	TArray<FProjectile> Projectiles;
 	UPROPERTY() TObjectPtr<class ADCRideDirector> Director;
 	UPROPERTY() TObjectPtr<class ADCTreadmill> Treadmill;
@@ -45,6 +49,9 @@ private:
 	void SpawnGroup(int32 Group);
 	void SpawnStatue(int32 Index);
 	void TickThreat(FThreat& Threat, float DeltaSeconds);
+	UAnimSequence* CreatureClip(FName Name);
+	void UpdateCreaturePose(FThreat& Threat, float Dt, float GroundSpeed, float Facing);
+	void UpdateAlert(FThreat& Threat, bool bConcealed);
 	void Ignite(const FVector& DeckPoint, const TCHAR* Cause);
 	void Clear();
 	void RemoveThreat(FThreat& Threat);

@@ -1,4 +1,8 @@
 #include "DCEarlyEncounters.h"
+#include "DCFogCreatureMotion.h"
+#include "DCCombatCue.h"
+#include "DCCombatCuePolicy.h"
+#include "Animation/AnimSingleNodeInstance.h"
 #include "DCRideDirector.h"
 #include "DCTreadmill.h"
 #include "DCGunnery.h"
@@ -29,13 +33,6 @@ namespace
 	UAnimSequence* Anim(const TCHAR* Name)
 	{
 		return LoadObject<UAnimSequence>(nullptr, *FString::Printf(TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/%s.%s"), Name, Name), nullptr, LOAD_NoWarn | LOAD_Quiet);
-	}
-	void Play(AActor* Actor, const TCHAR* Name, bool bLoop)
-	{
-		if (ASkeletalMeshActor* Body = Cast<ASkeletalMeshActor>(Actor))
-		{
-			if (UAnimSequence* Animation = Anim(Name)) { Body->GetSkeletalMeshComponent()->PlayAnimation(Animation, bLoop); }
-		}
 	}
 	AActor* Empty(UWorld* World, const FVector& Position)
 	{
@@ -187,7 +184,8 @@ void ADCEarlyEncounters::SpawnGroup(int32 Group)
 		G.InitialWait = 8.f + I * 2.8f;
 		G.bGroupLeader = I == 0;
 		Body->SetActorScale3D(FVector(G.Size));
-		Play(Body, TEXT("Jog_Biped_Fwd"), true);
+		G.GaitPhase = I * .23f;
+		UpdateCreaturePose(G, 0.f, 0.f, 0.f);
 		G.Target = MakeTarget(FVector(G.X, G.SeaY, Director->SeaLevelZ + G.Size * 175.f), 1050.f, 3.f);
 		Threats.Add(G);
 	}
@@ -243,6 +241,92 @@ FVector ADCEarlyEncounters::Hand(const FThreat& T) const
 	return T.Body.IsValid() ? T.Body->GetActorLocation() + FVector(0, 0, T.Size * 180.f) : FVector::ZeroVector;
 }
 
+UAnimSequence* ADCEarlyEncounters::CreatureClip(FName Name)
+{
+	if (const TObjectPtr<UAnimSequence>* Found = CreatureClips.Find(Name)) { return Found->Get(); }
+	UAnimSequence* Clip = Anim(*Name.ToString());
+	CreatureClips.Add(Name, Clip);
+	if (!Clip) { UE_LOG(LogDC, Warning, TEXT("Fog creature animation missing: %s"), *Name.ToString()); }
+	return Clip;
+}
+
+void ADCEarlyEncounters::UpdateCreaturePose(FThreat& T, float Dt, float GroundSpeed, float Facing)
+{
+	ASkeletalMeshActor* Actor = Cast<ASkeletalMeshActor>(T.Body.Get());
+	if (!Actor || T.bStatue) { return; }
+	using namespace DCFogCreatureMotion;
+	USkeletalMeshComponent* Mesh = Actor->GetSkeletalMeshComponent();
+	UAnimSequence* Rip = CreatureClip(TEXT("Ability_RipNToss_Rip"));
+	UAnimSequence* Toss = CreatureClip(TEXT("Ability_RipNToss_Toss"));
+	const FPose PoseState = Pose(T.Stage, T.Clock, Rip ? Rip->GetPlayLength() : 1.f, Toss ? Toss->GetPlayLength() : 1.f);
+	const EDirection Travel = Direction(GroundSpeed, Facing);
+	const bool bLoop = PoseState.Action == EAction::Travel || PoseState.Action == EAction::Hold;
+	const bool bHolding = PoseState.Action == EAction::Hold;
+	const TCHAR* Name = TEXT("Idle_Biped");
+	if (PoseState.Action == EAction::Rip) { Name = TEXT("Ability_RipNToss_Rip"); }
+	else if (PoseState.Action == EAction::Toss) { Name = TEXT("Ability_RipNToss_Toss"); }
+	else if (PoseState.Action == EAction::Death) { Name = TEXT("Death_A"); }
+	else
+	{
+		switch (Travel)
+		{
+		case EDirection::Forward: Name = bHolding ? TEXT("Ability_RipNToss_Jog_Fwd") : TEXT("Jog_Biped_Fwd"); break;
+		case EDirection::Backward: Name = bHolding ? TEXT("Ability_RipNToss_Jog_Bwd") : TEXT("Jog_Biped_Bwd"); break;
+		case EDirection::Left: Name = bHolding ? TEXT("Ability_RipNToss_Jog_Lft") : TEXT("Jog_Biped_Lft"); break;
+		case EDirection::Right: Name = bHolding ? TEXT("Ability_RipNToss_Jog_Rgt") : TEXT("Jog_Biped_Rt"); break;
+		default: Name = bHolding ? TEXT("Ability_RipNToss_Idle") : TEXT("Idle_Biped"); break;
+		}
+	}
+	UAnimSequence* Clip = CreatureClip(Name);
+	if (!Clip) { Name = TEXT("Idle_Biped"); Clip = CreatureClip(Name); }
+	if (!Clip) { return; }
+	const float Length = FMath::Max(.01f, Clip->GetPlayLength());
+	const float PhaseRate = Travel == EDirection::Idle ? 1.f / Length : GaitCyclesPerSecond(GroundSpeed, T.Size);
+	const float Rate = bLoop ? PhaseRate * Length : (PoseState.Action == EAction::Rip ? Length / FMath::Min(Length, 1.25f) : 1.f);
+	// Keep normalized footfall phase when changing directional or carrying loops.
+	// Never restart a loop every tick and never leave an ended one-shot holding a travelling actor.
+	if (bLoop) { T.GaitPhase = FMath::Fmod(T.GaitPhase + Dt * PhaseRate, 1.f); }
+	if (T.CurrentClip != FName(Name))
+	{
+		Mesh->PlayAnimation(Clip, bLoop);
+		Mesh->SetComponentTickEnabled(false);
+		if (UAnimSingleNodeInstance* Instance = Mesh->GetSingleNodeInstance()) { Instance->SetRootMotionMode(ERootMotionMode::IgnoreRootMotion); }
+		T.CurrentClip = Name;
+	}
+	const float Position = bLoop ? T.GaitPhase * Length : FMath::Clamp(PoseState.Seconds, 0.f, Length);
+	Mesh->SetPosition(Position, false);
+	Mesh->TickAnimation(0.f, false);
+	Mesh->RefreshBoneTransforms();
+#if !UE_BUILD_SHIPPING
+	if (FParse::Param(FCommandLine::Get(), TEXT("DCFogAnimLog")) && T.Age - T.LastAnimLog >= .5f)
+	{
+		T.LastAnimLog = T.Age;
+		UE_LOG(LogDC, Display, TEXT("FogAnim body=%s ride=%.2f stage=%d clock=%.2f ground=%.1f facing=%.1f clip=%s pos=%.3f/%.3f rate=%.2f loop=%d"),
+			*Actor->GetName(), Director->RideTime, T.Stage, T.Clock, GroundSpeed, Facing, Name, Position, Length, Rate, bLoop);
+	}
+#endif
+}
+
+void ADCEarlyEncounters::UpdateAlert(FThreat& T, bool bConcealed)
+{
+	AActor* Body = T.Body.Get();
+	if (!Body) { return; }
+	const bool bVisible = DCCombatCuePolicy::AlertVisible(T.Stage, T.Target.IsValid(), bConcealed, Body->IsHidden());
+	if (!T.AlertCue.IsValid() && bVisible) { T.AlertCue = UDCCombatCueComponent::Create(Body, TEXT("AttackAlert")); }
+	if (UDCCombatCueComponent* Cue = T.AlertCue.Get())
+	{
+		FVector Head = Body->GetActorLocation();
+		if (ASkeletalMeshActor* Skeletal = Cast<ASkeletalMeshActor>(Body))
+		{
+			// Only the creature mesh: actor bounds would include the cue and make it climb itself.
+			const FBoxSphereBounds Bounds = Skeletal->GetSkeletalMeshComponent()->Bounds;
+			Head = Bounds.Origin + FVector(0, 0, Bounds.BoxExtent.Z + 150.f);
+		}
+		else { Head = Body->GetActorTransform().TransformPosition((T.EyeLocal[0] + T.EyeLocal[1]) * .5f) + FVector(0, 0, 650.f); }
+		Cue->ShowAlert(Head, T.bStatue ? 350.f : 220.f, FMath::Clamp(T.Clock / (T.bStatue ? 3.5f : 3.f), 0.f, 1.f), T.Age, bVisible);
+	}
+}
+
 void ADCEarlyEncounters::Ignite(const FVector& DeckPoint, const TCHAR* Cause)
 {
 #if !UE_BUILD_SHIPPING
@@ -265,8 +349,10 @@ void ADCEarlyEncounters::TickThreat(FThreat& T, float Dt)
 	// Dt already includes the ride time scale. Scale movement exactly once so
 	// accelerated reviews retain the same firing windows as normal play.
 	const float Speed = Director->GetEnv().ShipSpeed;
+	const float PreviousX = T.X;
 	if (T.bStatue || T.Age > 34.f || T.Stage == 4) { T.X -= Speed * Dt; }
 	else { T.X = FMath::FInterpConstantTo(T.X, T.HoldX, Dt, T.X > T.HoldX + 1800.f ? Speed : Speed * .25f); }
+	const float GroundSpeed = DCFogCreatureMotion::GroundSpeed(Speed, PreviousX, T.X, Dt);
 	const FVector Local(T.X, T.SeaY - Treadmill->GetLaneOffset(), Director->SeaLevelZ + Director->SeaRise(T.SeaY) - Director->SeaRise(Treadmill->GetLaneOffset()) - (T.bStatue ? 150.f : 260.f));
 	const float Facing = T.bStatue ? (T.Side < 0.f ? -90.f : 90.f) : FVector(-Local.X, -Local.Y, 0).Rotation().Yaw;
 	Body->SetActorLocationAndRotation(Director->GetWorldRock().TransformPosition(Local), FRotator(0, Facing + (T.bStatue ? 0.f : -90.f), 0));
@@ -287,7 +373,6 @@ void ADCEarlyEncounters::TickThreat(FThreat& T, float Dt)
 		if (Body == VerifyEnemy.Get() && T.Stage < 2) { bVerifyInterrupted = true; }
 #endif
 		T.Stage = 4; T.Clock = 0.f;
-		Play(Body, TEXT("Death_A"), false);
 		if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>()) { Crew->Report(T.bStatue ? TEXT("The eyes are dark! Statue silenced!") : TEXT("One down! Keep that battery firing!")); }
 		RetireFireball(T.Charge.Get()); T.Charge.Reset();
 		if (T.Marker.IsValid()) { T.Marker->Destroy(); }
@@ -296,6 +381,8 @@ void ADCEarlyEncounters::TickThreat(FThreat& T, float Dt)
 	}
 	if (T.Stage == 4)
 	{
+		UpdateCreaturePose(T, Dt, GroundSpeed, Facing);
+		UpdateAlert(T, bFogConcealed);
 		// A silenced monument remains in the city with dark eyes. Creatures sink
 		// fully below the water before their actors retire, avoiding a visible pop.
 		if (!T.bStatue) { Body->AddActorWorldOffset(FVector(0, 0, -FMath::SmoothStep(.7f, 4.8f, T.Clock) * T.Size * 290.f)); }
@@ -315,7 +402,6 @@ void ADCEarlyEncounters::TickThreat(FThreat& T, float Dt)
 		RetireFireball(T.Charge.Get()); T.Charge.Reset();
 		if (T.Marker.IsValid()) { T.Marker->Destroy(); T.Marker.Reset(); }
 		for (auto& Beam : T.Beams) { if (Beam.IsValid()) { Beam->SetVisibility(false); } }
-		Play(Body, TEXT("Idle"), true);
 		UE_LOG(LogDC, Log, TEXT("Encounter charge cancelled: firing window closed delta=%s clear=%d at %.1f"), *AimDelta.ToCompactString(), Guns->HasClearShot(PlayerGun, T.Target.Get()), Director->RideTime);
 	}
 	if (bCanShoot)
@@ -338,10 +424,12 @@ void ADCEarlyEncounters::TickThreat(FThreat& T, float Dt)
 		{
 			T.Stage = 1; T.Clock = 0.f; T.bImpact = false; AttackSpacing = 4.f;
 			T.Marker = MakeMarker(T.DeckTarget);
-			if (!T.bStatue) { Play(Body, TEXT("Ability_RipNToss_Rip"), false); T.Charge = MakeFireball(Hand(T)); }
+			if (!T.bStatue) { T.Charge = MakeFireball(Hand(T)); }
 			UE_LOG(LogDC, Display, TEXT("Encounter charge: %s exposure=%.1f at %.1f"), T.bStatue ? TEXT("sentinel") : TEXT("creature"), T.Exposure, Director->RideTime);
 		}
 	}
+	// Evaluate bones before following the held fireball or sampling its release position.
+	UpdateCreaturePose(T, Dt, GroundSpeed, Facing);
 	if (T.Marker.IsValid())
 	{
 		T.Marker->SetActorLocationAndRotation(Director->DeckToWorld(T.DeckTarget), Director->DeckTransform.GetRotation());
@@ -361,7 +449,6 @@ void ADCEarlyEncounters::TickThreat(FThreat& T, float Dt)
 		T.Stage = 2; T.Clock = 0.f;
 		if (!T.bStatue)
 		{
-			Play(Body, TEXT("Ability_RipNToss_Toss"), false);
 			FProjectile P; P.From = Hand(T); P.DeckTarget = T.DeckTarget;
 			P.Visual = T.Charge.IsValid() ? T.Charge.Get() : MakeFireball(P.From);
 			T.Charge.Reset(); Projectiles.Add(P);
@@ -390,12 +477,12 @@ void ADCEarlyEncounters::TickThreat(FThreat& T, float Dt)
 		if (T.Clock >= (T.bStatue ? 1.2f : 2.4f))
 		{
 			T.Stage = 3; T.Clock = 0.f;
-			Play(Body, TEXT("Idle"), true);
 			for (auto& Beam : T.Beams) { if (Beam.IsValid()) { Beam->SetVisibility(false); } }
 			if (T.Marker.IsValid()) { T.Marker->Destroy(); T.Marker.Reset(); }
 		}
 	}
 	if (T.Stage == 3 && T.Clock >= 11.f) { T.Stage = 0; T.Exposure = 0.f; T.InitialWait = 2.5f; }
+	UpdateAlert(T, bFogConcealed);
 }
 
 void ADCEarlyEncounters::RemoveThreat(FThreat& T)
