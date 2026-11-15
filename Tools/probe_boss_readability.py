@@ -47,6 +47,7 @@ int main(){
   }
  }
  Check(Place(800,450,false,1600,900,1).AtEdge,"behind-camera target retains directional cue");
+ Check(Place(1700,200,true,1600,900,1).Y-34>425,"largest urgent bracket clears bottom crew card");
  Check(Urgency(12)==0&&Urgency(3)==0&&Urgency(0)==1,"urgent tint only in final three seconds");
  for(const auto& e:DCBossTimeline::Events){
   const float strike=e.At+DCBossTimeline::Tell(e.Kind);
