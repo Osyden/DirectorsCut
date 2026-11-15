@@ -3,6 +3,7 @@
 #include "Components/PrimitiveComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Engine/SkeletalMesh.h"
 #include "Engine/World.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
@@ -19,6 +20,8 @@ namespace
 		FTransform Deck;
 		UPrimitiveComponent* Hull = nullptr;
 		TArray<UPrimitiveComponent*> Parts;
+		// XY is the authored shaft axis, Z stores its horizontal clearance radius.
+		TArray<FVector> MastTrunks;
 		FCollisionQueryParams Query { FName(TEXT("CrewDeckNavigation")), true };
 		mutable int32 FloorMiss=0, FloorLowHigh=0, FloorSlope=0, FloorPassed=0;
 		mutable int32 SolidRejected=0, SupportRejected=0, BodyRejected=0;
@@ -51,6 +54,10 @@ namespace
 
 		bool Standing(const FVector& Feet) const
 		{
+			for (const FVector& Trunk : MastTrunks)
+			{
+				if (FVector::DistSquared2D(Feet,Trunk)<FMath::Square(Trunk.Z+CrewBodyRadius)) { ++SolidRejected; return false; }
+			}
 			for (UPrimitiveComponent* Part : Parts)
 			{
 				const FString Name=Part->GetName();
@@ -80,6 +87,13 @@ namespace
 
 		bool Connected(const FVector& A, const FVector& B) const
 		{
+			const FVector2D Along(B.X-A.X,B.Y-A.Y);
+			for (const FVector& Trunk : MastTrunks)
+			{
+				const FVector2D ToTrunk(Trunk.X-A.X,Trunk.Y-A.Y);
+				const double T=FMath::Clamp(FVector2D::DotProduct(ToTrunk,Along)/FMath::Max(Along.SizeSquared(),1.0),0.0,1.0);
+				if ((ToTrunk-Along*T).SizeSquared()<FMath::Square(Trunk.Z+CrewBodyRadius)) { return false; }
+			}
 			if (FMath::Abs(A.Z-B.Z)>MaxStep) { return false; }
 			FVector Mid;
 			if (!Floor((A.X+B.X)*.5f,(A.Y+B.Y)*.5f,Mid) || FMath::Abs(Mid.Z-(A.Z+B.Z)*.5f)>MaxStep*.6f) { return false; }
@@ -106,6 +120,30 @@ bool FDCCrewNavigation::Build(ADCRideDirector* Director)
 	for (UPrimitiveComponent* Part : Components)
 	{
 		if (Part->GetName()==TEXT("HullShip")) { Sampler.Hull=Part; }
+		if (Part->GetName()==TEXT("SK_Mast"))
+		{
+			// The supplied physics asset wraps the whole rig in broad boxes, not
+			// just the two trunks. Those boxes reject every walkable deck sample.
+			// Reference-pose shaft bones keep a narrow, geometry-anchored obstacle
+			// independent of animation/physics initialization and sail movement.
+			if (const auto* Mast=Cast<USkeletalMeshComponent>(Part); Mast && Mast->GetSkeletalMeshAsset())
+			{
+				const FReferenceSkeleton& Skeleton=Mast->GetSkeletalMeshAsset()->GetRefSkeleton();
+				const TArray<FTransform>& Pose=Skeleton.GetRefBonePose();
+				for (const FName Bone : { FName(TEXT("Bone_008")), FName(TEXT("Bone_014")) })
+				{
+					const int32 Index=Skeleton.FindBoneIndex(Bone);
+					if (Index==INDEX_NONE) { UE_LOG(LogDC,Warning,TEXT("CREW_MAST missing shaft bone %s"),*Bone.ToString()); continue; }
+					FTransform At=Pose[Index];
+					for (int32 Parent=Skeleton.GetParentIndex(Index); Parent!=INDEX_NONE; Parent=Skeleton.GetParentIndex(Parent)) { At=At*Pose[Parent]; }
+					const FVector Shaft=Sampler.Deck.InverseTransformPosition(Mast->GetComponentTransform().TransformPosition(At.GetLocation()));
+					const float TrunkRadius=65.f;
+					Sampler.MastTrunks.Add(FVector(Shaft.X,Shaft.Y,TrunkRadius));
+					UE_LOG(LogDC,Log,TEXT("CREW_MAST bone=%s deckXY=%.1f,%.1f radius=%.1f"),*Bone.ToString(),Shaft.X,Shaft.Y,TrunkRadius);
+				}
+			}
+			continue;
+		}
 		if ((!Cast<UStaticMeshComponent>(Part) && !Cast<USkeletalMeshComponent>(Part)) || !Part->IsVisible() || Part->bHiddenInGame) { continue; }
 		// The water/hull proxy is a coarse buoyancy shell, not the deck surface.
 		if (Part->GetName()==TEXT("SM_Root") || Part->GetName().Contains(TEXT("water_collision"))) { continue; }
