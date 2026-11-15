@@ -58,6 +58,7 @@ def main():
     mel=unreal.MaterialEditingLibrary
     mel.delete_all_material_expressions(material)
     material.set_editor_property('used_with_nanite',True)
+    material.set_editor_property('used_with_instanced_static_meshes',True)
     material.set_editor_property('tangent_space_normal',True)
     material.set_editor_property('two_sided',False)
     material.set_editor_property('blend_mode',unreal.BlendMode.BLEND_OPAQUE)
@@ -70,7 +71,6 @@ def main():
         a=node(unreal.MaterialExpressionConstant);a.r=value;return a
     def color(value):
         a=node(unreal.MaterialExpressionConstant3Vector);a.constant=unreal.LinearColor(*value,1.);return a
-    uv=node(unreal.MaterialExpressionTextureCoordinate);uv.coordinate_index=0
     mask=node(unreal.MaterialExpressionVertexColor)
     scale=node(unreal.MaterialExpressionScalarParameter);scale.parameter_name='AlbedoScale';scale.default_value=1.
     for role,property_name,background in [('albedo',unreal.MaterialProperty.MP_BASE_COLOR,color((.20,.21,.205))),
@@ -78,7 +78,8 @@ def main():
                                           ('normal',unreal.MaterialProperty.MP_NORMAL,color((0.,0.,1.)))]:
         tex=node(unreal.MaterialExpressionTextureSample);tex.texture=maps[role]
         tex.sampler_type=(unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL if role=='normal' else unreal.MaterialSamplerType.SAMPLERTYPE_COLOR if role=='albedo' else unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
-        link(uv,'',tex,'Coordinates')
+        # Unconnected texture input is source UV0. UE5.8 Python rejects the
+        # display-name Coordinates pin; no explicit UV expression is needed.
         value=tex;pin='R' if role=='roughness' else ''
         if role=='albedo':
             value=node(unreal.MaterialExpressionMultiply);link(tex,'',value,'A');link(scale,'',value,'B')
