@@ -66,6 +66,7 @@ $required = @(
     'DC/UI/Fonts/Cinzel.ttf',
     'DC/UI/Fonts/OFL.txt',
     'DC/Materials/M_StormComposite.uasset',
+    'DC/Materials/M_CombatCue.uasset',
     'DC/FX/P_PillarWaterContact.uasset',
     'Brigantine/BP/BP_Brigantine.uasset',
     'Brigantine/SFX/Cue/Bell_cue.uasset',

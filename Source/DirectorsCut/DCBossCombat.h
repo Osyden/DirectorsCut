@@ -47,6 +47,7 @@ private:
         FVector FireFrom=FVector::ZeroVector,FireTo=FVector::ZeroVector;
         TWeakObjectPtr<AActor> Target,Projectile;
         TWeakObjectPtr<UMaterialInstanceDynamic> MID;
+        TWeakObjectPtr<class UDCCombatCueComponent> WeakPointCue;
     } Attack;
     struct FSplinter { TWeakObjectPtr<AActor> Visual; FVector From,Velocity; float At; };
     TArray<FSplinter> Splinters;

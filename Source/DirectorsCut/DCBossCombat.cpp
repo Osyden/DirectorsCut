@@ -1,4 +1,6 @@
 #include "DCBossCombat.h"
+#include "DCCombatCue.h"
+#include "DCCombatCuePolicy.h"
 #include "DCLeviathan.h"
 #include "DCBossFireball.h"
 #include "DCMaelstrom.h"
@@ -69,6 +71,7 @@ float ADCBossCombat::AcceptTargetHit(float Damage,int32 Event)
     if(Attack.Remaining<=0)
     {
         Attack.Interrupted=true; Attack.InterruptedAt=T; Attack.End=FMath::Min(Deadline,T+3.f); ++Interrupts;
+        if(auto* Cue=Attack.WeakPointCue.Get()) Cue->SetVisibility(false);
         if(Attack.Kind==DCBossTimeline::EAttack::Slam && Attack.Limb>=0)
         {
             Severed[Attack.Limb]=true; Director->ArmsBroken=int(Severed[0])+int(Severed[1]);
@@ -125,6 +128,12 @@ void ADCBossCombat::MakeTarget(const FVector& P)
         auto* Light=NewObject<UPointLightComponent>(A); Light->SetupAttachment(C);
         Light->SetMobility(EComponentMobility::Movable); Light->SetLightColor(FLinearColor(1.f,.24f,.035f));
         Light->SetAttenuationRadius(1800.f); Light->SetCastShadows(false); Light->SetIntensity(0); Light->RegisterComponent();
+    }
+    else
+    {
+        // A visual child of the existing target: removing or severing that
+        // target also removes this cue. No extra collision/aim target is made.
+        Attack.WeakPointCue=UDCCombatCueComponent::Create(A,TEXT("ExposedJointBand"));
     }
     // Route appendages travel roughly 8m/s through the ship's frame. Allow
     // for that travel during a staggered cannon volley; stationary slam and
@@ -289,12 +298,23 @@ void ADCBossCombat::UpdateAttack(float DT,const FTransform& Arena)
                         Camera->SetActorRotation(Aim);
                     }
     }
+    if(auto* Cue=Attack.WeakPointCue.Get())
+    {
+        const bool Open=DCBossTimeline::Open(Now,Attack.Start,Attack.Strike,Deadline);
+        const bool Visible=DCCombatCuePolicy::WeakPointVisible(Open,Attack.Kind==DCBossTimeline::EAttack::Mouth,
+            Attack.Target.IsValid(),Attack.Interrupted,Attack.Cancelled,Attack.Applied);
+        const float Progress=FMath::Clamp((Now-Attack.Start)/FMath::Max(Attack.Strike-Attack.Start,.01f),0.f,1.f);
+        const float Flash=FMath::Clamp(1.f-(Now-HitAt)/.22f,0.f,1.f);
+        // Same center and local axis as the authoritative cannon weak point.
+        Cue->ShowWeakPoint(PoseJoint,(PoseJoint-PoseBend).GetSafeNormal(),180.f,Progress,Age,Flash,Visible);
+    }
     if(auto* MID=Attack.MID.Get())
     {
         const float Urgency=FMath::SmoothStep(Attack.Start,Attack.Strike,Now);
         const float Pulse=Now-HitAt<.2f?3.f:(Attack.Kind==DCBossTimeline::EAttack::Mouth?.4f+GetCharge()*1.6f:
             .8f+.25f*FMath::Sin(Now*(4.f+Urgency*5.f))+Urgency*.45f);
-        MID->SetVectorParameterValue(TEXT("Color"),FLinearColor(1.2f,.28f,.07f)*Pulse);
+        MID->SetVectorParameterValue(TEXT("Color"),Attack.Kind==DCBossTimeline::EAttack::Mouth
+            ? FLinearColor(1.2f,.28f,.07f)*Pulse : FLinearColor(.62f,.32f,.075f)*FMath::Min(Pulse,1.2f));
     }
     if(PoseVisible && Now>Attack.LastSpray+.4f)
     {
