@@ -182,14 +182,19 @@ void ADCMaelstrom::UpdateCliffPreview()
             Camera->GetCameraComponent()->SetFieldOfView(60.f);
             Camera->GetCameraComponent()->bConstrainAspectRatio=false;
             if(PC) { CliffPreviewPreviousTarget=PC->GetViewTarget(); PC->SetViewTarget(Camera); }
-            UE_LOG(LogTemp,Display,TEXT("DC_CLIFF_PREVIEW camera active; 500m authoring tile, no waterfall/temple integration"));
+            UE_LOG(LogTemp,Display,TEXT("DC_CLIFF_PREVIEW camera active; isolated authoring surface, no waterfall/temple integration"));
         }
     }
     if(ACameraActor* Camera=CliffPreviewCamera.Get())
     {
         const FTransform Frame=CliffPreviewMesh->GetComponentTransform();
-        const FVector LocalTarget(0,1500,-7500);
-        FVector LocalEye(9000,49000,-1500);
+        FVector LocalTarget(0,1500,-7500);
+        if(FParse::Param(FCommandLine::Get(),TEXT("DCCliffPreviewFrameMesh")))
+        {
+            if(const UStaticMesh* Mesh=CliffPreviewMesh->GetStaticMesh())
+            { LocalTarget=Mesh->GetBoundingBox().GetCenter(); }
+        }
+        FVector LocalEye=LocalTarget+FVector(9000,47500,6000);
         // Opt-in metric distance check, using the same target, angle and FOV.
         // The default authoring camera remains unchanged for matched reviews.
         float ReviewDistanceM=0.f;

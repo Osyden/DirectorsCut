@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 15 Nov Codex: repaired cliff exposure, actual native and full-sector context
+
+- Removed artificial anchor fins and corrected exposure-boundary skirts. The original 3D rock surface now imports and renders in an isolated Nanite preview; Editor/Game builds, source import fidelity, five focused tests and seek/exit restoration pass. [Actual captures and remaining work](CRATER-CLIFF-CONTEXT-15NOV.md).
+- Matched full 500 m context proves the patch fits the scale but remains a fractured scar on soft fluted terrain. No arena rollout: next establish coherent sector-wide escarpments, rock layers/joints and drainage, then final-surface masks and materials. Erosion and ridged terrain algorithms already exist; their presence is not visual acceptance. Water/falls, sky/light, boss and normal gameplay unchanged.
+
 ## 15 Nov Codex: source-shaped fractured bedrock, larger coherent rock masses
 
 - Corrected the reference's inactive fracture normals and unreliable bounds, then generated real clusters inside the measured curved cliff. Cube/panel placement and a dense rubble variant were rejected. Larger source-shaped masses now give useful planes and ledges; the abrupt exposure boundary and thin fins still prevent final visual approval. [Actual work, renders and next step](CRATER-CURVED-BEDROCK-15NOV.md).

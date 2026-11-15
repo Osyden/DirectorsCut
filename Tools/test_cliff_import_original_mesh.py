@@ -51,6 +51,26 @@ class OriginalMeshImportTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "orthonormal"):
             original_mesh_reference(self.meta)
 
+    def test_submillimetre_edges_keep_distinct_identity_in_same_search_bucket(self):
+        self.local[1] = [.00004, .00003, .00002]
+        self.write(self.colors)
+        vertices, faces, _ = original_mesh_reference(self.meta)
+        order = np.array([2, 0, 3, 1])
+        inverse = np.argsort(order)
+        imported = (vertices * [100, -100, 100])[order].astype(np.float32)
+        source = dict(positions_m=vertices.tolist(), triangles=faces.tolist(), meta=self.meta)
+        mapping, report = audit_geometry(source, imported.tolist(), inverse[faces].tolist())
+        self.assertEqual(mapping, order.tolist())
+        self.assertEqual(report['source_vertices'], 4)
+
+    def test_duplicate_original_xyz_still_rejects_unprovable_identity(self):
+        self.local[1] = self.local[0]
+        self.write(self.colors)
+        vertices, faces, _ = original_mesh_reference(self.meta)
+        source = dict(positions_m=vertices.tolist(), triangles=faces.tolist(), meta=self.meta)
+        with self.assertRaisesRegex(RuntimeError, 'Ambiguous nearest'):
+            audit_geometry(source, (vertices*[100, -100, 100]).tolist(), faces.tolist())
+
     def test_rejects_missing_or_nonfinite_numeric_masks(self):
         self.write(self.colors[:3])
         with self.assertRaisesRegex(RuntimeError, "vertex masks"):

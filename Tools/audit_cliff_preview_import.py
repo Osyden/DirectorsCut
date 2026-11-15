@@ -118,7 +118,7 @@ def quantized_srgb_decode(rgba):
 
 
 def key_cm(point):
-    # 0.1cm buckets. Full XYZ residual is checked later; duplicate buckets fail.
+    # 0.1cm search buckets, not vertex identity: real fracture edges can be finer.
     return tuple(round(value*10) for value in point)
 
 
@@ -157,16 +157,27 @@ def infer_axes(source_positions, actual_positions):
 def audit_geometry(source, actual_positions, actual_triangles):
     permutation, signs = infer_axes(source["positions_m"], actual_positions)
     expected = [apply_axis(p, permutation, signs) for p in source["positions_m"]]
-    lookup = {key_cm(point): i for i, point in enumerate(expected)}
-    if len(lookup) != len(expected):
-        raise RuntimeError("Ambiguous reference position buckets")
+    lookup = {}
+    for i, point in enumerate(expected):
+        lookup.setdefault(key_cm(point), []).append(i)
     actual_to_source = []
     residual = 0.
     first_actual = {}
     for point in actual_positions:
-        source_index = lookup.get(nearby_key(point, lookup))
-        if source_index is None:
+        base = key_cm(point)
+        candidates = []
+        for offset in itertools.product((-1, 0, 1), repeat=3):
+            key = tuple(base[i]+offset[i] for i in range(3))
+            for index in lookup.get(key, ()):
+                delta = [a-b for a, b in zip(point, expected[index])]
+                if max(abs(value) for value in delta) <= .02:
+                    candidates.append((sum(value*value for value in delta), index))
+        candidates.sort()
+        if not candidates:
             raise RuntimeError("Actual source-mesh position is not in the authored geometry: " + str(point))
+        if len(candidates) > 1 and abs(candidates[0][0]-candidates[1][0]) <= 1.e-12:
+            raise RuntimeError("Ambiguous nearest original XYZ positions; cannot prove vertex identity")
+        source_index = candidates[0][1]
         actual_to_source.append(source_index)
         first_actual.setdefault(source_index, point)
         residual = max(residual, max(abs(a-b) for a, b in zip(point, expected[source_index])))
@@ -191,6 +202,7 @@ def audit_geometry(source, actual_positions, actual_triangles):
     imported_basis = [[sum(basis[k][r]*matrix[c][k] for k in range(3)) for r in range(3)] for c in range(3)]
     return actual_to_source, {"source_vertices": len(expected), "actual_vertices": len(actual_positions),
         "triangles": len(actual_triangles), "position_max_error_cm": residual,
+        "identity_method": "Unique nearest original XYZ within unchanged0.02cm residual; bucket collisions retain all candidates",
         "source_metres_to_imported_cm": {"scale": 100, "axis_matrix": matrix},
         "anchors": [{"source_vertex": i, "author_m": positions[i], "import_cm": first_actual[i]} for i in anchor_ids],
         "arena_reconstruction": {"origin_cm": [100*v for v in meta["local_origin_arena_m"]],
