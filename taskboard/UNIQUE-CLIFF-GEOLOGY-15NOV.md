@@ -36,3 +36,15 @@ This atlas covers the pilot only. The existing full-ring UV0 extends outside
 must clamp these textures and blend all pilot layers using both vertex R and
 an in-domain UV mask. A separately generated unique context atlas supplies the
 remaining full-ring material; wrapping this pilot would repeat it.
+
+## V2 actual-camera correction
+
+The first Unreal camera image showed pale smooth faces: the material lacked
+structure between the large mesh shapes and its centimetre-scale normal
+detail. V2 reduces mean linear reflectance toward .17 and adds original
+angular .6 to 4 metre fractured bedrock normals plus irregular shallow ledges.
+These normals have a 51.3 degree slope limit to prevent UV transition spikes.
+Meso relief exposure follows continuous lithological weathering regions;
+there are no random dark cell colors. Outputs are separately preserved in
+`Saved/CliffGeology/FacetedUniqueV2`, including a normal preview. Geometry and
+the importer remain untouched. Root owns the second actual-camera comparison.

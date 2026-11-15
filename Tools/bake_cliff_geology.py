@@ -60,6 +60,15 @@ def smoothstep(a,b,x):
     return q*q*(3-2*q)
 
 
+def fractured_planes(x,y,sx,sy,seed):
+    """Continuous angular fractured relief, with planar triangular interiors."""
+    x=x/sx;y=y/sy;ix=np.floor(x).astype(np.int32);iy=np.floor(y).astype(np.int32)
+    fx=x-ix;fy=y-iy
+    a=hash01(ix,iy,seed)*2-1;b=hash01(ix+1,iy,seed)*2-1
+    c=hash01(ix,iy+1,seed)*2-1;d=hash01(ix+1,iy+1,seed)*2-1
+    return np.where(fx+fy<1,a*(1-fx-fy)+b*fx+c*fy,d*(fx+fy-1)+c*(1-fx)+b*(1-fy))
+
+
 def write_tga(path,a):
     if a.ndim==2:a=np.repeat(a[:,:,None],3,axis=2)
     data=np.clip(np.rint(a*255),0,255).astype(np.uint8)[:,:,::-1]
@@ -176,22 +185,38 @@ def main():
     joint_bed=np.clip(np.searchsorted(joint_breaks,joint_coordinate)-1,0,len(joint_breaks)-2)
     joint_distance=np.minimum(joint_coordinate-joint_breaks[joint_bed],joint_breaks[joint_bed+1]-joint_coordinate)
     joints=np.exp(-(joint_distance/.22)**2)*smoothstep(-.17,.35,noise(u,actual_z,13,8,516))
-    value=.222+.055*broad+lithology+.019*meso+.007*fine-.013*interbed
+    fracture_exposure=smoothstep(-.32,.40,noise(u,actual_z,23,14,735))
+    value=.165+.045*broad+.85*lithology+.023*meso+.008*fine-.016*interbed
+    value+=.012*fracture_exposure
     value-=.013*joints
-    value+=.018*shelf+.018*exposed
+    value+=.010*shelf+.010*exposed
     value*=1-.30*stains-.22*wet
     color=np.stack((value*.981,value*1.008,value*1.027),axis=2).astype(np.float32)
     # Restrained warm mineral oxidation and a cool waterborne patina, both
     # material reflectance rather than baked directional lighting/AO.
-    color+=mineral[:,:,None]*np.array([.016,.006,-.008],np.float32)
+    color+=mineral[:,:,None]*np.array([.012,.004,-.006],np.float32)
     color+=stains[:,:,None]*np.array([-.002,.000,-.003],np.float32)
     color=np.clip(color,.075,.39)
     rough=np.clip(.79+.055*meso+.035*broad-.025*shelf, .65,.9)
     rough=rough*(1-wet)+(.39+.06*broken)*wet
-    # Only shallow local relief. Whole-facet and cavity normals already exist
-    # in mesh geometry and must not be applied a second time in tangent space.
+    # Between the large mesh faces and fine grain, angular bedrock planes and
+    # broken shallow ledges restore metre-scale surface structure. These are
+    # original normal-only local relief, not repeated scan or macro-face normals.
     relief=.012*noise(u,actual_z,.95,.65,101)+.008*noise(u,actual_z,2.9,1.3,144)-.010*interbed-.012*joints
+    plane_u=u+.58*noise(u,actual_z,8,5,552)
+    plane_v=formation_z+.38*noise(u,actual_z,7,4,116)
+    angular=fractured_planes(plane_u,plane_v,2.7,1.8,871)
+    small_angular=fractured_planes(plane_u+.35*plane_v,plane_v,.95,.68,563)
+    relief+=(.10+.23*fracture_exposure)*angular
+    relief+=.060*fracture_exposure*small_angular
+    ledge_profile=fraction-smoothstep(.84,.98,fraction)
+    bed_strength=.2+.32*hash01(bed,np.zeros_like(bed),471)
+    ledge_continuity=.3+.7*smoothstep(-.40,.38,noise(u,actual_z,11,7,819))
+    relief+=bed_strength*ledge_profile*ledge_continuity
     dv,du=np.gradient(relief,physical_height/H,physical_width/W)
+    # UV overlap/steep roof chart transitions must not create black normal spikes.
+    gradient_length=np.hypot(du,dv)
+    limit=np.minimum(1,1.25/np.maximum(gradient_length,1.e-6));du*=limit;dv*=limit
     normal=np.stack((-du,-dv,np.ones((H,W),np.float32)),axis=2)
     normal/=np.maximum(np.linalg.norm(normal,axis=2)[...,None],1.e-6)
     srgb=np.where(color<=.0031308,color*12.92,1.055*color**(1/2.4)-.055)
@@ -201,9 +226,12 @@ def main():
     preview=resize(srgb,(750,1500))[::-1]
     write_png(out/'geology_albedo_preview.png',preview)
     write_png(out/'geology_runoff_preview.png',resize(stains,(750,1500))[::-1])
+    write_png(out/'geology_normal_preview.png',resize(normal*.5+.5,(750,1500))[::-1])
     np.savez_compressed(out/'geology_masks.npz',runoff=resize(stains,(512,1024)),wetness=resize(wet,(512,1024)),mineral=resize(mineral,(512,1024)),shelf=resize(shelf,(512,1024)),valid=resize(valid.astype(np.float32),(512,1024)))
     stats={'albedo_linear_min':color.min(axis=(0,1)).tolist(),'albedo_linear_max':color.max(axis=(0,1)).tolist(),'albedo_linear_mean':color.mean(axis=(0,1)).tolist(),'roughness_min':float(rough.min()),'roughness_max':float(rough.max()),'wet_fraction_above_025':float(np.mean(wet>.25)),'valid_fraction':float(valid.mean())}
     manifest={'schema':'directorscut.unique_geology.v1','resolution':[W,H],'physical_width_m':physical_width,'physical_height_m':physical_height,'z_min_m':zmin,'z_max_m':80.,'unique_pilot':True,'source_kind':'original geometry-conditioned procedural geology; no repeated scan albedo','geometry_fields':str(args.fields.resolve()),'geometry_fields_sha256':sha(args.fields),'generator_source_sha256':sha(__file__),'uv':'UV0 U=arc/497.418836818384; face V=(Z+200)/280; rows +V up; roof radial continuation in source UV. Use in-domain mask and pilot vertexR; do not wrap unique atlas beyond pilot.','normal_format':'OpenGL tangent-space fine relief only; positive V up; importer flips green once','albedo_encoding':'sRGB from linear reflectance; no AO/cavity/directional shading','roughness_encoding':'linear dry .65-.90; wet target .39-.45 blended by local flow coverage','geology':'One ordered irregular stratigraphic sequence; whole-surface dip/fold; broad mineral regions; projected gravity runoff; restrained sub-metre unique relief','limitations':'Art-directed geology and approximate UV drainage, not a calibrated erosion solver; atlas covers pilot only, not whole 4.3km ring','statistics':stats,'seconds':time.time()-started,'files':{n:sha(out/n) for n in files.values()}}
+    manifest.update(schema='directorscut.unique_geology.v2',normal_format='OpenGL tangent-space original micro and meso fracture/ledge relief; positive V up; importer flips green once',geology='One irregular geological sequence; broad mineral regions; projected gravity runoff; angular .6-4m fractured bedrock and shallow irregular 2-12m ledges; subdued sub-metre relief')
+    manifest['statistics']['normal_angle_p50_p90_p99_degrees']=np.percentile(np.degrees(np.arccos(np.clip(normal[:,:,2],0,1)))[valid],[50,90,99]).tolist()
     (out/'tile_manifest.json').write_text(json.dumps(manifest,indent=2))
     print('GEOLOGY_READY '+json.dumps({'output':str(out),'seconds':manifest['seconds'],'statistics':stats}),flush=True)
 
