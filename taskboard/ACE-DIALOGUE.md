@@ -1,6 +1,8 @@
 # NVIDIA ACE dialogue alternative
 
-Owner: AI NPCs chat, `codex/ace-dialogue`, isolated complete-content checkout `E:/Projects/DirectorsCut/ACE-Dialogue`.
+Owner: AI NPCs chat. Integrated into main at `f2a56a7`; isolated implementation/evidence checkout is `E:/Projects/DirectorsCut/ACE-Dialogue` (`codex/ace-dialogue`). Main Editor build passed after installing the reproducibly patched LLMPlugin locally.
+
+Main integration checks: `Saved/ACEDialogue/Build-integrated.log` succeeded; `IntegratedValidation.log` passed `DirectorsCut.Dialogue.ResponseValidation` after the merge. Local comparison markers and root-folder launcher wrappers are installed. GPU test processes have exited.
 
 Status: implementation, UE 5.8 builds, CPU command/response checks, both native GPU dialogue comparisons and combined Editor/standalone voice/reload verification passed. Validated comparison package: `E:/Projects/DirectorsCut/Builds/2026-11-15_1617_ace-dialogue/Windows/DirectorsCut.exe`. The accepted playable launcher is unchanged.
 
