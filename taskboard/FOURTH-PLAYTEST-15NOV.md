@@ -14,7 +14,7 @@ Root integrates on main; accepted19:24 package stays selected until a replacemen
 
 ## Verification so far
 
-- Editor builds successfully after two unity-name collisions were fixed (local variables only); current smaller locator still needs rebuild.
+- Editor builds successfully after two unity-name collisions were fixed (local variables only); the compact locator, conversation guardrails and chat hint compile in `Saved/FourthBuild5.log`.
 - CPU:47,839 caldera checks including384 committed obstacle dodges and cross-frame-rate landing;6,907 boss marker/limb mapping;11,117 cue checks;18 crew contact checks. These counts include iteration/assertion cases, not independent gameplay runs.
 - Generated limb-mask, boss-band and boundary-water materials. Temporary incomplete water graph warnings occurred during generation; final native boss render has working water and no material compile failure. Release preflight passes49 essential assets and installed steering shader hashes.
 - `Saved/FourthPlaytest/BossPassive`: actual authored17-bone limb renders with cups/skin; explicit marker readable at342/346/351, gone after strike353; no exposed torso/spikes in inspected frames. The distal limb is stretched and exits frame during anticipation; final motion quality is not established by these stills. World band remains obscured; readability improvement is the explicit marker.
@@ -23,3 +23,10 @@ Root integrates on main; accepted19:24 package stays selected until a replacemen
 - `Saved/HairLightingReview`: paired shadowed lamps retain the hair improvement of all four at lower measured sample GPU cost. Single frames are not a benchmark; combined voyage performance remains to check.
 
 Still required before selecting a package: compact repair marker/repaired cleanup; actual bow landing/inner boundary; conversation automation and real model/A2F semantic review; louder delayed music with voices; final combined Windows cook, gameplay and launch checks. Original fog outline/tunnel lighting report remains under scoped investigation.
+
+## Additional native evidence
+
+- `Landing`: one bow contact at elapsed25.49 / ride295.49, bow clearance10.3cm and deck pitch−13.8deg. Inspected adjacent frames show pitch/rebound and settling, with no repeated impact or landing damage. Splash is still soft mist rather than a crisp water sheet.
+- Eight native automation suites pass across commands, conversation routing/cleaning, crew deck routes, caldera steering and tunnel clearance (`Saved/FourthAutomation`).
+- Initial `ConversationLlama` completes eight actual Qwen/Piper/Audio2Face responses with unchanged order counts and scene history reset. Six answers were grounded; one advised approaching banks and another invented still air. The AI NPCs chat supplied a narrow navigation/weather guardrail, integrated as15e7ad7; corrected semantic rerun remains required. Pipeline completion is not semantic acceptance.
+- `SailSSS`: all nine actual sail MIDs retain SSS0 and Camera0 at165/167/169, yet the bright lattice remains. No production SSS change is justified. The original fog/temple outline issue stays open; the next diagnostic should isolate physical mast/rope geometry before changing more sail parameters.

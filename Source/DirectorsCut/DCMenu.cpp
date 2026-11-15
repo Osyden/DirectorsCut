@@ -87,18 +87,24 @@ void ADCGameMode::ShowMainMenu()
         +SVerticalBox::Slot().AutoHeight().Padding(0,22,0,6)[Body(TEXT("SURVIVE THE VOYAGE"),12,Gold)]
         +SVerticalBox::Slot().AutoHeight()[Body(TEXT("Steer clear of obstacles.\nShoot enemy creatures with the cannons.\nPut out fires and repair rigging."),17,Cream)];
     auto Credits=SNew(SVerticalBox)
-        +SVerticalBox::Slot().AutoHeight()[Title(TEXT("CREDITS"),27,Gold)]
-        +SVerticalBox::Slot().AutoHeight().Padding(0,10,0,17)[Body(TEXT("Atlantean Odyssey - 2026 Epic Game MegaJam"),17,Cream)]
-        +SVerticalBox::Slot().AutoHeight()[Body(TEXT("DIRECTOR"),11,Gold)]
-        +SVerticalBox::Slot().AutoHeight().Padding(0,3,0,12)[Body(TEXT("Eva Jobse"),18,Cream)]
-        +SVerticalBox::Slot().AutoHeight()[Body(TEXT("DEVELOPERS"),11,Gold)]
-        +SVerticalBox::Slot().AutoHeight().Padding(0,3,0,14)[Body(TEXT("GPT-6 Astra, Claude Fable 5.2, Qwen 3.8 27B"),17,Cream)]
-        +SVerticalBox::Slot().AutoHeight().Padding(0,0,0,6)[Body(TEXT("ART & ASSET PACKS"),11,Gold)]
-        +SVerticalBox::Slot().AutoHeight()[Body(TEXT("Brigantine Ship  -  MainStore\nDynamic Real Water  -  Natural Level Game Studio\nUltra Dynamic Sky & Weather  -  Everett Gunther\nModular Ancient Ruins  -  archafizov\nKraken  -  PROTOFACTOR INC\nClaw Kaiju Monster  -  HuyKhoi2407\nMHC: Pirates  -  Quang Phan\nEasy Fog  -  William Faucher\nClouds Tunnel Vdb Effects Pack Loop  -  one.studio2\nNordic coastal cliff scans  -  Quixel Megascans\nParagon: Rampage, MetaHuman & engine art  -  Epic Games"),14,Cream)]
-        +SVerticalBox::Slot().AutoHeight().Padding(0,16,0,5)[Body(TEXT("THANKS TO"),11,Gold)]
-        +SVerticalBox::Slot().AutoHeight()[Body(TEXT("Epic Games, NVIDIA, Suno"),18,Cream)]
-        +SVerticalBox::Slot().AutoHeight().Padding(0,16,0,5)[Body(TEXT("AUDIO & TYPE"),11,Gold)]
-        +SVerticalBox::Slot().AutoHeight()[Body(TEXT("Sonniss: Just Sound Effects, 344 Audio, InMotionAudio, Jake Fielding, Epic Stock Media, SoundBits.\nCinzel: The Cinzel Project Authors (SIL Open Font License)."),12,Muted)];
+        +SVerticalBox::Slot().AutoHeight()[Title(TEXT("CREDITS"),24,Gold)]
+        +SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0,4,0,14)[Body(TEXT("2026 Epic Game MegaJam"),12,Muted)]
+        +SVerticalBox::Slot().AutoHeight().Padding(0,0,0,14)
+        [SNew(SHorizontalBox)
+            +SHorizontalBox::Slot().FillWidth(.32f).Padding(0,0,18,0)
+            [SNew(SVerticalBox)
+                +SVerticalBox::Slot().AutoHeight()[Body(TEXT("DIRECTOR"),11,Gold)]
+                +SVerticalBox::Slot().AutoHeight().Padding(0,3,0,0)[Body(TEXT("Eva Jobse"),16,Cream)]]
+            +SHorizontalBox::Slot().FillWidth(.68f)
+            [SNew(SVerticalBox)
+                +SVerticalBox::Slot().AutoHeight()[Body(TEXT("DEVELOPERS"),11,Gold)]
+                +SVerticalBox::Slot().AutoHeight().Padding(0,3,0,0)[Body(TEXT("GPT-6 Astra, Claude Fable 5.2,\nQwen 3.8 27B"),16,Cream)]]]
+        +SVerticalBox::Slot().AutoHeight().Padding(0,0,0,5)[Body(TEXT("ART & ASSET PACKS"),11,Gold)]
+        +SVerticalBox::Slot().AutoHeight()[Body(TEXT("Brigantine Ship  -  MainStore\nDynamic Real Water  -  Natural Level Game Studio\nUltra Dynamic Sky & Weather  -  Everett Gunther\nModular Ancient Ruins  -  archafizov\nKraken  -  PROTOFACTOR INC\nClaw Kaiju Monster  -  HuyKhoi2407\nMHC: Pirates  -  Quang Phan\nEasy Fog  -  William Faucher\nClouds Tunnel Vdb Effects Pack Loop  -  one.studio2\nNordic coastal cliff scans  -  Quixel Megascans\nParagon: Rampage, MetaHuman & engine art  -  Epic Games"),13,Cream)]
+        +SVerticalBox::Slot().AutoHeight().Padding(0,12,0,4)[Body(TEXT("THANKS TO"),11,Gold)]
+        +SVerticalBox::Slot().AutoHeight()[Body(TEXT("Epic Games, NVIDIA, Suno"),16,Cream)]
+        +SVerticalBox::Slot().AutoHeight().Padding(0,12,0,4)[Body(TEXT("AUDIO & TYPE"),11,Gold)]
+        +SVerticalBox::Slot().AutoHeight()[Body(TEXT("Sonniss: Just Sound Effects, 344 Audio, InMotionAudio, Jake Fielding, Epic Stock Media, SoundBits.\nCinzel: The Cinzel Project Authors (SIL Open Font License)."),11,Muted)];
     MainMenuWidget=SNew(SScaleBox).Stretch(EStretch::ScaleToFit)
     [SNew(SBox).WidthOverride(1280).HeightOverride(720)
         [SNew(SOverlay)
@@ -146,8 +152,8 @@ void ADCGameMode::ShowMainMenu()
                     [SNew(SOverlay)
                         +SOverlay::Slot()[SNew(SScrollBox).Visibility_Lambda([Weak](){return Weak.IsValid() && Weak->MenuInfoPage==1?EVisibility::Visible:EVisibility::Collapsed;})
                             +SScrollBox::Slot()[Help]]
-                        +SOverlay::Slot()[SNew(SScrollBox).Visibility_Lambda([Weak](){return Weak.IsValid() && Weak->MenuInfoPage==2?EVisibility::Visible:EVisibility::Collapsed;})
-                            +SScrollBox::Slot()[Credits]]
+                        +SOverlay::Slot()[SNew(SBox).VAlign(VAlign_Top).Visibility_Lambda([Weak](){return Weak.IsValid() && Weak->MenuInfoPage==2?EVisibility::Visible:EVisibility::Collapsed;})
+                            [Credits]]
                     ]
                 ]
             ]

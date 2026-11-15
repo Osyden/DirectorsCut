@@ -263,6 +263,12 @@ void ADCTroubles::Tick(float DeltaSeconds)
 		if (auto* Crew=GetWorld()->GetSubsystem<UDCCrewSubsystem>()) { Crew->ExecuteOrder(TEXT("Ruby, put out the fire")); }
 		UE_LOG(LogDC,Log,TEXT("CREW_WORK_REVIEW started"));
 	}
+	if (Tags.Contains(TEXT("CrewWorkReviewStarted")) && Director->RideTime>=26.f && !Tags.Contains(TEXT("CrewRepairReviewStarted")))
+	{
+		Tags.Add(TEXT("CrewRepairReviewStarted"));
+		if (auto* Crew=GetWorld()->GetSubsystem<UDCCrewSubsystem>()) { Crew->ExecuteOrder(TEXT("Duncan, repair the rigging")); }
+		UE_LOG(LogDC,Log,TEXT("CREW_REPAIR_REVIEW ordered"));
+	}
 	// Repeatable visual/lifecycle review; ordinary play never enters this path.
 	float ReviewAt = -1.f, ReviewOut = -1.f;
 	if (FParse::Value(FCommandLine::Get(), TEXT("DCFireReviewAt="), ReviewAt) && DeckPoints.Num())
