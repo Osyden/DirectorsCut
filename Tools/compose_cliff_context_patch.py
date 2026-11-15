@@ -144,6 +144,9 @@ def main():
     if np.any(counts>2) or np.any((counts==2)&(orientation!=0)):
         raise ValueError('Joined context is nonmanifold or has inconsistent winding')
     seam_result=remap[patch_map[patch_boundary]]
+    actual_boundary_snap=float(np.linalg.norm(out_vertices[seam_result]-patch_vertices[patch_boundary],axis=1).max())
+    if actual_boundary_snap > tolerance:
+        raise ValueError('Final endpoint welding exceeds the declared3D join tolerance')
     if np.isin(edges[counts==1],seam_result).any():
         raise ValueError('Unjoined crop seam/T junction remains')
     old_edges,old_counts,_=edge_table(triangles)
@@ -160,7 +163,8 @@ def main():
                 patch_path=str(args.patch.resolve()),patch_sha256=sha(args.patch),source_kind='single_original3d_outcrop_in_unchanged_massif',
                 crop=dict(row=89,col=64,width_m=72.,depth_m=40.),removed_source_triangles=int(inside.sum()),
                 adjacent_outside_triangles_split=split_faces,new_interpolated_seam_vertices=seam_added,
-                maximum_boundary_snap_m=max_snap,join_tolerance_m=tolerance,vertices=len(out_vertices),triangles=len(out_faces),
+                maximum_boundary_snap_m=actual_boundary_snap,maximum_edge_projection_residual_m=max_snap,
+                join_tolerance_m=tolerance,vertices=len(out_vertices),triangles=len(out_faces),
                 external_boundary_edges=int((counts==1).sum()),nonmanifold_edges=0,inconsistent_winding_edges=0,degenerate_triangles=0,
                 outside_original_positions_bitwise_preserved=True,outside_original_masks_bitwise_preserved=True,
                 masks='Actual normalized source masks outside; source-edge interpolation on seam; diagnostic RGB0/alpha1 inside new3Dpatch, not invented flow',

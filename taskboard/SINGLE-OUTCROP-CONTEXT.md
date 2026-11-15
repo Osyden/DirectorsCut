@@ -12,7 +12,7 @@ The helper obtains the source's original unrefined mesh through `generate_weathe
 
 - 1,440 original source triangles removed, matching the grid-aligned crop exactly.
 - Only112 immediately adjacent outside triangles split. Their existing edges gain336 interpolated points to match the patch's448 boundary vertices at0.5 m spacing. No full-mesh subdivision occurs.
-- Joining uses the actual original3D source edges, not XY-only snapping. Maximum adjustment is **1.8169994e-6 m**, below the1e-5 m tolerance. Interior patch positions/triangles remain original3D, including overhangs.
+- Joining uses the actual original3D source edges, not XY-only snapping. Maximum final vertex adjustment is **1.9073486e-6 m**, below the1e-5 m tolerance; the intermediate edge-projection residual is1.8169994e-6 m. Current helper records them separately. Interior patch positions/triangles remain original3D, including overhangs.
 - Final context: **66,598 vertices /132,214 triangles**. The full source's992 external boundary edges remain; no crop seam boundary, nonmanifold edge, inconsistent winding or degenerate triangle is detected.
 - All retained original vertex positions and normalized source mask values are bitwise unchanged. New seam masks interpolate original edge values. New patch-interior RGB is explicitly0, alpha1: **diagnostic missing data**, not invented flow, sediment or erosion. The helper does not authorize using those diagnostic zeros as final shading masks.
 
@@ -28,4 +28,6 @@ From `E:/Projects/DirectorsCut/Crater-Workers/Flow-Seams`:
 
 Actual outputs are `Saved/ImplicitFaceProof/FullMassifContext/baseline.npz`, `context.npz` and `context.json`. New output paths are required. Only Python/NumPy and existing source helpers ran; no Blender render, GPU, engine or asset import occurred in this task.
 
-The source/masks and conforming seam checks pass. Independent audit and the physical full-sector clay review are separate gates. This places one locally fractured exposure in its original macro context; it is not a claim that the surrounding sector or the new rock has reached final visual quality.
+Independent audit passes: one open manifold, exact outer992-edge boundary, all51,871 reused source positions/masks bitwise unchanged, frame exact, every seam-to-seam edge incident to two faces. All112 outside splits are coplanar within1.39e-13 m and conserve original triangle area within2.71e-13 m²; original patch triangle indexing and interior positions are exact. The initial artifact's snap field measured the projection residual; the current helper reports actual final endpoint welding separately without changing geometry.
+
+Actual matched full-sector clay shows the outcrop correctly remains small at500 m scale and preserves the macro silhouette. It still reads as a fractured scar in soft fluted surrounding terrain; that terrain lacks a common joint/strata hierarchy. The baseline's triangular fringe/stepped seams also remain and were not caused by this splice. This is useful context evidence and a bounded native local proof, not approval to repeat it around the sector or a claim of final visual quality.
