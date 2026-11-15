@@ -19,6 +19,8 @@
 #include "Camera/PlayerCameraManager.h"
 #include <initializer_list>
 #include "HAL/IConsoleManager.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 
 // ---------------------------------------------------------------- Intent parser
 
@@ -188,6 +190,7 @@ void ADCCrewMember::Init(const FString& InName, const FLinearColor& Color)
 
 void ADCCrewMember::AssignStation(int32 NewStation)
 {
+	WalkRoute.Reset(); RoutePoint=0; RouteTarget=FVector(FLT_MAX); RouteRetry=0.f;
 	UDCCrewSubsystem* Sub = GetWorld()->GetSubsystem<UDCCrewSubsystem>();
 	if (FDCStation* Old = Sub->GetStation(StationIndex))
 	{
@@ -231,6 +234,11 @@ void ADCCrewMember::VacateStation(const FVector& StationLocation)
 	// Stand aft and to port: the normal wheel view and the starboard clear-view
 	// camera both stay free. Assignment alone left the idle body at the wheel.
 	DeckPos = StationLocation + FVector(-250.f,-230.f,90.f);
+	if (auto* Crew=GetWorld()->GetSubsystem<UDCCrewSubsystem>())
+	{
+		FVector Feet;
+		if (Crew->ProjectToDeck(DeckPos-FVector(0,0,90),Feet)) { DeckPos=Feet+FVector(0,0,90); }
+	}
 	DeckRot = FRotator::ZeroRotator;
 	SetWalking(false);
 	const ADCRideDirector* Director = ADCRideDirector::Get(this);
@@ -249,7 +257,13 @@ void ADCCrewMember::Tick(float DeltaSeconds)
 	if (!GetActorLocation().Equals(LastPlaced, 0.05f))
 	{
 		DeckPos = Deck.InverseTransformPosition(GetActorLocation());
-		DeckRot = FRotator(0.f, GetActorRotation().Yaw, 0.f);
+		DeckRot = FRotator(0.f, (Deck.GetRotation().Inverse()*GetActorQuat()).Rotator().Yaw, 0.f);
+		if (auto* Crew=GetWorld()->GetSubsystem<UDCCrewSubsystem>())
+		{
+			FVector Feet;
+			if (Crew->ProjectToDeck(DeckPos-FVector(0,0,90),Feet)) { DeckPos=Feet+FVector(0,0,90); }
+		}
+		WalkRoute.Reset(); RouteTarget=FVector(FLT_MAX);
 	}
 	TickCrew(DeltaSeconds);
 	SetActorLocationAndRotation(Deck.TransformPosition(DeckPos), Deck.GetRotation() * DeckRot.Quaternion());
@@ -283,13 +297,7 @@ void ADCCrewMember::TickCrew(float DeltaSeconds)
 	if (State == EDCCrewState::Moving)
 	{
 		const FVector Target = Station->Location + FVector(0.f, 0.f, 90.f);
-		const FVector Here = DeckPos;
-		const FVector NewLoc = FMath::VInterpConstantTo(Here, Target, DeltaSeconds, MoveSpeed);
-		DeckPos = NewLoc;
-		const FVector Dir = (Target - Here).GetSafeNormal2D();
-		if (!Dir.IsNearlyZero()) { DeckRot = FRotator(0.f, Dir.Rotation().Yaw, 0.f); }
-		SetWalking(true);
-		if (FVector::DistSquared(NewLoc, Target) < 25.f)
+		if (MoveToward(Target,DeltaSeconds))
 		{
 			State = EDCCrewState::Operating;
 			// Face the work: the helmsman looks forward, gunners look out over their rail.
@@ -357,7 +365,11 @@ ADCCrewMember* UDCCrewSubsystem::SpawnCrew(const FString& Name, const FLinearCol
 {
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	ADCCrewMember* Member = GetWorld()->SpawnActor<ADCCrewMember>(Location + FVector(0.f, 0.f, 90.f), FRotator::ZeroRotator, Params);
+	FVector Feet=Location;
+	ProjectToDeck(Location,Feet);
+	const ADCRideDirector* Director=ADCRideDirector::Get(this);
+	const FTransform Deck=Director ? Director->DeckTransform : FTransform::Identity;
+	ADCCrewMember* Member = GetWorld()->SpawnActor<ADCCrewMember>(Deck.TransformPosition(Feet + FVector(0.f, 0.f, 90.f)), Deck.Rotator(), Params);
 	if (Member)
 	{
 		Member->Init(Name, Color);
@@ -615,6 +627,7 @@ void ADCCrewMember::SetWalking(bool bWalk)
 	if (UAnimationAsset* Anim = bWalk ? WalkAnim : IdleAnim)
 	{
 		Figure->PlayAnimation(Anim, true);
+		Figure->SetPlayRate(1.f);
 	}
 }
 
@@ -645,17 +658,93 @@ void UDCCrewSubsystem::Report(const FString& Text, bool bUrgent)
 
 bool ADCCrewMember::MoveToward(const FVector& Target, float DeltaSeconds)
 {
-	const FVector Here = DeckPos;
-	if (FVector::DistSquared(Here, Target) < 25.f)
+	UDCCrewSubsystem* Crew=GetWorld()->GetSubsystem<UDCCrewSubsystem>();
+	if (!Crew) { return false; }
+	RouteRetry=FMath::Max(0.f,RouteRetry-DeltaSeconds);
+	const bool bNewGoal=!Target.Equals(RouteTarget,65.f);
+	if (bNewGoal || (WalkRoute.IsEmpty() && RouteRetry<=0.f))
 	{
-		SetWalking(false);
-		return true;
+		RouteTarget=Target; RoutePoint=0; RouteRetry=1.f;
+		if (!Crew->FindDeckRoute(DeckPos-FVector(0,0,90),Target-FVector(0,0,90),WalkRoute))
+		{
+			// Never fall back to the old straight line through a wall or a cabin.
+			if (bNewGoal) { UE_LOG(LogDC,Warning,TEXT("CREW_ROUTE_BLOCKED name=%s from=%s target=%s"),*CrewName,*DeckPos.ToCompactString(),*Target.ToCompactString()); }
+			SetWalking(false); WalkingSpeed=0.f; return false;
+		}
+		UE_LOG(LogDC,Log,TEXT("CREW_ROUTE name=%s points=%d start=%s end=%s"),*CrewName,WalkRoute.Num(),*WalkRoute[0].ToCompactString(),*WalkRoute.Last().ToCompactString());
 	}
-	DeckPos = FMath::VInterpConstantTo(Here, Target, DeltaSeconds, MoveSpeed);
-	const FVector Dir = (Target - Here).GetSafeNormal2D();
-	if (!Dir.IsNearlyZero()) { DeckRot = FRotator(0.f, Dir.Rotation().Yaw, 0.f); }
-	SetWalking(true);
-	return false;
+	while (WalkRoute.IsValidIndex(RoutePoint) && FVector::DistSquared2D(DeckPos,WalkRoute[RoutePoint])<4.f) { ++RoutePoint; }
+	if (!WalkRoute.IsValidIndex(RoutePoint))
+	{
+		SetWalking(false); WalkingSpeed=0.f;
+		return !WalkRoute.IsEmpty();
+	}
+	const FVector Before=DeckPos;
+	const FVector Waypoint=WalkRoute[RoutePoint]+FVector(0,0,90);
+	const FVector Direction=(Waypoint-DeckPos).GetSafeNormal2D();
+	const float DesiredYaw=Direction.Rotation().Yaw;
+	DeckRot.Yaw=FMath::FixedTurn(DeckRot.Yaw,DesiredYaw,300.f*DeltaSeconds);
+	const float Turn=FMath::Abs(FMath::FindDeltaAngleDegrees(DeckRot.Yaw,DesiredYaw));
+	const float FinalDistance=FVector::Dist2D(DeckPos,WalkRoute.Last());
+	const float DesiredSpeed=FMath::Min(MoveSpeed,FMath::Sqrt(FMath::Max(1.f,FinalDistance)*600.f))*FMath::Clamp(1.f-Turn/100.f,0.f,1.f);
+	WalkingSpeed=FMath::FInterpConstantTo(WalkingSpeed,DesiredSpeed,DeltaSeconds,400.f);
+	float Travel=WalkingSpeed*DeltaSeconds;
+	while (Travel>0.f && WalkRoute.IsValidIndex(RoutePoint))
+	{
+		const FVector Next=WalkRoute[RoutePoint]+FVector(0,0,90);
+		const float Distance=FVector::Dist2D(DeckPos,Next);
+		if (Distance<=Travel)
+		{
+			DeckPos=Next; Travel-=Distance; ++RoutePoint;
+		}
+		else { DeckPos=FMath::Lerp(DeckPos,Next,Travel/Distance); Travel=0.f; }
+	}
+	FVector Feet=DeckPos-FVector(0,0,90);
+	Crew->GroundFeet(Feet); DeckPos=Feet+FVector(0,0,90);
+	SetWalking(FVector::DistSquared2D(Before,DeckPos)>.01f);
+	if (bWalking && Figure) { Figure->SetPlayRate(FMath::Clamp(WalkingSpeed/MoveSpeed,.35f,1.05f)); }
+	return RoutePoint>=WalkRoute.Num();
+}
+
+bool UDCCrewSubsystem::EnsureNavigation()
+{
+	if (bNavigationAttempted) { return !Navigation.Nodes.IsEmpty(); }
+	auto* Director=ADCRideDirector::Get(this);
+	if (!Director || !Director->ShipActor) { return false; }
+	bNavigationAttempted=true;
+	const double Started=FPlatformTime::Seconds();
+	const bool Built=Navigation.Build(Director);
+	UE_LOG(LogDC,Log,TEXT("CREW_DECK_GRAPH nodes=%d ready=%d buildMs=%.1f"),Navigation.Nodes.Num(),Built,(FPlatformTime::Seconds()-Started)*1000.0);
+	if (Built && FParse::Param(FCommandLine::Get(),TEXT("DCCrewRouteVerify")))
+	{
+		int32 Passed=0, Failed=0;
+		for (int32 A=0; A<Stations.Num(); ++A)
+		{
+			for (int32 B=A+1; B<Stations.Num(); ++B)
+			{
+				TArray<FVector> Route;
+				if (Navigation.FindRoute(Stations[A].Location,Stations[B].Location,Route)) { ++Passed; }
+				else { ++Failed; UE_LOG(LogDC,Error,TEXT("CREW_ROUTE_VERIFY unreachable stations=%d,%d"),A,B); }
+			}
+		}
+		UE_LOG(LogDC,Display,TEXT("CREW_ROUTE_VERIFY passed=%d failed=%d"),Passed,Failed);
+	}
+	return Built;
+}
+
+bool UDCCrewSubsystem::ProjectToDeck(const FVector& Feet, FVector& OnDeck)
+{
+	return EnsureNavigation() && Navigation.Project(Feet,OnDeck);
+}
+
+bool UDCCrewSubsystem::FindDeckRoute(const FVector& FromFeet, const FVector& ToFeet, TArray<FVector>& Route)
+{
+	return EnsureNavigation() && Navigation.FindRoute(FromFeet,ToFeet,Route);
+}
+
+bool UDCCrewSubsystem::GroundFeet(FVector& Feet)
+{
+	return EnsureNavigation() && Navigation.Ground(ADCRideDirector::Get(this),Feet);
 }
 
 void ADCCrewMember::TickTroubles(float DeltaSeconds, FDCStation* Station)

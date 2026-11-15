@@ -4,6 +4,7 @@
 #include "GameFramework/Actor.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "DCTypes.h"
+#include "DCCrewNavigation.h"
 #include "DCCrew.generated.h"
 
 class ADCCrewMember;
@@ -76,7 +77,12 @@ protected:
 	void TickTroubles(float DeltaSeconds, struct FDCStation* Station);
 	float WorkTime = 0.f;
 
-	float MoveSpeed = 350.f;
+	TArray<FVector> WalkRoute;
+	FVector RouteTarget = FVector(FLT_MAX);
+	int32 RoutePoint = 0;
+	float RouteRetry = 0.f;
+	float WalkingSpeed = 0.f;
+	float MoveSpeed = 180.f;
 	EDCAction HelmOrder = EDCAction::Steady;
 	float HelmOrderTimeLeft = 0.f;
 	bool bHoldFire = false;
@@ -104,6 +110,9 @@ public:
 	FDCStation* GetStation(int32 Index) { return Stations.IsValidIndex(Index) ? &Stations[Index] : nullptr; }
 	const TArray<FDCStation>& GetStations() const { return Stations; }
 	const TArray<TObjectPtr<ADCCrewMember>>& GetCrew() const { return Crew; }
+	bool ProjectToDeck(const FVector& Feet, FVector& OnDeck);
+	bool FindDeckRoute(const FVector& FromFeet, const FVector& ToFeet, TArray<FVector>& Route);
+	bool GroundFeet(FVector& Feet);
 
 	void Say(const FString& Speaker, const FString& Text);
 	/** A crew answer to the current order: goes through the voice loop when it is running. */
@@ -126,4 +135,7 @@ protected:
 	EDCPhase LastReportPhase = EDCPhase::OpenSea;
 	int32 NextReporter = 0;
 	UPROPERTY() TArray<TObjectPtr<ADCCrewMember>> Crew;
+	FDCCrewNavigation Navigation;
+	bool bNavigationAttempted = false;
+	bool EnsureNavigation();
 };
