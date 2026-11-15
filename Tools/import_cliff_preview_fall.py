@@ -48,15 +48,17 @@ for axis in ('frame_origin_arena_m','basis_u_arena','basis_v_arena','basis_z_are
         raise RuntimeError('Invalid authoring frame')
 
 # Reuse the tested native SVT importer and physical extinction conversion.
-old = {k:os.environ.get(k) for k in ('DC_WATERFALL_DIR','DC_WATERFALL_MATERIALS_ONLY')}
-try:
-    os.environ['DC_WATERFALL_DIR']=str(source/'Volumes')
-    os.environ['DC_WATERFALL_MATERIALS_ONLY']='0'
-    runpy.run_path(str(Path(__file__).with_name('import_procedural_waterfalls.py')),run_name='__main__')
-finally:
-    for key,value in old.items():
-        if value is None: os.environ.pop(key,None)
-        else: os.environ[key]=value
+materials_only=os.environ.get('DC_CLIFF_FALL_MATERIALS_ONLY','0')=='1'
+if not materials_only:
+    old = {k:os.environ.get(k) for k in ('DC_WATERFALL_DIR','DC_WATERFALL_MATERIALS_ONLY')}
+    try:
+        os.environ['DC_WATERFALL_DIR']=str(source/'Volumes')
+        os.environ['DC_WATERFALL_MATERIALS_ONLY']='0'
+        runpy.run_path(str(Path(__file__).with_name('import_procedural_waterfalls.py')),run_name='__main__')
+    finally:
+        for key,value in old.items():
+            if value is None: os.environ.pop(key,None)
+            else: os.environ[key]=value
 volume_import = read(saved/'ProceduralWaterfallImport.json')
 if volume_import['fitted_profile']['profile_sha1'] != profile['profile_sha1']:
     raise RuntimeError('Imported volume report has stale profile')
@@ -110,26 +112,52 @@ def material(role):
     if veil:
         # Dedicated lower fan: A stores optical depth, G width/64m. Alpha is
         # linear and avoids any RGB import colour-space ambiguity for density.
-        # Geometry supplies edge thinning; no masked threshold, white floor or
-        # arbitrary hard width is added by the shader.
+        # Geometry supplies the physical fan and reference optical depth.
+        # The old0.8..1.15 modulation left a nearly uniform translucent cloth.
+        # Resolve elongated liquid ligaments with open gaps instead; the
+        # separate SVT carries suspended mist rather than a white sheet floor.
         color=node(unreal.MaterialExpressionVertexColor)
         speed=float(attachment.get('aerated_veil',{}).get('advection_speed_m_s',38.))
         if not math.isfinite(speed) or not 1. <= speed <= 100.:
             raise RuntimeError('Invalid veil visual advection speed')
         state=custom(NOISE+f'''
 float width=max(.25,saturate(Color.g)*64.);
-float2 p=float2(UV.x*width,1-UV.y-{speed:.9g}*T);
-float large=field.evaluate(p/float2(3.4,11.)+float2(7.3,-2.9)).x;
-float fineFade=1-smoothstep(.12,.45,max(length(ddx(p)),length(ddy(p))));
-float fine=lerp(.5,field.evaluate(p/float2(.65,2.7)+float2(-9.7,13.1)).x,fineFade);
-float modulation=clamp(.85+.25*large+.10*(fine-.5),.8,1.15);
-float alpha=1-exp(-saturate(Tau)*modulation);
-return float3(alpha,large,saturate(Color.b));
+float2 p=float2((UV.x-.5)*width,1-UV.y-{speed:.9g}*T);
+float footprint=max(length(ddx(p)),length(ddy(p)));
+float macro=field.evaluate(p/float2(6.,22.)+float2(7.3,-2.9)).x;
+float bend=(macro-.5)*3.6+(field.evaluate(p/float2(3.2,9.1)+float2(3.7,19.3)).x-.5)*.85;
+float broad=field.evaluate(float2((p.x+bend)/1.6,p.y/13.)+float2(13.1,-7.2)).x;
+float fineFade=1-smoothstep(.32,.95,footprint);
+float narrow=lerp(broad,field.evaluate(float2((p.x+bend*.8)/.72,p.y/4.7)+float2(-9.7,13.1)).x,fineFade);
+float ligaments=smoothstep(.38,.68,.72*broad+.28*narrow);
+float packets=field.evaluate((p+float2(bend*.35,0))/float2(5.5,9.)+float2(-2.8,5.4)).x;
+float broken=smoothstep(.24,.64,packets);
+float progression=saturate(Color.b);
+float fringeM=.8+1.4*field.evaluate(float2(p.y/11.,8.7)).x;
+float fringe=smoothstep(0.,fringeM,(.5-abs(UV.x-.5))*width);
+float resolved=2.1*pow(ligaments,1.35)*lerp(.48,.16+.84*broken,progression)*fringe;
+// Fade unresolved variation to its low mean, not a solid bright distant wall.
+float detailFade=1-smoothstep(1.1,3.2,footprint);
+float opticalScale=lerp(.23,resolved,detailFade);
+float alpha=1-exp(-saturate(Tau)*opticalScale);
+return float3(alpha,ligaments,progression);
 ''',unreal.CustomMaterialOutputType.CMOT_FLOAT3,{'UV':uv,'T':time,'Color':color,'Tau':(color,'A')})
-        output(custom('return lerp(float3(.61,.69,.71),float3(.74,.79,.79),State.b);',
+        output(custom('return lerp(float3(.45,.57,.60),float3(.72,.79,.79),saturate(.25*State.b+.75*State.g));',
             unreal.CustomMaterialOutputType.CMOT_FLOAT3,{'State':state}),unreal.MaterialProperty.MP_BASE_COLOR)
-        output(custom('return State.r;',unreal.CustomMaterialOutputType.CMOT_FLOAT1,{'State':state}),unreal.MaterialProperty.MP_OPACITY)
-        output(scalar(.82),unreal.MaterialProperty.MP_ROUGHNESS)
+        alpha=custom('return State.r;',unreal.CustomMaterialOutputType.CMOT_FLOAT1,{'State':state})
+        depth=node(unreal.MaterialExpressionDepthFade)
+        if not M.connect_material_expressions(alpha,'',depth,'Opacity') or not M.connect_material_expressions(scalar(250.),'',depth,'FadeDistance'):
+            raise RuntimeError('Veil receiving-surface fade connection failed')
+        output(depth,unreal.MaterialProperty.MP_OPACITY)
+        output(custom('return lerp(.64,.86,State.g);',unreal.CustomMaterialOutputType.CMOT_FLOAT1,{'State':state}),unreal.MaterialProperty.MP_ROUGHNESS)
+        normal=custom(NOISE+f'''
+float width=max(.25,saturate(Color.g)*64.);
+float2 p=float2((UV.x-.5)*width,1-UV.y-{speed:.9g}*T);
+float3 n=field.evaluate(p/float2(1.3,5.7)+float2(4.1,2.8));
+float fade=1-smoothstep(.45,1.4,max(length(ddx(p)),length(ddy(p))));
+return normalize(float3(-n.y*.10*fade,n.z*.035*fade,1));
+''',unreal.CustomMaterialOutputType.CMOT_FLOAT3,{'UV':uv,'T':time,'Color':color})
+        output(normal,unreal.MaterialProperty.MP_NORMAL)
         output(scalar(.12),unreal.MaterialProperty.MP_SPECULAR)
         output(scalar(0.),unreal.MaterialProperty.MP_METALLIC)
         output(scalar(0.),unreal.MaterialProperty.MP_EMISSIVE_COLOR)
@@ -197,6 +225,7 @@ fbx=source/'waterfall_core.foam.fbx';fbx_hash=sha(fbx)
 name='SM_CliffFall_'+fbx_hash[:12]
 mesh=unreal.load_asset(ROOT+'/'+name)
 if mesh is None:
+    if materials_only:raise RuntimeError('Material-only pass requires the already imported exact core FBX')
     unreal.SystemLibrary.execute_console_command(None,'Interchange.FeatureFlags.Import.FBX 0')
     options=unreal.FbxImportUI();options.automated_import_should_detect_type=False
     options.mesh_type_to_import=unreal.FBXImportType.FBXIT_STATIC_MESH
@@ -246,7 +275,7 @@ report=dict(schema='directorscut.cliff_preview_waterfall.v1',cliff_fbx_sha256=ac
     material_model='Scene-lit masked wet/aerated core and broken advected receiving foam; optional continuous-translucent optical-depth AeratedVeil; zero emissive; no refraction or fluid simulation claimed',
     uv_contract='Across0..1; original arc metres recovered by1-importedV; verify actual import UV direction in motion',
     aerated_veil=dict(enabled='AeratedVeil' in seen,vertex_contract='A=optical depth; G=fan width metres/64; B=breakup progression; R unused',
-        opacity='1-exp(-tau*bounded_coherent_modulation)',advection_speed_m_s=float(attachment.get('aerated_veil',{}).get('advection_speed_m_s',38.)),
+        opacity='1-exp(-tau*resolved_branching_ligaments); no diffuse alpha floor; 2.5m scene-depth contact fade',advection_speed_m_s=float(attachment.get('aerated_veil',{}).get('advection_speed_m_s',38.)),
         advection_speed_source='attachment' if 'advection_speed_m_s' in attachment.get('aerated_veil',{}) else 'authored appearance default'),
     runtime_integrated=False,visual_accepted=False)
 (saved/'CliffPreviewWaterfall.json').write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')
