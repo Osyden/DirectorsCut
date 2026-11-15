@@ -87,25 +87,31 @@ void ADCGameMode::ShowMainMenu()
         +SVerticalBox::Slot().AutoHeight()[Body(TEXT("Hold V to speak and give an order\n\"Rex, take the helm!\"\n\"Duncan, man the port guns!\"\n\"Ruby, put out the fires!\""),17,Cream)]
         +SVerticalBox::Slot().AutoHeight().Padding(0,22,0,6)[Body(TEXT("SURVIVE THE VOYAGE"),12,Gold)]
         +SVerticalBox::Slot().AutoHeight()[Body(TEXT("Steer clear of obstacles.\nShoot enemy creatures with the cannons.\nPut out fires and repair rigging."),17,Cream)];
+    // Explicit wrapping makes the full page's desired height measurable before
+    // the down-only fit, so acknowledgements never depend on scroll position.
+    auto CreditBody=[](const TCHAR* Line,int Size,FLinearColor Color,float Width=626.f) {
+        return SNew(STextBlock).Text(FText::FromString(Line)).Font(FCoreStyle::GetDefaultFontStyle("Regular",Size))
+            .ColorAndOpacity(Color).WrapTextAt(Width);
+    };
     auto Credits=SNew(SVerticalBox)
-        +SVerticalBox::Slot().AutoHeight()[Title(TEXT("CREDITS"),24,Gold)]
-        +SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0,4,0,14)[Body(TEXT("2026 Epic Game MegaJam"),12,Muted)]
-        +SVerticalBox::Slot().AutoHeight().Padding(0,0,0,14)
+        +SVerticalBox::Slot().AutoHeight()[Title(TEXT("CREDITS"),20,Gold)]
+        +SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0,4,0,10)[CreditBody(TEXT("2026 Epic Game MegaJam"),12,Muted)]
+        +SVerticalBox::Slot().AutoHeight().Padding(0,0,0,10)
         [SNew(SHorizontalBox)
             +SHorizontalBox::Slot().FillWidth(.32f).Padding(0,0,18,0)
             [SNew(SVerticalBox)
-                +SVerticalBox::Slot().AutoHeight()[Body(TEXT("DIRECTOR"),11,Gold)]
-                +SVerticalBox::Slot().AutoHeight().Padding(0,3,0,0)[Body(TEXT("Eva Jobse"),16,Cream)]]
+                +SVerticalBox::Slot().AutoHeight()[CreditBody(TEXT("DIRECTOR"),11,Gold)]
+                +SVerticalBox::Slot().AutoHeight().Padding(0,3,0,0)[CreditBody(TEXT("Eva Jobse"),15,Cream,180.f)]]
             +SHorizontalBox::Slot().FillWidth(.68f)
             [SNew(SVerticalBox)
-                +SVerticalBox::Slot().AutoHeight()[Body(TEXT("AI"),11,Gold)]
-                +SVerticalBox::Slot().AutoHeight().Padding(0,3,0,0)[Body(TEXT("GPT-6 Astra, Claude Fable 5.2,\nQwen 3.8 27B, Google Gemma E4B,\nWhisperCPP, Phonon, Suno"),16,Cream)]]]
-        +SVerticalBox::Slot().AutoHeight().Padding(0,0,0,5)[Body(TEXT("ART & ASSET PACKS"),11,Gold)]
-        +SVerticalBox::Slot().AutoHeight()[Body(TEXT("Brigantine Ship  -  MainStore\nDynamic Real Water  -  Natural Level Game Studio\nUltra Dynamic Sky & Weather  -  Everett Gunther\nModular Ancient Ruins  -  archafizov\nKraken  -  PROTOFACTOR INC\nClaw Kaiju Monster  -  HuyKhoi2407\nMHC: Pirates  -  Quang Phan\nEasy Fog  -  William Faucher\nClouds Tunnel Vdb Effects Pack Loop  -  one.studio2\nNordic coastal cliff scans  -  Quixel Megascans\nParagon: Rampage, MetaHuman & engine art  -  Epic Games"),13,Cream)]
-        +SVerticalBox::Slot().AutoHeight().Padding(0,12,0,4)[Body(TEXT("THANKS TO"),11,Gold)]
-        +SVerticalBox::Slot().AutoHeight()[Body(TEXT("Epic Games, Unreal Engine, NVIDIA, LlamaCPP,\nGeorgi Gerganov, Gradium, Laurent Mazare,\nKyutai, NVIDIA ACE / Audio2Face, DLSS"),16,Cream)]
-        +SVerticalBox::Slot().AutoHeight().Padding(0,12,0,4)[Body(TEXT("AUDIO & TYPE"),11,Gold)]
-        +SVerticalBox::Slot().AutoHeight()[Body(TEXT("Sonniss: Just Sound Effects, 344 Audio, InMotionAudio, Jake Fielding, Epic Stock Media, SoundBits.\nCinzel: The Cinzel Project Authors (SIL Open Font License)."),11,Muted)];
+                +SVerticalBox::Slot().AutoHeight()[CreditBody(TEXT("AI"),11,Gold)]
+                +SVerticalBox::Slot().AutoHeight().Padding(0,3,0,0)[CreditBody(TEXT("GPT-6 Astra, Claude Fable 5.2,\nQwen 3.8 27B, Google Gemma E4B,\nWhisperCPP, Phonon, Suno"),14,Cream,408.f)]]]
+        +SVerticalBox::Slot().AutoHeight().Padding(0,0,0,5)[CreditBody(TEXT("ART & ASSET PACKS"),11,Gold)]
+        +SVerticalBox::Slot().AutoHeight()[CreditBody(TEXT("Brigantine Ship  -  MainStore\nDynamic Real Water  -  Natural Level Game Studio\nUltra Dynamic Sky & Weather  -  Everett Gunther\nModular Ancient Ruins  -  archafizov\nKraken  -  PROTOFACTOR INC\nClaw Kaiju Monster  -  HuyKhoi2407\nMHC: Pirates  -  Quang Phan\nEasy Fog  -  William Faucher\nClouds Tunnel Vdb Effects Pack Loop  -  one.studio2\nNordic coastal cliff scans  -  Quixel Megascans\nParagon: Rampage, MetaHuman & engine art  -  Epic Games"),13,Cream)]
+        +SVerticalBox::Slot().AutoHeight().Padding(0,9,0,4)[CreditBody(TEXT("THANKS TO"),11,Gold)]
+        +SVerticalBox::Slot().AutoHeight()[CreditBody(TEXT("Epic Games, Unreal Engine, NVIDIA, LlamaCPP,\nGeorgi Gerganov, Gradium, Laurent Mazare,\nKyutai, NVIDIA ACE / Audio2Face, DLSS"),13,Cream)]
+        +SVerticalBox::Slot().AutoHeight().Padding(0,9,0,4)[CreditBody(TEXT("AUDIO & TYPE"),11,Gold)]
+        +SVerticalBox::Slot().AutoHeight()[CreditBody(TEXT("Sonniss: Just Sound Effects, 344 Audio, InMotionAudio, Jake Fielding, Epic Stock Media, SoundBits.\nCinzel: The Cinzel Project Authors (SIL Open Font License)."),11,Muted)];
     MainMenuWidget=SNew(SScaleBox).Stretch(EStretch::ScaleToFit)
     [SNew(SBox).WidthOverride(1280).HeightOverride(720)
         [SNew(SOverlay)
@@ -153,8 +159,8 @@ void ADCGameMode::ShowMainMenu()
                     [SNew(SOverlay)
                         +SOverlay::Slot()[SNew(SScrollBox).Visibility_Lambda([Weak](){return Weak.IsValid() && Weak->MenuInfoPage==1?EVisibility::Visible:EVisibility::Collapsed;})
                             +SScrollBox::Slot()[Help]]
-                        +SOverlay::Slot()[SNew(SScrollBox).Visibility_Lambda([Weak](){return Weak.IsValid() && Weak->MenuInfoPage==2?EVisibility::Visible:EVisibility::Collapsed;})
-                            +SScrollBox::Slot()[Credits]]
+                        +SOverlay::Slot()[SNew(SScaleBox).Stretch(EStretch::ScaleToFit).StretchDirection(EStretchDirection::DownOnly).HAlign(HAlign_Left).VAlign(VAlign_Top).Visibility_Lambda([Weak](){return Weak.IsValid() && Weak->MenuInfoPage==2?EVisibility::Visible:EVisibility::Collapsed;})
+                            [SNew(SBox).WidthOverride(626.f)[Credits]]]
                     ]
                 ]
             ]
