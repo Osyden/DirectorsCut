@@ -75,7 +75,7 @@ def convex_footprint(points):
     return np.asarray(lower[:-1]+upper[:-1])
 
 
-def joint_exposure_field(footprints):
+def joint_exposure_field(footprints, half_u=32., half_v=16.):
     """Distance to the exterior UNION boundary, never internal block edges.
 
     A0.75m inward-halfspace margin seals sub-lattice projection gaps (this is a
@@ -85,17 +85,31 @@ def joint_exposure_field(footprints):
     retained block geometry. Distances are exact Euclidean on this0.25m grid.
     """
     step = .25
-    x, y = np.meshgrid(np.arange(-32., 32.+step/2, step), np.arange(-16., 16.+step/2, step))
-    xy = np.column_stack((x.ravel(), y.ravel()))
-    inside = np.zeros(len(xy), dtype=bool)
+    x, y = np.meshgrid(np.arange(-half_u, half_u+step/2, step), np.arange(-half_v, half_v+step/2, step))
+    inside = np.zeros(x.shape, dtype=bool)
     for polygon in footprints:
         polygon = np.asarray(polygon, dtype=np.float64)
         edge = np.roll(polygon, -1, axis=0)-polygon
         normal = np.column_stack((-edge[:, 1], edge[:, 0]))
         normal /= np.linalg.norm(normal, axis=1)[:, None]
+        # Halfspace offset is tested only in its conservative expanded bbox.
+        # Keep physical .25m resolution; do not test every regional grid cell
+        # against every small cluster polygon.
+        expanded=[]
+        limits=(polygon*normal).sum(axis=1)-.75
+        for i in range(len(polygon)):
+            j=(i+1)%len(polygon)
+            matrix=np.stack((normal[i],normal[j]))
+            if abs(np.linalg.det(matrix))>1.e-10:
+                expanded.append(np.linalg.solve(matrix,limits[[i,j]]))
+        bounds=np.asarray(expanded) if expanded else polygon
+        low=np.floor((bounds.min(axis=0)+[half_u,half_v])/step).astype(int)-1
+        high=np.ceil((bounds.max(axis=0)+[half_u,half_v])/step).astype(int)+2
+        c0,c1=max(0,low[0]),min(x.shape[1],high[0]);r0,r1=max(0,low[1]),min(x.shape[0],high[1])
+        if c0>=c1 or r0>=r1:continue
+        xy=np.column_stack((x[r0:r1,c0:c1].ravel(),y[r0:r1,c0:c1].ravel()))
         distance = ((xy[:, None]-polygon) * normal).sum(axis=2).min(axis=1)
-        inside |= distance >= -.75
-    inside = inside.reshape(x.shape)
+        inside[r0:r1,c0:c1] |= (distance>=-.75).reshape(r1-r0,c1-c0)
     inside[[0, -1], :] = False
     inside[:, [0, -1]] = False
     exterior = np.zeros_like(inside)
@@ -128,18 +142,20 @@ def joint_exposure_field(footprints):
     for r in range(len(distances)):distances[r]=edt_line(distances[r])
     for c in range(distances.shape[1]):distances[:,c]=edt_line(distances[:,c])
     return dict(distance_m=np.sqrt(distances)*step, step_m=step,
+                half_extents_m=[half_u,half_v],
                 filled_projection_hole_cells=int((filled & ~inside).sum()))
 
 
 def joint_exposure_weight(xy, field):
     xy = np.asarray(xy, dtype=np.float64).reshape(-1, 2)
-    u = np.clip((xy[:,0]+32.)/field['step_m'], 0., field['distance_m'].shape[1]-1.)
-    v = np.clip((xy[:,1]+16.)/field['step_m'], 0., field['distance_m'].shape[0]-1.)
+    half_u,half_v=field.get('half_extents_m',[32.,16.])
+    u = np.clip((xy[:,0]+half_u)/field['step_m'], 0., field['distance_m'].shape[1]-1.)
+    v = np.clip((xy[:,1]+half_v)/field['step_m'], 0., field['distance_m'].shape[0]-1.)
     c=np.minimum(np.floor(u).astype(int),field['distance_m'].shape[1]-2)
     r=np.minimum(np.floor(v).astype(int),field['distance_m'].shape[0]-2)
     tx,ty=u-c,v-r;d=field['distance_m']
     clearance=(1-ty)*((1-tx)*d[r,c]+tx*d[r,c+1])+ty*((1-tx)*d[r+1,c]+tx*d[r+1,c+1])
-    guard = np.minimum(32.-np.abs(xy[:, 0]), 16.-np.abs(xy[:, 1]))
+    guard = np.minimum(half_u-np.abs(xy[:, 0]), half_v-np.abs(xy[:, 1]))
     t = np.clip(np.minimum(clearance, guard)/4., 0., 1.)
     return t*t*(3.-2.*t)
 
@@ -180,8 +196,12 @@ def main():
     from mathutils.bvhtree import BVHTree
     bpy.ops.object.select_all(action='SELECT')
     bpy.ops.object.delete(use_global=False)
-    row, col = 89, 64
-    validate_crop(source, row, col, 72., 40., 4.)
+    descriptor=point_data['metadata']['crop']
+    row,col=int(descriptor['row']),int(descriptor['col'])
+    width,depth=float(descriptor['width_m']),float(descriptor['depth_m'])
+    crop=validate_crop(source,row,col,width,depth,4.)
+    point_half_u,point_half_v=point_data['metadata'].get('point_inner_half_extents_m',[width/2.-6.,depth/2.-6.])
+    cavity_half_u,cavity_half_v=width/2.-4.,depth/2.-4.
     z_origin = float(source['height_m'][row, col])
     origin = np.r_[source['world_xy_m'][row, col], z_origin]
     basis = np.column_stack((source['basis_u_world'], source['basis_v_world'], source['basis_up_world']))
@@ -197,22 +217,22 @@ def main():
             center = cluster.mean(axis=0)
             # Select a connected central exposure, then let whole geological
             # footprints define its actual irregular boundary.
-            if ((center[0]+1.)/23.)**2+((center[1]-.5)/9.5)**2 < 1.:
+            if ((center[0]+point_half_u/30.)/(point_half_u*23./30.))**2+((center[1]-point_half_v*.5/14.)/(point_half_v*9.5/14.))**2 < 1.:
                 polygon = convex_footprint(cluster)
                 if len(polygon) >= 3:
                     footprints.append(polygon)
                     footprint_ids.append(int(block['cluster_index']))
         if not footprints:
             raise ValueError('No original fracture footprints selected')
-    exposure_field = joint_exposure_field(footprints) if args.joint_transition else None
-    base, top, perimeter = closed_shell(source, row, col, 72., 40., .5, z_origin, 24., name='Baseline')
+    exposure_field = joint_exposure_field(footprints,cavity_half_u,cavity_half_v) if args.joint_transition else None
+    base, top, perimeter = closed_shell(source, row, col, width, depth, .5, z_origin, 24., name='Baseline')
     candidate = base.copy()
     candidate.data = base.data.copy()
     candidate.name = 'Curved fracture exposure'
     bpy.context.collection.objects.link(candidate)
     base.hide_render = True
     base.hide_set(True)
-    cavity_width, cavity_depth = (64., 32.) if args.joint_transition else (60., 28.)
+    cavity_width,cavity_depth=(2*cavity_half_u,2*cavity_half_v) if args.joint_transition else (2*point_half_u,2*point_half_v)
     cavity, cavity_top, _ = closed_shell(source, row, col, cavity_width, cavity_depth, .5, z_origin, args.core_depth_m, 1., name='Graded skin opening')
     count = len(cavity_top)
     # Grade the removal depth to zero at the crop interior; original outer
@@ -220,7 +240,7 @@ def main():
     joint_weights = joint_exposure_weight(cavity_top[:, :2], exposure_field) if args.joint_transition else None
     for i in range(count):
         x, y, _ = cavity_top[i]
-        weight = np.clip(min((30.-abs(x))/5., (14.-abs(y))/4.), 0., 1.)
+        weight = np.clip(min((point_half_u-abs(x))/5., (point_half_v-abs(y))/4.), 0., 1.)
         weight = joint_weights[i] if args.joint_transition else weight*weight*(3.-2.*weight)
         h = float(sample_height(source, x, y, row, col))-z_origin
         cavity.data.vertices[i+count].co.z = h-args.core_depth_m*weight
@@ -237,8 +257,9 @@ def main():
         depth = depths[ids]
         cluster = points[ids]
         center = cluster.mean(axis=0)
-        release_region = (((center[0]+13.)/8.)**2+((center[1]+1.)/13.)**2 < 1.
-                          or ((center[0]-11.)/7.)**2+((center[1]-3.)/10.)**2 < 1.)
+        ru,rv=point_half_u/30.,point_half_v/14.
+        release_region = (((center[0]+13.*ru)/(8.*ru))**2+((center[1]+rv)/(13.*rv))**2 < 1.
+                          or ((center[0]-11.*ru)/(7.*ru))**2+((center[1]-3.*rv)/(10.*rv))**2 < 1.)
         # Whole shallow fragments detach; no rectangular face is cut out.
         if np.percentile(depth, 90) < 3.5 and (release_region if args.release_patches else identity % 3 != 0):
             removed.append(identity)
@@ -308,6 +329,8 @@ def main():
                     source_sha256=sha(source_path), points_path=str(args.points.resolve()),
                     points_sha256=sha(args.points), blocks_path=str(args.blocks.resolve()),
                     blocks_sha256=sha(args.blocks), source_kind='physical_curved_skin_fracture_exposure',
+                    crop=crop,authoring_surface_spacing_m=.5,
+                    exposure_field_half_extents_m=[cavity_half_u,cavity_half_v],
                     kept_cluster_ids=retained, detached_cluster_ids=removed, metrics=metrics,
                     maximum_crop_boundary_error_m=float(boundary_error), physical_rescaling=False,
                     core_depth_m=args.core_depth_m,
