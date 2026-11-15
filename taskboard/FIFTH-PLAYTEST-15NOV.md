@@ -53,3 +53,15 @@ All required native checks now pass. The first reload probe found an actual worl
 User requested smoother spoken replies in the coordinated NPC chat. Runtime394f9c9 gives each bounded Phonon reply one continuous utterance while retaining progressive PCM/A2F. Saved/PhononNatural/conversation.json passes8/8 replies, exactly8 speech/face sessions, and playback before native input completion in all8. Warm onset2.100–2.233s, cold4.400s; no claim of instant speech or second-machine validation.
 
 Menu music was imported and passes actual start/fade/restart: two menu starts, two immediate0.30s fades, stopped after0.300/0.306s; TheFog starts fresh both times. Source frozen. Trailer chat has the explicitly reserved five-minute capture slot from22:05:47, then root owns fresh packaging and packaged cold Gemma/Phonon tests.20:48 playable remains selected until that acceptance. Native trailer helper is opt-in only and included by coordinated request.
+
+## Accepted22:11 local package
+
+Selected `E:/Projects/DirectorsCut/Builds/2026-11-15_2211_fifth-playtest/Windows/Atlantean Odyssey.exe` through the usual launcher. Runtime2a757bc; selected-payload staging17e9081. Fresh build/cook/archive succeeded in153.74s with50 essential assets verified.20:48 fallback retained in Saved/Release/Previous-2048-before-fifth.json. No itch upload.
+
+Packaged full voyage reached470/ending with no terrain strikes under sustained-right steering, one landing event, Caldera music224.03 and descent gain0.4368. The held-outward landing occurred at elapsed25.15 versus native neutral23.19, reflecting its longer route; both use actual bow clearance. Full fog/slide/cannon/ending captures and the clear offscreen slam instruction at342 were inspected.
+
+Packaged cold Gemma passes27/27 strict commands, actual selected model readiness6.34s. The coordinated trailer gunner recording supplies packaged speech acceptance: all3 Phonon voices, portable24kHz producer,115/98/91 positive A2F animation samples, music duck0.052, VOICE_SMOKE_SUCCESS and process exit0; world drain29ms and exit drain0ms. Evidence copied into package ReviewEvidence. Existing Whisper server was reused, so no cold-STT claim.
+
+The new staging tool arrived just after the initial package copy. Restaged only the unaccepted candidate's Sidecars, retained its complete notices, independently checked exact bin/model inventory and copied Gemma hash. Final Sidecars payload5,416,738,647bytes; unused Piper removes242,217,935bytes. Original source models and existing accepted packages untouched; temporary/backup staging copies remain outside the release candidate.
+
+Remaining: fog outlines/tunnel lighting, low-camera current boundary, late spray refraction, and isolated AI-wheel follow-up70a2ec5 awaiting native review. No long-session/other-PC claim. Trailer holds the final short capture slot; reserve GPU for human playtest once it returns.
