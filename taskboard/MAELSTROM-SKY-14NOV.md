@@ -1,5 +1,11 @@
 # Maelstrom volumetric cloud refinement — 14 November
 
+## Coordinated neutral-sun diagnostic — 15 November
+
+Opt-in flag `-DCMaelSunNeutral` changes only the finale's UDS `Sun Light Color` property to linear white (1, 1, 1). It uses the existing property capture, UDS refresh and exit/backward-seek restoration, targeting the rendered UDS sun rather than the director's inactive original light. Without the flag the colour remains (1, 0.94, 0.84). Sun direction/intensity, exposure, cloud material/composition, shaft tint and earlier phases are unchanged. Entry logs `MAEL_SKY neutral UDS sun colour override enabled` when selected. `-DCOriginalMaelstromSky` bypasses this stage override as before.
+
+Source inspection and `git diff --check` only; no build, editor or GPU launch was performed, per coordination. The sky source matched the integration branch before this small change. The integration owner will cherry-pick the diagnostic and run fixed matched captures. This is an A/B control, not a validated replacement lighting preset.
+
 This pass follows fa6b9c6 and preserves the selected bank anchors, wind, sun opening, sun direction and review camera. The clouds remain an animated, ray-marched three-dimensional density field. No photographic skybox or cellular erosion texture is used.
 
 ## Shape and lighting changes

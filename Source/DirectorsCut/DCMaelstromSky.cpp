@@ -152,7 +152,10 @@ void ADCMaelstromAtmosphere::CaptureSky()
 	SetSkyNumber(TEXT("Formation Change Speed"), 0.08);
 	SetSkyNumber(TEXT("Cloud Wisps Opacity (Clear)"), 0.04);
 	SetSkyNumber(TEXT("Cloud Wisps Opacity (Cloudy)"), 0.08);
-	SetSkyColor(TEXT("Sun Light Color"), FLinearColor(1.f, 0.94f, 0.84f));
+	// Set UDS's live sun through its saved property; RefreshSky applies/restores it.
+	const bool bNeutralSun = FParse::Param(FCommandLine::Get(), TEXT("DCMaelSunNeutral"));
+	SetSkyColor(TEXT("Sun Light Color"), bNeutralSun ? FLinearColor::White : FLinearColor(1.f, 0.94f, 0.84f));
+	if (bNeutralSun) { UE_LOG(LogDC, Log, TEXT("MAEL_SKY neutral UDS sun colour override enabled")); }
 	SetSkyNumber(TEXT("Mie Scattering Scale Multiplier"), 0.7);
 	SetSkyNumber(TEXT("Enable Volumetric Cloud Light Rays"), 0);
 	// Numeric test overrides support repeatable look development without a build.
