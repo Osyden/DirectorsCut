@@ -1,0 +1,11 @@
+# Warning producer audit - 15 Nov
+
+Owner: voice_audio, codex/lookout-warning-freshness, based on92bb50a. Root assigned only the DCTreadmill lookout gate; other agents own encounter producers and voice queue freshness.
+
+Fixed a concrete producer error: the rocks-ahead lookout checked only X<13000, so a rock already astern could acquire a warning after a late helm alignment. It also did not reject hidden/retiring obstacles or the transition out of Atlantis. It now requires Fog, not leaving Atlantis, a live/unhidden actor, and0<X<13000, preserving existing solid/hostile/one-call/lateral checks. LOOKOUT_WARNING logs actor, signed coordinates and ride time for accepted producer calls. It does not claim the line survived crew cooldown or reached playback.
+
+Read-only audit: director phase lines contain no port/starboard enemy announcements. DCTreadmill legacy giant calls require DCLegacyGiants; ghost ships default disabled. Legacy maelstrom spout/swimmer/boulder producers are dormant. Regular creature/statue directions are emitted by DCEarlyEncounters only when the target has a clear shooting window; tunnel_boss separately confirmed ship-local gun sign consistency. Reports bypass LLM paraphrase and preserve authored words.
+
+Outstanding voice risk handed to root/AI NPCs owner: queue replacement affects only waiting reports; active/in-flight lines are not bound to encounter validity. Six-second report expiry applies before synthesis, while ready speech has only a phase epoch. Every city encounter between76 and240 seconds shares that epoch. Thus a technically correct port report may play after its target/window has gone while a newer starboard target is visible. Producer validity/deadline at playback is the appropriate separate fix; this narrow commit does not claim to solve that path. Crew report cooldown may also suppress a first announcement because producers mark bAnnounced before dispatch succeeds.
+
+Checks: focused gate cases cover ahead, alongside/astern, behind curtain, destroyed, tunnel/caldera, distant and wrong-course obstacles; source/diff checks pass. No build/GPU/native run. Root can correlate LOOKOUT_WARNING with phase and signed coordinates in the next voyage.

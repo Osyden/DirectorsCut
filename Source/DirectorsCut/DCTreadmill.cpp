@@ -487,13 +487,17 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 			}
 		}
 
-		// Lookout: call an obstacle once, when it is close enough to matter and near our course.
-		if (!Obj.bHostile && Obj.bSolid && !Obj.bCalled && Local.X < 13000.f && FMath::Abs(Local.Y) < ShipHalfWidth + Obj.Radius + 150.f)
+		// Only visible city hazards still ahead can earn an "ahead" call. A late
+		// helm change must not announce a rock already astern or sinking in the tube.
+		if (Now == EDCPhase::Fog && !bLeavingAtlantis && !Actor->IsHidden() && !Actor->IsActorBeingDestroyed()
+			&& !Obj.bHostile && Obj.bSolid && !Obj.bCalled && Local.X > 0.f && Local.X < 13000.f
+			&& FMath::Abs(Local.Y) < ShipHalfWidth + Obj.Radius + 150.f)
 		{
 			Obj.bCalled = true;
 			if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
 			{
 				Crew->Report(FMath::Abs(Local.Y) < 250.f ? TEXT("Rocks dead ahead!") : (Local.Y > 0.f ? TEXT("Rocks ahead, off the starboard bow!") : TEXT("Rocks ahead, off the port bow!")));
+				UE_LOG(LogDC,Log,TEXT("LOOKOUT_WARNING actor=%s ahead=%.0f side=%.0f ride=%.2f"),*Actor->GetName(),Local.X,Local.Y,Director->RideTime);
 			}
 		}
 
