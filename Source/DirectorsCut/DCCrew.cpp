@@ -886,9 +886,9 @@ void ADCCrewMember::UpdateWorkRag()
 	if (!WorkRag)
 	{
 		WorkRagPoseMesh=Figure;
-		TArray<AActor*> Children;
-		GetAllChildActors(Children,true);
-		for (AActor* Child : Children)
+		TArray<AActor*> CastChildren;
+		GetAllChildActors(CastChildren,true);
+		for (AActor* Child : CastChildren)
 		{
 			TInlineComponentArray<USkeletalMeshComponent*> Meshes(Child);
 			for (USkeletalMeshComponent* Mesh : Meshes)
