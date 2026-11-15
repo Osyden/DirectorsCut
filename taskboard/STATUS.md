@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 15 Nov 15:35 Codex: inlet patch isolated; deeper-bed trial rejected visually
+
+An underwater-only bed candidate passes sampled static source-triangle clearance, but the native gray patches beside the ship remain. Targeted visibility checks attribute the patch to the installed cliff component; ship helpers and bank scans are not the remedy, and coarse Nanite fallback is not established as the cause. The candidate is not accepted for integration. Restored the original terrain/support/fog runtime exactly; main and its local packaged playable are untouched.
+
+Checkpoint contains independent candidate/probe tools and an opt-in cliff-isolation flag, with Editor/Game builds and Python syntax checks passing. [Evidence, rejected trial identities, restored baseline and next precise diagnostic](CALDERA-NAVIGATION-BED-15NOV.md). The delivered shallow bank fog and dense impact fog remain unchanged. No new visual-quality or release claim.
+
 ## 15 Nov 14:46 Codex: integrated review baseline and bounded lake displacement
 
 Fast-forwarded the visual review branch to combined main `3368536`, preserving the integrated Kraken, crew/ACE and individual cannons. Limited lake hull-clearance deformation to water within 3-8m of the ship's waterline so it cannot lift distant lake vertices hundreds of metres during the descent. Cataract, terrain, fog, sky and route are unchanged.

@@ -325,7 +325,10 @@ void ADCMaelstrom::UpdateCliffPreview()
 {
     if(!CliffPreviewMesh) { return; }
     if(!bActive||Elapsed<(bCompleteCliffArena?-7.f:0.f)) { ClearCliffPreview(); return; }
-    CliffPreviewMesh->SetVisibility(true);
+    // Review-only isolation: retain the installed frame/support data while
+    // hiding this mesh, so bed artifacts can be distinguished from scan accents.
+    static const bool HideCliff=FParse::Param(FCommandLine::Get(),TEXT("DCCliffHideMesh"));
+    CliffPreviewMesh->SetVisibility(!HideCliff);
     UpdateCliffPreviewFalls();
     UpdateCliffDetailPreview();
     if(CliffPreviewHidden.IsEmpty())

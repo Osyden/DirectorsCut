@@ -36,6 +36,8 @@ A tighter ellipse still leaves 6.61-9.68 m exposure inside the footprint and all
 
 ## Integration
 
+Follow-up: the underwater clearance trial passed static source checks but did not remove the native patch and was rolled back. [Exact attribution and trial evidence](CALDERA-NAVIGATION-BED-15NOV.md). The original terrain/support/fog identities remain current; do not integrate that trial from its CPU result alone.
+
 Cherry-pick only this scoped patch after local visual review. The material is tracked; alternatively regenerate it with `Tools/make_maelstrom_water_only.py` using the normal Unreal commandlet flags and `-DDC=InstalledNoZenLocalFallback`. Do not run the full multi-material builder. Preserve main's packaging shader shim, mandatory caldera texture checks and `r.Material.StripUnusedDefaultTextures=0`.
 
 No new package is produced here. The combined main playable remains the user's local testing candidate; do not overwrite its frozen content or upload it automatically.
