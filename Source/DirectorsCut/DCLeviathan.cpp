@@ -154,8 +154,10 @@ void ADCLeviathan::UpdateEncounter(float Elapsed, const FTransform& Arena, float
 	{
 		if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
 		{
-			bSighted = true;
-			Crew->Report(TEXT("Kraken rising! Ready the cannons!"), true);
+			const TWeakObjectPtr<ADCLeviathan> Weak(this);
+			bSighted = Crew->Report(TEXT("Kraken rising! Ready the cannons!"), true, [Weak]() {
+				return Weak.IsValid() && !Weak->IsHidden() && Weak->LastElapsed < FirstPeekAt + 6.f;
+			});
 		}
 	}
 
@@ -211,10 +213,12 @@ void ADCLeviathan::UpdateEncounter(float Elapsed, const FTransform& Arena, float
 	}
 	if (!bAnnounced && !IsHidden() && Elapsed >= FirstPeekAt + 6.f && Elapsed < DCBossTimeline::Events[0].At)
 	{
-		bAnnounced = true;
 		if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
 		{
-			Crew->Report(TEXT("Watch for tentacles: steer clear or shoot their joints. Save a broadside for its mouth!"), true);
+			const TWeakObjectPtr<ADCLeviathan> Weak(this);
+			bAnnounced = Crew->Report(TEXT("Watch for tentacles: steer clear or shoot their joints. Save a broadside for its mouth!"), true, [Weak]() {
+				return Weak.IsValid() && !Weak->IsHidden() && Weak->LastElapsed < DCBossTimeline::Events[0].At;
+			});
 		}
 	}
 	LastElapsed = Elapsed;
