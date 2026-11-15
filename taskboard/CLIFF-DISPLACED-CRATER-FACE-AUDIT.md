@@ -33,3 +33,11 @@ This is sampled static local clearance, not animated-wave contact, continuous co
 I viewed the angle-179 `DisplacedFaceAClay` wall and close-wall captures and `DisplacedFaceAMaterial` oblique under the review worker's `Saved/ImplicitCliffReview/HistoricalCraterCut`. The scan creates small relief, but its obvious repeat sits across the same broad planar curtain. The two shallow recesses at the right barely affect the overall rock mass. The upper natural terrain remains useful and the safe contact construction survives, but this does not yet read as a credible geological cliff.
 
 The next useful change is broad exposed-face structure related to upper spurs and ravines, while retaining valid contact and source scale. Increasing scan amplitude or enlarging its physical repeat would not address that missing hierarchy. No native import, performance claim or full-scene acceptance follows this candidate.
+
+## B follow-up: stronger recesses, same rejected planar construction
+
+`DisplacedFaceB/candidate.npz` SHA256 is `4b26b17a78dafc9f24805fda7c76cbd662840d16b9a5880bb7e39487f41b72e1`. Topology, baseline, source lineage and guards are bitwise identical to A. Eight parent-derived recess guides increase maximum landward displacement to 17.0668 m. All top and zero-guard vertices remain fixed; all 7,230 vertices belonging to 7,228 actual shoreline-crossing triangles remain bitwise fixed. There are no U/Z orientation reversals, and U/Z drift is below 1.7e-13 m.
+
+Independent original-parent checks retain 0.74579 m minimum vertex clearance and 0.67473 m minimum moved-face centroid clearance. The audit also evaluates all 702,307 row/diagonal breakpoints of the original piecewise-linear parent along the moved vertices' landward paths: no penetration occurs. The saved physically filtered scan replays bitwise at float32 precision. Evidence is `Saved/WeatheredAudit/displaced_crater_face_b.json`.
+
+The author and reviewer reject B visually: the stronger recesses read as capped slots cut into the same broad curtain. Valid mapping and contact do not approve its geology. The next bounded representation test compresses the original eroded parent radially, preserving its main-face U/Z relief instead of first removing it with a plane.
