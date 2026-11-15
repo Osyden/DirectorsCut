@@ -119,10 +119,32 @@ void ADCHUD::DrawHUD()
 {
 	Super::DrawHUD();
 	if (!Canvas) { return; }
-	if (const ADCGameMode* Game = GetWorld()->GetAuthGameMode<ADCGameMode>(); Game && Game->IsAwaitingStart()) { return; }
+	if (const ADCGameMode* Game = GetWorld()->GetAuthGameMode<ADCGameMode>(); Game && Game->IsAwaitingStart())
+	{
+		VoiceHintStartedAt = -1;
+		bVoiceHintDismissed = false;
+		return;
+	}
 	// -DCNoHUD: clean pictures for the store page and the dev log.
 	static const bool bNoHUD = FParse::Param(FCommandLine::Get(), TEXT("DCNoHUD"));
 	if (bNoHUD) { return; }
+	const double GameplayNow = GetWorld()->GetTimeSeconds();
+	if (VoiceHintStartedAt < 0)
+	{
+		VoiceHintStartedAt = GameplayNow;
+		UE_LOG(LogDC, Log, TEXT("VOICE_HINT shown gameplay=%.2f"), GameplayNow);
+	}
+	if (!bVoiceHintDismissed)
+	{
+		const ADCVoice* Voice = ADCVoice::Get(this);
+		const bool bVoiceCommandSucceeded = Voice && Voice->HasIssuedSuccessfulVoiceCommand();
+		if (bVoiceCommandSucceeded || GameplayNow - VoiceHintStartedAt >= 60.0)
+		{
+			bVoiceHintDismissed = true;
+			UE_LOG(LogDC, Log, TEXT("VOICE_HINT dismissed reason=%s elapsed=%.2f"),
+				bVoiceCommandSucceeded ? TEXT("voice_command") : TEXT("timeout"), GameplayNow - VoiceHintStartedAt);
+		}
+	}
 
 	ADCRideDirector* D = ADCRideDirector::Get(this);
 	ADCTreadmill* T = ADCTreadmill::Get(this);
@@ -188,6 +210,24 @@ void ADCHUD::DrawHUD()
 		const int32 Sec = FMath::FloorToInt(D->RideTime);
 		Label(FString::Printf(TEXT("%d:%02d   helm %+.1f   lane %+.0f m   hostiles %d"), Sec / 60, Sec % 60, T->GetSteer(), T->GetLaneOffset() / 100.f, T->NumHostiles()),
 			40.f * S, AlertY, 1.f, Dim, Font);
+	}
+
+	// Above subtitles and station controls, below hull alerts. Only a successful
+	// microphone command dismisses this early; typed orders and chat do not.
+	FVector2D VoiceHintMin = FVector2D::ZeroVector, VoiceHintMax = FVector2D::ZeroVector;
+	if (!bVoiceHintDismissed)
+	{
+		const float HS = FMath::Clamp(FMath::Min(W / 1280.f, H / 720.f), .65f, 2.f);
+		const FString Hint = TEXT("Hold V to talk to your AI crew");
+		float TW = 0.f, TH = 0.f;
+		CrispSize(Hint, TW, TH, Font, 1.2f * HS);
+		const float Pad = 10.f * HS;
+		VoiceHintMin = FVector2D(40.f * HS, AlertY + (bDebug ? 30.f : 12.f) * HS);
+		VoiceHintMax = VoiceHintMin + FVector2D(TW + 2.f * Pad, TH + 2.f * Pad);
+		DrawRect(FLinearColor(.015f, .025f, .034f, .94f), VoiceHintMin.X, VoiceHintMin.Y,
+			VoiceHintMax.X - VoiceHintMin.X, VoiceHintMax.Y - VoiceHintMin.Y);
+		DrawRect(Gold, VoiceHintMin.X, VoiceHintMin.Y, 3.f * HS, VoiceHintMax.Y - VoiceHintMin.Y);
+		CrispText(Hint, White, VoiceHintMin.X + Pad, VoiceHintMin.Y + Pad, Font, 1.2f * HS);
 	}
 
 	if (ADCVoice* Voice=ADCVoice::Get(this); Voice && Voice->IsListening())
@@ -282,6 +322,8 @@ void ADCHUD::DrawHUD()
 					float TW, TH;
 					CrispSize(Text, TW, TH, Font, S);
 					const float X = Screen.X - TW * 0.5f;
+					if (!bVoiceHintDismissed && X - 8.f * S < VoiceHintMax.X && X + TW + 8.f * S > VoiceHintMin.X
+						&& Screen.Y - 3.f * S < VoiceHintMax.Y && Screen.Y + TH + 14.f * S > VoiceHintMin.Y) { continue; }
 					DrawRect(FLinearColor(0.015f, 0.02f, 0.025f, 0.85f), X - 8.f * S, Screen.Y - 3.f * S, TW + 16.f * S, TH + 6.f * S);
 					Label(Text, X, Screen.Y, 1.f, bNear ? Gold : White, Font);
 					DrawLine(Screen.X, Screen.Y + TH + 4.f * S, Screen.X, Screen.Y + TH + 14.f * S, Gold, 2.f * S);

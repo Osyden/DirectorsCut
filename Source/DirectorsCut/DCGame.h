@@ -25,6 +25,9 @@ protected:
 	void DrawSpeechBubble();
 	FString LastBubbleLine;
 	double BubbleUntil = 0;
+	/** Gameplay seconds only: menu waiting and paused time do not consume the voice hint. */
+	double VoiceHintStartedAt = -1;
+	bool bVoiceHintDismissed = false;
 	void DrawCrewDutyIcon(EDCStationType Duty, float X, float Y, float Size, const FLinearColor& Color, bool bMirror = false);
 	UPROPERTY() TArray<TObjectPtr<class UTexture2D>> CrewPortraits;
 	bool bCrewPortraitsLoaded = false;
