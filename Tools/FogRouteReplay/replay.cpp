@@ -48,6 +48,7 @@ int main()
     Check(Creatures==9,"Nine creatures total, previously seven");
     Check(sizeof(StatueTimes)/sizeof(float)==4,"Four attack statues total, previously three");
     const float Y=BankCentre(Clear)+1300;
-    Check(std::sqrt(7600.f*7600+Y*Y+4000.f*4000)<21000,"Farthest grouped target remains inside normal centre-lane cannon range");
+    Check(std::sqrt(12200.f*12200+Y*Y+4000.f*4000)<21000,"Farthest grouped target remains inside normal centre-lane cannon range");
     std::printf("PASS %d fog route clearance, support and encounter checks\n",Checks);
 }
+
