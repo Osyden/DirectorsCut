@@ -41,6 +41,9 @@ Write-Output "Packaging started; log: $log"
 & $uat @uatArgs *> $log
 $code = $LASTEXITCODE
 if ($code -ne 0) { throw "Packaging failed with exit $code; inspect $log" }
+if (Select-String -LiteralPath $log -Pattern 'Failed to compile Material|doesn.t have a valid ShaderMap' -Quiet) {
+    throw "Cooked material compilation failed; reject this candidate and inspect $log"
+}
 if (($manifest | ConvertTo-Json -Compress) -ne ((Get-SourceManifest) | ConvertTo-Json -Compress)) {
     throw 'Source/config changed during packaging; do not accept this candidate.'
 }
