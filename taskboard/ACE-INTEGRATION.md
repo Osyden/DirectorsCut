@@ -1,4 +1,4 @@
-Current crew names: **Rex, Duncan and Ruby**. See [crew HUD and speech vocabulary update](CREW-UI.md) for the new names, portraits and fire-at-will recognition. Earlier verification records below retain their original names and build dates.
+Current crew names: **Rex, Duncan and Ruby**. See [crew HUD and speech vocabulary update](CREW-UI.md) for the new names, portraits and fire-at-will recognition. Current accepted build: `Builds/2026-11-15_1139_crew-ui-helm/Windows/DirectorsCut.exe`, with all three renamed crew passing GPU ACE and a fresh scene/HUD review. Earlier verification records below retain their original names and build dates.
 
 # Correction: incomplete ACE candidate (15 November, 11:02 GMT)
 
