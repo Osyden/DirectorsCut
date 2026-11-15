@@ -23,15 +23,17 @@ void ADCVoice::ExpireReports()
     // Deadline controls admission to playback, not the length of an already
     // relevant sentence. Target validity continues to apply while it is spoken.
     if (ActiveCurves && ActiveReportGuard &&
-        (!ActiveReportGuard->IsCurrent() || (!bACEStarted && !ActiveReportGuard->CanStart(Now))))
+        (bACEStarted ? !ActiveReportGuard->CanContinue() : !ActiveReportGuard->CanStart(Now)))
     {
-        UE_LOG(LogDC,Display,TEXT("REPORT_SPEECH_CANCELLED speaker=%s started=%d text=%s"),*ActiveSpeaker,bACEStarted,*ActiveText);
+        UE_LOG(LogDC,Display,TEXT("REPORT_SPEECH_CANCELLED speaker=%s started=%d elapsed=%.3f reason=%s text=%s"),
+            *ActiveSpeaker,bACEStarted,bACEStarted ? Now-ActiveReportGuard->PlaybackStartedAt : 0.,
+            bACEStarted ? TEXT("threat_ended") : TEXT("stale_before_start"),*ActiveText);
         ClearACE(); ActiveSpeechBatchId=0;
     }
     for (int32 Index=Playing.Num()-1;Index>=0;--Index)
     {
         auto& Playback=Playing[Index];
-        if (!Playback.ReportGuard || Playback.ReportGuard->IsCurrent()) { continue; }
+        if (!Playback.ReportGuard || Playback.ReportGuard->CanContinue()) { continue; }
         if (UAudioComponent* Component=Playback.Component.Get())
         {
             LiveWaves.Remove(Cast<USoundWaveProcedural>(Component->Sound));
@@ -39,7 +41,7 @@ void ADCVoice::ExpireReports()
         }
         Playing.RemoveAt(Index);
     }
-    if (VisibleReportGuard && !VisibleReportGuard->IsCurrent())
+    if (VisibleReportGuard && !VisibleReportGuard->CanContinue())
     {
         SpeakingSpeaker.Empty(); SpeakingText.Empty(); SpeechVisibleUntil=0;
         SilentSpeechUntil=0; VisibleReportGuard.Reset();

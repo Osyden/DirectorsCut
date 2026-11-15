@@ -138,6 +138,7 @@ float ADCVoice::GetSpeechRemainingSeconds() const
 void ADCVoice::ShowSpeech(const FString& Speaker, const FString& Text, double Duration, TSharedPtr<FDCReportSpeechGuard> ReportGuard)
 {
 	if (ReportGuard && !ReportGuard->CanStart(FPlatformTime::Seconds())) { return; }
+	if (ReportGuard) { ReportGuard->PlaybackStartedAt = FPlatformTime::Seconds(); }
 	VisibleReportGuard = MoveTemp(ReportGuard);
 	SpeakingSpeaker = Speaker;
 	SpeakingText = Text;
@@ -675,7 +676,7 @@ FString ADCVoice::PersonaFor(const FString& Speaker) const
 	return TEXT("Rex, the old helmsman: gruff, superstitious, loyal");
 }
 
-void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const FString& Context, TFunction<bool()> IsStillRelevant)
+void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const FString& Context, TFunction<bool()> IsStillRelevant, TFunction<bool()> IsStillRelevantDuringPlayback)
 {
 	SynchronizeScene();
 	if (bEnding || bSmokeTest || IsMenuOpen()) { return; }
@@ -686,7 +687,7 @@ void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const 
 		const auto* D = ADCRideDirector::Get(this);
 		if (D && D->GetPhase() >= EDCPhase::Slide &&
 			(Fallback.Contains(TEXT("giant")) || Fallback.Contains(TEXT("Rocks")) || Fallback.Contains(TEXT("stone")) || Fallback.Contains(TEXT("Ghost ship")))) { return; }
-		FinishLine(Speaker, Fallback, true, MoveTemp(IsStillRelevant));
+		FinishLine(Speaker, Fallback, true, MoveTemp(IsStillRelevant), MoveTemp(IsStillRelevantDuringPlayback));
 		return;
 	}
 	if (!bUseLLM || !bLLMReady)
@@ -753,17 +754,17 @@ void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const 
 	});
 }
 
-void ADCVoice::FinishLine(const FString& Speaker, const FString& Text, bool bReport, TFunction<bool()> IsStillRelevant)
+void ADCVoice::FinishLine(const FString& Speaker, const FString& Text, bool bReport, TFunction<bool()> IsStillRelevant, TFunction<bool()> IsStillRelevantDuringPlayback)
 {
 	if (bEnding || (bReport && IsStillRelevant && !IsStillRelevant())) { return; }
 	if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
 	{
 		Crew->Say(Speaker, Text);
 	}
-	Speak(Speaker, Text, bReport, MoveTemp(IsStillRelevant));
+	Speak(Speaker, Text, bReport, MoveTemp(IsStillRelevant), MoveTemp(IsStillRelevantDuringPlayback));
 }
 
-void ADCVoice::Speak(const FString& Speaker, const FString& Text, bool bReport, TFunction<bool()> IsStillRelevant)
+void ADCVoice::Speak(const FString& Speaker, const FString& Text, bool bReport, TFunction<bool()> IsStillRelevant, TFunction<bool()> IsStillRelevantDuringPlayback)
 {
 	SynchronizeScene();
 	if (bEnding || IsMenuOpen() || Text.TrimStartAndEnd().IsEmpty()) { return; }
@@ -773,6 +774,7 @@ void ADCVoice::Speak(const FString& Speaker, const FString& Text, bool bReport, 
 		ReportGuard=MakeShared<FDCReportSpeechGuard>();
 		ReportGuard->StartDeadline=FPlatformTime::Seconds()+6.0;
 		ReportGuard->IsStillRelevant=MoveTemp(IsStillRelevant);
+		ReportGuard->IsStillRelevantDuringPlayback=MoveTemp(IsStillRelevantDuringPlayback);
 		if (!ReportGuard->IsCurrent()) { return; }
 	}
 	if (!bTTSReady) { ShowSpeech(Speaker, Text, 4, ReportGuard); return; }

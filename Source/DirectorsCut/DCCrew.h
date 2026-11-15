@@ -125,7 +125,7 @@ public:
 	void Reply(const FString& Speaker, const FString& Text);
 	/** An unprompted warning from the crew ("Rocks dead ahead!"). Rate-limited unless urgent. */
 	/** True when admitted; callers may retry a rate-limited warning. Predicate must use weak world/target references. */
-	bool Report(const FString& Text, bool bUrgent = false, TFunction<bool()> IsStillRelevant = {});
+	bool Report(const FString& Text, bool bUrgent = false, TFunction<bool()> IsStillRelevant = {}, TFunction<bool()> IsStillRelevantDuringPlayback = {});
 
 	FDCOnCrewLine OnCrewLine;
 	/** Last few lines, newest last. Read by the HUD for subtitles. */

@@ -33,6 +33,7 @@ private:
 		float X = 0.f, SeaY = 0.f, Side = 1.f, Age = 0.f, Exposure = 0.f, Clock = 0.f;
 		float Size = 1.f, InitialWait = 8.f, HoldX = 3500.f, FootHeight = 0.f;
 		int32 CannonHits = 0;
+		int32 GroupId = INDEX_NONE;
 		int32 Stage = 0; // approach, charge, attack, cooldown, defeated
 		bool bAttackAnnounced = false, bDefeatAnnounced = false;
 		bool bStatue = false, bImpact = false, bAnnounced = false, bGroupLeader = true, bCanShoot = false;
@@ -59,6 +60,7 @@ private:
 	void SpawnStatue(int32 Index);
 	void TickThreat(FThreat& Threat, float DeltaSeconds);
     bool IsThreatReportRelevant(TWeakObjectPtr<AActor> Body, float Side, DCEarlyWarningPolicy::EKind Kind) const;
+    bool CanContinueThreatReport(TWeakObjectPtr<AActor> Body, float Side, DCEarlyWarningPolicy::EKind Kind, int32 GroupId=INDEX_NONE) const;
     bool IsProjectileReportRelevant(TWeakObjectPtr<AActor> Visual) const;
 	UAnimSequence* CreatureClip(FName Name);
 	void UpdateCreaturePose(FThreat& Threat, float Dt, float GroundSpeed, float Facing);

@@ -237,6 +237,7 @@ void ADCEarlyEncounters::SpawnGroup(int32 Group)
 		G.FootHeight = (Reference.Origin.Z - Reference.BoxExtent.Z) * G.Size;
 		G.InitialWait = 8.f + I * 2.8f;
 		G.bGroupLeader = I == 0;
+		G.GroupId = Group;
 		Body->SetActorScale3D(FVector(G.Size));
 		G.GaitPhase = I * .23f;
 		UpdateCreaturePose(G, 0.f, 0.f, 0.f);
@@ -416,6 +417,24 @@ bool ADCEarlyEncounters::IsThreatReportRelevant(TWeakObjectPtr<AActor> Body, flo
     return false;
 }
 
+bool ADCEarlyEncounters::CanContinueThreatReport(TWeakObjectPtr<AActor> Body, float Side, DCEarlyWarningPolicy::EKind Kind, int32 GroupId) const
+{
+    if (!Director || Director->GetPhase()!=EDCPhase::Fog) { return false; }
+    // A defeat remains a completed fact after its corpse sinks or its six-second
+    // admission window closes. Scene synchronization still cancels it on exit.
+    if (Kind==DCEarlyWarningPolicy::EKind::Defeat) { return true; }
+    for (const FThreat& T : Threats)
+    {
+        const bool SameGroup=GroupId!=INDEX_NONE && !T.bStatue && T.GroupId==GroupId;
+        if ((!SameGroup && T.Body!=Body) || T.Side!=Side) { continue; }
+        const bool Present=T.Body.IsValid() && T.X>=Director->CloudTunnelFarX;
+        const bool SameSide=T.Body.IsValid() &&
+            (Director->DeckTransform.InverseTransformPosition(T.Body->GetActorLocation()).Y<0.f)==(Side<0.f);
+        if (DCEarlyWarningPolicy::ThreatContinues(Kind,true,Present,SameSide,T.Target.IsValid(),T.bStatue,T.Stage)) { return true; }
+    }
+    return false;
+}
+
 bool ADCEarlyEncounters::IsProjectileReportRelevant(TWeakObjectPtr<AActor> Visual) const
 {
     if (!Visual.IsValid() || !Director) { return false; }
@@ -473,8 +492,10 @@ void ADCEarlyEncounters::TickThreat(FThreat& T, float Dt)
         {
             const auto Relevant = [Owner=TWeakObjectPtr<ADCEarlyEncounters>(this),Identity=T.Body,Side=T.Side]()
             { return Owner.IsValid() && Owner->IsThreatReportRelevant(Identity,Side,DCEarlyWarningPolicy::EKind::Defeat); };
+            const auto Continuing = [Owner=TWeakObjectPtr<ADCEarlyEncounters>(this)]()
+            { return Owner.IsValid() && Owner->CanContinueThreatReport({},0.f,DCEarlyWarningPolicy::EKind::Defeat); };
             if (UDCCrewSubsystem* Crew=GetWorld()->GetSubsystem<UDCCrewSubsystem>(); Crew && Relevant())
-            { T.bDefeatAnnounced=Crew->Report(T.bStatue ? TEXT("The eyes are dark! Statue silenced!") : TEXT("One down! Keep that battery firing!"),false,Relevant); }
+            { T.bDefeatAnnounced=Crew->Report(T.bStatue ? TEXT("The eyes are dark! Statue silenced!") : TEXT("One down! Keep that battery firing!"),false,Relevant,Continuing); }
         }
 		UpdateCreaturePose(T, Dt, GroundSpeed, Facing);
 		UpdateAlert(T, bFogConcealed);
@@ -510,10 +531,12 @@ void ADCEarlyEncounters::TickThreat(FThreat& T, float Dt)
             {
                 const auto Relevant = [Owner=TWeakObjectPtr<ADCEarlyEncounters>(this),Identity=T.Body,Side=T.Side]()
                 { return Owner.IsValid() && Owner->IsThreatReportRelevant(Identity,Side,DCEarlyWarningPolicy::EKind::Approach); };
+                const auto Continuing = [Owner=TWeakObjectPtr<ADCEarlyEncounters>(this),Identity=T.Body,Side=T.Side,GroupId=T.GroupId]()
+                { return Owner.IsValid() && Owner->CanContinueThreatReport(Identity,Side,DCEarlyWarningPolicy::EKind::Approach,GroupId); };
                 if (UDCCrewSubsystem* Crew=GetWorld()->GetSubsystem<UDCCrewSubsystem>(); Crew && Relevant())
                 {
                     T.bAnnounced=Crew->Report(T.bStatue ? (T.Side<0 ? TEXT("Eyes waking to port! Shoot the statue before it fires!") : TEXT("Eyes waking to starboard! Shoot the statue before it fires!"))
-                        : (T.Side<0 ? TEXT("Raiders grouped off port! Port battery, clear them!") : TEXT("Raiders grouped off starboard! Starboard battery, clear them!")),true,Relevant);
+                        : (T.Side<0 ? TEXT("Raiders grouped off port! Port battery, clear them!") : TEXT("Raiders grouped off starboard! Starboard battery, clear them!")),true,Relevant,Continuing);
                 }
             }
             if (T.bAnnounced) { UE_LOG(LogDC, Display, TEXT("Encounter firing window: %s %s distance=%.0f at %.1f"), T.bStatue ? TEXT("sentinel") : TEXT("creature"), T.Side < 0 ? TEXT("port") : TEXT("starboard"), T.Target->GetActorLocation().Size(), Director->RideTime); }
@@ -563,8 +586,10 @@ void ADCEarlyEncounters::TickThreat(FThreat& T, float Dt)
             {
                 const auto Relevant = [Owner=TWeakObjectPtr<ADCEarlyEncounters>(this),Identity=T.Body,Side=T.Side]()
                 { return Owner.IsValid() && Owner->IsThreatReportRelevant(Identity,Side,DCEarlyWarningPolicy::EKind::Beam); };
+                const auto Continuing = [Owner=TWeakObjectPtr<ADCEarlyEncounters>(this),Identity=T.Body,Side=T.Side]()
+                { return Owner.IsValid() && Owner->CanContinueThreatReport(Identity,Side,DCEarlyWarningPolicy::EKind::Beam); };
                 if (UDCCrewSubsystem* Crew=GetWorld()->GetSubsystem<UDCCrewSubsystem>(); Crew && Relevant())
-                { T.bAttackAnnounced=Crew->Report(TEXT("Beam on deck! Watch that marked spot!"),true,Relevant); }
+                { T.bAttackAnnounced=Crew->Report(TEXT("Beam on deck! Watch that marked spot!"),true,Relevant,Continuing); }
             }
 			const FVector End = Director->DeckToWorld(T.DeckTarget);
 			for (int32 I = 0; I < T.Beams.Num(); ++I)

@@ -49,9 +49,9 @@ public:
 	static ADCVoice* Get(const UObject* WorldContext);
 
 	/** Reports (empty Context) use exact authored wording; order acknowledgements can use the LLM. */
-	void CrewReply(const FString& Speaker, const FString& Fallback, const FString& Context, TFunction<bool()> IsStillRelevant = {});
+	void CrewReply(const FString& Speaker, const FString& Fallback, const FString& Context, TFunction<bool()> IsStillRelevant = {}, TFunction<bool()> IsStillRelevantDuringPlayback = {});
 	/** Speak a finished line (no LLM). */
-	void Speak(const FString& Speaker, const FString& Text, bool bReport = false, TFunction<bool()> IsStillRelevant = {});
+	void Speak(const FString& Speaker, const FString& Text, bool bReport = false, TFunction<bool()> IsStillRelevant = {}, TFunction<bool()> IsStillRelevantDuringPlayback = {});
 	/** Drop dialogue belonging to the previous scene/menu without restarting sidecars. */
 	void ResetPendingSpeech();
 	bool IsSpeaking() const;
@@ -128,7 +128,7 @@ protected:
 	void OnHeard(const FString& Text, bool bFromMicrophone = false);
 	bool bIssuedSuccessfulVoiceCommand = false;
 
-	void FinishLine(const FString& Speaker, const FString& Text, bool bReport = false, TFunction<bool()> IsStillRelevant = {});
+	void FinishLine(const FString& Speaker, const FString& Text, bool bReport = false, TFunction<bool()> IsStillRelevant = {}, TFunction<bool()> IsStillRelevantDuringPlayback = {});
 	void ExpireReports();
 	void SynchronizeScene();
 	bool IsMenuOpen() const;

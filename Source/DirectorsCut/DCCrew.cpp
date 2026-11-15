@@ -660,7 +660,7 @@ void ADCCrewMember::SetWalking(bool bWalk)
 	}
 }
 
-bool UDCCrewSubsystem::Report(const FString& Text, bool bUrgent, TFunction<bool()> IsStillRelevant)
+bool UDCCrewSubsystem::Report(const FString& Text, bool bUrgent, TFunction<bool()> IsStillRelevant, TFunction<bool()> IsStillRelevantDuringPlayback)
 {
 	if (!Crew.Num() || (IsStillRelevant && !IsStillRelevant())) { return false; }
 	const double Now = GetWorld()->GetTimeSeconds();
@@ -677,7 +677,7 @@ bool UDCCrewSubsystem::Report(const FString& Text, bool bUrgent, TFunction<bool(
 	if (!Speaker) { return false; }
 	if (ADCVoice* Voice = ADCVoice::Get(this))
 	{
-		Voice->CrewReply(Speaker->CrewName, Text, FString(), MoveTemp(IsStillRelevant));
+		Voice->CrewReply(Speaker->CrewName, Text, FString(), MoveTemp(IsStillRelevant), MoveTemp(IsStillRelevantDuringPlayback));
 	}
 	else
 	{
