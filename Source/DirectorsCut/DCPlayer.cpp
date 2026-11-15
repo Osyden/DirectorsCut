@@ -1,5 +1,6 @@
 #include "DCPlayer.h"
 #include "DCEarlyEncounters.h"
+#include "DCBossCombat.h"
 #include "DCWheelVisual.h"
 #include "DCCrew.h"
 #include "DCTreadmill.h"
@@ -439,9 +440,14 @@ void ADCPlayerCharacter::TickCannons(APlayerController* PC)
 	// Review from the actual cannon camera; clamp exactly as mouse aiming does.
 #if !UE_BUILD_SHIPPING
 	FVector ReviewAim;
+	const bool BodyReviewRequested=FParse::Param(FCommandLine::Get(),TEXT("DCBossBodyReview"));
+	const bool BossReviewRequested=BodyReviewRequested || FParse::Param(FCommandLine::Get(),TEXT("DCBossReviewAim"));
+	const auto* Boss=BossReviewRequested?Cast<ADCBossCombat>(UGameplayStatics::GetActorOfClass(this,ADCBossCombat::StaticClass())):nullptr;
+	const bool BossReview=Boss && Guns && Boss->GetReviewTarget(BodyReviewRequested,ReviewAim)
+		&& Guns->CanAimGun(Guns->GetPlayerGun(ActiveSide),ReviewAim);
 	const ADCEarlyEncounters* Early=FParse::Param(FCommandLine::Get(),TEXT("DCEarlyTargetReview")) ? ADCEarlyEncounters::Get(this) : nullptr;
-	const bool StatueReview=Early && Early->GetReviewStatueTarget(ActiveSide,ReviewAim);
-	if (StatueReview || (Guns && FParse::Param(FCommandLine::Get(), TEXT("DCTrackThreat")) && Guns->FindCrewTarget(Guns->GetPlayerGun(ActiveSide), ReviewAim, false)))
+	const bool StatueReview=!BossReviewRequested && Early && Early->GetReviewStatueTarget(ActiveSide,ReviewAim);
+	if (BossReview || StatueReview || (!BossReviewRequested && Guns && FParse::Param(FCommandLine::Get(), TEXT("DCTrackThreat")) && Guns->FindCrewTarget(Guns->GetPlayerGun(ActiveSide), ReviewAim, false)))
 	{
 		AimRotation = (ReviewAim - GunCamera->GetActorLocation()).Rotation();
 		AimRotation.Yaw = SideYaw + FMath::Clamp(FMath::FindDeltaAngleDegrees(SideYaw, AimRotation.Yaw), -62.f, 62.f);

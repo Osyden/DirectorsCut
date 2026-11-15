@@ -16,7 +16,6 @@
 #include "ProceduralMeshComponent.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
-#include "Camera/CameraActor.h"
 #include "GameFramework/PlayerController.h"
 #include "Camera/PlayerCameraManager.h"
 
@@ -103,16 +102,16 @@ void ADCBossCombat::UpdateBodyTarget()
         UE_LOG(LogDC,Log,TEXT("BOSS_BODY_TARGET position=%s radius=%.0f; cumulative damage, timed finale unchanged"),*Position.ToCompactString(),DCBossDamagePolicy::BodyRadius);
     }
     BodyTarget->SetActorLocation(Position);
-    if(FParse::Param(FCommandLine::Get(),TEXT("DCBossBodyReview")))
-        if(auto* PC=GetWorld()->GetFirstPlayerController())
-            if(auto* Camera=Cast<ACameraActor>(PC->GetViewTarget()))
-            {
-                const float SideYaw=Position.Y<0?-90.f:90.f;
-                FRotator Aim=(Position-Camera->GetActorLocation()).Rotation();
-                Aim.Yaw=SideYaw+FMath::Clamp(FMath::FindDeltaAngleDegrees(SideYaw,Aim.Yaw),-62.f,62.f);
-                Aim.Pitch=FMath::Clamp(Aim.Pitch,-62.f,12.f);
-                Camera->SetActorRotation(Aim);
-            }
+}
+bool ADCBossCombat::GetReviewTarget(bool Body,FVector& Position) const
+{
+    if(!Running || Finished || !Director || Director->TimeScale<=0) return false;
+    const float Time=Director->RideTime-RideOrigin;
+    const AActor* Target=Body?BodyTarget.Get():Attack.Target.Get();
+    if(!IsValid(Target) || Time<DCBossTimeline::CombatStart || Time>=Deadline) return false;
+    if(!Body && !DCBossMarkerPolicy::ShowTarget(true,DCBossTimeline::Open(Time,Attack.Start,Attack.Strike,Deadline),Attack.Interrupted,Attack.Cancelled,Attack.Applied)) return false;
+    Position=Target->GetActorLocation();
+    return true;
 }
 float ADCBossCombat::AcceptTargetHit(float Damage,int32 Event)
 {
@@ -359,18 +358,6 @@ void ADCBossCombat::UpdateAttack(float DT,const FTransform& Arena)
         if(Attack.Kind!=DCBossTimeline::EAttack::Mouth)
             T->SetActorRotation(FRotationMatrix::MakeFromZ((PoseJoint-PoseBend).GetSafeNormal()).Rotator());
         if(auto* Light=T->FindComponentByClass<UPointLightComponent>()) Light->SetIntensity(15000.f+85000.f*FMath::Square(GetCharge()));
-        // Review-only mouse aim. Real play has no camera steering or auto-aim.
-        if(FParse::Param(FCommandLine::Get(),TEXT("DCBossReviewAim")))
-            if(auto* PC=GetWorld()->GetFirstPlayerController())
-                if(auto* Camera=Cast<ACameraActor>(PC->GetViewTarget()))
-                    if(Camera->GetActorRightVector().X*T->GetActorLocation().Y<0)
-                    {
-                        FRotator Aim=(T->GetActorLocation()-Camera->GetActorLocation()).Rotation();
-                        const float SideYaw=T->GetActorLocation().Y<0?-90.f:90.f;
-                        Aim.Yaw=SideYaw+FMath::Clamp(FMath::FindDeltaAngleDegrees(SideYaw,Aim.Yaw),-62.f,62.f);
-                        Aim.Pitch=FMath::Clamp(Aim.Pitch,-62.f,12.f);
-                        Camera->SetActorRotation(Aim);
-                    }
     }
     if(auto* Cue=Attack.WeakPointCue.Get())
     {

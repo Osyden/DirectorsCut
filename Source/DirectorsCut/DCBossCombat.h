@@ -31,6 +31,8 @@ public:
     bool IsMouthCharging() const;
     float GetCharge() const;
     bool GetAppendagePose(FVector& Base,FVector& Bend,FVector& Joint,FVector& Tip) const;
+    /** Read-only target for the non-shipping player review aim path. */
+    bool GetReviewTarget(bool Body,FVector& Position) const;
     UPROPERTY(BlueprintReadOnly) float BossDamage=0.f;
     UPROPERTY(BlueprintReadOnly) float BodyDamage=0.f;
     UPROPERTY(BlueprintReadOnly) float ShipDamage=0.f;
