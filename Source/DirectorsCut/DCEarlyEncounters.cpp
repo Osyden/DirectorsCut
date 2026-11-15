@@ -399,6 +399,37 @@ void ADCEarlyEncounters::Ignite(const FVector& DeckPoint, const TCHAR* Cause)
 	UE_LOG(LogDC, Display, TEXT("Encounter impact: %s deck=%s fires=%d->%d at %.1f"), Cause, *DeckPoint.ToCompactString(), Before, Troubles->NumFires(), Director->RideTime);
 }
 
+bool ADCEarlyEncounters::IsThreatReportRelevant(TWeakObjectPtr<AActor> Body, float Side, DCEarlyWarningPolicy::EKind Kind) const
+{
+    if (!Body.IsValid() || !Director || !Guns) { return false; }
+    for (const FThreat& T : Threats)
+    {
+        if (T.Body != Body || T.Side != Side) { continue; }
+        const int32 Gun = Guns->GetPlayerGun(Side < 0.f ? EDCSide::Port : EDCSide::Starboard);
+        const FVector Delta = T.Target.IsValid() ? T.Target->GetActorLocation() - Guns->GetMuzzle(Gun) : FVector::ZeroVector;
+        // HasClearShot checks the actual ship-local signed Y and gun arc as well
+        // as occlusion; a cached route-side label alone is insufficient.
+        const bool CanShoot = T.bCanShoot && Delta.Z < Delta.Size2D() * .55f && Guns->HasClearShot(Gun,T.Target.Get());
+        return DCEarlyWarningPolicy::ThreatRelevant(Kind, Director->GetPhase()==EDCPhase::Fog,
+            !Body->IsHidden(), T.Target.IsValid(), CanShoot, T.bStatue, T.Stage);
+    }
+    return false;
+}
+
+bool ADCEarlyEncounters::IsProjectileReportRelevant(TWeakObjectPtr<AActor> Visual) const
+{
+    if (!Visual.IsValid() || !Director) { return false; }
+    for (const FProjectile& P : Projectiles)
+    {
+        if (P.Visual == Visual)
+        {
+            return DCEarlyWarningPolicy::ProjectileRelevant(Director->GetPhase()==EDCPhase::Fog,
+                !Visual->IsHidden(), P.Age, P.Duration);
+        }
+    }
+    return false;
+}
+
 void ADCEarlyEncounters::TickThreat(FThreat& T, float Dt)
 {
 	AActor* Body = T.Body.Get();
@@ -431,7 +462,6 @@ void ADCEarlyEncounters::TickThreat(FThreat& T, float Dt)
 		if (Body == VerifyEnemy.Get() && T.Stage < 2) { bVerifyInterrupted = true; }
 #endif
 		T.Stage = 4; T.Clock = 0.f;
-		if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>()) { Crew->Report(T.bStatue ? TEXT("The eyes are dark! Statue silenced!") : TEXT("One down! Keep that battery firing!")); }
 		RetireFireball(T.Charge.Get()); T.Charge.Reset();
 		if (T.Marker.IsValid()) { T.Marker->Destroy(); }
 		for (auto& Beam : T.Beams) { if (Beam.IsValid()) { Beam->SetVisibility(false); } }
@@ -439,6 +469,13 @@ void ADCEarlyEncounters::TickThreat(FThreat& T, float Dt)
 	}
 	if (T.Stage == 4)
 	{
+        if (!T.bDefeatAnnounced)
+        {
+            const auto Relevant = [Owner=TWeakObjectPtr<ADCEarlyEncounters>(this),Identity=T.Body,Side=T.Side]()
+            { return Owner.IsValid() && Owner->IsThreatReportRelevant(Identity,Side,DCEarlyWarningPolicy::EKind::Defeat); };
+            if (UDCCrewSubsystem* Crew=GetWorld()->GetSubsystem<UDCCrewSubsystem>(); Crew && Relevant())
+            { T.bDefeatAnnounced=Crew->Report(T.bStatue ? TEXT("The eyes are dark! Statue silenced!") : TEXT("One down! Keep that battery firing!"),false,Relevant); }
+        }
 		UpdateCreaturePose(T, Dt, GroundSpeed, Facing);
 		UpdateAlert(T, bFogConcealed);
 		// A silenced monument remains in the city with dark eyes. Creatures sink
@@ -466,16 +503,21 @@ void ADCEarlyEncounters::TickThreat(FThreat& T, float Dt)
 	if (bCanShoot)
 	{
 		T.Exposure += Dt;
-		if (!T.bAnnounced)
-		{
-			T.bAnnounced = true;
-			if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>(); Crew && T.bGroupLeader)
-			{
-				Crew->Report(T.bStatue ? (T.Side < 0 ? TEXT("Eyes waking to port! Shoot the statue before it fires!") : TEXT("Eyes waking to starboard! Shoot the statue before it fires!"))
-					: (T.Side < 0 ? TEXT("Raiders grouped off port! Port battery, clear them!") : TEXT("Raiders grouped off starboard! Starboard battery, clear them!")), true);
-			}
-			UE_LOG(LogDC, Display, TEXT("Encounter firing window: %s %s distance=%.0f at %.1f"), T.bStatue ? TEXT("sentinel") : TEXT("creature"), T.Side < 0 ? TEXT("port") : TEXT("starboard"), T.Target->GetActorLocation().Size(), Director->RideTime);
-		}
+        if (!T.bAnnounced)
+        {
+            if (!T.bGroupLeader) { T.bAnnounced=true; }
+            else
+            {
+                const auto Relevant = [Owner=TWeakObjectPtr<ADCEarlyEncounters>(this),Identity=T.Body,Side=T.Side]()
+                { return Owner.IsValid() && Owner->IsThreatReportRelevant(Identity,Side,DCEarlyWarningPolicy::EKind::Approach); };
+                if (UDCCrewSubsystem* Crew=GetWorld()->GetSubsystem<UDCCrewSubsystem>(); Crew && Relevant())
+                {
+                    T.bAnnounced=Crew->Report(T.bStatue ? (T.Side<0 ? TEXT("Eyes waking to port! Shoot the statue before it fires!") : TEXT("Eyes waking to starboard! Shoot the statue before it fires!"))
+                        : (T.Side<0 ? TEXT("Raiders grouped off port! Port battery, clear them!") : TEXT("Raiders grouped off starboard! Starboard battery, clear them!")),true,Relevant);
+                }
+            }
+            if (T.bAnnounced) { UE_LOG(LogDC, Display, TEXT("Encounter firing window: %s %s distance=%.0f at %.1f"), T.bStatue ? TEXT("sentinel") : TEXT("creature"), T.Side < 0 ? TEXT("port") : TEXT("starboard"), T.Target->GetActorLocation().Size(), Director->RideTime); }
+        }
 	}
 	if (DCEarlyEncounterPolicy::CanBeginCharge(T.Stage,T.Exposure,T.InitialWait,bCanShoot,AttackSpacing))
 	{
@@ -505,19 +547,25 @@ void ADCEarlyEncounters::TickThreat(FThreat& T, float Dt)
 	}
 	if (T.Stage == 1 && T.Clock >= (T.bStatue ? DCEarlyEncounterPolicy::StatueCharge : DCEarlyEncounterPolicy::CreatureCharge))
 	{
-		T.Stage = 2; T.Clock = 0.f;
+		T.Stage = 2; T.Clock = 0.f; T.bAttackAnnounced = false;
 		if (!T.bStatue)
 		{
 			FProjectile P; P.From = Hand(T); P.DeckTarget = T.DeckTarget;
 			P.Visual = T.Charge.IsValid() ? T.Charge.Get() : MakeFireball(P.From);
 			T.Charge.Reset(); Projectiles.Add(P);
 		}
-		if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>()) { Crew->Report(T.bStatue ? TEXT("Beam on deck! Watch that marked spot!") : TEXT("Fireball incoming!"), true); }
 	}
 	if (T.Stage == 2)
 	{
 		if (T.bStatue)
 		{
+            if (!T.bAttackAnnounced)
+            {
+                const auto Relevant = [Owner=TWeakObjectPtr<ADCEarlyEncounters>(this),Identity=T.Body,Side=T.Side]()
+                { return Owner.IsValid() && Owner->IsThreatReportRelevant(Identity,Side,DCEarlyWarningPolicy::EKind::Beam); };
+                if (UDCCrewSubsystem* Crew=GetWorld()->GetSubsystem<UDCCrewSubsystem>(); Crew && Relevant())
+                { T.bAttackAnnounced=Crew->Report(TEXT("Beam on deck! Watch that marked spot!"),true,Relevant); }
+            }
 			const FVector End = Director->DeckToWorld(T.DeckTarget);
 			for (int32 I = 0; I < T.Beams.Num(); ++I)
 			{
@@ -675,6 +723,13 @@ void ADCEarlyEncounters::Tick(float DeltaSeconds)
 	for (int32 I = Projectiles.Num() - 1; I >= 0; --I)
 	{
 		FProjectile& P = Projectiles[I]; P.Age += Dt;
+        if (!P.bAnnounced)
+        {
+            const auto Relevant = [Owner=TWeakObjectPtr<ADCEarlyEncounters>(this),Identity=P.Visual]()
+            { return Owner.IsValid() && Owner->IsProjectileReportRelevant(Identity); };
+            if (UDCCrewSubsystem* Crew=GetWorld()->GetSubsystem<UDCCrewSubsystem>(); Crew && Relevant())
+            { P.bAnnounced=Crew->Report(TEXT("Fireball incoming!"),true,Relevant); }
+        }
 		const float U = FMath::Clamp(P.Age / P.Duration, 0.f, 1.f);
 		const FVector To = Director->DeckToWorld(P.DeckTarget);
 		const FVector Position = FMath::Lerp(P.From, To, U) + FVector(0, 0, 4.f * 650.f * U * (1.f - U));

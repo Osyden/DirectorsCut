@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "DCTypes.h"
+#include "DCEarlyWarningPolicy.h"
 #include "DCEarlyEncounters.generated.h"
 
 /** Readable bank encounters. Owns its actors, warnings and impacts only during the city. */
@@ -33,6 +34,7 @@ private:
 		float Size = 1.f, InitialWait = 8.f, HoldX = 3500.f, FootHeight = 0.f;
 		int32 CannonHits = 0;
 		int32 Stage = 0; // approach, charge, attack, cooldown, defeated
+		bool bAttackAnnounced = false, bDefeatAnnounced = false;
 		bool bStatue = false, bImpact = false, bAnnounced = false, bGroupLeader = true, bCanShoot = false;
 	};
 	struct FProjectile
@@ -40,6 +42,7 @@ private:
 		TWeakObjectPtr<AActor> Visual;
 		FVector From, DeckTarget;
 		float Age = 0.f, Duration = 2.4f;
+		bool bAnnounced = false;
 	};
 	TArray<FThreat> Threats;
 	UPROPERTY() TMap<FName, TObjectPtr<class UAnimSequence>> CreatureClips;
@@ -55,6 +58,8 @@ private:
 	void SpawnGroup(int32 Group);
 	void SpawnStatue(int32 Index);
 	void TickThreat(FThreat& Threat, float DeltaSeconds);
+    bool IsThreatReportRelevant(TWeakObjectPtr<AActor> Body, float Side, DCEarlyWarningPolicy::EKind Kind) const;
+    bool IsProjectileReportRelevant(TWeakObjectPtr<AActor> Visual) const;
 	UAnimSequence* CreatureClip(FName Name);
 	void UpdateCreaturePose(FThreat& Threat, float Dt, float GroundSpeed, float Facing);
 	void UpdateAlert(FThreat& Threat, bool bConcealed);
