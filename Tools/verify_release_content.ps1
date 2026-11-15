@@ -53,6 +53,7 @@ $required = @(
     'DC/Maps/L_Ride.umap',
     'DC/UI/T_AtlanteanOdysseyLogo.uasset',
     'DC/Materials/M_StormComposite.uasset',
+    'DC/FX/P_PillarWaterContact.uasset',
     'Brigantine/BP/BP_Brigantine.uasset',
     'Brigantine/SFX/Cue/Bell_cue.uasset',
     'UltraDynamicSky/Blueprints/Ultra_Dynamic_Sky.uasset',
