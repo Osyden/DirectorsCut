@@ -83,12 +83,13 @@ void ADCVoice::TryFinishSpeechBatch()
     StreamingBatch = FSpeechBatch();
 }
 
-void ADCVoice::QueueSynthesisFailure(const FString& Speaker, const FString& Text, int32 BatchId)
+void ADCVoice::QueueSynthesisFailure(const FString& Speaker, const FString& Text, int32 BatchId, TSharedPtr<FDCReportSpeechGuard> ReportGuard)
 {
-    if (!bStreamSpeech) { ShowSpeech(Speaker, Text, FMath::Clamp(Text.Len() * .055, 4.0, 9.0)); return; }
+    if (ReportGuard && !ReportGuard->CanStart(FPlatformTime::Seconds())) { return; }
+    if (!bStreamSpeech) { ShowSpeech(Speaker, Text, FMath::Clamp(Text.Len() * .055, 4.0, 9.0), ReportGuard); return; }
     // Queue the subtitle fallback behind the current audible chunk rather than
     // replacing its text while another character's face/audio is still active.
-    ReadySpeech.Add({Speaker, Text, FString(), 0, SpeechEpoch, BatchId});
+    ReadySpeech.Add({Speaker, Text, FString(), 0, SpeechEpoch, BatchId, ReportGuard});
 }
 
 void ADCVoice::StartReadySpeech()
@@ -97,22 +98,25 @@ void ADCVoice::StartReadySpeech()
         FPlatformTime::Seconds() < SilentSpeechUntil) { return; }
     FReadySpeech Ready = MoveTemp(ReadySpeech[0]);
     ReadySpeech.RemoveAt(0);
-    if (Ready.Epoch != SpeechEpoch) { return; }
+    if (Ready.Epoch != SpeechEpoch || (Ready.ReportGuard && !Ready.ReportGuard->CanStart(FPlatformTime::Seconds()))) { return; }
     ActiveText = Ready.Text;
+    ActiveReportGuard = Ready.ReportGuard;
     ActiveSpeechBatchId = Ready.BatchId;
     UE_LOG(LogDC, Display, TEXT("SPEECH_STREAM_AUDIO_READY batch=%d duration=%.3f text=%s"), Ready.BatchId, Ready.Duration, *Ready.Text);
     if (Ready.Path.IsEmpty())
     {
         const double Duration = FMath::Clamp(Ready.Text.Len() * .055, 4.0, 9.0);
-        ShowSpeech(Ready.Speaker, Ready.Text, Duration);
+        ShowSpeech(Ready.Speaker, Ready.Text, Duration, Ready.ReportGuard);
         SilentSpeechUntil = FPlatformTime::Seconds() + Duration;
         ActiveSpeechBatchId = 0;
+        ActiveReportGuard.Reset();
         CompleteSpeechChunk(Ready.BatchId, false, false);
         return;
     }
     if (!TryACE(Ready.Speaker, Ready.Path, Ready.Duration))
     {
         ActiveSpeechBatchId = 0;
-        PlayWav(Ready.Speaker, Ready.Path, Ready.BatchId);
+        ActiveReportGuard.Reset();
+        PlayWav(Ready.Speaker, Ready.Path, Ready.BatchId, Ready.ReportGuard);
     }
 }

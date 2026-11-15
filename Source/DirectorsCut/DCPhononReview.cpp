@@ -21,11 +21,71 @@ namespace DCPhononReviewPrivate
     };
     // Created only by the explicit native review flag; survives exactly one normal OpenLevel.
     TUniquePtr<FRun> Run;
+    struct FReportRun
+    {
+        double Started=0;
+        int32 Case=0, Stage=0, ProtectedCommands=0;
+        bool bSawCommand=false;
+        TSharedPtr<bool> TargetCurrent=MakeShared<bool>(true);
+    };
+    TUniquePtr<FReportRun> ReportRun;
 }
 
 bool ADCVoice::TickPhononLifecycleReview()
 {
     if (PhononReviewMode.IsEmpty()) { return false; }
+    if (PhononReviewMode == TEXT("Reports"))
+    {
+        using namespace DCPhononReviewPrivate;
+        const double Now=FPlatformTime::Seconds();
+        if (!ReportRun) { ReportRun=MakeUnique<FReportRun>(); ReportRun->Started=Now; }
+        auto& Review=*ReportRun;
+        if (Review.Stage==3) { return true; }
+        auto Fail=[&](const TCHAR* Reason)
+        {
+            UE_LOG(LogDC,Error,TEXT("REPORT_LIFECYCLE_FAILED case=%d stage=%d reason=%s"),Review.Case,Review.Stage,Reason);
+            Review.Stage=3; FPlatformMisc::RequestExitWithStatus(false,1);
+        };
+        if (auto* Director=ADCRideDirector::Get(this)) { Director->TimeScale=0.f; }
+        if (!bUsePhonon || !bUseACE || bSmokeTest || Now-Review.Started>120.0) { Fail(TEXT("Invalid configuration or timeout")); return true; }
+        const FString Warning=TEXT("Threat to port, Captain! Keep your eyes on that creature while I watch its approach beside the ruined temple.");
+        const FString Command=TEXT("Holding fire, Captain. Waiting for your order.");
+        if (Review.Stage==0 && bTTSReady && bLLMReady && Now-Review.Started>5.0)
+        {
+            ResetPendingSpeech(); *Review.TargetCurrent=true; Review.bSawCommand=false;
+            const auto Target=Review.TargetCurrent;
+            Speak(TEXT("Ruby"),Warning,true,[Target] { return *Target; });
+            Speak(TEXT("Duncan"),Command);
+            Review.Stage=1;
+        }
+        else if (Review.Stage==1 && bActivePhonon && ActiveCurves && ActiveSpeaker==TEXT("Ruby"))
+        {
+            if (Review.Case<2 && bACEStarted) { Fail(TEXT("Report began before pre-playback rejection")); return true; }
+            if (Review.Case==2 && !bACEStarted) { return true; }
+            if (!ActiveReportGuard) { Fail(TEXT("Missing active report guard")); return true; }
+            if (Review.Case==0) { ActiveReportGuard->StartDeadline=Now-0.01; }
+            else { *Review.TargetCurrent=false; }
+            UE_LOG(LogDC,Display,TEXT("REPORT_LIFECYCLE_INVALIDATE case=%d started=%d native_pending=%d command_queued=%d"),
+                Review.Case,bACEStarted,!bACESent,SpeechQueue.Num());
+            Review.Stage=2;
+        }
+        else if (Review.Stage==2)
+        {
+            if (ActiveSpeaker==TEXT("Duncan") && ActiveText==Command && ActiveCurves && bACEStarted) { Review.bSawCommand=true; }
+            if (Review.bSawCommand && ActiveSpeaker==TEXT("Duncan") && ActiveText==Command &&
+                bACESent && bACESendSucceeded && bACEEnded && !ActiveCurves && PhononSpeech && !PhononSpeech->IsBusy())
+            {
+                ++Review.ProtectedCommands; ++Review.Case;
+                if (Review.Case==3)
+                {
+                    UE_LOG(LogDC,Display,TEXT("REPORT_LIFECYCLE_SUCCESS expiry_before_playback=1 target_before_playback=1 target_during_playback=1 commands_preserved=%d"),Review.ProtectedCommands);
+                    Review.Stage=3; FPlatformMisc::RequestExitWithStatus(false,0);
+                }
+                else { Review.Stage=0; }
+            }
+        }
+        return true;
+    }
     if (PhononReviewMode == TEXT("Reload") || PhononReviewMode == TEXT("Failure"))
     {
         using namespace DCPhononReviewPrivate;

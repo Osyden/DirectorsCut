@@ -4,6 +4,7 @@
 #include "GameFramework/Actor.h"
 #include "HAL/PlatformProcess.h"
 #include "AudioCaptureCore.h"
+#include "DCReportSpeechPolicy.h"
 #include "DCVoice.generated.h"
 
 
@@ -34,6 +35,7 @@ class ADCVoice : public AActor
 	friend class UDCConversationReview;
 	friend class UDCACESpeechCallback;
 	friend class FDCStreamedSpeechLifecycleTest;
+	friend class FDCReportSpeechFreshnessTest;
 
 public:
 	ADCVoice();
@@ -44,9 +46,9 @@ public:
 	static ADCVoice* Get(const UObject* WorldContext);
 
 	/** Reports (empty Context) use exact authored wording; order acknowledgements can use the LLM. */
-	void CrewReply(const FString& Speaker, const FString& Fallback, const FString& Context);
+	void CrewReply(const FString& Speaker, const FString& Fallback, const FString& Context, TFunction<bool()> IsStillRelevant = {});
 	/** Speak a finished line (no LLM). */
-	void Speak(const FString& Speaker, const FString& Text, bool bReport = false);
+	void Speak(const FString& Speaker, const FString& Text, bool bReport = false, TFunction<bool()> IsStillRelevant = {});
 	/** Drop dialogue belonging to the previous scene/menu without restarting sidecars. */
 	void ResetPendingSpeech();
 	bool IsSpeaking() const;
@@ -121,11 +123,12 @@ protected:
 	void SendToWhisper(const TArray<float>& Mono, int32 SampleRate);
 	void OnHeard(const FString& Text);
 
-	void FinishLine(const FString& Speaker, const FString& Text, bool bReport = false);
+	void FinishLine(const FString& Speaker, const FString& Text, bool bReport = false, TFunction<bool()> IsStillRelevant = {});
+	void ExpireReports();
 	void SynchronizeScene();
 	bool IsMenuOpen() const;
-	void ShowSpeech(const FString& Speaker, const FString& Text, double Duration);
-	void PlayWav(const FString& Speaker, const FString& Path, int32 BatchId = 0);
+	void ShowSpeech(const FString& Speaker, const FString& Text, double Duration, TSharedPtr<FDCReportSpeechGuard> ReportGuard = {});
+	void PlayWav(const FString& Speaker, const FString& Path, int32 BatchId = 0, TSharedPtr<FDCReportSpeechGuard> ReportGuard = {});
 	void StartNextLine();
 	void InitializePhonon();
 	bool TryPhonon(const FString& Speaker, const FString& Text, int32 BatchId);
@@ -137,17 +140,18 @@ protected:
 	bool bPhononReviewSawFreshPlayback = false;
 	bool TickPhononLifecycleReview();
 	void StartReadySpeech();
-	void QueueSynthesisFailure(const FString& Speaker, const FString& Text, int32 BatchId);
+	void QueueSynthesisFailure(const FString& Speaker, const FString& Text, int32 BatchId, TSharedPtr<FDCReportSpeechGuard> ReportGuard = {});
 	bool TryACE(const FString& Speaker, const FString& Path, double Duration);
 	void ClearACE();
 	UFUNCTION() void ACEStarted();
 	UFUNCTION() void ACEEnded();
 	UFUNCTION() void ACESent(bool bSuccess);
-	struct FQueuedLine { FString Speaker; FString Text; double QueuedAt; bool bReport = false; int32 BatchId = 0; };
+	struct FQueuedLine { FString Speaker; FString Text; double QueuedAt; bool bReport = false; int32 BatchId = 0; TSharedPtr<FDCReportSpeechGuard> ReportGuard; };
 	TArray<FQueuedLine> SpeechQueue;
-	struct FReadySpeech { FString Speaker, Text, Path; double Duration = 0; int32 Epoch = 0, BatchId = 0; };
+	struct FReadySpeech { FString Speaker, Text, Path; double Duration = 0; int32 Epoch = 0, BatchId = 0; TSharedPtr<FDCReportSpeechGuard> ReportGuard; };
 	TArray<FReadySpeech> ReadySpeech;
 	double SilentSpeechUntil = 0;
+	TSharedPtr<FDCReportSpeechGuard> ActiveReportGuard, VisibleReportGuard;
 	struct FSpeechBatch
 	{
 		int32 Id = 0, Queued = 0, Completed = 0, Faces = 0;
@@ -194,6 +198,7 @@ protected:
 		double StartTime = 0.0;
 		int32 Epoch = 0;
 		int32 BatchId = 0;
+		TSharedPtr<FDCReportSpeechGuard> ReportGuard;
 	};
 	TArray<FPendingTTS> PendingTTS;
 
@@ -202,6 +207,7 @@ protected:
 		TWeakObjectPtr<UAudioComponent> Component;
 		double EndTime = 0.0;
 		int32 BatchId = 0;
+		TSharedPtr<FDCReportSpeechGuard> ReportGuard;
 	};
 	TArray<FPlaying> Playing;
 	UPROPERTY() TArray<TObjectPtr<USoundWaveProcedural>> LiveWaves;

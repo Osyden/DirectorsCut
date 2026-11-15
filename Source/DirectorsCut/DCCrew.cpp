@@ -657,29 +657,30 @@ void ADCCrewMember::SetWalking(bool bWalk)
 	}
 }
 
-void UDCCrewSubsystem::Report(const FString& Text, bool bUrgent)
+bool UDCCrewSubsystem::Report(const FString& Text, bool bUrgent, TFunction<bool()> IsStillRelevant)
 {
-	if (!Crew.Num()) { return; }
+	if (!Crew.Num() || (IsStillRelevant && !IsStillRelevant())) { return false; }
 	const double Now = GetWorld()->GetTimeSeconds();
 	if (const ADCRideDirector* Director = ADCRideDirector::Get(this); Director && Director->GetPhase() != LastReportPhase)
 	{
 		LastReportPhase = Director->GetPhase();
 		LastReportTime = -100.0; // The preceding scene cannot suppress the new phase's call.
 	}
-	if (Now - LastReportTime < (bUrgent ? 1.5 : 7.0)) { return; }
+	if (Now - LastReportTime < (bUrgent ? 1.5 : 7.0)) { return false; }
 	LastReportTime = Now;
 
 	// Take turns, so the whole crew has a voice.
 	ADCCrewMember* Speaker = Crew[NextReporter++ % Crew.Num()];
-	if (!Speaker) { return; }
+	if (!Speaker) { return false; }
 	if (ADCVoice* Voice = ADCVoice::Get(this))
 	{
-		Voice->CrewReply(Speaker->CrewName, Text, FString());
+		Voice->CrewReply(Speaker->CrewName, Text, FString(), MoveTemp(IsStillRelevant));
 	}
 	else
 	{
 		Say(Speaker->CrewName, Text);
 	}
+	return true;
 }
 
 bool ADCCrewMember::MoveToward(const FVector& Target, float DeltaSeconds)

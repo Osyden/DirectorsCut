@@ -135,8 +135,10 @@ float ADCVoice::GetSpeechRemainingSeconds() const
 	return float(FMath::Max(0.0, SpeechVisibleUntil - FPlatformTime::Seconds()));
 }
 
-void ADCVoice::ShowSpeech(const FString& Speaker, const FString& Text, double Duration)
+void ADCVoice::ShowSpeech(const FString& Speaker, const FString& Text, double Duration, TSharedPtr<FDCReportSpeechGuard> ReportGuard)
 {
+	if (ReportGuard && !ReportGuard->CanStart(FPlatformTime::Seconds())) { return; }
+	VisibleReportGuard = MoveTemp(ReportGuard);
 	SpeakingSpeaker = Speaker;
 	SpeakingText = Text;
 	SpeechVisibleUntil = FPlatformTime::Seconds() + FMath::Max(3.0, Duration + .7);
@@ -161,6 +163,7 @@ void ADCVoice::ResetPendingSpeech()
 	for (FPlaying& Voice : Playing) { if (Voice.Component.IsValid()) { Voice.Component->Stop(); Voice.Component->DestroyComponent(); } }
 	Playing.Empty(); LiveWaves.Empty();
 	SpeakingSpeaker.Empty(); SpeakingText.Empty(); SpeechVisibleUntil = 0;
+	VisibleReportGuard.Reset();
 	if (GetWorld())
 	{
 		if (auto* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>()) { Crew->RecentLines.Empty(); }
@@ -377,6 +380,7 @@ void ADCVoice::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	if (bUsePhonon) { bTTSReady = bUseACE && PhononSpeech && PhononSpeech->IsReady(); }
 	SynchronizeScene();
+	ExpireReports();
 
 	if (!bLLMReady || !bSTTReady)
 	{
@@ -407,21 +411,25 @@ void ADCVoice::Tick(float DeltaSeconds)
 		{
 			if (bTimedOut && !bDone) { FPlatformProcess::TerminateProc(P.Proc, true); }
 			FPlatformProcess::CloseProc(P.Proc);
-			if (P.Epoch == SpeechEpoch)
+			if (P.Epoch == SpeechEpoch && (!P.ReportGuard || P.ReportGuard->CanStart(FPlatformTime::Seconds())))
 			{
 				if (!bStreamSpeech) { ActiveText = P.Text; }
 				TArray<uint8> Pcm; int32 Rate = 0, Channels = 0;
 				if (bDone && ReadWav(P.WavPath, Pcm, Rate, Channels) && Pcm.Num() > 0 && Rate > 0 && Channels > 0)
 				{
 					const double Duration = double(Pcm.Num()) / (2.0 * Rate * Channels);
-					if (bStreamSpeech) { ReadySpeech.Add({P.Speaker, P.Text, P.WavPath, Duration, P.Epoch, P.BatchId}); }
-					else if (!TryACE(P.Speaker, P.WavPath, Duration)) { PlayWav(P.Speaker, P.WavPath); }
+					if (bStreamSpeech) { ReadySpeech.Add({P.Speaker, P.Text, P.WavPath, Duration, P.Epoch, P.BatchId, P.ReportGuard}); }
+					else
+					{
+						ActiveReportGuard = P.ReportGuard;
+						if (!TryACE(P.Speaker, P.WavPath, Duration)) { PlayWav(P.Speaker, P.WavPath, P.BatchId, P.ReportGuard); }
+					}
 				}
 				else
 				{
 					// Keep the current line readable even if Piper fails. This does not
 					// mark speech active, so the ambience is not ducked for silent text.
-					QueueSynthesisFailure(P.Speaker, P.Text, P.BatchId);
+					QueueSynthesisFailure(P.Speaker, P.Text, P.BatchId, P.ReportGuard);
 					UE_LOG(LogDC, Warning, TEXT("Voice: synthesis failed or timed out for %s; displaying subtitle"), *P.Speaker);
 				}
 			}
@@ -452,13 +460,14 @@ void ADCVoice::Tick(float DeltaSeconds)
 		const int32 BatchId = ActiveSpeechBatchId;
 		const bool bSucceeded = bACEStarted && bACESent && bACESendSucceeded && bACEEnded && bUseACE && Now <= ACEDeadline;
 		const FString Speaker = ActiveSpeaker, Path = ActiveWav;
+		const auto ReportGuard = ActiveReportGuard;
 		if (Now > ACEDeadline) { UE_LOG(LogDC, Warning, TEXT("Voice: ACE playback timed out; disabling ACE for this run")); bUseACE = false; }
 		ClearACE();
 		ActiveSpeechBatchId = 0;
-		if (bFallback && !bWasPhonon) { PlayWav(Speaker, Path, BatchId); }
+		if (bFallback && !bWasPhonon) { PlayWav(Speaker, Path, BatchId, ReportGuard); }
 		else if (bFallback)
 		{
-			ShowSpeech(Speaker, ActiveText, FMath::Clamp(ActiveText.Len() * .055, 4.0, 9.0));
+			ShowSpeech(Speaker, ActiveText, FMath::Clamp(ActiveText.Len() * .055, 4.0, 9.0), ReportGuard);
 			CompleteSpeechChunk(BatchId, false, false);
 		}
 		else { CompleteSpeechChunk(BatchId, bSucceeded, bSucceeded); }
@@ -663,7 +672,7 @@ FString ADCVoice::PersonaFor(const FString& Speaker) const
 	return TEXT("Rex, the old helmsman: gruff, superstitious, loyal");
 }
 
-void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const FString& Context)
+void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const FString& Context, TFunction<bool()> IsStillRelevant)
 {
 	SynchronizeScene();
 	if (bEnding || bSmokeTest || IsMenuOpen()) { return; }
@@ -674,7 +683,7 @@ void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const 
 		const auto* D = ADCRideDirector::Get(this);
 		if (D && D->GetPhase() >= EDCPhase::Slide &&
 			(Fallback.Contains(TEXT("giant")) || Fallback.Contains(TEXT("Rocks")) || Fallback.Contains(TEXT("stone")) || Fallback.Contains(TEXT("Ghost ship")))) { return; }
-		FinishLine(Speaker, Fallback, true);
+		FinishLine(Speaker, Fallback, true, MoveTemp(IsStillRelevant));
 		return;
 	}
 	if (!bUseLLM || !bLLMReady)
@@ -741,22 +750,30 @@ void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const 
 	});
 }
 
-void ADCVoice::FinishLine(const FString& Speaker, const FString& Text, bool bReport)
+void ADCVoice::FinishLine(const FString& Speaker, const FString& Text, bool bReport, TFunction<bool()> IsStillRelevant)
 {
-	if (bEnding) { return; }
+	if (bEnding || (bReport && IsStillRelevant && !IsStillRelevant())) { return; }
 	if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
 	{
 		Crew->Say(Speaker, Text);
 	}
-	Speak(Speaker, Text, bReport);
+	Speak(Speaker, Text, bReport, MoveTemp(IsStillRelevant));
 }
 
-void ADCVoice::Speak(const FString& Speaker, const FString& Text, bool bReport)
+void ADCVoice::Speak(const FString& Speaker, const FString& Text, bool bReport, TFunction<bool()> IsStillRelevant)
 {
 	SynchronizeScene();
 	if (bEnding || IsMenuOpen() || Text.TrimStartAndEnd().IsEmpty()) { return; }
-	if (!bTTSReady) { ShowSpeech(Speaker, Text, 4); return; }
-	const FQueuedLine Line { Speaker, Text.Left(240), FPlatformTime::Seconds(), bReport };
+	TSharedPtr<FDCReportSpeechGuard> ReportGuard;
+	if (bReport)
+	{
+		ReportGuard=MakeShared<FDCReportSpeechGuard>();
+		ReportGuard->StartDeadline=FPlatformTime::Seconds()+6.0;
+		ReportGuard->IsStillRelevant=MoveTemp(IsStillRelevant);
+		if (!ReportGuard->IsCurrent()) { return; }
+	}
+	if (!bTTSReady) { ShowSpeech(Speaker, Text, 4, ReportGuard); return; }
+	const FQueuedLine Line { Speaker, Text.Left(240), FPlatformTime::Seconds(), bReport, 0, ReportGuard };
 	if (bReport)
 	{
 		SpeechQueue.RemoveAll([](const FQueuedLine& Queued) { return Queued.bReport; });
@@ -779,6 +796,7 @@ void ADCVoice::Speak(const FString& Speaker, const FString& Text, bool bReport)
 
 void ADCVoice::StartNextLine()
 {
+	ExpireReports();
 	// Phonon feeds one live native session directly. Never overlap a legacy WAV
 	// send with that worker, including its asynchronous cancellation/drain.
 	if ((PhononSpeech && PhononSpeech->IsBusy()) || (bUsePhonon && (ActiveCurves || GFrameCounter < EarliestSpeechStartFrame))) { return; }
@@ -795,7 +813,8 @@ void ADCVoice::StartNextLine()
 	const FString& Text = Line.Text;
 	if (bUsePhonon)
 	{
-		if (!TryPhonon(Speaker, Text, Line.BatchId)) { QueueSynthesisFailure(Speaker, Text, Line.BatchId); }
+		ActiveReportGuard = Line.ReportGuard;
+		if (!TryPhonon(Speaker, Text, Line.BatchId)) { ActiveReportGuard.Reset(); QueueSynthesisFailure(Speaker, Text, Line.BatchId, Line.ReportGuard); }
 		return;
 	}
 	const FString Dir = SidecarDir();
@@ -807,12 +826,12 @@ void ADCVoice::StartNextLine()
 
 	const FString Piper = Dir / TEXT("bin/piper/piper/piper.exe");
 	const FString Model = Dir / TEXT("models/voices") / VoiceFor(Speaker);
-	if (!FPaths::FileExists(Model)) { UE_LOG(LogDC, Warning, TEXT("Voice: missing model for %s: %s"), *Speaker, *Model); QueueSynthesisFailure(Speaker, Text, Line.BatchId); return; }
+	if (!FPaths::FileExists(Model)) { UE_LOG(LogDC, Warning, TEXT("Voice: missing model for %s: %s"), *Speaker, *Model); QueueSynthesisFailure(Speaker, Text, Line.BatchId, Line.ReportGuard); return; }
 	const float Pace = Speaker == TEXT("Duncan") ? MarlowLengthScale : Speaker == TEXT("Ruby") ? OdessaLengthScale : FinchLengthScale;
 	const FString Cmd = FString::Printf(TEXT("--model \"%s\" --output_file \"%s\" --speaker %d --length_scale %.3f --noise_scale 0.5 --noise_w %.3f --sentence_silence 0.12 --quiet"),
 		*Model, *WavPath, Speaker == TEXT("Rex") ? FinchSpeakerId : 0, FMath::Clamp(Pace, .75f, 1.3f), Speaker == TEXT("Ruby") ? .333f : .65f);
 	void* ReadPipe = nullptr; void* WritePipe = nullptr;
-	if (!FPlatformProcess::CreatePipe(ReadPipe, WritePipe, true)) { QueueSynthesisFailure(Speaker, Text, Line.BatchId); return; }
+	if (!FPlatformProcess::CreatePipe(ReadPipe, WritePipe, true)) { QueueSynthesisFailure(Speaker, Text, Line.BatchId, Line.ReportGuard); return; }
 
 	FPendingTTS P;
 	P.Proc = FPlatformProcess::CreateProc(*Piper, *Cmd, false, true, true, nullptr, 0, nullptr, nullptr, ReadPipe);
@@ -821,7 +840,7 @@ void ADCVoice::StartNextLine()
 	if (!P.Proc.IsValid())
 	{
 		UE_LOG(LogDC, Warning, TEXT("Voice: could not start piper"));
-		QueueSynthesisFailure(Speaker, Text, Line.BatchId);
+		QueueSynthesisFailure(Speaker, Text, Line.BatchId, Line.ReportGuard);
 		return;
 	}
 	P.Speaker = Speaker;
@@ -830,6 +849,7 @@ void ADCVoice::StartNextLine()
 	P.BatchId = Line.BatchId;
 	P.WavPath = WavPath;
 	P.StartTime = FPlatformTime::Seconds();
+	P.ReportGuard = Line.ReportGuard;
 	PendingTTS.Add(MoveTemp(P));
 	if (bStreamSpeech) { UE_LOG(LogDC, Display, TEXT("SPEECH_STREAM_TTS_STARTED batch=%d active_batch=%d text=%s"), Line.BatchId, ActiveSpeechBatchId, *Text); }
 }
@@ -883,8 +903,15 @@ bool ADCVoice::TryACE(const FString& Speaker, const FString& Path, double Durati
 
 void ADCVoice::ACEStarted()
 {
+	if (ActiveReportGuard && !ActiveReportGuard->CanStart(FPlatformTime::Seconds()))
+	{
+		// This callback can hold a plugin lock. Mute now; the normal actor tick
+		// detaches/cancels through ClearACE rather than stopping inside the callback.
+		if (ActiveCurves) { ActiveCurves->Volume=0.f; }
+		return;
+	}
 	bACEStarted = true;
-	ShowSpeech(ActiveSpeaker, ActiveText, ActiveDuration);
+	ShowSpeech(ActiveSpeaker, ActiveText, ActiveDuration, ActiveReportGuard);
 	UE_LOG(LogDC, Log, TEXT("Voice: ACE speaking %s"), *ActiveSpeaker);
 	if (bStreamSpeech) { UE_LOG(LogDC, Display, TEXT("SPEECH_STREAM_PLAYBACK_STARTED batch=%d send_complete=%d text=%s"), ActiveSpeechBatchId, bACESent, *ActiveText); }
 }
@@ -929,10 +956,12 @@ void ADCVoice::ClearACE()
 	ActiveCurves = nullptr;
 	ActiveACERequest = nullptr;
 	bActivePhonon = false;
+	ActiveReportGuard.Reset();
 }
 
-void ADCVoice::PlayWav(const FString& Speaker, const FString& Path, int32 BatchId)
+void ADCVoice::PlayWav(const FString& Speaker, const FString& Path, int32 BatchId, TSharedPtr<FDCReportSpeechGuard> ReportGuard)
 {
+	if (ReportGuard && !ReportGuard->CanStart(FPlatformTime::Seconds())) { return; }
 	TArray<uint8> Pcm;
 	int32 Rate = 0, Channels = 0;
 	if (!ReadWav(Path, Pcm, Rate, Channels) || Pcm.Num() == 0)
@@ -960,9 +989,10 @@ void ADCVoice::PlayWav(const FString& Speaker, const FString& Path, int32 BatchI
 		FPlaying P;
 		P.Component = Comp;
 		P.BatchId = BatchId;
+		P.ReportGuard = ReportGuard;
 		P.EndTime = FPlatformTime::Seconds() + static_cast<double>(Pcm.Num()) / (2.0 * Channels * Rate) + 0.3;
 		Playing.Add(P);
-		ShowSpeech(Speaker, ActiveText, double(Pcm.Num()) / (2.0 * Channels * Rate));
+		ShowSpeech(Speaker, ActiveText, double(Pcm.Num()) / (2.0 * Channels * Rate), ReportGuard);
 		UE_LOG(LogDC, Log, TEXT("Voice: %s speaking (%.1fs of audio)"), *Speaker, static_cast<double>(Pcm.Num()) / (2.0 * Channels * Rate));
 	}
 	else { CompleteSpeechChunk(BatchId, false, false); }
