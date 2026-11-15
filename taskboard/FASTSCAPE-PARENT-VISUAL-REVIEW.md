@@ -106,3 +106,49 @@ from a clipped wall, but its actual forcing shape still dominates. Any next
 experiment must demonstrate a genuinely different primary landform in clay
 before surface fracture or texture work, rather than another generic
 erosion-strength sweep on these two mounds.
+
+## Separate historical-datum benchmark: useful method proof, not arena approval
+
+After those two rejections, root authorized one different Saved-only diagnostic:
+`Flow-Seams/Saved/FastscapeNaturalBenchmark/UniformHistoricalA/`. It uses the
+same physical frame and 2 m grid, but a deliberately hypothetical flat coastal
+datum at −150 m, uniform uplift and no Gaussian divide forcing. Modern vortex
+coast, route, outer seams and temple supports are explicitly **not preserved**.
+This is not a third A/B strength sweep or a terrain replacement.
+
+Actual hashes: parent
+`28c3a39604f1a3f043c618e9443816c475c2a2c33d365c774e3874543f838af4`;
+crop `3f241a59e09caf599130956afc079f7f648bc449baa5d4479d7baaa2d7114c95`.
+The 250,000-model-year run uses uniform uplift 0.001 m/year, K=0.0002,
+D=0.001 m²/year, Single/MST routing and 500 steps of 500 years. It is explicitly
+**not converged**: the final checkpoint's maximum height-change rate is 1.272
+times the uplift rate, above its stated stopping criterion. Parent relief is
+250.264 m (−150 to +100.264 m); the actual 500 m crop has 220.242 m relief.
+Neither geometry nor camera was rescaled to resemble a finished crater.
+
+Existing neutral CPU clay captures, in the same parent and crop cameras:
+
+- `Saved/ImplicitCliffReview/FastscapeParent/UniformHistoricalAWhole/WHOLE PARENT 500x1100m oblique_fractured.png`
+- The same directory's `WHOLE PARENT 500x1100m plan_fractured.png`.
+- `Saved/ImplicitCliffReview/FastscapeParent/UniformHistoricalACrop/wall_fractured.png`
+  and `oblique_fractured.png`.
+
+These pairs use the benchmark's own fresh initial surface as baseline, including
+the crop; unlike the A/B crop review they do not use the old eroded massif.
+No modern mean-water context was added. Both surfaces pass the existing open
+manifold check; maximum triangle edges are 11.15 m (parent) and 9.25 m (crop).
+
+The whole views now show **connected branching valleys and interlocking unequal
+spurs**, a substantial change from the smooth two-mound forcing topology.
+That hierarchy survives the actual-scale crop. It is useful evidence for the
+alternative parent-landform construction. However, crop wall/oblique expose
+conspicuous zigzag/terraced channel margins, sharp repeated planar faces and
+a pointed skyline. These are not finished rock exposures or the low rim
+composition needed for temples. No native integration or art approval follows.
+
+This is also **not a causal isolation of coastline effects**: historical datum,
+forcing, duration, K and diffusion all differ from the rejected runs. The
+result does not prove that the modern sloping coast alone caused the earlier
+failure. It supplies a more promising natural-drainage starting point whose
+physical cliff extraction, surface geology, current coast and foundations
+would still require explicit work and visual review.
