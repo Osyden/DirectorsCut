@@ -56,6 +56,32 @@ normal-selected downward area includes internal cavity faces; it is explicitly
 labelled a diagnostic rather than proof of useful visible overhangs. The current
 candidate does not claim erosion/flow vertex masks.
 
+## One bounded wedge revision
+
+The parent-authorized revision under
+`Flow-Seams/Saved/FracturedOutcrop/wedges/` removes the long thin slots and cuts
+18 finite, intersecting convex wedges instead. Matched flat-normal images are
+under `Saved/OutcropReview/Pass9-WedgesFlat/`, using exactly the first pass's
+camera manifest, baseline geometry, light and physical scale.
+
+This revision visibly changes exposed planes and side-profile recessions.
+Overhang shadows are now visible in the actual clay, rather than inferred from
+ray counts. It is a useful representation improvement, but still **fails the
+realistic-cliff gate**: broad pristine polygon faces, similar-sized angular
+pockets and near-horizontal shelves read like a quarry or stylized blockout.
+The thin shared edges between some cavities also appear unnaturally sharp.
+It needs unequal geological grouping and a smaller-scale hierarchy of broken,
+weathered edges; adding more similar cavities would reinforce the problem.
+The macro slab remains inherited from the massif. No full-sector acceptance,
+FBX export, or runtime replacement follows from this prototype.
+
+Candidate SHA-256:
+`117868b62c7422e50d6360ef18023f92a56c67387f40826f9abe3f54fe12c46f`.
+Independent checks: 18,290 vertices, 36,576 triangles, one component,
+56,602.10 m³ positive volume; no open/nonmanifold/inconsistent edges,
+degenerate/duplicate faces or unused vertices. All 896 crop-plane vertices
+remain unchanged at 10 µm quantization. Geometry/mask limitations above remain.
+
 ## Reusable tool
 
 `Tools/review_cliff_outcrop.py` reads full triangle NPZ files with absolute
