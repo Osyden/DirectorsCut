@@ -7,6 +7,7 @@ The completion marker is written last so half-imported scenes are never enabled.
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path
 import shutil
 import subprocess
@@ -64,6 +65,23 @@ def main():
         raise RuntimeError('Surface binary changed after verification')
     if hashlib.sha256(source.read_bytes()).hexdigest()!=source_hash:
         raise RuntimeError('Cliff source changed after export')
+    shore_points=shape.get('shore_mist_centers_m',[]) if args.caldera else []
+    shore_report=None
+    shore_path=saved/'CalderaShoreMist.json'
+    if args.caldera and shore_path.exists():
+        shore_report=read(shore_path)
+        if (shore_report.get('schema')!='directorscut.caldera_shore_mist.v1'
+            or shore_report.get('source_candidate_sha256')!=source_hash
+            or shore_report.get('cliff_fbx_sha256')!=fbx_hash):
+            raise RuntimeError('Regenerate shoreline mist contacts for this exact cliff source')
+        shore_points=shore_report.get('shore_mist_centers_m',[])
+        metrics=shore_report.get('metrics',{})
+        if (shore_report.get('count')!=160 or len(shore_points)!=160
+            or shore_report.get('radius_m')!=46 or shore_report.get('height_offset_m')!=2
+            or not all(len(p)==3 and all(math.isfinite(v) for v in p) and abs(p[2]+398)<1e-6 for p in shore_points)
+            or not 0<=metrics.get('conservative_continuous_coverage_bound_m',math.inf)<=46
+            or not 0<=metrics.get('source_reconstruction_error_m',math.inf)<1e-6):
+            raise RuntimeError('Shoreline fog footprint/coverage does not match the runtime contract')
     assets=[imported['asset'],geology['material']]+([] if args.caldera else [falls['core']['asset']])
     for asset in assets:
         package=asset.split('.')[0]
@@ -75,6 +93,8 @@ def main():
     runtime_files=['CliffPreviewSourceAudit.json','CliffPreviewSupports.json','CliffPreviewSurface.bin']
     if not args.caldera:
         runtime_files.append('CliffPreviewWaterfall.json')
+    if shore_report is not None:
+        runtime_files.append('CalderaShoreMist.json')
     for name in runtime_files:
         shutil.copy2(saved/name,target/name)
     # Packaged execution checks these stable identities, not author-machine
@@ -86,7 +106,11 @@ def main():
                 material=geology['material'],waterfalls=None if args.caldera else falls.get('core',{}).get('asset'),
                 normal_game_enabled=True,caldera_lake=args.caldera,
                 lake_height_m=-400 if args.caldera else None,
+                # Older parallel checkouts still expect the angular128 field.
+                # Never feed their interpolation an unordered coverage set.
                 shore_mist_centers_m=shape.get('shore_mist_centers_m',[]) if args.caldera else [],
+                shore_mist_coverage_centers_m=shore_points if shore_report is not None else [],
+                shore_mist_contact_report_sha256=hashlib.sha256(shore_path.read_bytes()).hexdigest() if shore_report is not None else None,
                 integrated_inlet_banks=shape.get('integrated_inlet_banks',False),
                 bank_boulder_anchors_m=shape.get('bank_boulder_anchors_m',[]))
     temporary=target/'CompleteArena.pending'

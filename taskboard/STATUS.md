@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 15 Nov 13:38 Codex: visible low fog around the caldera banks
+
+Fixed the zero radial density that made shoreline fog invisible in UE5.8. Replaced the gapped angular placement with160 contacts sampled from the actual accepted terrain/water intersection. Radius46m keeps the haze close to the shore, with a shallow vertical fade; river spray redistribution keeps total scene/ending volumes253 within the unchanged256 budget. Dense waterfall impact fog, terrain, water and sky remain unchanged. The runtime marker preserves the legacy128-point field for older parallel checkouts and adds a separate validated coverage field.
+
+Editor/Game builds and final native overview/player/ending/restoration checks pass. [Screenshots, exact parameters, source hashes and replay](CALDERA-LAKE-15NOV.md). This is a local playable checkpoint, not a cooked release. The fog is intentionally subtle in shadow; bank materials and scan accents still need improvement. No Unreal jobs remain active from this pass; boss gameplay stays with the separate chat.
+
 ## 15 Nov 13:23 Codex: lower river curtain reduced, varied foam and impact fog
 
 The lower inlet now narrows within its existing bed, removing the large suspended side-curtain in the native overview. Added slowly varying foam supply and softened the impact fog with unequal, gently drifting volumes. The hidden river/lake overlap stays submerged even beneath the hull-flatten effect. Terrain, lake size, route and sky are unchanged. A raised-bank trial produced a rock fin and conflicted with the full steering envelope, so it was rejected and the previous verified terrain restored.

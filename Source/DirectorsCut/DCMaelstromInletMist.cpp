@@ -50,9 +50,11 @@ void ADCMaelstrom::UpdateInletMist()
             Fog->SetRelativeLocation(P*100.f);
             Fog->SetRelativeRotation(FRotationMatrix::MakeFromZ(Up).Rotator());
             Fog->SetRelativeScale3D(FVector(RadiusM*100.f/ULocalFogVolumeComponent::GetBaseVolumeSize()));
-            Fog->RadialFogExtinction=0.f;
+            // UE combines radial and height coverage multiplicatively. Zero
+            // radial extinction makes the shoreline volumes fully invisible.
+            Fog->RadialFogExtinction=Tag==ShoreTag?.09f:0.f;
             Fog->HeightFogExtinction=Density;
-            Fog->HeightFogFalloff=Tag==ShoreTag?1100.f:(Tag==FootTag?350.f:420.f);
+            Fog->HeightFogFalloff=Tag==ShoreTag?500.f:(Tag==FootTag?350.f:420.f);
             Fog->FogAlbedo=FLinearColor(.56f,.63f,.68f);
             Fog->FogEmissive=FLinearColor::Black; Fog->FogPhaseG=.20f;
             Fog->ComponentTags.Add(Tag); Fog->RegisterComponent(); InletMistVolumes.Add(Fog);
@@ -63,38 +65,41 @@ void ADCMaelstrom::UpdateInletMist()
             &&FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Text),Data)&&Data.IsValid())
         {
             const TArray<TSharedPtr<FJsonValue>>* Points=nullptr;
-            if(Data->TryGetArrayField(TEXT("shore_mist_centers_m"),Points))
+            if((Data->TryGetArrayField(TEXT("shore_mist_coverage_centers_m"),Points)&&!Points->IsEmpty())
+                ||Data->TryGetArrayField(TEXT("shore_mist_centers_m"),Points))
             {
                 for(const TSharedPtr<FJsonValue>& Point:*Points)
                 {
                     const TArray<TSharedPtr<FJsonValue>>* XYZ=nullptr;
                     if(Point->TryGetArray(XYZ)&&XYZ->Num()==3)
-                    { Shore.Add(FVector((*XYZ)[0]->AsNumber(),(*XYZ)[1]->AsNumber(),-399.f)); }
+                    { Shore.Add(FVector((*XYZ)[0]->AsNumber(),(*XYZ)[1]->AsNumber(),-398.f)); }
                 }
             }
         }
-        // Sphere boundaries confine haze to 40 m from the surveyed waterline.
-        // Height extinction leaves a low veil, not large round cloud puffs.
-        for(int32 I=0;I<128;++I)
+        // Coverage-aware contacts come from the actual waterline triangles.
+        // A 46m footprint and ~9m density e-folding height make a low veil,
+        // keeping the upper cliffs clear. Older installations retain128 points.
+        const int32 ShoreCount=FMath::Clamp(Shore.Num(),128,160);
+        for(int32 I=0;I<ShoreCount;++I)
         {
-            const float A=UE_TWO_PI*I/128.f;
-            FVector P(FMath::Cos(A)*1050.f,FMath::Sin(A)*1050.f,-399.f);
+            const float A=UE_TWO_PI*I/ShoreCount;
+            FVector P(FMath::Cos(A)*1050.f,FMath::Sin(A)*1050.f,-398.f);
             if(!Shore.IsEmpty())
             {
-                const float S=I*Shore.Num()/128.f; const int32 J=FMath::FloorToInt(S);
+                const float S=I*Shore.Num()/static_cast<float>(ShoreCount); const int32 J=FMath::FloorToInt(S);
                 P=FMath::Lerp(Shore[J%Shore.Num()],Shore[(J+1)%Shore.Num()],S-J);
             }
-            Add(P,40.f,ShoreTag,.30f,FVector::UpVector);
+            Add(P,46.f,ShoreTag,.28f,FVector::UpVector);
         }
         // Rotate the shallow density profile to the river normal. Horizontal
         // layers cut a steep river into bright stripes. Staggered, overlapping
         // volumes instead form a continuous thin veil above the moving water.
         FRandomStream SprayRandom(151128);
-        for(int32 Row=0;Row<22;++Row)
+        for(int32 Row=0;Row<16;++Row)
         {
             for(int32 Side=-2;Side<=2;++Side)
             {
-                const float R=FMath::Lerp(1545.f,930.f,Row/21.f)+SprayRandom.FRandRange(-9.f,9.f);
+                const float R=FMath::Lerp(1545.f,930.f,Row/15.f)+SprayRandom.FRandRange(-9.f,9.f);
                 const float U=FMath::Clamp((R/1600.f-.58f)/.405f,0.f,1.f);
                 const float Q=U*U*(3.f-2.f*U);
                 const float Across=Side*74.f+SprayRandom.FRandRange(-20.f,20.f);
@@ -115,7 +120,7 @@ void ADCMaelstrom::UpdateInletMist()
             const FVector P=CalderaImpactMist(I,Elapsed,RadiusM,Density);
             Add(P,RadiusM,FootTag,1.25f*Density,FVector::UpVector);
         }
-        UE_LOG(LogTemp,Display,TEXT("DC_CALDERA_MIST shoreline=128 radius=40m river_spray=110 radius=37-43m impact_fog=9 radius=42-48m slope_aligned=1 billboards=0"));
+        UE_LOG(LogTemp,Display,TEXT("DC_CALDERA_MIST shoreline=%d radius=46m radial_extinction=0.09 height_falloff=500 river_spray=80 radius=37-43m impact_fog=9 radius=42-48m slope_aligned=1 billboards=0"),ShoreCount);
     }
     const float Gather=FMath::SmoothStep(26.f,42.f,Elapsed);
     int32 FootIndex=0;
