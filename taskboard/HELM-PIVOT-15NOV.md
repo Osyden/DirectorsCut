@@ -20,4 +20,6 @@ Editor and Windows Development builds passed. Build/cook/archive finished in 119
 
 Accepted package: `E:/Projects/DirectorsCut/Builds/2026-11-15_1129_helm-pivot/Windows/DirectorsCut.exe`. Voice/audio were disabled for this visual steering check. Existing optional profiler/NGX startup diagnostics and the legacy ship pawn EnableInput message remain; no missing game object/package, fatal, assertion or Blueprint runtime failure was found. The earlier full-route and voice checks were not repeated or represented as tests of this executable.
 
-Other chats' uncommitted taskboard files were backed up and hashed before integration. This patch does not edit their files, shared content assets or the taskboard README.
+Fix commit `2ae43a8` was fast-forwarded into main and pushed to both main and `codex/early-gameplay`. The actual main checkout's Editor Development module rebuilt successfully in 20.62 seconds. `E:/Projects/DirectorsCut/Play Early Gameplay Packaged.cmd` selects the accepted helm-fix package.
+
+All three other-chat uncommitted taskboard files were backed up before integration and verified byte-identical afterward. This patch does not edit their files, shared content assets or the taskboard README. The owned worktree is clean after committing its fix and evidence.
