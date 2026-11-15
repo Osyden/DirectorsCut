@@ -1,0 +1,104 @@
+[2026.11.15-08.05.07:136][  0]LogPython: Warning: DC_BOW scalar M_DRW_High InteractionFoamStrength
+[2026.11.15-08.05.07:136][  0]LogPython: Warning: DC_BOW scalar M_DRW_High InteractionWPOStrength
+[2026.11.15-08.05.07:136][  0]LogPython: Warning: DC_BOW scalar M_DRW_High InteractionResolution
+[2026.11.15-08.05.07:137][  0]LogPython: Warning: DC_BOW scalar M_DRW_High RiverFoamTime
+[2026.11.15-08.05.07:137][  0]LogPython: Warning: DC_BOW scalar M_DRW_High RiverFoamBlend
+[2026.11.15-08.05.07:137][  0]LogPython: Warning: DC_BOW scalar M_DRW_High FoamAlphaContrast
+[2026.11.15-08.05.07:137][  0]LogPython: Warning: DC_BOW scalar M_DRW_High FoamStretch
+[2026.11.15-08.05.07:137][  0]LogPython: Warning: DC_BOW scalar M_DRW_High DCShoreFoamWidth
+[2026.11.15-08.05.07:137][  0]LogPython: Warning: DC_BOW scalar M_DRW_High DCShoreFoam
+[2026.11.15-08.05.07:137][  0]LogPython: Warning: DC_BOW scalar M_DRW_Med InteractionFoamStrength
+[2026.11.15-08.05.07:137][  0]LogPython: Warning: DC_BOW scalar M_DRW_Med InteractionWPOStrength
+[2026.11.15-08.05.07:137][  0]LogPython: Warning: DC_BOW scalar M_DRW_Med InteractionResolution
+[2026.11.15-08.05.07:137][  0]LogPython: Warning: DC_BOW scalar M_DRW_Med RiverFoamTime
+[2026.11.15-08.05.07:137][  0]LogPython: Warning: DC_BOW scalar M_DRW_Med RiverFoamBlend
+[2026.11.15-08.05.07:138][  0]LogPython: Warning: DC_BOW scalar M_DRW_Med FoamAlphaContrast
+[2026.11.15-08.05.07:138][  0]LogPython: Warning: DC_BOW scalar M_DRW_Med FoamStretch
+[2026.11.15-08.05.07:138][  0]LogPython: Warning: DC_BOW scalar M_DRW_Med DCShoreFoamWidth
+[2026.11.15-08.05.07:138][  0]LogPython: Warning: DC_BOW scalar M_DRW_Med DCShoreFoam
+[2026.11.15-08.05.07:192][  0]LogPython: Warning: DC_BOW splash=/Game/ParagonRampage/FX/Particles/Abilities/RipNToss/FX/P_RipNToss_WaterImpact.P_RipNToss_WaterImpact
+[2026.11.15-08.05.07:192][  0]LogPython: Warning: DC_BOW usage M_Water_Footfall used_with_particle_sprites=True
+[2026.11.15-08.05.07:192][  0]LogPython: Warning: DC_BOW usage M_Water_Footfall used_with_niagara_sprites=False
+[2026.11.15-08.05.07:192][  0]LogPython: Warning: DC_BOW usage M_Water_Footfall blend_mode=<BlendMode.BLEND_TRANSLUCENT: 2>
+[2026.11.15-08.05.07:192][  0]LogPython: Warning: DC_BOW usage M_Water_Footfall material_domain=<MaterialDomain.MD_SURFACE: 0>
+[2026.11.15-08.05.07:192][  0]LogPython: Warning: DC_BOW usage M_Water_Footfall automatically_set_usage_in_editor=True
+[2026.11.15-08.05.07:192][  0]LogPython: Warning: DC_BOW material M_Water_Footfall Mask U Scale=0.25
+[2026.11.15-08.05.07:193][  0]LogPython: Warning: DC_BOW material M_Water_Footfall Mask V Scale=1.5
+[2026.11.15-08.05.07:193][  0]LogPython: Warning: DC_BOW material M_Water_Footfall Spec Brightness=200.0
+[2026.11.15-08.05.07:193][  0]LogPython: Warning: DC_BOW material M_Water_Footfall Smooth Step Min=0.0
+[2026.11.15-08.05.07:193][  0]LogPython: Warning: DC_BOW material M_Water_Footfall Softness=0.05000000074505806
+[2026.11.15-08.05.07:193][  0]LogPython: Warning: DC_BOW material M_Water_Footfall Mask Opacity=0.5
+[2026.11.15-08.05.07:193][  0]LogPython: Warning: DC_BOW dynamic M_Water_Footfall <Struct 'LinearColor' (0x000002D148D609D8) {r: 1.000000, g: 1.000000, b: 1.000000, a: 1.000000}>
+[2026.11.15-08.05.07:193][  0]LogPython: Warning: DC_BOW usage M_Water_Drops_Master used_with_particle_sprites=True
+[2026.11.15-08.05.07:193][  0]LogPython: Warning: DC_BOW usage M_Water_Drops_Master used_with_niagara_sprites=False
+[2026.11.15-08.05.07:193][  0]LogPython: Warning: DC_BOW usage M_Water_Drops_Master blend_mode=<BlendMode.BLEND_TRANSLUCENT: 2>
+[2026.11.15-08.05.07:193][  0]LogPython: Warning: DC_BOW usage M_Water_Drops_Master material_domain=<MaterialDomain.MD_SURFACE: 0>
+[2026.11.15-08.05.07:193][  0]LogPython: Warning: DC_BOW usage M_Water_Drops_Master automatically_set_usage_in_editor=True
+[2026.11.15-08.05.07:193][  0]LogPython: Warning: DC_BOW material M_Water_Drops_Master Spec Brightness=50.0
+[2026.11.15-08.05.07:193][  0]LogPython: Warning: DC_BOW material M_Water_Drops_Master Mask Opacity=0.17431199550628662
+[2026.11.15-08.05.07:194][  0]LogPython: Warning: DC_BOW material M_Water_Drops_Master ParticleSpeed=150.0
+[2026.11.15-08.05.07:199][  0]LogPython: Warning: DC_BOW usage M_WaterMist used_with_particle_sprites=True
+[2026.11.15-08.05.07:199][  0]LogPython: Warning: DC_BOW usage M_WaterMist used_with_niagara_sprites=False
+[2026.11.15-08.05.07:199][  0]LogPython: Warning: DC_BOW usage M_WaterMist blend_mode=<BlendMode.BLEND_TRANSLUCENT: 2>
+[2026.11.15-08.05.07:199][  0]LogPython: Warning: DC_BOW usage M_WaterMist material_domain=<MaterialDomain.MD_SURFACE: 0>
+[2026.11.15-08.05.07:199][  0]LogPython: Warning: DC_BOW usage M_WaterMist automatically_set_usage_in_editor=True
+[2026.11.15-08.05.07:200][  0]LogPython: Warning: DC_BOW material M_WaterMist Radius=0.4000000059604645
+[2026.11.15-08.05.07:200][  0]LogPython: Warning: DC_BOW material M_WaterMist Camera_Offset=0.0
+[2026.11.15-08.05.07:202][  0]LogPython: Warning: DC_BOW usage M_WaterImpact_Strand used_with_particle_sprites=True
+[2026.11.15-08.05.07:202][  0]LogPython: Warning: DC_BOW usage M_WaterImpact_Strand used_with_niagara_sprites=False
+[2026.11.15-08.05.07:203][  0]LogPython: Warning: DC_BOW usage M_WaterImpact_Strand blend_mode=<BlendMode.BLEND_TRANSLUCENT: 2>
+[2026.11.15-08.05.07:203][  0]LogPython: Warning: DC_BOW usage M_WaterImpact_Strand material_domain=<MaterialDomain.MD_SURFACE: 0>
+[2026.11.15-08.05.07:203][  0]LogPython: Warning: DC_BOW usage M_WaterImpact_Strand automatically_set_usage_in_editor=True
+[2026.11.15-08.05.07:203][  0]LogPython: Warning: DC_BOW material M_WaterImpact_Strand Mask Opacity=0.9100919961929321
+[2026.11.15-08.05.07:203][  0]LogPython: Warning: DC_BOW material M_WaterImpact_Strand Offset Amount=-50.0
+[2026.11.15-08.05.07:203][  0]LogPython: Warning: DC_BOW material M_WaterImpact_Strand Spec Brightness=460.61212158203125
+[2026.11.15-08.05.07:203][  0]LogPython: Warning: DC_BOW material M_WaterImpact_Strand Refraction Max=1.8093559741973877
+[2026.11.15-08.05.07:204][  0]LogInit: Display: LogPython: Warning: DC_BOW scalar M_DRW_High InteractionFoamStrength
+[2026.11.15-08.05.07:204][  0]LogInit: Display: LogPython: Warning: DC_BOW scalar M_DRW_High InteractionWPOStrength
+[2026.11.15-08.05.07:204][  0]LogInit: Display: LogPython: Warning: DC_BOW scalar M_DRW_High InteractionResolution
+[2026.11.15-08.05.07:204][  0]LogInit: Display: LogPython: Warning: DC_BOW scalar M_DRW_High RiverFoamTime
+[2026.11.15-08.05.07:204][  0]LogInit: Display: LogPython: Warning: DC_BOW scalar M_DRW_High RiverFoamBlend
+[2026.11.15-08.05.07:205][  0]LogInit: Display: LogPython: Warning: DC_BOW scalar M_DRW_High FoamAlphaContrast
+[2026.11.15-08.05.07:205][  0]LogInit: Display: LogPython: Warning: DC_BOW scalar M_DRW_High FoamStretch
+[2026.11.15-08.05.07:205][  0]LogInit: Display: LogPython: Warning: DC_BOW scalar M_DRW_High DCShoreFoamWidth
+[2026.11.15-08.05.07:205][  0]LogInit: Display: LogPython: Warning: DC_BOW scalar M_DRW_High DCShoreFoam
+[2026.11.15-08.05.07:205][  0]LogInit: Display: LogPython: Warning: DC_BOW scalar M_DRW_Med InteractionFoamStrength
+[2026.11.15-08.05.07:205][  0]LogInit: Display: LogPython: Warning: DC_BOW scalar M_DRW_Med InteractionWPOStrength
+[2026.11.15-08.05.07:205][  0]LogInit: Display: LogPython: Warning: DC_BOW scalar M_DRW_Med InteractionResolution
+[2026.11.15-08.05.07:205][  0]LogInit: Display: LogPython: Warning: DC_BOW scalar M_DRW_Med RiverFoamTime
+[2026.11.15-08.05.07:205][  0]LogInit: Display: LogPython: Warning: DC_BOW scalar M_DRW_Med RiverFoamBlend
+[2026.11.15-08.05.07:205][  0]LogInit: Display: LogPython: Warning: DC_BOW scalar M_DRW_Med FoamAlphaContrast
+[2026.11.15-08.05.07:205][  0]LogInit: Display: LogPython: Warning: DC_BOW scalar M_DRW_Med FoamStretch
+[2026.11.15-08.05.07:205][  0]LogInit: Display: LogPython: Warning: DC_BOW scalar M_DRW_Med DCShoreFoamWidth
+[2026.11.15-08.05.07:205][  0]LogInit: Display: LogPython: Warning: DC_BOW scalar M_DRW_Med DCShoreFoam
+[2026.11.15-08.05.07:206][  0]LogInit: Display: LogPython: Warning: DC_BOW splash=/Game/ParagonRampage/FX/Particles/Abilities/RipNToss/FX/P_RipNToss_WaterImpact.P_RipNToss_WaterImpact
+[2026.11.15-08.05.07:206][  0]LogInit: Display: LogPython: Warning: DC_BOW usage M_Water_Footfall used_with_particle_sprites=True
+[2026.11.15-08.05.07:206][  0]LogInit: Display: LogPython: Warning: DC_BOW usage M_Water_Footfall used_with_niagara_sprites=False
+[2026.11.15-08.05.07:206][  0]LogInit: Display: LogPython: Warning: DC_BOW usage M_Water_Footfall blend_mode=<BlendMode.BLEND_TRANSLUCENT: 2>
+[2026.11.15-08.05.07:206][  0]LogInit: Display: LogPython: Warning: DC_BOW usage M_Water_Footfall material_domain=<MaterialDomain.MD_SURFACE: 0>
+[2026.11.15-08.05.07:206][  0]LogInit: Display: LogPython: Warning: DC_BOW usage M_Water_Footfall automatically_set_usage_in_editor=True
+[2026.11.15-08.05.07:206][  0]LogInit: Display: LogPython: Warning: DC_BOW material M_Water_Footfall Mask U Scale=0.25
+[2026.11.15-08.05.07:206][  0]LogInit: Display: LogPython: Warning: DC_BOW material M_Water_Footfall Mask V Scale=1.5
+[2026.11.15-08.05.07:206][  0]LogInit: Display: LogPython: Warning: DC_BOW material M_Water_Footfall Spec Brightness=200.0
+[2026.11.15-08.05.07:206][  0]LogInit: Display: LogPython: Warning: DC_BOW material M_Water_Footfall Smooth Step Min=0.0
+[2026.11.15-08.05.07:206][  0]LogInit: Display: LogPython: Warning: DC_BOW material M_Water_Footfall Softness=0.05000000074505806
+[2026.11.15-08.05.07:206][  0]LogInit: Display: LogPython: Warning: DC_BOW material M_Water_Footfall Mask Opacity=0.5
+[2026.11.15-08.05.07:207][  0]LogInit: Display: LogPython: Warning: DC_BOW dynamic M_Water_Footfall <Struct 'LinearColor' (0x000002D148D609D8) {r: 1.000000, g: 1.000000, b: 1.000000, a: 1.000000}>
+[2026.11.15-08.05.07:207][  0]LogInit: Display: LogPython: Warning: DC_BOW usage M_Water_Drops_Master used_with_particle_sprites=True
+[2026.11.15-08.05.07:207][  0]LogInit: Display: LogPython: Warning: DC_BOW usage M_Water_Drops_Master used_with_niagara_sprites=False
+[2026.11.15-08.05.07:207][  0]LogInit: Display: LogPython: Warning: DC_BOW usage M_Water_Drops_Master blend_mode=<BlendMode.BLEND_TRANSLUCENT: 2>
+[2026.11.15-08.05.07:207][  0]LogInit: Display: LogPython: Warning: DC_BOW usage M_Water_Drops_Master material_domain=<MaterialDomain.MD_SURFACE: 0>
+[2026.11.15-08.05.07:207][  0]LogInit: Display: LogPython: Warning: DC_BOW usage M_Water_Drops_Master automatically_set_usage_in_editor=True
+[2026.11.15-08.05.07:207][  0]LogInit: Display: LogPython: Warning: DC_BOW material M_Water_Drops_Master Spec Brightness=50.0
+[2026.11.15-08.05.07:207][  0]LogInit: Display: LogPython: Warning: DC_BOW material M_Water_Drops_Master Mask Opacity=0.17431199550628662
+[2026.11.15-08.05.07:207][  0]LogInit: Display: LogPython: Warning: DC_BOW material M_Water_Drops_Master ParticleSpeed=150.0
+[2026.11.15-08.05.07:207][  0]LogInit: Display: LogPython: Warning: DC_BOW usage M_WaterMist used_with_particle_sprites=True
+[2026.11.15-08.05.07:207][  0]LogInit: Display: LogPython: Warning: DC_BOW usage M_WaterMist used_with_niagara_sprites=False
+[2026.11.15-08.05.07:207][  0]LogInit: Display: LogPython: Warning: DC_BOW usage M_WaterMist blend_mode=<BlendMode.BLEND_TRANSLUCENT: 2>
+[2026.11.15-08.05.07:208][  0]LogInit: Display: LogPython: Warning: DC_BOW usage M_WaterMist material_domain=<MaterialDomain.MD_SURFACE: 0>
+[2026.11.15-08.05.07:208][  0]LogInit: Display: LogPython: Warning: DC_BOW usage M_WaterMist automatically_set_usage_in_editor=True
+[2026.11.15-08.05.07:208][  0]LogInit: Display: LogPython: Warning: DC_BOW material M_WaterMist Radius=0.4000000059604645
+[2026.11.15-08.05.07:208][  0]LogInit: Display: LogPython: Warning: DC_BOW material M_WaterMist Camera_Offset=0.0
+[2026.11.15-08.05.07:208][  0]LogInit: Display: LogPython: Warning: DC_BOW usage M_WaterImpact_Strand used_with_particle_sprites=True
+[2026.11.15-08.05.07:208][  0]LogInit: Display: LogPython: Warning: DC_BOW usage M_WaterImpact_Strand used_with_niagara_sprites=False
+[2026.11.15-08.05.07:208][  0]LogInit: Display: LogPython: Warning: DC_BOW usage M_WaterImpact_Strand blend_mode=<BlendMode.BLEND_TRANSLUCENT: 2>

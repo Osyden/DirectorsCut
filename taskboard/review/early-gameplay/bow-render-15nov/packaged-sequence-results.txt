@@ -1,0 +1,128 @@
+[2026.11.15-08.07.58:124][  1]LogDC: Bow spray waterline: x=1216 halfwidth=78
+[2026.11.15-08.07.58:124][  1]LogDC: Bow wash: tuned 2 live water materials; shared assets unchanged
+[2026.11.15-08.07.58:124][  1]LogDC: Bow state: pulses=0 particles=0 at 90.3
+[2026.11.15-08.07.58:130][  1]LogDC: Bow pulse: side=-1 depth=0 closing=0 scale=0.96 origin=V(X=1223.02, Y=-53.38, Z=238.00) active=1 at 90.3
+[2026.11.15-08.07.58:130][  1]LogDC: Bow pulse: side=1 depth=0 closing=0 scale=1.00 origin=V(X=1223.02, Y=53.38, Z=238.00) active=2 at 90.3
+[2026.11.15-08.07.58:401][  4]LogDC: Bow state: pulses=2 particles=860 at 90.8
+[2026.11.15-08.07.58:908][ 26]LogDC: Bow state: pulses=2 particles=742 at 91.3
+[2026.11.15-08.07.59:004][ 34]LogDC: Bow pulse: side=-1 depth=-30 closing=144 scale=0.85 origin=V(X=1198.27, Y=-47.21, Z=201.72) active=3 at 91.4
+[2026.11.15-08.07.59:019][ 35]LogDC: Bow pulse: side=1 depth=-32 closing=107 scale=0.81 origin=V(X=1201.15, Y=45.08, Z=205.91) active=4 at 91.4
+[2026.11.15-08.07.59:413][ 69]LogDC: Bow state: pulses=2 particles=860 at 91.8
+[2026.11.15-08.07.59:413][ 69]LogDC: Bow particles: BowDroplets age=0.41 count=360 sampled=64 relative=IsValid=true, Min=(X=-509.089 Y=-602.014 Z=-33.065), Max=(X=-340.204 Y=-412.284 Z=190.371) size=3.50 alpha=0.40 ignoreScale=0 at 91.8
+[2026.11.15-08.07.59:413][ 69]LogDC: Bow renderer: BowDroplets proxy=1 visible=1 active=1 recent=1 enabled=1 dynamic=1 mode=0 maxDraw=500 material=/Game/DC/Maps/L_Ride.L_Ride:PersistentLevel.DCWake_2147482310.ParticleSystem_2147480195.MID_M_Water_Drops_Master_2147480194 at 91.8
+[2026.11.15-08.07.59:413][ 69]LogDC: Bow particles: BowAeratedSpray age=0.41 count=70 sampled=64 relative=IsValid=true, Min=(X=-477.017 Y=-528.996 Z=-66.626), Max=(X=-307.080 Y=-377.333 Z=138.030) size=109.98 alpha=0.27 ignoreScale=0 at 91.8
+[2026.11.15-08.07.59:413][ 69]LogDC: Bow renderer: BowAeratedSpray proxy=1 visible=1 active=1 recent=1 enabled=1 dynamic=1 mode=0 maxDraw=500 material=/Game/DC/Maps/L_Ride.L_Ride:PersistentLevel.DCWake_2147482310.ParticleSystem_2147480195.MID_M_WaterMist_2147480172 at 91.8
+[2026.11.15-08.07.59:924][113]LogDC: Bow state: pulses=2 particles=241 at 92.3
+[2026.11.15-08.07.59:936][114]LogDC: Bow pulse: side=-1 depth=64 closing=-161 scale=1.12 origin=V(X=1247.30, Y=-78.65, Z=344.88) active=3 at 92.3
+[2026.11.15-08.08.00:043][123]LogDC: Bow pulse: side=1 depth=31 closing=-180 scale=1.06 origin=V(X=1236.02, Y=48.66, Z=328.62) active=4 at 92.4
+[2026.11.15-08.08.00:426][156]LogDC: Bow state: pulses=2 particles=857 at 92.8
+[2026.11.15-08.08.00:426][156]LogDC: Bow particles: BowDroplets age=0.38 count=360 sampled=64 relative=IsValid=true, Min=(X=-532.948 Y=400.286 Z=-3.446), Max=(X=-291.238 Y=646.166 Z=249.679) size=3.50 alpha=0.40 ignoreScale=0 at 92.8
+[2026.11.15-08.08.00:426][156]LogDC: Bow renderer: BowDroplets proxy=1 visible=1 active=1 recent=1 enabled=1 dynamic=1 mode=0 maxDraw=500 material=/Game/DC/Maps/L_Ride.L_Ride:PersistentLevel.DCWake_2147482310.ParticleSystem_2147480195.MID_M_Water_Drops_Master_2147480194 at 92.8
+[2026.11.15-08.08.00:426][156]LogDC: Bow particles: BowAeratedSpray age=0.38 count=70 sampled=64 relative=IsValid=true, Min=(X=-480.925 Y=361.559 Z=-38.937), Max=(X=-310.894 Y=586.115 Z=194.572) size=109.77 alpha=0.28 ignoreScale=0 at 92.8
+[2026.11.15-08.08.00:426][156]LogDC: Bow renderer: BowAeratedSpray proxy=1 visible=1 active=1 recent=1 enabled=1 dynamic=1 mode=0 maxDraw=500 material=/Game/DC/Maps/L_Ride.L_Ride:PersistentLevel.DCWake_2147482310.ParticleSystem_2147480195.MID_M_WaterMist_2147480172 at 92.8
+[2026.11.15-08.08.00:928][200]LogDC: Bow state: pulses=2 particles=201 at 93.3
+[2026.11.15-08.08.01:113][215]LogDC: Bow pulse: side=-1 depth=-31 closing=115 scale=0.80 origin=V(X=1197.43, Y=-39.56, Z=224.51) active=2 at 93.5
+[2026.11.15-08.08.01:180][221]LogDC: Bow pulse: side=1 depth=-33 closing=164 scale=0.84 origin=V(X=1206.67, Y=45.76, Z=234.17) active=2 at 93.6
+[2026.11.15-08.08.01:432][243]LogDC: Bow state: pulses=2 particles=860 at 93.8
+[2026.11.15-08.08.01:432][243]LogDC: Bow particles: BowDroplets age=0.32 count=360 sampled=64 relative=IsValid=true, Min=(X=-389.042 Y=-515.502 Z=-16.910), Max=(X=-233.694 Y=-353.401 Z=150.459) size=3.50 alpha=0.43 ignoreScale=0 at 93.8
+[2026.11.15-08.08.01:432][243]LogDC: Bow renderer: BowDroplets proxy=1 visible=1 active=1 recent=1 enabled=1 dynamic=1 mode=0 maxDraw=500 material=/Game/DC/Maps/L_Ride.L_Ride:PersistentLevel.DCWake_2147482310.ParticleSystem_2147480195.MID_M_Water_Drops_Master_2147480194 at 93.8
+[2026.11.15-08.08.01:432][243]LogDC: Bow particles: BowAeratedSpray age=0.32 count=70 sampled=64 relative=IsValid=true, Min=(X=-366.905 Y=-440.871 Z=-58.677), Max=(X=-215.316 Y=-311.241 Z=117.643) size=109.62 alpha=0.29 ignoreScale=0 at 93.8
+[2026.11.15-08.08.01:432][243]LogDC: Bow renderer: BowAeratedSpray proxy=1 visible=1 active=1 recent=1 enabled=1 dynamic=1 mode=0 maxDraw=500 material=/Game/DC/Maps/L_Ride.L_Ride:PersistentLevel.DCWake_2147482310.ParticleSystem_2147480195.MID_M_WaterMist_2147480172 at 93.8
+[2026.11.15-08.08.01:940][285]LogDC: Bow state: pulses=2 particles=411 at 94.3
+[2026.11.15-08.08.02:060][294]LogDC: Bow pulse: side=-1 depth=65 closing=-62 scale=1.17 origin=V(X=1258.34, Y=-72.15, Z=323.94) active=3 at 94.4
+[2026.11.15-08.08.02:204][305]LogDC: Bow pulse: side=1 depth=34 closing=-101 scale=1.03 origin=V(X=1244.20, Y=59.53, Z=307.25) active=3 at 94.6
+[2026.11.15-08.08.02:451][324]LogDC: Bow state: pulses=2 particles=860 at 94.8
+[2026.11.15-08.08.02:451][324]LogDC: Bow particles: BowDroplets age=0.39 count=360 sampled=64 relative=IsValid=true, Min=(X=-531.721 Y=-694.450 Z=-42.966), Max=(X=-304.069 Y=-410.829 Z=250.286) size=3.49 alpha=0.40 ignoreScale=0 at 94.8
+[2026.11.15-08.08.02:451][324]LogDC: Bow renderer: BowDroplets proxy=1 visible=1 active=1 recent=1 enabled=1 dynamic=1 mode=0 maxDraw=500 material=/Game/DC/Maps/L_Ride.L_Ride:PersistentLevel.DCWake_2147482310.ParticleSystem_2147480195.MID_M_Water_Drops_Master_2147480194 at 94.8
+[2026.11.15-08.08.02:451][324]LogDC: Bow particles: BowAeratedSpray age=0.39 count=70 sampled=64 relative=IsValid=true, Min=(X=-474.630 Y=-601.549 Z=-55.467), Max=(X=-274.287 Y=-401.545 Z=220.847) size=109.99 alpha=0.27 ignoreScale=0 at 94.8
+[2026.11.15-08.08.02:451][324]LogDC: Bow renderer: BowAeratedSpray proxy=1 visible=1 active=1 recent=1 enabled=1 dynamic=1 mode=0 maxDraw=500 material=/Game/DC/Maps/L_Ride.L_Ride:PersistentLevel.DCWake_2147482310.ParticleSystem_2147480195.MID_M_WaterMist_2147480172 at 94.8
+[2026.11.15-08.08.02:760][348]LogDC: Bow pulse: side=-1 depth=0 closing=-165 scale=0.93 origin=V(X=1223.37, Y=-53.24, Z=321.75) active=3 at 95.1
+[2026.11.15-08.08.02:960][363]LogDC: Bow state: pulses=3 particles=791 at 95.3
+[2026.11.15-08.08.02:960][363]LogDC: Bow particles: BowDroplets age=0.20 count=360 sampled=64 relative=IsValid=true, Min=(X=-274.896 Y=-360.580 Z=5.226), Max=(X=-150.962 Y=-195.230 Z=139.919) size=3.47 alpha=0.47 ignoreScale=0 at 95.3
+[2026.11.15-08.08.02:960][363]LogDC: Bow renderer: BowDroplets proxy=1 visible=1 active=1 recent=1 enabled=1 dynamic=1 mode=0 maxDraw=500 material=/Game/DC/Maps/L_Ride.L_Ride:PersistentLevel.DCWake_2147482310.ParticleSystem_2147480195.MID_M_Water_Drops_Master_2147480194 at 95.3
+[2026.11.15-08.08.02:960][363]LogDC: Bow particles: BowAeratedSpray age=0.20 count=70 sampled=64 relative=IsValid=true, Min=(X=-247.170 Y=-333.624 Z=-12.276), Max=(X=-130.728 Y=-208.599 Z=118.728) size=109.75 alpha=0.34 ignoreScale=0 at 95.3
+[2026.11.15-08.08.02:960][363]LogDC: Bow renderer: BowAeratedSpray proxy=1 visible=1 active=1 recent=1 enabled=1 dynamic=1 mode=0 maxDraw=500 material=/Game/DC/Maps/L_Ride.L_Ride:PersistentLevel.DCWake_2147482310.ParticleSystem_2147480195.MID_M_WaterMist_2147480172 at 95.3
+[2026.11.15-08.08.02:974][364]LogDC: Bow pulse: side=1 depth=-18 closing=-94 scale=0.93 origin=V(X=1209.37, Y=48.73, Z=314.12) active=4 at 95.3
+[2026.11.15-08.08.03:473][403]LogDC: Bow state: pulses=2 particles=707 at 95.8
+[2026.11.15-08.08.03:474][403]LogDC: Bow particles: BowDroplets age=0.50 count=360 sampled=64 relative=IsValid=true, Min=(X=-626.584 Y=462.760 Z=-43.478), Max=(X=-389.192 Y=778.992 Z=221.525) size=3.49 alpha=0.36 ignoreScale=0 at 95.8
+[2026.11.15-08.08.03:474][403]LogDC: Bow renderer: BowDroplets proxy=1 visible=1 active=1 recent=1 enabled=1 dynamic=1 mode=0 maxDraw=500 material=/Game/DC/Maps/L_Ride.L_Ride:PersistentLevel.DCWake_2147482310.ParticleSystem_2147480195.MID_M_Water_Drops_Master_2147480194 at 95.8
+[2026.11.15-08.08.03:474][403]LogDC: Bow particles: BowAeratedSpray age=0.50 count=68 sampled=64 relative=IsValid=true, Min=(X=-564.756 Y=438.060 Z=-72.392), Max=(X=-361.400 Y=696.580 Z=157.463) size=109.78 alpha=0.21 ignoreScale=0 at 95.8
+[2026.11.15-08.08.03:474][403]LogDC: Bow renderer: BowAeratedSpray proxy=1 visible=1 active=1 recent=1 enabled=1 dynamic=1 mode=0 maxDraw=500 material=/Game/DC/Maps/L_Ride.L_Ride:PersistentLevel.DCWake_2147482310.ParticleSystem_2147480195.MID_M_WaterMist_2147480172 at 95.8
+[2026.11.15-08.08.03:975][448]LogDC: Bow state: pulses=1 particles=47 at 96.3
+[2026.11.15-08.08.04:479][496]LogDC: Bow state: pulses=0 particles=0 at 96.9
+[2026.11.15-08.08.04:982][540]LogDC: Bow state: pulses=0 particles=0 at 97.4
+[2026.11.15-08.08.05:158][556]LogDC: Bow pulse: side=1 depth=-32 closing=182 scale=0.86 origin=V(X=1196.89, Y=35.81, Z=115.75) active=1 at 97.5
+[2026.11.15-08.08.05:383][576]LogDC: Bow pulse: side=-1 depth=-32 closing=86 scale=0.74 origin=V(X=1207.99, Y=-46.91, Z=109.25) active=2 at 97.8
+[2026.11.15-08.08.05:489][585]LogDC: Bow state: pulses=2 particles=860 at 97.9
+[2026.11.15-08.08.05:489][585]LogDC: Bow particles: BowDroplets age=0.33 count=360 sampled=64 relative=IsValid=true, Min=(X=-399.204 Y=361.610 Z=-6.072), Max=(X=-258.737 Y=554.816 Z=147.832) size=3.50 alpha=0.42 ignoreScale=0 at 97.9
+[2026.11.15-08.08.05:489][585]LogDC: Bow renderer: BowDroplets proxy=1 visible=1 active=1 recent=1 enabled=1 dynamic=1 mode=0 maxDraw=500 material=/Game/DC/Maps/L_Ride.L_Ride:PersistentLevel.DCWake_2147482310.ParticleSystem_2147480195.MID_M_Water_Drops_Master_2147480194 at 97.9
+[2026.11.15-08.08.05:489][585]LogDC: Bow particles: BowAeratedSpray age=0.33 count=70 sampled=64 relative=IsValid=true, Min=(X=-395.430 Y=319.118 Z=-61.818), Max=(X=-255.805 Y=462.995 Z=97.305) size=109.99 alpha=0.29 ignoreScale=0 at 97.9
+[2026.11.15-08.08.05:489][585]LogDC: Bow renderer: BowAeratedSpray proxy=1 visible=1 active=1 recent=1 enabled=1 dynamic=1 mode=0 maxDraw=500 material=/Game/DC/Maps/L_Ride.L_Ride:PersistentLevel.DCWake_2147482310.ParticleSystem_2147480195.MID_M_WaterMist_2147480172 at 97.9
+[2026.11.15-08.08.05:990][630]LogDC: Bow state: pulses=2 particles=549 at 98.4
+[2026.11.15-08.08.06:171][646]LogDC: Bow pulse: side=1 depth=109 closing=146 scale=1.38 origin=V(X=1280.62, Y=81.42, Z=233.57) active=3 at 98.5
+[2026.11.15-08.08.06:339][661]LogDC: Bow pulse: side=-1 depth=164 closing=305 scale=1.56 origin=V(X=1329.59, Y=-27.55, Z=309.56) active=3 at 98.7
+[2026.11.15-08.08.06:496][675]LogDC: Bow state: pulses=2 particles=860 at 98.9
+[2026.11.15-08.08.06:496][675]LogDC: Bow particles: BowDroplets age=0.33 count=360 sampled=64 relative=IsValid=true, Min=(X=-512.287 Y=389.378 Z=28.541), Max=(X=-245.638 Y=665.456 Z=301.139) size=3.49 alpha=0.42 ignoreScale=0 at 98.9
+[2026.11.15-08.08.06:496][675]LogDC: Bow renderer: BowDroplets proxy=1 visible=1 active=1 recent=1 enabled=1 dynamic=1 mode=0 maxDraw=500 material=/Game/DC/Maps/L_Ride.L_Ride:PersistentLevel.DCWake_2147482310.ParticleSystem_2147480195.MID_M_Water_Drops_Master_2147480194 at 98.9
+[2026.11.15-08.08.06:496][675]LogDC: Bow particles: BowAeratedSpray age=0.33 count=70 sampled=64 relative=IsValid=true, Min=(X=-468.076 Y=333.189 Z=-49.713), Max=(X=-221.752 Y=576.138 Z=219.806) size=109.50 alpha=0.30 ignoreScale=0 at 98.9
+[2026.11.15-08.08.06:496][675]LogDC: Bow renderer: BowAeratedSpray proxy=1 visible=1 active=1 recent=1 enabled=1 dynamic=1 mode=0 maxDraw=500 material=/Game/DC/Maps/L_Ride.L_Ride:PersistentLevel.DCWake_2147482310.ParticleSystem_2147480195.MID_M_WaterMist_2147480172 at 98.9
+[2026.11.15-08.08.06:669][690]LogDC: Bow pulse: side=1 depth=194 closing=156 scale=1.32 origin=V(X=1357.46, Y=44.03, Z=354.94) active=3 at 99.0
+[2026.11.15-08.08.06:742][696]LogDC: Bow pulse: side=-1 depth=194 closing=31 scale=1.23 origin=V(X=1365.54, Y=-32.18, Z=363.44) active=4 at 99.1
+[2026.11.15-08.08.07:005][720]LogDC: Bow state: pulses=4 particles=1349 at 99.4
+[2026.11.15-08.08.07:005][720]LogDC: Bow particles: BowDroplets age=0.33 count=360 sampled=64 relative=IsValid=true, Min=(X=-497.403 Y=389.272 Z=25.739), Max=(X=-253.177 Y=686.953 Z=320.336) size=3.49 alpha=0.42 ignoreScale=0 at 99.4
+[2026.11.15-08.08.07:005][720]LogDC: Bow renderer: BowDroplets proxy=1 visible=1 active=1 recent=1 enabled=1 dynamic=1 mode=0 maxDraw=500 material=/Game/DC/Maps/L_Ride.L_Ride:PersistentLevel.DCWake_2147482310.ParticleSystem_2147480195.MID_M_Water_Drops_Master_2147480194 at 99.4
+[2026.11.15-08.08.07:005][720]LogDC: Bow particles: BowAeratedSpray age=0.33 count=70 sampled=64 relative=IsValid=true, Min=(X=-437.403 Y=347.223 Z=-34.891), Max=(X=-229.911 Y=564.191 Z=236.056) size=109.93 alpha=0.29 ignoreScale=0 at 99.4
+[2026.11.15-08.08.07:005][720]LogDC: Bow renderer: BowAeratedSpray proxy=1 visible=1 active=1 recent=1 enabled=1 dynamic=1 mode=0 maxDraw=500 material=/Game/DC/Maps/L_Ride.L_Ride:PersistentLevel.DCWake_2147482310.ParticleSystem_2147480195.MID_M_WaterMist_2147480172 at 99.4
+[2026.11.15-08.08.07:154][734]LogDC: Bow pulse: side=1 depth=106 closing=-208 scale=1.09 origin=V(X=1284.22, Y=71.69, Z=287.50) active=5 at 99.5
+[2026.11.15-08.08.07:386][755]LogDC: Bow pulse: side=-1 depth=37 closing=-274 scale=1.03 origin=V(X=1244.61, Y=-62.40, Z=222.36) active=5 at 99.8
+[2026.11.15-08.08.07:514][767]LogDC: Bow state: pulses=4 particles=1254 at 99.9
+[2026.11.15-08.08.07:514][767]LogDC: Bow particles: BowDroplets age=0.36 count=360 sampled=64 relative=IsValid=true, Min=(X=-498.208 Y=399.033 Z=-41.141), Max=(X=-273.385 Y=630.473 Z=245.416) size=3.49 alpha=0.41 ignoreScale=0 at 99.9
+[2026.11.15-08.08.07:514][767]LogDC: Bow renderer: BowDroplets proxy=1 visible=1 active=1 recent=1 enabled=1 dynamic=1 mode=0 maxDraw=500 material=/Game/DC/Maps/L_Ride.L_Ride:PersistentLevel.DCWake_2147482310.ParticleSystem_2147480195.MID_M_Water_Drops_Master_2147480194 at 99.9
+[2026.11.15-08.08.07:514][767]LogDC: Bow particles: BowAeratedSpray age=0.36 count=70 sampled=64 relative=IsValid=true, Min=(X=-460.708 Y=330.265 Z=-40.728), Max=(X=-271.092 Y=565.622 Z=198.830) size=108.99 alpha=0.28 ignoreScale=0 at 99.9
+[2026.11.15-08.08.07:514][767]LogDC: Bow renderer: BowAeratedSpray proxy=1 visible=1 active=1 recent=1 enabled=1 dynamic=1 mode=0 maxDraw=500 material=/Game/DC/Maps/L_Ride.L_Ride:PersistentLevel.DCWake_2147482310.ParticleSystem_2147480195.MID_M_WaterMist_2147480172 at 99.9
+[2026.11.15-08.08.07:916][803]LogDC: Bow pulse: side=1 depth=60 closing=66 scale=1.34 origin=V(X=1261.16, Y=67.84, Z=272.19) active=3 at 100.3
+[2026.11.15-08.08.08:015][812]LogDC: Bow state: pulses=3 particles=935 at 100.4
+[2026.11.15-08.08.08:015][812]LogDC: Bow particles: BowDroplets age=0.10 count=360 sampled=64 relative=IsValid=true, Min=(X=-164.600 Y=101.130 Z=-17.495), Max=(X=-46.015 Y=228.174 Z=142.744) size=3.43 alpha=0.50 ignoreScale=0 at 100.4
+[2026.11.15-08.08.08:015][812]LogDC: Bow renderer: BowDroplets proxy=1 visible=1 active=1 recent=1 enabled=1 dynamic=1 mode=0 maxDraw=500 material=/Game/DC/Maps/L_Ride.L_Ride:PersistentLevel.DCWake_2147482310.ParticleSystem_2147480195.MID_M_Water_Drops_Master_2147480194 at 100.4
+[2026.11.15-08.08.08:015][812]LogDC: Bow particles: BowAeratedSpray age=0.10 count=70 sampled=64 relative=IsValid=true, Min=(X=-162.006 Y=92.809 Z=-34.003), Max=(X=-42.788 Y=224.115 Z=116.604) size=109.95 alpha=0.38 ignoreScale=0 at 100.4
+[2026.11.15-08.08.08:015][812]LogDC: Bow renderer: BowAeratedSpray proxy=1 visible=1 active=1 recent=1 enabled=1 dynamic=1 mode=0 maxDraw=500 material=/Game/DC/Maps/L_Ride.L_Ride:PersistentLevel.DCWake_2147482310.ParticleSystem_2147480195.MID_M_WaterMist_2147480172 at 100.4
+[2026.11.15-08.08.08:081][818]LogDC: Bow pulse: side=-1 depth=96 closing=127 scale=1.35 origin=V(X=1276.38, Y=-79.43, Z=311.81) active=4 at 100.5
+[2026.11.15-08.08.08:527][853]LogDC: Bow state: pulses=2 particles=816 at 100.9
+[2026.11.15-08.08.08:527][853]LogDC: Bow particles: BowDroplets age=0.45 count=360 sampled=64 relative=IsValid=true, Min=(X=-626.300 Y=-871.075 Z=-32.097), Max=(X=-283.894 Y=-504.652 Z=355.999) size=3.50 alpha=0.38 ignoreScale=0 at 100.9
+[2026.11.15-08.08.08:527][853]LogDC: Bow renderer: BowDroplets proxy=1 visible=1 active=1 recent=1 enabled=1 dynamic=1 mode=0 maxDraw=500 material=/Game/DC/Maps/L_Ride.L_Ride:PersistentLevel.DCWake_2147482310.ParticleSystem_2147480195.MID_M_Water_Drops_Master_2147480194 at 100.9
+[2026.11.15-08.08.08:527][853]LogDC: Bow particles: BowAeratedSpray age=0.45 count=70 sampled=64 relative=IsValid=true, Min=(X=-590.057 Y=-743.186 Z=-69.805), Max=(X=-282.829 Y=-384.896 Z=303.442) size=109.71 alpha=0.24 ignoreScale=0 at 100.9
+[2026.11.15-08.08.08:527][853]LogDC: Bow renderer: BowAeratedSpray proxy=1 visible=1 active=1 recent=1 enabled=1 dynamic=1 mode=0 maxDraw=500 material=/Game/DC/Maps/L_Ride.L_Ride:PersistentLevel.DCWake_2147482310.ParticleSystem_2147480195.MID_M_WaterMist_2147480172 at 100.9
+[2026.11.15-08.08.08:539][854]LogDC: Auto shot shot_01009.png at ride time 100.9, 78 fps (game 6.2 ms, render 13.9 ms, gpu 5.9 ms)
+[2026.11.15-08.08.08:539][854]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 100.9
+[2026.11.15-08.08.08:685][855]LogDC: Bow pulse: side=-1 depth=124 closing=-100 scale=1.19 origin=V(X=1290.17, Y=-82.66, Z=428.88) active=3 at 101.1
+[2026.11.15-08.08.08:685][855]LogDC: Bow pulse: side=1 depth=91 closing=-44 scale=1.04 origin=V(X=1277.84, Y=59.42, Z=408.38) active=4 at 101.1
+[2026.11.15-08.08.08:746][860]LogDC: Auto shot shot_01011.png at ride time 101.1, 76 fps (game 7.9 ms, render 14.4 ms, gpu 5.8 ms)
+[2026.11.15-08.08.08:746][860]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 101.1
+[2026.11.15-08.08.08:945][867]LogDC: Auto shot shot_01013.png at ride time 101.3, 77 fps (game 5.9 ms, render 12.1 ms, gpu 5.7 ms)
+[2026.11.15-08.08.08:945][867]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 101.3
+[2026.11.15-08.08.09:070][868]LogDC: Bow state: pulses=4 particles=1029 at 101.4
+[2026.11.15-08.08.09:070][868]LogDC: Bow particles: BowDroplets age=0.39 count=360 sampled=64 relative=IsValid=true, Min=(X=-531.259 Y=-669.836 Z=-18.729), Max=(X=-276.416 Y=-428.269 Z=274.688) size=3.49 alpha=0.40 ignoreScale=0 at 101.4
+[2026.11.15-08.08.09:070][868]LogDC: Bow renderer: BowDroplets proxy=1 visible=1 active=1 recent=1 enabled=1 dynamic=1 mode=0 maxDraw=500 material=/Game/DC/Maps/L_Ride.L_Ride:PersistentLevel.DCWake_2147482310.ParticleSystem_2147480195.MID_M_Water_Drops_Master_2147480194 at 101.4
+[2026.11.15-08.08.09:070][868]LogDC: Bow particles: BowAeratedSpray age=0.39 count=70 sampled=64 relative=IsValid=true, Min=(X=-506.330 Y=-621.646 Z=-75.755), Max=(X=-283.160 Y=-361.603 Z=179.477) size=109.69 alpha=0.27 ignoreScale=0 at 101.4
+[2026.11.15-08.08.09:070][868]LogDC: Bow renderer: BowAeratedSpray proxy=1 visible=1 active=1 recent=1 enabled=1 dynamic=1 mode=0 maxDraw=500 material=/Game/DC/Maps/L_Ride.L_Ride:PersistentLevel.DCWake_2147482310.ParticleSystem_2147480195.MID_M_WaterMist_2147480172 at 101.4
+[2026.11.15-08.08.09:142][875]LogDC: Auto shot shot_01015.png at ride time 101.5, 80 fps (game 5.5 ms, render 12.0 ms, gpu 5.5 ms)
+[2026.11.15-08.08.09:142][875]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 101.5
+[2026.11.15-08.08.09:338][885]LogDC: Auto shot shot_01017.png at ride time 101.7, 90 fps (game 5.1 ms, render 10.1 ms, gpu 5.6 ms)
+[2026.11.15-08.08.09:338][885]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 101.7
+[2026.11.15-08.08.09:541][895]LogDC: Auto shot shot_01019.png at ride time 101.9, 92 fps (game 5.2 ms, render 11.1 ms, gpu 5.8 ms)
+[2026.11.15-08.08.09:541][895]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 101.9
+[2026.11.15-08.08.09:654][896]LogDC: Bow state: pulses=2 particles=285 at 102.0
+[2026.11.15-08.08.09:746][904]LogDC: Auto shot shot_01021.png at ride time 102.1, 88 fps (game 5.7 ms, render 13.1 ms, gpu 6.8 ms)
+[2026.11.15-08.08.09:746][904]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 102.1
+[2026.11.15-08.08.09:936][912]LogDC: Auto shot shot_01023.png at ride time 102.3, 88 fps (game 5.9 ms, render 10.4 ms, gpu 7.0 ms)
+[2026.11.15-08.08.09:936][912]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 102.3
+[2026.11.15-08.08.10:140][921]LogDC: Auto shot shot_01025.png at ride time 102.5, 88 fps (game 6.5 ms, render 12.4 ms, gpu 6.8 ms)
+[2026.11.15-08.08.10:140][921]LogDC: Capture state: hull=100.0 score=100 fires=0 rigging=0 at 102.5
+[2026.11.15-08.08.10:256][922]LogDC: Bow state: pulses=0 particles=0 at 102.6
+[2026.11.15-08.08.10:342][930]LogDC: Auto shot shot_01027.png at ride time 102.7, 88 fps (game 6.6 ms, render 10.1 ms, gpu 6.8 ms)
+[2026.11.15-08.08.10:342][930]LogDC: Capture state: hull=100.0 score=100 fires=0 rigging=0 at 102.7
+[2026.11.15-08.08.10:538][938]LogDC: Auto shot shot_01029.png at ride time 102.9, 87 fps (game 6.3 ms, render 13.2 ms, gpu 6.8 ms)
+[2026.11.15-08.08.10:538][938]LogDC: Capture state: hull=100.0 score=100 fires=0 rigging=0 at 102.9
+[2026.11.15-08.08.10:743][947]LogDC: Auto shot shot_01031.png at ride time 103.1, 87 fps (game 5.5 ms, render 12.5 ms, gpu 6.5 ms)
+[2026.11.15-08.08.10:743][947]LogDC: Capture state: hull=100.0 score=100 fires=0 rigging=0 at 103.1
+[2026.11.15-08.08.10:861][948]LogDC: Bow state: pulses=0 particles=0 at 103.2

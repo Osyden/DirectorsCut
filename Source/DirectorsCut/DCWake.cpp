@@ -399,6 +399,16 @@ void ADCWake::TickBowSpray(float DeltaSeconds)
 					UE_LOG(LogDC, Log, TEXT("Bow particles: %s age=%.2f count=%d sampled=%d relative=%s size=%.2f alpha=%.2f ignoreScale=%d at %.1f"),
 						*Emitter->SpriteTemplate->GetEmitterName().ToString(), P.Age, Emitter->ActiveParticles, Count,
 						*Positions.ToString(), Size, Alpha, Emitter->bIgnoreComponentScale, Director->RideTime);
+					if (FParse::Param(FCommandLine::Get(), TEXT("DCBowRenderAudit")))
+					{
+						UMaterialInterface* RenderMaterial = Emitter->CurrentMaterial;
+						UE_LOG(LogDC, Log, TEXT("Bow renderer: %s proxy=%d visible=%d active=%d recent=%d enabled=%d dynamic=%d mode=%d maxDraw=%d material=%s at %.1f"),
+							*Emitter->SpriteTemplate->GetEmitterName().ToString(), Effect->GetSceneProxy() != nullptr, Effect->IsVisible(),
+							Effect->IsActive(), Effect->WasRecentlyRendered(.2f), Emitter->bEnabled,
+							Emitter->IsDynamicDataRequired(Emitter->CurrentLODLevel), int32(Emitter->SpriteTemplate->EmitterRenderMode),
+							Emitter->CurrentLODLevel->RequiredModule->bUseMaxDrawCount ? Emitter->CurrentLODLevel->RequiredModule->MaxDrawCount : -1,
+							*GetPathNameSafe(RenderMaterial), Director->RideTime);
+					}
 				}
 				break;
 			}

@@ -1,0 +1,66 @@
+{
+  "package": "E:\\Projects\\DirectorsCut\\Builds\\2026-11-15_0758_bow-diagnostic\\Windows\\DirectorsCut.exe",
+  "source_manifest_entries": 80,
+  "owned_and_private_source_match_package": true,
+  "runs": {
+    "diagnostic-baseline": {
+      "screenshots": 6,
+      "fatal_assert_ensure_blueprint_matches": [],
+      "render_samples": 20,
+      "bad_render_samples": [],
+      "normal_exit": true
+    },
+    "natural-baseline": {
+      "screenshots": 6,
+      "fatal_assert_ensure_blueprint_matches": [],
+      "render_samples": 184,
+      "bad_render_samples": [],
+      "normal_exit": true
+    },
+    "packaged-sequence": {
+      "screenshots": 12,
+      "fatal_assert_ensure_blueprint_matches": [],
+      "render_samples": 26,
+      "bad_render_samples": [],
+      "normal_exit": true
+    },
+    "packaged-wide": {
+      "screenshots": 6,
+      "fatal_assert_ensure_blueprint_matches": [],
+      "render_samples": 18,
+      "bad_render_samples": [],
+      "normal_exit": true
+    },
+    "editor-baseline": {
+      "screenshots": 6,
+      "fatal_assert_ensure_blueprint_matches": [],
+      "render_samples": 0,
+      "bad_render_samples": [],
+      "normal_exit": true
+    }
+  },
+  "production_render_change": false,
+  "finding": "Packaged spray renders. Earlier comparisons sampled different impact ages; the denser sequence captures its crest and dry-bow suppression.",
+  "limitations": [
+    "Close impact is brief and still subtle at wide/deck distances.",
+    "Continuous hull-foam rim remains.",
+    "Random particles and screenshot stalls prevent frame-identical comparisons.",
+    "No audio/voice or clean-machine validation."
+  ],
+  "builds": {
+    "editor": [
+      "Output binary: E:\\Utilities\\UE_5.8\\Engine\\Binaries\\Win64\\UnrealEditor.exe",
+      "",
+      "Result: Succeeded",
+      "Total execution time: 8.53 seconds",
+      "Trace written to file C:\\Users\\ejobse\\AppData\\Local\\UnrealBuildTool\\Trace.uba with size 5.9kb"
+    ],
+    "game": [
+      "Output binary: C:\\Users\\ejobse\\Documents\\ChatGPT\\DirectorsCut\\pending-weather\\Binaries\\Win64\\DirectorsCut.exe",
+      "",
+      "Result: Succeeded",
+      "Total execution time: 17.68 seconds",
+      "Trace written to file C:\\Users\\ejobse\\AppData\\Local\\UnrealBuildTool\\Trace.uba with size 6.7kb"
+    ]
+  }
+}

@@ -2,7 +2,8 @@
 param(
     [Parameter(Mandatory=$true)][string]$ExecutablePath,
     [Parameter(Mandatory=$true)][string]$OutputPath,
-    [ValidateSet('rag','encounters','navigation','bow','fog','route')][string]$Case = 'rag'
+    [ValidateSet('rag','encounters','navigation','bow','bownatural','bowsequence','bowwide','fog','route')][string]$Case = 'rag',
+    [string]$DiagnosticArguments = ''
 )
 $ErrorActionPreference = 'Stop'
 $exe = (Resolve-Path -LiteralPath $ExecutablePath).Path
@@ -18,13 +19,16 @@ $options = switch ($Case) {
     'rag' { '-DCEarlyVerify -DCSkipIntro -DCRunThrough -DCTenths -DCAutoShots=2.9,3.1,3.8,4.0,4.7,4.9,5.4,9,12,20' }
     'navigation' { '-DCNavigationVerify -DCRunThrough' }
     'encounters' { '-DCEncounterVerify -DCStartAt=90 -DCRunThrough -DCOrders=Hold_fire -DCAutoShots=101,108,119,121,123,126,129,135,146,175,208,225,235,236 -DCShotCam=-2200,0,1200,7,55 -DCGunLog' }
-    'bow' { '-DCStartAt=90 -DCRunThrough -DCTenths -DCAutoShots=98.6,98.8,99,99.2,100.5,101 -DCShotCam=1700,-600,550,-10,132 -DCBowLog -DCBowParticleAudit' }
+    'bow' { '-DCStartAt=90 -DCRunThrough -DCTenths -DCAutoShots=98.6,98.8,99,99.2,100.5,101 -DCShotCam=1700,-600,550,-10,132 -DCBowLog -DCBowParticleAudit -DCBowRenderAudit' }
+    'bownatural' { '-DCRunThrough -DCTenths -DCAutoShots=98.6,98.8,99,99.2,100.5,101 -DCShotCam=1700,-600,550,-10,132 -DCBowLog -DCBowParticleAudit -DCBowRenderAudit' }
+    'bowsequence' { '-DCStartAt=90 -DCRunThrough -DCTenths -DCAutoShots=100.9,101.1,101.3,101.5,101.7,101.9,102.1,102.3,102.5,102.7,102.9,103.1 -DCShotCam=1700,-600,550,-10,132 -DCBowLog -DCBowParticleAudit -DCBowRenderAudit' }
+    'bowwide' { '-DCStartAt=90 -DCRunThrough -DCTenths -DCAutoShots=98.6,98.8,99,99.2,100.5,101 -DCShotCam=2500,-1400,850,-18,132 -DCBowLog -DCBowParticleAudit -DCBowRenderAudit' }
     'fog' { '-DCRunThrough -DCOrders=Hold_fire -DCAutoShots=100,110,125 -DCShotCam=-2200,0,1200,5,-55' }
     'route' { '-DCRunThrough -DCAutoShots=34,55,100,125,175,210,236,239,246 -DCLaneLog -DCCurrentLog' }
 }
 New-Item -ItemType Directory -Path $output | Out-Null
 $log = Join-Path $output 'runtime.log'
-$arguments = '/Game/DC/Maps/L_Ride -RenderOffscreen -Unattended -NoSound -DCNoVoice -NoSplash -Windowed -ResX=1280 -ResY=720 -UserDir="' + $output + '\user" -AbsLog="' + $log + '" ' + $options
+$arguments = '/Game/DC/Maps/L_Ride -RenderOffscreen -Unattended -NoSound -DCNoVoice -NoSplash -Windowed -ResX=1280 -ResY=720 -UserDir="' + $output + '\user" -AbsLog="' + $log + '" ' + $options + ' ' + $DiagnosticArguments
 $run = Start-Process -FilePath $exe -WorkingDirectory (Split-Path -Parent $exe) -ArgumentList $arguments -WindowStyle Hidden -PassThru
 Write-Output "Packaged $Case review started as process $($run.Id); log: $log"
 if (!$run.WaitForExit(420000)) {

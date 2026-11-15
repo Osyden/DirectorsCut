@@ -32,7 +32,7 @@ $manifest | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $output 'source
 $log = Join-Path $output 'package.log'
 $uat = Join-Path $EngineRoot 'Engine\Build\BatchFiles\RunUAT.bat'
 $uatArgs = @('BuildCookRun',"-project=$project",'-platform=Win64','-clientconfig=Development',
-    '-build','-cook','-stage','-pak','-archive',"-archivedirectory=$output",'-nop4','-utf8output','-unattended')
+    '-build','-ubtargs=-WaitMutex','-cook','-stage','-pak','-archive',"-archivedirectory=$output",'-nop4','-utf8output','-unattended')
 Write-Output "Packaging started; log: $log"
 & $uat @uatArgs *> $log
 $code = $LASTEXITCODE
