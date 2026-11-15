@@ -226,10 +226,11 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 	}
 
 	const FDCEnvState& Env = Director->GetEnv();
+	const bool bRouteHeld = Director->TimeScale <= 0.f;
 	const float Speed = Env.ShipSpeed * Director->TimeScale;
 	#if !UE_BUILD_SHIPPING
 	static bool bNavigationVerified = false;
-	if (!bNavigationVerified && Director->RideTime > 1.f && FParse::Param(FCommandLine::Get(), TEXT("DCNavigationVerify")))
+	if (!bRouteHeld && !bNavigationVerified && Director->RideTime > 1.f && FParse::Param(FCommandLine::Get(), TEXT("DCNavigationVerify")))
 	{
 		bNavigationVerified = true;
 		VerifyNavigation();
@@ -240,18 +241,18 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 	// Test hook: -DCSteer=1 holds the helm hard over (starboard) for the whole run.
 	static float ForcedSteer = 0.f;
 	static const bool bForced = FParse::Value(FCommandLine::Get(), TEXT("DCSteer="), ForcedSteer);
-	if (bForced) { Steer = ForcedSteer; bSteerForced = true; }
+	if (bForced && !bRouteHeld) { Steer = ForcedSteer; bSteerForced = true; }
 	const float Edge = Director->TroughRise > 1.f ? Director->TroughHalfWidth : LaneLimit;
 	const float HelmSpeed = LaneSpeed * SteerAuthority * (Director->TroughRise > 1.f ? 1.5f : 1.f);
 	DCSteering::State HelmState{LaneOffset,LaneVelocity,LaneAcceleration};
-	DCSteering::Advance(HelmState,Steer,HelmSpeed,Edge,CurrentDrift,Director->SeaRiseSlope(LaneOffset)*1200.f,DeltaSeconds);
+	if (!bRouteHeld) { DCSteering::Advance(HelmState,Steer,HelmSpeed,Edge,CurrentDrift,Director->SeaRiseSlope(LaneOffset)*1200.f,DeltaSeconds); }
 	LaneOffset=HelmState.Position; LaneVelocity=HelmState.Velocity; LaneAcceleration=HelmState.Acceleration;
 	// Test hook: -DCLaneLog writes where she is across the channel twice a second.
 	{
 		static const bool bLaneLog = FParse::Param(FCommandLine::Get(), TEXT("DCLaneLog"));
 		static float LaneLogTimer = 0.f;
-		LaneLogTimer -= DeltaSeconds;
-		if (bLaneLog && LaneLogTimer <= 0.f)
+		if (!bRouteHeld) { LaneLogTimer -= DeltaSeconds; }
+		if (!bRouteHeld && bLaneLog && LaneLogTimer <= 0.f)
 		{
 			LaneLogTimer = 0.5f;
 			UE_LOG(LogDC, Log, TEXT("Lane %.0f cm, moving %.0f cm/s, helm %.2f, sea rise here %.0f cm, slope %.3f, at %.1f s"), LaneOffset, LaneVelocity, Steer, Director->SeaRise(LaneOffset), Director->SeaRiseSlope(LaneOffset), Director->RideTime);
@@ -273,6 +274,10 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 			Sea->SetVectorParameterValue(TEXT("Wake"), FLinearColor(bNoWake ? 0.f : FMath::Clamp(Env.ShipSpeed / 1300.f, 0.5f, 1.3f), 1900.f, 330.f, 0.2f));
 		}
 	}
+	// The menu holds the voyage clock while the ocean simulation still ticks.
+	// Keep its material parameters initialized above, but do not age combat,
+	// steering assistance, spawning or scenery state until the voyage resumes.
+	if (bRouteHeld) { return; }
 	TickStrikes(DeltaSeconds);
 	TickDeckWisps(DeltaSeconds);
 	TickGiants(DeltaSeconds);
