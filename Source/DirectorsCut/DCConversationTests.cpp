@@ -27,7 +27,7 @@ bool FDCConversationRouting::RunTest(const FString&)
         TEXT("Ruby's rigging looks strong."),TEXT("Can you sing?"),TEXT(""),TEXT("   ")
     };
     for (const TCHAR* Text:Conversation) { TestTrue(FString(TEXT("Conversation: "))+Text,DCConversationPolicy::IsConversation(Text)); }
-    const TCHAR* Orders[]={
+    const TCHAR* CommandCases[]={
         TEXT("can you take the wheel"),TEXT("would you mind repairing the rigging"),TEXT("please fire at will"),
         TEXT("Hey Rex, could you please turn us to port?"),TEXT("Ruby, would you be so kind as to put out the fire?"),
         TEXT("Could you not fire?"),TEXT("Would you mind not firing?"),TEXT("Ruby, I need you to mend the sails"),
@@ -49,7 +49,7 @@ bool FDCConversationRouting::RunTest(const FString&)
         TEXT("report on the cannons"),TEXT("report on the fire"),TEXT("how are we doing"),TEXT("hard port"),TEXT("Rex left"),
         TEXT("Duncan, give me a damage report"),TEXT("Duncan, let the port guns fire now"),TEXT("Rex, keep us straight ahead")
     };
-    for (const TCHAR* Text:Orders) { TestFalse(FString(TEXT("Order: "))+Text,DCConversationPolicy::IsConversation(Text)); }
+    for (const TCHAR* Text:CommandCases) { TestFalse(FString(TEXT("Order: "))+Text,DCConversationPolicy::IsConversation(Text)); }
     // Original and held-out native model cases must still reach order interpretation.
     const TCHAR* ModelOrders[]={TEXT("Rex, could you take the wheel?"),TEXT("Rex, bring her round to port."),
         TEXT("Rex, turn us to starboard."),TEXT("Rex, keep us straight ahead."),TEXT("Duncan, fire at will."),

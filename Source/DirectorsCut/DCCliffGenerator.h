@@ -153,9 +153,9 @@ namespace DCCliffGenerator
         // horizontal band. Physical widths are roughly 15-25m on the far rim.
         constexpr int32 JointCount=83;
         const float X=A*JointCount;
-        const int32 Cell=FMath::FloorToInt(X);
+        const int32 JointCell=FMath::FloorToInt(X);
         float Erosion=0.f;
-        for(int32 I=Cell-1;I<=Cell+1;++I)
+        for(int32 I=JointCell-1;I<=JointCell+1;++I)
         {
             const float H0=Hash(I,71,JointCount),H1=Hash(I,73,JointCount),H2=Hash(I,79,JointCount);
             const float Drift=(H1-.5f)*.32f*(T-.5f)+.035f*FMath::Sin(T*5.f+H2*6.f);

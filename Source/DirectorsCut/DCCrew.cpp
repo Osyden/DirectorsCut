@@ -485,6 +485,10 @@ ADCCrewMember* UDCCrewSubsystem::EnsureOperator(int32 StationIdx, const FString&
 
 FString UDCCrewSubsystem::ExecuteOrder(const FString& Text)
 {
+	if (ADCVoice* ConversationVoice = ADCVoice::Get(this); ConversationVoice && ConversationVoice->TryConversationInput(Text))
+	{
+		return RecentLines.Num() ? RecentLines.Last() : FString();
+	}
 	++OrdersGiven;
 	TArray<FString> Names;
 	for (ADCCrewMember* M : Crew) { if (M) { Names.Add(M->CrewName); } }

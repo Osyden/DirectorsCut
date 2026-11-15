@@ -674,10 +674,10 @@ void ADCRideDirector::AddLamp(const FVector& Location)
 	Lamp->SetVolumetricScatteringIntensity(0.45f);
 	Lamp->SetSourceRadius(12.f);
 	Lamp->SetIntensity(0.f);
-	// No shadows from the lanterns: four point lights re-rendering the whole rig every frame cost more than they showed.
-	// Optional per-lantern review mask isolates groom light leaking without
-	// changing the accepted performance/lighting defaults (bits0..3).
-	int32 ShadowReviewMask = 0;
+	// Shadow the paired midmast lanterns: their unoccluded backlight made
+	// Ruby's hair glow through itself. Keep the distant lights inexpensive.
+	// Optional per-lantern review override uses bits0..3.
+	int32 ShadowReviewMask = 6;
 	FParse::Value(FCommandLine::Get(), TEXT("DCShadowLamps="), ShadowReviewMask);
 	const bool bReviewShadows = (ShadowReviewMask & (1 << Lamps.Num())) != 0;
 	Lamp->SetCastShadows(bReviewShadows);

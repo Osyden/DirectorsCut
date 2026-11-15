@@ -49,6 +49,47 @@
 
 namespace
 {
+	bool IsReviewSail(UMaterialInterface* Material)
+	{
+		for (int32 Depth=0; Material && Depth<8; ++Depth)
+		{
+			if (Material->GetName()==TEXT("MI_Sail_2-wp")) { return true; }
+			const UMaterialInstance* Instance=Cast<UMaterialInstance>(Material);
+			Material=Instance ? Instance->Parent.Get() : nullptr;
+		}
+		return false;
+	}
+	void ReviewSailMaterials(AActor* Ship, bool bApply)
+	{
+		float Normal=-1.f, SSS=-1.f;
+		const bool HasNormal=FParse::Value(FCommandLine::Get(),TEXT("DCSailMaskNormal="),Normal);
+		const bool HasSSS=FParse::Value(FCommandLine::Get(),TEXT("DCSailSSS="),SSS);
+		if (!Ship || (!HasNormal && !HasSSS && !FParse::Param(FCommandLine::Get(),TEXT("DCSailReview")))) { return; }
+		for (UActorComponent* C:Ship->GetComponents())
+		{
+			UMeshComponent* Mesh=Cast<UMeshComponent>(C);
+			if (!Mesh) { continue; }
+			for(int32 Slot=0;Slot<Mesh->GetNumMaterials();++Slot)
+			{
+				UMaterialInterface* Material=Mesh->GetMaterial(Slot);
+				if (!IsReviewSail(Material)) { continue; }
+				if(bApply && (HasNormal || HasSSS))
+				{
+					if(auto* MID=Mesh->CreateDynamicMaterialInstance(Slot))
+					{
+						if(HasNormal) MID->SetScalarParameterValue(TEXT("Mask_Normal_Strengh"),Normal);
+						if(HasSSS) MID->SetScalarParameterValue(TEXT("SSS"),SSS);
+						Material=MID;
+					}
+				}
+				float ActualNormal=-1.f,ActualSSS=-1.f; FLinearColor Camera=FLinearColor::Black;
+				Material->GetScalarParameterValue(FMaterialParameterInfo(TEXT("Mask_Normal_Strengh")),ActualNormal);
+				Material->GetScalarParameterValue(FMaterialParameterInfo(TEXT("SSS")),ActualSSS);
+				Material->GetVectorParameterValue(FMaterialParameterInfo(TEXT("Camera")),Camera);
+				UE_LOG(LogDC,Log,TEXT("SAIL_REVIEW apply=%d component=%s material=%s normal=%.4f sss=%.4f camera=%s"),bApply,*Mesh->GetName(),*Material->GetPathName(),ActualNormal,ActualSSS,*Camera.ToString());
+			}
+		}
+	}
 	FSlateFontInfo HudFont(UFont* Vector, UFont* SizeOf, float Scale)
 	{
 		// The same height on screen as the bitmap font it replaces, at the scale asked for.
@@ -395,27 +436,6 @@ void ADCGameMode::StartPlay()
 		}
 	}
 
-	// Narrow material diagnostic: isolate the embossed sail-mask normal from
-	// fabric, WPO and fog. No default change and no source-asset modification.
-	float SailMaskNormal = -1.f;
-	if (Ship && FParse::Value(FCommandLine::Get(), TEXT("DCSailMaskNormal="), SailMaskNormal))
-	{
-		for (UActorComponent* C : Ship->GetComponents())
-		{
-			UMeshComponent* Mesh = Cast<UMeshComponent>(C);
-			if (!Mesh) { continue; }
-			for (int32 Slot = 0; Slot < Mesh->GetNumMaterials(); ++Slot)
-			{
-				UMaterialInterface* Material = Mesh->GetMaterial(Slot);
-				if (Material && Material->GetName() == TEXT("MI_Sail_2-wp"))
-				{
-					if (UMaterialInstanceDynamic* MID = Mesh->CreateDynamicMaterialInstance(Slot))
-					{ MID->SetScalarParameterValue(TEXT("Mask_Normal_Strengh"), SailMaskNormal); }
-				}
-			}
-		}
-	}
-
 	// Test hook: -DCExec=cmd~arg;cmd~arg runs console commands at start ("~" stands for a space).
 	{
 		FString Cmds;
@@ -554,6 +574,7 @@ void ADCGameMode::StartPlay()
 	Crew->SpawnCrew(TEXT("Ruby"), FLinearColor(0.8f, 0.3f, 0.5f), DeckAt(GunS.X - 350.f, -90.f, MainTop));
 
 	Super::StartPlay();
+	ReviewSailMaterials(Ship,true); // after Blueprint BeginPlay material setup
 
 	// Put the captain on the quarterdeck, looking forward.
 	if (APlayerController* PC = World->GetFirstPlayerController())
@@ -748,6 +769,7 @@ void ADCGameMode::Tick(float DeltaSeconds)
 
 	if (!bAutoShotTaken)
 	{
+		ReviewSailMaterials(Ship,false);
 		// -DCTenths names shots by tenths of a second and allows them 0.1 s apart (with -DCRunThrough), for checking flicker.
 		const bool bTenths = FParse::Param(FCommandLine::Get(), TEXT("DCTenths"));
 		const FString File = FPaths::ProjectSavedDir() / TEXT("Screenshots/Auto") / (bTenths ? FString::Printf(TEXT("shot_%05d.png"), FMath::RoundToInt(AutoShotTimes[AutoShotIndex] * 10.f)) : FString::Printf(TEXT("shot_%04d.png"), FMath::RoundToInt(AutoShotTimes[AutoShotIndex])));
