@@ -16,6 +16,7 @@ import numpy as np
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from generate_weathered_cliff_mesh import original_mesh, normalized_masks
+from generate_fractured_cliff_outcrop import validate_crop
 
 
 def sha(path):
@@ -44,6 +45,20 @@ def main():
     patch_meta = json.loads(str(patch['metadata_json']))
     if patch_meta['source_sha256'] != sha(args.source):
         raise ValueError('Patch belongs to a different immutable massif')
+    crop = patch_meta.get('crop', dict(row=89,col=64,width_m=72.,depth_m=40.,edge_guard_m=4.))
+    row,col = int(crop['row']),int(crop['col'])
+    width,depth = float(crop['width_m']),float(crop['depth_m'])
+    spacing = float(patch_meta.get('authoring_surface_spacing_m', .5))
+    cell = float(source['cell_size_m'])
+    if not np.isfinite([width,depth,spacing,cell]).all() or min(width,depth,spacing,cell)<=0:
+        raise ValueError('Crop and spacing must be finite physical distances')
+    if any(abs(value-round(value))>1.e-8 for value in (width/(2*cell),depth/(2*cell),cell/spacing)):
+        raise ValueError('Crop must align with source edges and subdivide source cells exactly')
+    validate_crop(source,row,col,width,depth,float(crop.get('edge_guard_m',4.)))
+    half_u,half_v = width/2.,depth/2.
+    expected_boundary = int(round(2*(width+depth)/spacing))
+    expected_removed = int(round(2*width*depth/(cell*cell)))
+    expected_seam = int(round(2*(width+depth)/cell))
     vertices, triangles, grid_triangles, grid_world = original_mesh(source)
     grid_used = np.unique(grid_triangles)
     mask_grid, normalization = normalized_masks(source)
@@ -52,6 +67,10 @@ def main():
     patch_triangles = patch['triangles'].astype(np.int64)
     origin = patch['frame_origin_world_m']
     basis = np.column_stack((patch['basis_u_world'],patch['basis_v_world'],patch['basis_z_world']))
+    expected_origin = np.r_[source['world_xy_m'][row,col],source['height_m'][row,col]]
+    expected_basis = np.column_stack((source['basis_u_world'],source['basis_v_world'],source['basis_up_world']))
+    if not np.allclose(origin,expected_origin,atol=1.e-8,rtol=0) or not np.array_equal(basis,expected_basis):
+        raise ValueError('Patch frame does not match its declared original-source crop')
     local = (vertices-origin)@basis
     patch_local = (patch_vertices-origin)@basis
     tolerance = 1.e-5
@@ -59,17 +78,17 @@ def main():
     if np.any(pc > 2) or np.any((pc == 2)&(po != 0)):
         raise ValueError('Patch is not consistently wound edge-manifold')
     patch_boundary = np.unique(pe[pc == 1])
-    if len(patch_boundary) != 448:
-        raise ValueError('Expected the exact0.5m boundary of the72x40m crop')
-    on_crop = (np.isclose(np.abs(patch_local[:,0]),36.,atol=tolerance,rtol=0)
-               | np.isclose(np.abs(patch_local[:,1]),20.,atol=tolerance,rtol=0))
+    if len(patch_boundary) != expected_boundary:
+        raise ValueError(f'Expected{expected_boundary} vertices on the declared physical crop boundary')
+    on_crop = (np.isclose(np.abs(patch_local[:,0]),half_u,atol=tolerance,rtol=0)
+               | np.isclose(np.abs(patch_local[:,1]),half_v,atol=tolerance,rtol=0))
     if not on_crop[patch_boundary].all():
         raise ValueError('Patch has an interior hole or an unexpected boundary')
     xyz = local[triangles]
-    inside = ((xyz[:,:,0] >= -36.-1.e-8)&(xyz[:,:,0] <=36.+1.e-8)
-              &(xyz[:,:,1] >= -20.-1.e-8)&(xyz[:,:,1] <=20.+1.e-8)).all(axis=1)
-    if int(inside.sum()) != 1440:
-        raise ValueError(f'Expected1440 exact2m crop triangles, got{inside.sum()}')
+    inside = ((xyz[:,:,0] >= -half_u-1.e-8)&(xyz[:,:,0] <=half_u+1.e-8)
+              &(xyz[:,:,1] >= -half_v-1.e-8)&(xyz[:,:,1] <=half_v+1.e-8)).all(axis=1)
+    if int(inside.sum()) != expected_removed:
+        raise ValueError(f'Expected{expected_removed} exact source crop triangles, got{inside.sum()}')
     outside_ids = np.flatnonzero(~inside)
     outside = triangles[outside_ids]
     seam = {}
@@ -77,13 +96,13 @@ def main():
         for k in range(3):
             a,b=int(face[k]),int(face[(k+1)%3])
             pa,pb=local[a],local[b]
-            for axis, half, other in ((0,36.,1),(1,20.,0)):
+            for axis, half, other in ((0,half_u,1),(1,half_v,0)):
                 if (abs(abs(pa[axis])-half)<1.e-8 and abs(pb[axis]-pa[axis])<1.e-8
-                    and max(abs(pa[other]),abs(pb[other])) <= (20. if other==1 else 36.)+1.e-8):
+                    and max(abs(pa[other]),abs(pb[other])) <= (half_v if other==1 else half_u)+1.e-8):
                     seam[tuple(sorted((a,b)))] = dict(face=int(face_id),points=[])
                     break
-    if len(seam) !=112:
-        raise ValueError(f'Expected112 source seam edges, got{len(seam)}')
+    if len(seam) !=expected_seam:
+        raise ValueError(f'Expected{expected_seam} source seam edges, got{len(seam)}')
     edge_ids=np.asarray(list(seam),dtype=np.int64)
     a3=vertices[edge_ids[:,0]]; delta=vertices[edge_ids[:,1]]-a3
     length2=np.einsum('ij,ij->i',delta,delta)
@@ -161,7 +180,7 @@ def main():
         raise ValueError('Outside original positions or masks changed')
     report=dict(schema='directorscut.single_outcrop_context.v1',source_path=str(args.source.resolve()),source_sha256=sha(args.source),
                 patch_path=str(args.patch.resolve()),patch_sha256=sha(args.patch),source_kind='single_original3d_outcrop_in_unchanged_massif',
-                crop=dict(row=89,col=64,width_m=72.,depth_m=40.),removed_source_triangles=int(inside.sum()),
+                crop=dict(row=row,col=col,width_m=width,depth_m=depth),removed_source_triangles=int(inside.sum()),
                 adjacent_outside_triangles_split=split_faces,new_interpolated_seam_vertices=seam_added,
                 maximum_boundary_snap_m=actual_boundary_snap,maximum_edge_projection_residual_m=max_snap,
                 join_tolerance_m=tolerance,vertices=len(out_vertices),triangles=len(out_faces),

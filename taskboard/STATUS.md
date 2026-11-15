@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 15 Nov Codex: larger cliff exposure rejected; assembly cause identified
+
+- Generated one physical 160 x 96 m original-3D exposure and joined it into the measured 500 m sector. Final geometry checks pass after removing two verified hidden cavity shells, but actual close/context/1.5 km renders still show a rubble patch within soft terrain. [Actual images, diagnosis and next experiment](CRATER-REGIONAL-CLIFF-15NOV.md).
+- The current assembler excavates a window and adds cluster hulls back into it, which preserves the scar-like appearance even at larger scale. Next test continuous bedrock with shared cell boundaries, limited fracture openings and coherent whole-face massing; avoid repeating the failed saw-slot or giant-prism trials. Offline tooling only, no arena rollout or new Unreal build. Water/falls, sky/light, boss and gameplay remain unchanged.
+
 ## 15 Nov Codex: full-height cliff trials rejected; installed stone material proof
 
 - Diagnosed soft curtains: the old smooth fit created most of the cliff drop. New full-height structural seeds preserve all constraints but still look like engineered walls in actual near/far clay; both rejected, no terrain import. [Diagnosis, actual captures and next representation](CRATER-STRUCTURE-AND-ROCK-15NOV.md).

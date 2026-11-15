@@ -43,6 +43,7 @@ constexpr bool Connected = @CONNECTED@;
 constexpr bool SourceSkin = @SOURCE_SKIN@;
 constexpr bool PlanesOnly = @PLANES_ONLY@;
 constexpr double Neighbor = @NEIGHBOR@;
+constexpr int SkinFractureCount = @SKIN_FRACTURES@;
 
 static Vector3 ToMetres(const Vector3& p) { return Vector3(p.x, -p.z, p.y) * Scale; }
 static void Vec(std::ostream& s, const Vector3& p) { s << '[' << p.x << ',' << p.y << ',' << p.z << ']'; }
@@ -68,7 +69,7 @@ static FractureSet SkinFractures(const PointSet3& points,const Box& box) {
     FractureSet result;
     const Vector3 canonical[3]={Vector3(.91,.24,.34),Vector3(-.30,.36,.88),Vector3(.48,.80,-.36)};
     const double area=box.Size().x*box.Size().y*Scale*Scale;
-    const int count=std::min(80,std::max(18,int(std::sqrt(area)/1.7)));
+    const int count=SkinFractureCount>0?SkinFractureCount:std::min(80,std::max(18,int(std::sqrt(area)/1.7)));
     for(int i=0;i<count;++i) {
         const int family=i%3;
         Vector3 n=canonical[family]+Vector3(Random::Uniform(-.10,.10),Random::Uniform(-.10,.10),Random::Uniform(-.10,.10));
@@ -234,6 +235,7 @@ def main() -> None:
     parser.add_argument("--planes-only", action="store_true")
     parser.add_argument("--skin-neighbor-m", type=float, default=2.6)
     parser.add_argument("--skin-max-block-m", type=float, default=9.0)
+    parser.add_argument("--skin-fractures", type=int, default=0, help="Finite shared-family discs; zero retains previous density rule")
     parser.add_argument("--seed", type=int, default=1234)
     parser.add_argument("--metres-per-unit", type=float, default=1.5)
     parser.add_argument("--smoothing-m", type=float, default=.05)
@@ -248,6 +250,8 @@ def main() -> None:
         parser.error("Proof bounds: scale (0,2], smoothing (0,.25] m, resolution64..256")
     if not (0 < args.skin_neighbor_m <= 5 and args.skin_neighbor_m < args.skin_max_block_m <= 24):
         parser.error("Skin proof needs positive neighbor<=5m and neighbor<max-block<=24m")
+    if args.skin_fractures != 0 and not 18 <= args.skin_fractures <= 240:
+        parser.error('Explicit skin fracture count must be18..240, or0 for previous automatic rule')
     upstream, output = args.upstream.resolve(), args.output.resolve()
     project = Path(__file__).resolve().parents[1]
     if not output.is_relative_to(project / "Saved"):
@@ -319,6 +323,7 @@ def main() -> None:
     return mesh;''')
     blocks.write_text(code)
     harness = HARNESS.replace('@SCALE@', repr(args.metres_per_unit)).replace('@SEED@', str(args.seed)).replace('@RESOLUTION@', str(args.resolution)).replace('@CONNECTED@', 'true' if args.mode == 'connected-face' else 'false').replace('@SOURCE_SKIN@', 'true' if source_samples else 'false').replace('@NEIGHBOR@', repr(neighbor)).replace('@PLANES_ONLY@', 'true' if args.planes_only else 'false')
+    harness = harness.replace('@SKIN_FRACTURES@', str(args.skin_fractures))
     (source / "Code/Source/main.cpp").write_text(harness)
     started = time.perf_counter()
     with (output / "build.log").open("w") as log:
@@ -352,6 +357,7 @@ def main() -> None:
     (run / 'block_planes_m.json').write_text(json.dumps(block_export,separators=(',',':'))+'\n')
     metadata.update({"schema": "implicit_cliff_reference_v1", "source_kind": "physical_implicit_blocks_offline_proof", "upstream_revision": UPSTREAM_REV, "upstream_url": "https://github.com/aparis69/Rock-fracturing", "adapter_sha256": sha(Path(__file__)), "mode": args.mode, "seed": args.seed, "metres_per_source_unit": args.metres_per_unit, "units": "metres", "up_axis": "Z", "front_direction": [0,1,0], "source_to_output_rotation_rows": [[1,0,0],[0,0,-1],[0,1,0]], "resolution": [args.resolution]*3, "smoothing_m": args.smoothing_m, "image_warp": False, "image_loaded": False, "nominal_input_domain_width_m": 20*args.metres_per_unit, "backing_source_box": [[-10.1,-10.1,1],[10.1,10.1,4]] if args.mode == "connected-face" else None, "cluster_rear_projection_source_z": 2.0 if args.mode == "connected-face" else None, "normal_method": "area-weighted recomputation after full physical coordinate conversion; winding verified against signed field", "mesh_sha256": sha(run / "sample.obj") if not args.planes_only else None, "structural_seed_sha256": sha(run / "structural_seed.json"), "build_and_run_seconds": time.perf_counter()-started, "arena_constraints_integrated": False, "source_snapshot": str(source), "msbuild": str(args.msbuild), "derived_changes": ["12 finite isotropic unit-normal fracture discs of6..13.5m radius at default scale; upstream zero-normal stub unused", "direct convex-hull input-point block bounds, bypassing broken Matrix4/Plane::ConvexPoints", "physical coordinate mapping and normal recomputation", "zero image warp and no image load", "low physical smoothing", "connected mode rear-extends hulls into one shared backing"]})
     metadata['block_planes_sha256'] = sha(run / 'block_planes_m.json')
+    metadata['requested_skin_fractures'] = args.skin_fractures
     metadata['mesh_extracted'] = not args.planes_only
     if args.planes_only:
         metadata['resolution'] = None
