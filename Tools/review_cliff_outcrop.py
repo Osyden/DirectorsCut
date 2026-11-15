@@ -48,7 +48,7 @@ def load_mesh(path):
             "metadata": json.loads(str(data.get("metadata_json", "{}")))}
 
 
-def topology_audit(mesh):
+def topology_audit(mesh, surface_mode=False):
     vertices, triangles = mesh["chart"], mesh["triangles"]
     xyz = vertices[triangles]
     cross = np.cross(xyz[:, 1]-xyz[:, 0], xyz[:, 2]-xyz[:, 0])
@@ -56,6 +56,7 @@ def topology_audit(mesh):
     normals = cross/np.maximum(twice_area[:, None], 1.e-30)
     directed = np.concatenate((triangles[:, [0, 1]], triangles[:, [1, 2]], triangles[:, [2, 0]]))
     edges, inverse, counts = np.unique(np.sort(directed, axis=1), axis=0, return_inverse=True, return_counts=True)
+    mesh["boundary_edges"] = edges[counts == 1]
     orientations = np.bincount(inverse, weights=np.where(directed[:, 0] < directed[:, 1], 1, -1))
     degenerate = int(np.count_nonzero(twice_area <= 1.e-10))
     duplicates = len(triangles)-len(np.unique(np.sort(triangles, axis=1), axis=0))
@@ -84,7 +85,8 @@ def topology_audit(mesh):
               "nonmanifold_edges": int(np.count_nonzero(counts > 2)),
               "inconsistent_winding_edges": int(np.count_nonzero((counts == 2) & (orientations != 0))),
               "degenerate_triangles": degenerate, "duplicate_triangles": duplicates,
-              "signed_volume_m3": volume, "surface_area_m2": float(twice_area.sum()*.5),
+              "signed_volume_m3": None if surface_mode else volume, "surface_area_m2": float(twice_area.sum()*.5),
+              "expected_topology": "open_surface" if surface_mode else "closed_solid",
               "topology_limitations": "Edge-manifold/winding and signed-volume checks only; no exhaustive self-intersection or nested-shell containment test.",
               "front_downward_area_m2": float(twice_area[downward_front].sum()*.5),
               "front_area_m2": float(twice_area[front].sum()*.5),
@@ -94,6 +96,11 @@ def topology_audit(mesh):
               "edge_length_m_p0_p5_p50_p95_p100": np.percentile(edge_lengths, [0, 5, 50, 95, 100]).tolist()}
     report["closed_consistently_oriented"] = not any(report[k] for k in (
         "boundary_edges", "nonmanifold_edges", "inconsistent_winding_edges", "degenerate_triangles", "duplicate_triangles")) and volume > 0
+    boundary_degrees = np.bincount(mesh["boundary_edges"].ravel(), minlength=len(vertices))
+    report["boundary_vertices_not_degree_two"] = int(np.count_nonzero((boundary_degrees != 0) & (boundary_degrees != 2)))
+    report["valid_open_manifold_surface"] = report["boundary_edges"] > 0 and components == 1 and not any(report[k] for k in (
+        "nonmanifold_edges", "inconsistent_winding_edges", "degenerate_triangles", "duplicate_triangles", "unused_vertices", "boundary_vertices_not_degree_two"))
+    report["orientation_limitation"] = "Consistent adjacent winding is tested; open-surface outward orientation and game support require separate source checks."
     return report
 
 
@@ -131,6 +138,37 @@ def crop_boundary_audit(baseline, candidate, tolerance=1.e-5):
             "limitation": "Rectangular XY crop-plane vertex sets only; not a proof of full game-sector seam or temple support."}
 
 
+def surface_boundary_audit(baseline, candidate, tolerance=1.e-5):
+    sets = []
+    for mesh in (baseline, candidate):
+        positions = np.rint(mesh["chart"]/tolerance).astype(np.int64)
+        sets.append({tuple(sorted((tuple(positions[a]), tuple(positions[b])))) for a, b in mesh["boundary_edges"]})
+    return {"tolerance_m": tolerance, "baseline_edges": len(sets[0]), "candidate_edges": len(sets[1]),
+            "missing_quantized_edges": len(sets[0]-sets[1]), "added_quantized_edges": len(sets[1]-sets[0]),
+            "boundary_edge_geometry_preserved": sets[0] == sets[1],
+            "limitation": "Compares every actual open boundary edge, including irregular tile perimeter; does not establish temple support."}
+
+
+def surface_views(baseline, candidate, close_center=None):
+    points = np.concatenate((baseline["chart"], candidate["chart"]))
+    low, high = points.min(axis=0), points.max(axis=0)
+    center = (low+high)*.5
+    width = float(high[0]-low[0])
+    focus = np.asarray(close_center) if close_center is not None else center
+    far = center+np.array([0., -1500., 0.])
+    far[2] = low[2]+12.
+    return {
+        "wall": {"location": (center+[.08*width, -2*width, .12*width]).tolist(), "target": center.tolist(), "width": width*1.25},
+        "deck": {"location": [center[0]+.14*width, low[1]-width, low[2]+12.], "target": center.tolist(), "width": width*1.30},
+        "oblique": {"location": (center+[.9*width, -1.8*width, .85*width]).tolist(), "target": center.tolist(), "width": width*1.80},
+        "close_wall": {"location": (focus+[0., -180., 5.]).tolist(), "target": focus.tolist(), "width": 110.},
+        "close_oblique": {"location": (focus+[110., -150., 85.]).tolist(), "target": focus.tolist(), "width": 135.},
+        "far_crater": {"location": far.tolist(), "target": center.tolist(), "width": width*1.8,
+                       "perspective_lens_mm": 35., "sensor_width_mm": 36., "horizontal_range_m": 1500.,
+                       "context": "Isolated sector, 1500m horizontal range. Reference bar100m and posts10m; no surrounding crater or atmosphere implied."},
+    }
+
+
 def render_pair(baseline, candidate, output, cameras, samples, mode, angle):
     import bpy
     from mathutils import Vector
@@ -158,11 +196,31 @@ def render_pair(baseline, candidate, output, cameras, samples, mode, angle):
         objects[stage] = obj
     for name, view in cameras.items():
         camera = camera_at(scene, view["location"], view["target"], view["width"])
+        perspective = "perspective_lens_mm" in view
+        markers = []
+        if perspective:
+            camera.data.type = "PERSP"
+            camera.data.lens = view["perspective_lens_mm"]
+            camera.data.sensor_width = view["sensor_width_mm"]
+            # label_camera draws text 5m from the camera. Match that plane's
+            # physical width; changing this does not alter camera FOV.
+            camera.data.ortho_scale = 5.*camera.data.sensor_width/camera.data.lens
+            low = baseline["chart"].min(axis=0)
+            start = np.array([low[0], low[1]-20., low[2]+2.])
+            for offset, dimensions in (([50, 0, 0], [100, 1., 1.]), ([0, 0, 5], [1., 1., 10.]), ([100, 0, 5], [1., 1., 10.])):
+                bpy.ops.mesh.primitive_cube_add(size=1., location=start+offset)
+                marker = bpy.context.object
+                marker.name = "Metric reference only"
+                marker.dimensions = dimensions
+                marker.data.materials.append(material)
+                markers.append(marker)
         for stage, data in (("baseline", baseline), ("fractured", candidate)):
             objects[stage].hide_render = False
             dims = np.ptp(data["chart"], axis=0)
-            label_camera(scene, camera, f"TRUE 3D OUTCROP | {stage.upper()} | {name}",
-                         f"Physical bounds {dims[0]:.1f} x {dims[1]:.1f} x {dims[2]:.1f} m | identical camera and raking light",
+            title = "ORIGINAL TRIANGLE SURFACE" if data.get("surface_mode") else "TRUE 3D OUTCROP"
+            label_camera(scene, camera, f"{title} | {stage.upper()} | {name}",
+                         (f"Range {view['horizontal_range_m']:.0f}m | 35mm / 36mm sensor | bar100m, posts10m" if perspective else
+                          f"Physical bounds {dims[0]:.1f} x {dims[1]:.1f} x {dims[2]:.1f} m | identical camera and raking light"),
                          f"Source {data['sha256'][:10]} | normals {mode}"+(f" {angle:g}deg" if mode=="angle" else "")+
                          " | no projection, displacement or geometry smoothing")
             scene.render.filepath = str(output/f"{name}_{stage}.png")
@@ -171,6 +229,8 @@ def render_pair(baseline, candidate, output, cameras, samples, mode, angle):
                 bpy.data.objects.remove(child, do_unlink=True)
             objects[stage].hide_render = True
         bpy.data.objects.remove(camera, do_unlink=True)
+        for marker in markers:
+            bpy.data.objects.remove(marker, do_unlink=True)
     return normal_reports
 
 
@@ -183,6 +243,9 @@ def main():
     parser.add_argument("--normal-mode", choices=("flat", "angle"), default="flat")
     parser.add_argument("--normal-angle-deg", type=float, default=35.)
     parser.add_argument("--camera-manifest", type=Path)
+    parser.add_argument("--open-surface", action="store_true", help="Audit an open terrain surface without making a closed-solid/volume claim")
+    parser.add_argument("--close-center", type=float, nargs=3, metavar=("X", "Y", "Z"), help="Close focus in the shared source chart, metres")
+    parser.add_argument("--views", nargs="+", help="Render selected named cameras only")
     parser.add_argument("--audit-only", action="store_true")
     args = parser.parse_args(sys.argv[sys.argv.index("--")+1:] if "--" in sys.argv else None)
     output = args.output.resolve()
@@ -198,11 +261,20 @@ def main():
               "frame_origin_world_m": baseline["origin"].tolist(), "chart_basis_columns": baseline["basis"].tolist(),
               "geometry_operation": "Rigid translation/rotation only; no XY projection or repair", "runtime_integrated": False}
     for stage, data in (("baseline", baseline), ("fractured", candidate)):
-        report["source"][stage] = {"path": data["path"], "sha256": data["sha256"], "metadata": data["metadata"], "audit": topology_audit(data)}
-    cameras = json.loads(args.camera_manifest.read_text())["cameras"] if args.camera_manifest else matched_views(baseline, candidate)
+        data["surface_mode"] = args.open_surface
+        report["source"][stage] = {"path": data["path"], "sha256": data["sha256"], "metadata": data["metadata"], "audit": topology_audit(data, args.open_surface)}
+    cameras = json.loads(args.camera_manifest.read_text())["cameras"] if args.camera_manifest else (
+        surface_views(baseline, candidate, args.close_center) if args.open_surface else matched_views(baseline, candidate))
+    if args.views:
+        if set(args.views)-set(cameras):
+            parser.error("Unknown camera name")
+        cameras = {name: cameras[name] for name in args.views}
     report["cameras"] = cameras
-    report["crop_boundary"] = crop_boundary_audit(baseline, candidate)
-    report["audit_passed"] = all(s["audit"]["closed_consistently_oriented"] for s in report["source"].values())
+    report["crop_boundary"] = surface_boundary_audit(baseline, candidate) if args.open_surface else crop_boundary_audit(baseline, candidate)
+    pass_key = "valid_open_manifold_surface" if args.open_surface else "closed_consistently_oriented"
+    report["audit_passed"] = all(s["audit"][pass_key] for s in report["source"].values())
+    if args.open_surface:
+        report["audit_passed"] &= report["crop_boundary"]["boundary_edge_geometry_preserved"]
     # Invalid candidates may be rendered diagnostically, but never silently
     # repaired or certified. Their exact defects stay visible in the report.
     if not args.audit_only:
