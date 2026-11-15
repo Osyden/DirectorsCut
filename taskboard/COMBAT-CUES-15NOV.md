@@ -2,6 +2,8 @@
 
 Owner: cannons_helm, `codex/combat-cues`, based on main `1f4fac8`. Root owns the editor/build/GPU slot and the user is testing the frozen 18:33 package. No Unreal job was launched in this worktree.
 
+Root integration: source merged as f59edef and hall hook ec5815d. The integrated Editor target builds after disambiguating the geometry helper from Slate's FGeometry and renaming the visibility parameter that shadowed a scene-component member. NullRHI generation completed at18:47, producing M_CombatCue. Root reran 9,538 cue checks, 3,102 animation checks and 4,957 boss-policy checks successfully. Visual acceptance remains pending while the human plays the selected18:33 music package.
+
 ## Presentation
 
 `UDCCombatCueComponent` builds small depth-tested, collision-free meshes using a texture-free additive material. Hall charge cues are camera-facing amber exclamation marks with a thin broken sea-green/amber halo. The charge arc grows using the encounter's existing charge progress. Only the real charge state is visible; no permanent enemy markers. `tunnel_boss` owns and integrates the hall hook in `DCEarlyEncounters.*` alongside its animation fixes.

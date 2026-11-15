@@ -8,7 +8,7 @@
 
 namespace
 {
-struct FGeometry
+struct FDCCombatCueGeometry
 {
     TArray<FVector> V;
     TArray<int32> I;
@@ -102,14 +102,14 @@ void UDCCombatCueComponent::Present(const FVector& Position,const FQuat& Rotatio
     SetVisibility(true);
 }
 
-void UDCCombatCueComponent::ShowAlert(const FVector& Position,float Radius,float Progress,float Age,bool bVisible)
+void UDCCombatCueComponent::ShowAlert(const FVector& Position,float Radius,float Progress,float Age,bool bShowCue)
 {
-    if(!bVisible) { SetVisibility(false); return; }
+    if(!bShowCue) { SetVisibility(false); return; }
     const APlayerController* PC=GetWorld()?GetWorld()->GetFirstPlayerController():nullptr;
     if(!PC || !PC->PlayerCameraManager) { SetVisibility(false); return; }
     const auto Look=DCCombatCuePolicy::Look(Progress,Age);
     Radius=FMath::Clamp(Radius,100.f,450.f)*Look.RadiusScale;
-    FGeometry G;
+    FDCCombatCueGeometry G;
     const FLinearColor Gold(.85f,.49f,.15f,.85f), Muted(.30f,.45f,.40f,.32f);
     G.Arc(Radius,.07f*Radius,0,UE_TWO_PI,0,Muted);
     G.Arc(Radius,.055f*Radius,UE_HALF_PI,UE_HALF_PI+UE_TWO_PI*Look.ArcFraction,1,Gold);
@@ -124,12 +124,12 @@ void UDCCombatCueComponent::ShowAlert(const FVector& Position,float Radius,float
     Present(Position,Facing,G.V,G.I,G.C,Look.Glow);
 }
 
-void UDCCombatCueComponent::ShowWeakPoint(const FVector& Position,const FVector& Axis,float Radius,float Progress,float Age,float HitFlash,bool bVisible)
+void UDCCombatCueComponent::ShowWeakPoint(const FVector& Position,const FVector& Axis,float Radius,float Progress,float Age,float HitFlash,bool bShowCue)
 {
-    if(!bVisible || Axis.IsNearlyZero()) { SetVisibility(false); return; }
+    if(!bShowCue || Axis.IsNearlyZero()) { SetVisibility(false); return; }
     const auto Look=DCCombatCuePolicy::Look(Progress,Age,HitFlash);
     Radius=FMath::Clamp(Radius,140.f,260.f)*Look.RadiusScale;
-    FGeometry G;
+    FDCCombatCueGeometry G;
     const FLinearColor Gold=FMath::Lerp(FLinearColor(.86f,.54f,.18f,.8f),FLinearColor(1.f,.86f,.55f,.9f),FMath::Clamp(HitFlash,0.f,1.f));
     // Four broken gold bands closely hug the existing vulnerable joint.
     // Narrow sea-green rims separate the exposed band from dark wet flesh.

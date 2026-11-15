@@ -31,7 +31,7 @@ struct FMath {
 tests=r'''
 int Checks=0;
 void Check(bool b,const char* Message){++Checks;if(!b){std::printf("FAIL: %s\n",Message);std::exit(1);}}
-void MeshCheck(const FGeometry& G){
+void MeshCheck(const FDCCombatCueGeometry& G){
  Check(G.V.Num()==G.C.Num()&&G.I.Num()%3==0,"matching vertex/color and triangle counts");
  for(int n:G.I)Check(n>=0&&n<G.V.Num(),"triangle references actual vertex");
  for(auto c:G.C)Check(c.A>=0&&c.A<=1,"opacity bounded");
@@ -63,10 +63,10 @@ int main(){
   Check(look.Glow>=.62f&&look.Glow<=1.281f&&look.RadiusScale>=1&&look.RadiusScale<=1.026f,"subtle bounded glow and breathing (no strobe or size jump)");
  }
  for(float arc:{.18f,.5f,.86f}){
-  FGeometry G;G.Arc(220,15,0,6.283185f*arc,0,FLinearColor(.85,.49,.15,.85));MeshCheck(G);
+  FDCCombatCueGeometry G;G.Arc(220,15,0,6.283185f*arc,0,FLinearColor(.85,.49,.15,.85));MeshCheck(G);
   Check(G.C[0].A==0&&G.C[1].A>0&&G.C[2].A==0,"halo edges fade on both sides");
  }
- FGeometry Band;Band.Band(180,58,.1f,1.47f,FLinearColor(.86,.54,.18,.8));MeshCheck(Band);
+ FDCCombatCueGeometry Band;Band.Band(180,58,.1f,1.47f,FLinearColor(.86,.54,.18,.8));MeshCheck(Band);
  Check(Band.C[0].A==0&&Band.C[1].A>0&&Band.C[2].A==0,"joint band has soft axial edges");
  std::printf("PASS: %d cue geometry, bounded appearance and authoritative lifecycle checks\n",Checks);
 }
