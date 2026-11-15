@@ -7,3 +7,9 @@ Owners: cannons_helm handles three-hit regular creatures, independent25percent i
 Acceptance must cover ordinary navigation with a clear passing lane, waterline grounding/contact effects, real collision plus continued separation, exact damage/critical probabilities, feasible Kraken interrupt windows, and report admission versus continuation without regressing command replies or scene teardown. Reuse existing cooked assets where possible. Preserve current portable runtime staging, selected Gemma/Phonon payload and the hold-V prompt.
 
 The Butler chat is `01a1dfd8-f555-7eb3-8fe3-5534c1b3e49b`, uploading `jam-20261115-2310` to `onibox/atlantean-odyssey:windows`. Wait for confirmed upload completion before compiling/packaging the next candidate. This chat is not independently uploading another build.
+
+Source integration complete:4ea8be5 speech continuation, d65a56c water ruins, d0db445 lookout continuation when steering clear, dab56f4 six-case native speech review, b88d83d combat balance and beam sweep. Shared-file conflict resolved by deleting only the redundant short beam-stage sentence; all voice GroupId/continuation callbacks retained.
+
+User additionally requested a stronger linear statue laser with multiple fires. It now sweeps between surveyed same-level deck points, with larger eye beams/contact glow, two spaced ignition attempts under MaxFires2, and exactly one1.2-hull damage event. No new assets. Runtime validation remains pending upload completion.
+
+Combined CPU reruns pass:43,427 creature damage,297,082 fog/beam,56,775 boss,33,640 ruins and134 warning/continuation checks. Native and package runners are prepared in Saved/ReviewPostUpload.ps1, Saved/ReviewPostUploadCommands.ps1 and Saved/PackagePostUpload.ps1; the scene runner refuses to start until root writes an upload-complete evidence marker. That marker must only be written after actual Butler completion is confirmed. Main source integration is not native acceptance.
