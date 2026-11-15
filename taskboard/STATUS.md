@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 15 Nov Codex: revised three-attack boss source; Kraken audition pending
+
+Isolated `codex/boss-caldera-15nov` replaces the superseded spout/add prototype with committed tentacle obstacles, interruptible permanent-limb slams, and cannon-gated mouth charges using the fog giant's fireball helper. Fixed finale and cumulative performance scoring remain. The revised CPU replay passes 4,951 checks; current source still needs a fresh Unreal build and the requested Kraken animation/cut audition. The earlier native pass belongs to the superseded prototype, not this change. [Exact source scope, dependencies, checks and next native window](BOSS-CALDERA-15NOV.md).
+
+No main/scene source edits or merge; crew UI/voice and parent environment remain owned elsewhere. Plugin build outputs are isolated after a shared-binary lock was found. A five-minute engine window has been requested; no new boss native job is running.
+
 ## 15 Nov 11:45 Codex: simplified caldera lake, supported inlet and fog exit
 
 The owner's revised layout is implemented on `codex/maelstrom-saturday`: one level lake using DRW waves, one foaming descending inlet, a steady level ship orbit, and the selected maelstrom sky. Removed the spiral banks and retired perimeter falls. The inlet now has a continuous rock base and 68 bank boulders. The complete cliff toe extends below the lake, closing the open undersides exposed by the lower water level. Light shoreline mist and heavier drifting inlet mist gather after descent. Boss death is followed by local fog covering the scene swap, then clearing into open sea; no physical exit channel is required.

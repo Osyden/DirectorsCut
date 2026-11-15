@@ -1,4 +1,5 @@
 #include "DCTroubles.h"
+#include "DCMaelstrom.h"
 #include "DCRideDirector.h"
 #include "DCTreadmill.h"
 #include "DCCrew.h"
@@ -106,6 +107,14 @@ bool ADCTroubles::ExtinguishNear(const FVector& Location, float Reach)
 	return false;
 }
 
+void ADCTroubles::ResetEncounterTroubles()
+{
+	for (FDCFire& F : Fires) { if (AActor* V = F.Visual.Get()) { V->Destroy(); } }
+	Fires.Reset();
+	bRiggingLoose = false; RiggingProgress = 0.f;
+	if (auto* T = ADCTreadmill::Get(this)) { T->SteerAuthority = 1.f; }
+}
+
 void ADCTroubles::TearRigging()
 {
 	if (bRiggingLoose) { return; }
@@ -163,7 +172,8 @@ void ADCTroubles::Tick(float DeltaSeconds)
 	}
 
 	// Rigging tears in the slide, the breach and the maelstrom.
-	if (Phase == EDCPhase::Slide || Phase == EDCPhase::Breach || Phase == EDCPhase::Maelstrom)
+	if ((Phase == EDCPhase::Slide || Phase == EDCPhase::Breach || Phase == EDCPhase::Maelstrom)
+        && !(ADCMaelstrom::Get(this) && ADCMaelstrom::Get(this)->IsActive()))
 	{
 		RiggingTimer -= Dt;
 		if (RiggingTimer <= 0.f)
@@ -186,7 +196,7 @@ void ADCTroubles::Tick(float DeltaSeconds)
 	// Fires burn the ship and animate.
 	for (FDCFire& F : Fires)
 	{
-		F.Age += DeltaSeconds;
+		F.Age += Dt;
 		Director->DamageShip(FireDamagePerSecond * Dt, true);
 		const float Grow = FMath::Clamp(F.Age / 3.f, 0.25f, 1.f);
 		if (UPointLightComponent* L = F.Light.Get())

@@ -781,11 +781,11 @@ void ADCMaelstrom::Tick(float DeltaSeconds)
 	UpdateContacts(DeltaSeconds);
 	static const bool SceneReview=FParse::Param(FCommandLine::Get(),TEXT("DCSceneReview"));
 	if (Boss) { Boss->UpdateEncounter(Elapsed, GetArenaTransform(), Radius, Depth, bActive && !SceneReview); }
-	if (bActive && !SceneReview) { UpdateTwisters(DeltaSeconds); UpdateBoulders(DeltaSeconds); UpdateSpawnlings(DeltaSeconds); UpdatePlume(); }
+	// Caldera combat is owned by DCLeviathan/DCBossCombat; keep legacy helpers dormant for merge isolation.
 	if (ADCAudio* Sound = Cast<ADCAudio>(UGameplayStatics::GetActorOfClass(GetWorld(), ADCAudio::StaticClass())))
 	{
 		// The wind rises as a spout comes on and while the plume stands.
-		float Roar = 0.f;
+		float Roar = Boss ? Boss->GetCombatRoar() : 0.f;
 		if (bActive)
 		{
 			for (const FTwister& T : Twisters) { Roar = FMath::Max(Roar, FMath::Clamp(1.f - FMath::Abs(T.Ahead) / 45000.f, 0.f, 1.f)); }
@@ -1685,7 +1685,8 @@ void ADCMaelstrom::UpdateView(float DeltaSeconds)
 		const float Offset = FMath::SmoothStep(-2.f, 5.f, Elapsed);
 		// Look through the opening before turning toward the abyss. Turning early
 		// filled the reveal with the tunnel's near sidewall instead of its exit.
-		const float Look = FMath::SmoothStep(4.f, 10.f, Elapsed);
+		// Release the reveal framing before combat so committed obstacles are visible ahead.
+		const float Look = FMath::SmoothStep(4.f, 10.f, Elapsed) * (1.f-FMath::SmoothStep(32.f,40.f,Elapsed));
 		const FVector DesiredWorld = Captain->GetActorLocation() + FVector(-20.f * Offset, -180.f * Offset, 64.f + 216.f * Offset);
 		Camera->SetWorldLocation(DesiredWorld);
 		// Compose towards the crater, accounting for the ship's downhill pitch.

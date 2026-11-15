@@ -2,6 +2,7 @@
 
 | Task | Status | Owner | Done when |
 | --- | --- | --- | --- |
+| Caldera boss fight | Three-attack source candidate; CPU replay passes; current build/Kraken audition pending | Codex, `codex/boss-caldera-15nov` | [Boss handoff](BOSS-CALDERA-15NOV.md). Own DCLeviathan and new boss files; narrow integration only. |
 | Complete-scene water banks and whitewater | Source checks passed; root owns engine review | Codex, `codex/complete-water` | [Water handoff](COMPLETE-WATER-15NOV.md); preserve steering corridor and shoreline. |
 | Complete crater waterfall contacts | Source and fitted bundle ready; root owns Unreal import/render | Codex, `codex/complete-falls` | [Source-triangle support and import handoff](COMPLETE-CRATER-FALLS-15NOV.md); new full-ring geometry, unequal cascades, contact foam and spray. |
 | Unique cliff surface material | Installed in local cliff demo; native comparisons captured | Codex, `codex/maelstrom-saturday` | [Surface pass, actual frames and remaining limits](CLIFF-SURFACE-15NOV.md); unique regional maps plus restrained scan detail normals; accepted geometry unchanged. |

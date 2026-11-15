@@ -47,6 +47,8 @@ public:
 	/** Amount is a fraction of the whole job; returns true when the repair is finished. */
 	bool RepairRigging(float Amount);
 	void TearRigging();
+	/** Clear transient trouble when replaying the boss clock or resolving its finale. */
+	void ResetEncounterTroubles();
 	float GetRiggingProgress() const { return RiggingProgress; }
 
 	UPROPERTY(EditAnywhere) int32 MaxFires = 2;
