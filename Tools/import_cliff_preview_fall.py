@@ -67,7 +67,7 @@ M=unreal.MaterialEditingLibrary
 NOISE=r'''
 struct FallField {
  float hash(float2 p) { return frac(sin(dot(p,float2(127.1,311.7)))*43758.5453); }
- float3 sample(float2 p) {
+ float3 evaluate(float2 p) {
   float2 i=floor(p),f=frac(p),u=f*f*(3-2*f),du=6*f*(1-f);
   float a=hash(i),b=hash(i+float2(1,0)),c=hash(i+float2(0,1)),d=hash(i+1);
   return float3(lerp(lerp(a,b,u.x),lerp(c,d,u.x),u.y),
@@ -111,9 +111,9 @@ def material(role):
     code=NOISE+f'''
 float across=UV.x*{width:.9g},along=1-UV.y;
 float2 p=float2(across,along-{speed:.9g}*T);
-float large=field.sample(p/float2(.75,3.7)).x;
-float small=field.sample(p/float2(.19,.63)+float2(17.3,4.9)).x;
-float stretch=field.sample(p/float2(.38,1.9)+float2(-8.2,13.7)).x;
+float large=field.evaluate(p/float2(.75,3.7)).x;
+float small=field.evaluate(p/float2(.19,.63)+float2(17.3,4.9)).x;
+float stretch=field.evaluate(p/float2(.38,1.9)+float2(-8.2,13.7)).x;
 float bubbles=smoothstep(.36,.73,.50*large+.30*small+.20*stretch);
 float edge=smoothstep(0,.10,UV.x)*(1-smoothstep(.90,1,UV.x));
 return float4(bubbles,large,small,edge);
@@ -136,7 +136,7 @@ return float4(bubbles,large,small,edge);
     output(custom(mask_code,unreal.CustomMaterialOutputType.CMOT_FLOAT1,{'Field':field}),unreal.MaterialProperty.MP_OPACITY_MASK)
     normal=custom(NOISE+f'''
 float2 p=float2(UV.x*{width:.9g},1-UV.y-{speed:.9g}*T)/float2(.38,1.9);
-float3 n=field.sample(p);
+float3 n=field.evaluate(p);
 return normalize(float3(-n.y*.22,n.z*.08,1));
 ''',unreal.CustomMaterialOutputType.CMOT_FLOAT3,{'UV':uv,'T':time})
     output(normal,unreal.MaterialProperty.MP_NORMAL)
