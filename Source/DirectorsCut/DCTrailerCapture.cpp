@@ -9,6 +9,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "EngineUtils.h"
 #include "Misc/App.h"
+#include "Misc/CoreDelegates.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
 #include "Misc/Paths.h"
@@ -114,5 +115,7 @@ static FDelegateHandle RegisterCapture()
     if (!FParse::Value(FCommandLine::Get(),TEXT("DCTrailer="),Capture.Mode)) return FDelegateHandle();
     return FWorldDelegates::OnWorldPostActorTick.AddStatic(+[](UWorld* W,ELevelTick Tick,float Delta){ Capture.Tick(W,Tick,Delta); });
 }
-static FDelegateHandle Handle=RegisterCapture();
+// Packaged monolithic binaries initialize C++ globals before the command line exists.
+// Defer flag inspection until engine startup; the world delegate remains absent in normal play.
+static FDelegateHandle InitHandle=FCoreDelegates::OnFEngineLoopInitComplete.AddStatic(+[](){ RegisterCapture(); });
 }
