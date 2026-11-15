@@ -28,6 +28,12 @@ public:
         FName Provider, TFunction<void(bool, double)> Sent);
     // Cancellation suppresses Sent. Busy remains true until native drain and GT cleanup.
     void Cancel();
+    // Native review only: fault admission requires -DCPhononLifecycleReview=Failure.
+    // The worker terminates only its own producer; a negative applied ID means the request was too late.
+    int32 RequestProducerFailureForReview();
+    void GetProducerReviewState(int32& Generation, int32& AppliedFaultId) const;
+    // Opaque worker-only receipt survives normal actor/world teardown without retaining a UObject.
+    TFunction<bool()> CaptureReloadDrainProbeForReview() const;
     void EndPlay(const EEndPlayReason::Type Reason) override;
     void BeginDestroy() override;
 

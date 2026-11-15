@@ -12,6 +12,8 @@
 #include "HAL/RunnableThread.h"
 #include "Misc/Base64.h"
 #include "Misc/CoreDelegates.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "Misc/Paths.h"
 #include "Misc/ScopeLock.h"
 #include "Serialization/JsonSerializer.h"
@@ -97,6 +99,8 @@ namespace DCPhononSpeechPrivate
         FACERuntimeModule* ACE = nullptr;
         TAtomic<bool> Ready{false}, Busy{false}, ShutdownRequested{false};
         TAtomic<int32> CancelId{0};
+        TAtomic<int32> ReviewFaultRequested{0}, ReviewFaultApplied{0}, ProducerGeneration{0};
+        bool bReviewFaultEnabled = false;
         TAtomic<uint64> ReuseAfterFrame{0};
         TQueue<FRequest, EQueueMode::Mpsc> Requests;
         TQueue<FLeasePtr, EQueueMode::Mpsc> Stops;
@@ -185,6 +189,7 @@ namespace DCPhononSpeechPrivate
             {
                 int32 Rate = 0;
                 if (Ready.Load() || Active.Id || !Integer(Object, TEXT("sample_rate"), Rate) || Rate != SampleRate) { return false; }
+                ProducerGeneration.IncrementExchange();
                 Ready.Store(true);
                 UE_LOG(LogDCPhononSpeech, Display, TEXT("Phonon local CPU producer ready at %d Hz"), Rate);
                 return true;
@@ -385,6 +390,19 @@ namespace DCPhononSpeechPrivate
                 if (bUnavailable) { FPlatformProcess::SleepNoStats(.01f); continue; }
                 FRequest Request;
                 if (!Active.Id && Requests.Dequeue(Request)) { Begin(MoveTemp(Request)); }
+                const int32 FaultId = ReviewFaultRequested.Exchange(0);
+                if (FaultId > 0)
+                {
+                    if (bReviewFaultEnabled && Active.Id == FaultId && Process.IsValid() && FPlatformProcess::IsProcRunning(Process))
+                    {
+                        // Exercise the ordinary process-death path below, never a synthetic success/failure callback.
+                        // This handle was created by this worker; no PID search or unrelated process termination.
+                        FPlatformProcess::TerminateProc(Process, false);
+                        ReviewFaultApplied.Store(FaultId);
+                        UE_LOG(LogDCPhononSpeech, Display, TEXT("PHONON_REVIEW_PRODUCER_FAULT request=%d generation=%d"), FaultId, ProducerGeneration.Load());
+                    }
+                    else { ReviewFaultApplied.Store(-FaultId); }
+                }
                 const bool bAlive = FPlatformProcess::IsProcRunning(Process);
                 if (!bAlive || !ReadOutput())
                 {
@@ -587,6 +605,9 @@ bool UDCPhononSpeech::Initialize(const FString& PythonPath, const FString& Scrip
     Worker->Script = FPaths::ConvertRelativePathToFull(ScriptPath);
     Worker->Model = FPaths::ConvertRelativePathToFull(ModelDirectory);
     Worker->Voices = FPaths::ConvertRelativePathToFull(VoiceManifestPath);
+    FString ReviewMode;
+    FParse::Value(FCommandLine::Get(), TEXT("DCPhononLifecycleReview="), ReviewMode);
+    Worker->bReviewFaultEnabled = ReviewMode == TEXT("Failure");
     Worker->ACE = &FACERuntimeModule::Get();
     TWeakObjectPtr<UDCPhononSpeech> Weak(this);
     Worker->Deliver = [Weak](int32 Id, bool bSuccess, double Duration)
@@ -610,6 +631,38 @@ bool UDCPhononSpeech::IsBusy() const
 {
     check(IsInGameThread());
     return Worker.IsValid() && (Worker->Busy.Load() || GFrameCounter < Worker->ReuseAfterFrame.Load());
+}
+
+int32 UDCPhononSpeech::RequestProducerFailureForReview()
+{
+    check(IsInGameThread());
+    if (bStopped || !Worker.IsValid() || !Worker->bReviewFaultEnabled || !ActiveId || !Worker->Busy.Load() ||
+        Worker->ReviewFaultRequested.Load() || Worker->ReviewFaultApplied.Load()) { return 0; }
+    Worker->ReviewFaultRequested.Store(ActiveId);
+    return ActiveId;
+}
+
+void UDCPhononSpeech::GetProducerReviewState(int32& Generation, int32& AppliedFaultId) const
+{
+    check(IsInGameThread());
+    Generation = Worker.IsValid() ? Worker->ProducerGeneration.Load() : 0;
+    AppliedFaultId = Worker.IsValid() ? Worker->ReviewFaultApplied.Load() : 0;
+}
+
+TFunction<bool()> UDCPhononSpeech::CaptureReloadDrainProbeForReview() const
+{
+    check(IsInGameThread());
+    FString Mode;
+    FParse::Value(FCommandLine::Get(), TEXT("DCPhononLifecycleReview="), Mode);
+    if (Mode != TEXT("Reload") || !Worker.IsValid()) { return nullptr; }
+    const auto State = Worker;
+    return [State]
+    {
+        check(IsInGameThread());
+        return State->ShutdownRequested.Load() && State->Completed->Wait(0) &&
+            State->PendingGameThreadWork.Load() == 0 && !State->Busy.Load() &&
+            GFrameCounter >= State->ReuseAfterFrame.Load() && DCPhononSpeechPrivate::DeferredLeaseDeletes.Load() == 0;
+    };
 }
 
 bool UDCPhononSpeech::Speak(const FString& Speaker, const FString& Text, UACEAudioCurveSourceComponent* Consumer,
