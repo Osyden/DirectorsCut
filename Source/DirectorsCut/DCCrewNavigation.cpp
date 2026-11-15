@@ -13,7 +13,8 @@
 
 namespace
 {
-	constexpr float Cell = 40.f;
+	constexpr float Cell = 20.f;
+	constexpr float FootSupportRadius = 10.f;
 	constexpr float CrewBodyRadius = 24.f;
 	constexpr float MaxStep = 50.f;
 
@@ -31,15 +32,16 @@ namespace
 		mutable TMap<FString,int32> SolidBlockers;
 		mutable int32 LastRejection=0;
 
-		bool Floor(float X, float Y, FVector& Feet) const
+		bool Floor(float X, float Y, FVector& Feet, float ExpectedZ = -1.f) const
 		{
 			// The brigantine's upper deck is about 500 cm, quarterdeck about 700.
 			// Query its actual triangles, not Visibility-channel props or the gun deck.
-			float Top=1050.f;
-			for (int32 Probe=0; Probe<16 && Top>440.f; ++Probe)
+			float Top=ExpectedZ>=0.f ? ExpectedZ+MaxStep : 1050.f;
+			const float Bottom=ExpectedZ>=0.f ? FMath::Max(440.f,ExpectedZ-MaxStep) : 420.f;
+			for (int32 Probe=0; Probe<16 && Top>Bottom; ++Probe)
 			{
 				FHitResult Hit;
-				if (!Hull->LineTraceComponent(Hit,Deck.TransformPosition(FVector(X,Y,Top)),Deck.TransformPosition(FVector(X,Y,420)),Query)) { ++FloorMiss; return false; }
+				if (!Hull->LineTraceComponent(Hit,Deck.TransformPosition(FVector(X,Y,Top)),Deck.TransformPosition(FVector(X,Y,Bottom)),Query)) { ++FloorMiss; return false; }
 				Feet=Deck.InverseTransformPosition(Hit.ImpactPoint);
 				Top=FMath::Min(Top-2.f,float(Feet.Z)-2.f);
 				if (Feet.Z<440.f || Feet.Z>850.f) { ++FloorLowHigh; continue; }
@@ -82,10 +84,12 @@ namespace
 				if (Feet.Z+170.f>Box.Min.Z && Feet.Z+25.f<Box.Max.Z &&
 					Feet.X>Box.Min.X-CrewBodyRadius && Feet.X<Box.Max.X+CrewBodyRadius && Feet.Y>Box.Min.Y-CrewBodyRadius && Feet.Y<Box.Max.Y+CrewBodyRadius) { ++SolidRejected; ++SolidBlockers.FindOrAdd(Name); LastRejection=1; return false; }
 			}
-			for (const FVector2D Offset : { FVector2D(CrewBodyRadius,0), FVector2D(-CrewBodyRadius,0), FVector2D(0,CrewBodyRadius), FVector2D(0,-CrewBodyRadius) })
+			// Foot support is narrower than shoulder clearance. Requiring the full
+			// torso footprint to rest on planks wrongly closes the gun/hatch aisles.
+			for (const FVector2D Offset : { FVector2D(FootSupportRadius,0), FVector2D(-FootSupportRadius,0), FVector2D(0,FootSupportRadius), FVector2D(0,-FootSupportRadius) })
 			{
 				FVector Edge;
-				if (!Floor(Feet.X+Offset.X, Feet.Y+Offset.Y, Edge) || FMath::Abs(Edge.Z-Feet.Z)>MaxStep) { ++SupportRejected; LastRejection=2; return false; }
+				if (!Floor(Feet.X+Offset.X, Feet.Y+Offset.Y, Edge,Feet.Z) || FMath::Abs(Edge.Z-Feet.Z)>MaxStep) { ++SupportRejected; LastRejection=2; return false; }
 			}
 			// Shoulder-width clearance excludes masts, cabin walls, wheels and gun
 			// carriages even when their tops are not part of the floor mesh.
@@ -110,7 +114,7 @@ namespace
 			}
 			if (FMath::Abs(A.Z-B.Z)>MaxStep) { return false; }
 			FVector Mid;
-			if (!Floor((A.X+B.X)*.5f,(A.Y+B.Y)*.5f,Mid) || FMath::Abs(Mid.Z-(A.Z+B.Z)*.5f)>MaxStep*.6f) { return false; }
+			if (!Floor((A.X+B.X)*.5f,(A.Y+B.Y)*.5f,Mid,(A.Z+B.Z)*.5f) || FMath::Abs(Mid.Z-(A.Z+B.Z)*.5f)>MaxStep*.6f) { return false; }
 			const FVector Side = FVector::CrossProduct((B-A).GetSafeNormal2D(),FVector::UpVector)*CrewBodyRadius;
 			for (const float Height : { 55.f, 150.f })
 			{
@@ -173,12 +177,13 @@ bool FDCCrewNavigation::Build(ADCRideDirector* Director)
 	TMap<FIntPoint,int32> Grid;
 	TArray<FVector4> Samples;
 	// Keep the walkable graph on the vessel itself: no bowsprit, railing or net.
-	for (int32 X=-47; X<=35; ++X)
+	for (int32 X=-94; X<=70; ++X)
 	{
-		for (int32 Y=-11; Y<=11; ++Y)
+		for (int32 Y=-22; Y<=22; ++Y)
 		{
-			FVector Feet(X*Cell,Y*Cell,0);
-			if (!Sampler.Floor(X*Cell,Y*Cell,Feet)) { Samples.Add(FVector4(Feet,0)); continue; }
+			const float SampleY=Y*Cell+Cell*.5f;
+			FVector Feet(X*Cell,SampleY,0);
+			if (!Sampler.Floor(X*Cell,SampleY,Feet)) { Samples.Add(FVector4(Feet,0)); continue; }
 			if (!Sampler.Standing(Feet)) { Samples.Add(FVector4(Feet,Sampler.LastRejection)); continue; }
 			Samples.Add(FVector4(Feet,4));
 			FNode Node; Node.Feet=Feet+FVector(0,0,2.f);
