@@ -107,9 +107,9 @@ void ADCGameMode::ShowMainMenu()
                 +SVerticalBox::Slot().AutoHeight()[CreditBody(TEXT("AI"),11,Gold)]
                 +SVerticalBox::Slot().AutoHeight().Padding(0,3,0,0)[CreditBody(TEXT("GPT-6 Astra, Claude Fable 5.2,\nQwen 3.8 27B, Google Gemma E4B,\nWhisperCPP, Phonon, Suno"),14,Cream,408.f)]]]
         +SVerticalBox::Slot().AutoHeight().Padding(0,0,0,5)[CreditBody(TEXT("ART & ASSET PACKS"),11,Gold)]
-        +SVerticalBox::Slot().AutoHeight()[CreditBody(TEXT("Brigantine Ship  -  MainStore\nDynamic Real Water  -  Natural Level Game Studio\nUltra Dynamic Sky & Weather  -  Everett Gunther\nModular Ancient Ruins  -  archafizov\nKraken  -  PROTOFACTOR INC\nClaw Kaiju Monster  -  HuyKhoi2407\nMHC: Pirates  -  Quang Phan\nEasy Fog  -  William Faucher\nClouds Tunnel Vdb Effects Pack Loop  -  one.studio2\nNordic coastal cliff scans  -  Quixel Megascans\nParagon: Rampage, MetaHuman & engine art  -  Epic Games"),13,Cream)]
+        +SVerticalBox::Slot().AutoHeight()[CreditBody(TEXT("Brigantine Ship  -  MainStore\nDynamic Real Water  -  Natural Level Game Studio\nUltra Dynamic Sky & Weather  -  Everett Gunther\nModular Ancient Ruins  -  archafizov\nKraken  -  PROTOFACTOR INC\nClaw Kaiju Monster  -  HuyKhoi2407\nMHC: Pirates  -  Quang Phan\nEasy Fog  -  William Faucher\nClouds Tunnel Vdb Effects Pack Loop  -  one.studio2\nNordic coastal cliff scans  -  Quixel Megascans\nParagon: Rampage, MetaHuman & engine art  -  Epic Games"),11,Muted)]
         +SVerticalBox::Slot().AutoHeight().Padding(0,9,0,4)[CreditBody(TEXT("THANKS TO"),11,Gold)]
-        +SVerticalBox::Slot().AutoHeight()[CreditBody(TEXT("Epic Games, Unreal Engine, NVIDIA, LlamaCPP,\nGeorgi Gerganov, Gradium, Laurent Mazare,\nKyutai, NVIDIA ACE / Audio2Face, DLSS"),13,Cream)]
+        +SVerticalBox::Slot().AutoHeight()[CreditBody(TEXT("Epic Games, Unreal Engine, NVIDIA, LlamaCPP,\nGeorgi Gerganov, Gradium, Laurent Mazare,\nKyutai, NVIDIA ACE / Audio2Face, DLSS"),11,Muted)]
         +SVerticalBox::Slot().AutoHeight().Padding(0,9,0,4)[CreditBody(TEXT("AUDIO & TYPE"),11,Gold)]
         +SVerticalBox::Slot().AutoHeight()[CreditBody(TEXT("Sonniss: Just Sound Effects, 344 Audio, InMotionAudio, Jake Fielding, Epic Stock Media, SoundBits.\nCinzel: The Cinzel Project Authors (SIL Open Font License)."),11,Muted)];
     MainMenuWidget=SNew(SScaleBox).Stretch(EStretch::ScaleToFit)
