@@ -401,8 +401,9 @@ float impact=max(ImpactSource.g,lerp(Source0.g,Source1.g,blend)*ageFade)
 // The atlas holds concentration around real sources, not an opacity decal.
 // A slope alone does not make foam: the old world-normal aeration term coated
 // every steep bank regardless of breaking/contact, turning water into terrain.
-float movingLip=lerp(wn.breaking_field(q,T).w,wn.breaking_field(q2,T).w,blend)
-    *(1-smoothstep(160000.0,400000.0,length(P-Cam)))*(1-saturate(Tunnel));
+float lipVisibility=(1-smoothstep(160000.0,400000.0,length(P-Cam)))*(1-saturate(Tunnel));
+float movingLip0=wn.breaking_field(q,T).w*lipVisibility;
+float movingLip1=wn.breaking_field(q2,T).w*lipVisibility;
 float2 direction=normalize(flow+float2(.001,0));
 float n=lerp(wn.streak(q,direction),wn.streak(q2,direction),blend);
 float thread=smoothstep(.34,.64,n);
@@ -447,22 +448,62 @@ if(Tunnel>.5) {
     float oldLace=lerp(.62,.35+.65*lace,resolvedFoam);
     return saturate(oldBody*oldLace*Coverage*(1-shelf*.35));
 }
-// Unresolved bubbles average to coverage; resolved bubbles retain actual gaps.
-// The former .35 minimum painted a translucent white film between every bubble.
-lace=lerp(.36,lace,resolvedFoam);
-// Only the current geometric lip can replenish fresh foam. Resolve the source
-// as broken coverage, not a .55 thread floor multiplied by a .65 bubble floor:
-// those floors left a continuous white film across every filtered crest stamp.
-float freshConcentration=saturate(max(max(VC.r,ImpactSource.r*.85*saturate(SourceAvailable)),movingLip*.80))
-    *(1-shelf*.65);
-float frontThreshold=.06+.78*smoothstep(.24,.76,raftNoise);
-float freshStamp=smoothstep(frontThreshold-aa,frontThreshold+aa,freshConcentration)
-    *smoothstep(0,.04,freshConcentration);
-float freshCoverage=freshStamp*filaments*lace;
-float agedCoverage=loose*lace;
-// Union of two coverage populations, rather than exponential whitening of the
-// source's smooth tails. Preserve the existing under-hull displacement guard.
-return saturate((1-(1-freshCoverage)*(1-agedCoverage))*Coverage*(1-shelf*.35));
+"""
+# Evaluate complete populations before phase crossfade. Thresholding a blend of
+# unrelated source/noise phases changes their topology instead of transporting
+# either population. Previously the 9x17m DRW raft samples were unused entirely,
+# leaving narrow warped sine lips multiplied by 1.5m cells: hooked white glyphs.
+foam_code += r"""
+struct SourceFoamRaft {
+ float coverage(float2 p,float3 source,float3 currentSource,float vertexFresh,
+                float lip,float phaseAge,float available,float raft,float cells,
+                float footprint,float shelfGuard) {
+  WaterNoise field;
+  float ageDecay=exp(-phaseAge*1.5);
+  float wake=max(currentSource.b*.60,source.b*ageDecay)*available;
+  float impact=max(currentSource.g,source.g*ageDecay)*available;
+  float transported=source.r*ageDecay*.70*available;
+  float fresh=max(vertexFresh,currentSource.r*.85*available);
+  // The animated geometric lips are a subordinate renewal source. Their
+  // .975..999 warped-sine isolines must not draw opaque hooks over clear water.
+  fresh=max(fresh,lip*.18)*(1-shelfGuard*.65);
+  float concentration=saturate(max(max(wake*.85,impact*.95),max(transported,fresh)));
+
+  // Real installed foam red defines coherent rafts, with metre-sized edges
+  // inside a 9x17m advected tile. The source atlas still controls WHERE foam can
+  // exist; this texture is never an additive coating over the complete bowl.
+  float2 warp=float2(field.noise(p*.031),field.noise(p*.027+41.7))-.5;
+  float raftField=smoothstep(.025,.36,raft);
+  float massVariation=field.noise((p+warp*8)/13.0+5.1);
+  float threshold=.13+.58*(1-saturate(.72*raftField+.28*massVariation));
+  float edgeAA=clamp(fwidth(threshold)*.65,.025,.20);
+  float body=smoothstep(threshold-edgeAA,threshold+edgeAA,concentration)
+      *smoothstep(0,.04,concentration);
+
+  // Fine lace modifies only those finite rafts. At a subpixel cell footprint,
+  // average the mip-filtered red coverage instead of forcing a constant white
+  // floor or thresholding a filtered value back into isolated bright specks.
+  float cellAA=clamp(fwidth(cells)*.5,.035,.18);
+  float resolvedLace=smoothstep(.11-cellAA,.11+cellAA,cells);
+  float resolved=1-smoothstep(.18,.75,footprint);
+  float cellCoverage=lerp(saturate(cells*2.0),resolvedLace,resolved);
+  float denseInterior=smoothstep(.45,.90,concentration)*body;
+  float lace=lerp(cellCoverage,.38+.62*cellCoverage,denseInterior*.65);
+  return body*lace;
+ }
+};SourceFoamRaft rafts;
+"""
+if foam_texture:
+    foam_code += "float raft0=Raft0.r,raft1=Raft1.r,cell0=Cells0.r,cell1=Cells1.r;\n"
+else:
+    foam_code += "float raft0=wn.fbm(q/13),raft1=wn.fbm(q2/13),cell0=wn.noise(q/1.5)*.35,cell1=wn.noise(q2/1.5)*.35;\n"
+foam_code += r"""
+float available=saturate(SourceAvailable);
+float coverage0=rafts.coverage(q,Source0,ImpactSource,VC.r,movingLip0,phase,
+    available,raft0,cell0,pixelMeters,shelf);
+float coverage1=rafts.coverage(q2,Source1,ImpactSource,VC.r,movingLip1,phase2,
+    available,raft1,cell1,pixelMeters,shelf);
+return saturate(lerp(coverage0,coverage1,blend)*Coverage*(1-shelf*.35));
 """
 foam = custom(water, foam_code, FLOAT, foam_inputs)
 source_foam=foam
