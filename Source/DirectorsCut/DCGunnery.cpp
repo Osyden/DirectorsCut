@@ -293,7 +293,7 @@ void ADCGunnery::WaterContact(const FVector& Position, bool bSampled)
 			if (auto* Old = WaterBursts[0].Effect.Get()) { Old->DestroyComponent(); }
 			WaterBursts.RemoveAt(0);
 		}
-		auto* Effect = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), WaterImpact, Position + FVector(0,0,35), FRotator::ZeroRotator, FVector(1.1f));
+		auto* Effect = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), WaterImpact, Position + FVector(0,0,35), FRotator::ZeroRotator, FVector(1.4f));
 		if (Effect) { WaterBursts.Add({Effect, 0.f}); }
 		else { Splashes.Add({Position, 0.f}); }
 	}
