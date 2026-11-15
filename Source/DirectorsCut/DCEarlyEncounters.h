@@ -85,6 +85,8 @@ private:
 	int32 VerifyStage = 0, VerifyScore = 0;
 	float VerifyClock = 0.f;
 	bool bVerifyFailed = false;
+    float BeamReviewElapsed=0.f, BeamReviewExitAt=-1.f;
+    bool bBeamReviewFirstPassed=false, bBeamReviewPassed=false;
 	FVector VerifyFire = FVector::ZeroVector;
 #endif
 };

@@ -212,6 +212,10 @@ AActor* ADCEarlyEncounters::MakeMarker(const FVector& DeckPoint)
 
 void ADCEarlyEncounters::SpawnGroup(int32 Group)
 {
+#if !UE_BUILD_SHIPPING
+    if(FParse::Param(FCommandLine::Get(),TEXT("DCStatueBeamReview")))
+    { UE_LOG(LogDC,Display,TEXT("STATUE_BEAM_REVIEW suppress creature group=%d"),Group); return; }
+#endif
 	USkeletalMesh* Mesh = LoadObject<USkeletalMesh>(nullptr, TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Skins/Tier2/Elemental/Meshes/Rampage_Elemental.Rampage_Elemental"), nullptr, LOAD_NoWarn | LOAD_Quiet);
 	if (!Mesh) { UE_LOG(LogDC, Warning, TEXT("Early encounters: Rampage mesh unavailable")); return; }
 	const float Side = DCFogRouteLayout::GroupSide(Group);
@@ -624,12 +628,30 @@ void ADCEarlyEncounters::TickThreat(FThreat& T, float Dt)
             {
                 const FVector Point=T.BeamContacts==0?T.DeckTarget:T.BeamEnd;
                 const int32 Before=Troubles->NumFires();
+#if !UE_BUILD_SHIPPING
+                const float DamageBefore=Director->DamageTaken;
+#endif
                 if(!T.bImpact) { T.bImpact=true; Ignite(Point,TEXT("sentinel beam")); }
                 else Troubles->StartFire(Point); // No repeated hull damage or boom on the second contact.
                 ++T.BeamContacts;
 #if !UE_BUILD_SHIPPING
                 ++VerifyBeamLineContacts;
                 if(T.BeamContacts==2) ++VerifyBeamLines;
+                if(FParse::Param(FCommandLine::Get(),TEXT("DCStatueBeamReview")) && BeamReviewExitAt<0.f)
+                {
+                    const float ContactDamage=Director->DamageTaken-DamageBefore;
+                    if(T.BeamContacts==1)
+                        bBeamReviewFirstPassed=Before==0 && Troubles->NumFires()==1 && FMath::IsNearlyEqual(ContactDamage,1.2f,.001f);
+                    else
+                    {
+                        bBeamReviewPassed=bBeamReviewFirstPassed && Before==1 && Troubles->NumFires()==2
+                            && Troubles->NumFires()<=Troubles->MaxFires && FMath::IsNearlyZero(ContactDamage,.001f)
+                            && FVector::Dist2D(T.DeckTarget,T.BeamEnd)>=240.f;
+                        BeamReviewExitAt=GetWorld()->GetTimeSeconds()+2.f;
+                        UE_LOG(LogDC,Display,TEXT("STATUE_BEAM_REVIEW %s: empty deck0->1->2, distinct contacts, damage once, fire cap"),bBeamReviewPassed?TEXT("PASS"):TEXT("FAIL"));
+                    }
+                    UE_LOG(LogDC,Display,TEXT("STATUE_BEAM_REVIEW contact=%d fires=%d->%d damage=%.3f firstPassed=%d ride=%.2f"),T.BeamContacts,Before,Troubles->NumFires(),ContactDamage,bBeamReviewFirstPassed,Director->RideTime);
+                }
 #endif
                 UE_LOG(LogDC,Display,TEXT("STATUE_BEAM_LINE contact=%d point=%s fires=%d->%d span=%.0f damageApplied=%d"),T.BeamContacts,*Point.ToCompactString(),Before,Troubles->NumFires(),FVector::Dist2D(T.DeckTarget,T.BeamEnd),T.BeamContacts==1);
             }
@@ -749,6 +771,14 @@ void ADCEarlyEncounters::Tick(float DeltaSeconds)
 	if (!Troubles) { Troubles = ADCTroubles::Get(this); }
 	if (!Director || !Treadmill || !Guns || !Troubles) { return; }
 #if !UE_BUILD_SHIPPING
+    if(FParse::Param(FCommandLine::Get(),TEXT("DCStatueBeamReview")))
+    {
+        BeamReviewElapsed+=DeltaSeconds;
+        if(BeamReviewExitAt>=0.f && GetWorld()->GetTimeSeconds()>=BeamReviewExitAt)
+        { FPlatformMisc::RequestExitWithStatus(false,bBeamReviewPassed?0:1); return; }
+        if(BeamReviewElapsed>60.f)
+        { UE_LOG(LogDC,Error,TEXT("STATUE_BEAM_REVIEW FAIL: no completed two-contact beam within60s")); FPlatformMisc::RequestExitWithStatus(false,1); return; }
+    }
 	if (FParse::Param(FCommandLine::Get(), TEXT("DCEarlyVerify"))) { TickVerification(DeltaSeconds); }
 	if (FParse::Param(FCommandLine::Get(), TEXT("DCEncounterVerify")) || FParse::Param(FCommandLine::Get(), TEXT("DCStatueVerify"))) { TickEncounterVerification(); }
 #endif
