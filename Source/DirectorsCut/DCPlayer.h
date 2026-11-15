@@ -45,6 +45,7 @@ protected:
 	void TickOnFoot(class APlayerController* PC);
 	void TickHelm(APlayerController* PC, float DeltaSeconds);
 	void RestoreWheel();
+	void TickWheelVisual(float DeltaSeconds);
 	void TickCannons(APlayerController* PC);
 	void Look(APlayerController* PC);
 	void TickMeta(APlayerController* PC);
@@ -81,6 +82,7 @@ protected:
 	bool bGunSolution = false;
 	bool bClearHelmView = false;
 	TWeakObjectPtr<USceneComponent> HelmWheel;
+	TWeakObjectPtr<AActor> WheelShip;
 	FQuat WheelRestRotation = FQuat::Identity;
 	FVector WheelRestLocation = FVector::ZeroVector;
 	FVector WheelPivotInParent = FVector::ZeroVector;

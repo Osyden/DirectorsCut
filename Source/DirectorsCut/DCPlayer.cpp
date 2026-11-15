@@ -48,6 +48,8 @@ void ADCPlayerCharacter::Tick(float DeltaSeconds)
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (!PC) { return; }
 	if (const ADCGameMode* Game = GetWorld()->GetAuthGameMode<ADCGameMode>(); Game && Game->IsAwaitingStart()) { return; }
+	// One wheel visual owner follows shared helm input, including AI and typed orders.
+	TickWheelVisual(DeltaSeconds);
 	TickRag(DeltaSeconds);
 
 	if (bTyping) { return; }
@@ -284,33 +286,6 @@ void ADCPlayerCharacter::EnterStation(APlayerController* PC, int32 Index)
 	{
 		SetActorLocation(S->Location + FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight() + 5.f), false, nullptr, ETeleportType::TeleportPhysics);
 		PC->SetControlRotation(FRotator(-5.f, 0.f, 0.f));
-		const ADCGunnery* Guns = ADCGunnery::Get(this);
-		if (AActor* Ship = Guns ? Guns->GetGunShip() : nullptr)
-		{
-			TArray<USceneComponent*> Parts;
-			Ship->GetComponents(Parts);
-			for (USceneComponent* Part : Parts)
-			{
-				if (Part->GetFName() != FName(TEXT("SK_Wheel"))) { continue; }
-				// This mesh contains the wheel, but its imported origin is down at
-				// the pedestal. The authored hub bone supplies the rotation pivot.
-				if (!Part->DoesSocketExist(TEXT("Bone_001")))
-				{
-					UE_LOG(LogDC, Warning, TEXT("Helm wheel has no hub bone; keeping its visual transform unchanged"));
-					break;
-				}
-				HelmWheel = Part;
-				WheelRestRotation = Part->GetRelativeRotation().Quaternion();
-				WheelRestLocation = Part->GetRelativeLocation();
-				const USceneComponent* Parent = Part->GetAttachParent();
-				const FVector Hub = Part->GetSocketLocation(TEXT("Bone_001"));
-				WheelPivotInParent = Parent ? Parent->GetComponentTransform().InverseTransformPosition(Hub) : Hub;
-				WheelAxisInParent = Parent
-					? Parent->GetComponentTransform().InverseTransformVectorNoScale(Ship->GetActorForwardVector())
-					: Ship->GetActorForwardVector();
-				break;
-			}
-		}
 	}
 }
 
@@ -322,7 +297,6 @@ void ADCPlayerCharacter::LeaveStation(APlayerController* PC)
 	}
 	if (ActiveType == EDCStationType::Helm)
 	{
-		RestoreWheel();
 		if (ADCTreadmill* Treadmill = ADCTreadmill::Get(this)) { Treadmill->ReleasePlayerHelm(); }
 	}
 	if (ActiveType == EDCStationType::Cannons)
@@ -337,6 +311,67 @@ void ADCPlayerCharacter::LeaveStation(APlayerController* PC)
 	ActiveStation = INDEX_NONE;
 	ActiveType = EDCStationType::None;
 	ActiveSide = EDCSide::None;
+}
+
+void ADCPlayerCharacter::TickWheelVisual(float DeltaSeconds)
+{
+	const ADCGunnery* Guns=ADCGunnery::Get(this);
+	AActor* Ship=Guns ? Guns->GetGunShip() : nullptr;
+	if(!Ship) { return; }
+	// Capture the authored rest pose once per ship, never on station takeover.
+	if(WheelShip.Get()!=Ship)
+	{
+		RestoreWheel();
+		WheelShip=Ship;
+		TArray<USceneComponent*> Parts;
+		Ship->GetComponents(Parts);
+		for (USceneComponent* Part : Parts)
+		{
+			if (Part->GetFName() != FName(TEXT("SK_Wheel"))) { continue; }
+			// This mesh contains the wheel, but its imported origin is down at
+			// the pedestal. The authored hub bone supplies the rotation pivot.
+			if (!Part->DoesSocketExist(TEXT("Bone_001")))
+			{
+				UE_LOG(LogDC, Warning, TEXT("Helm wheel has no hub bone; keeping its visual transform unchanged"));
+				break;
+			}
+			HelmWheel = Part;
+			WheelRestRotation = Part->GetRelativeRotation().Quaternion();
+			WheelRestLocation = Part->GetRelativeLocation();
+			const USceneComponent* Parent = Part->GetAttachParent();
+			const FVector Hub = Part->GetSocketLocation(TEXT("Bone_001"));
+			WheelPivotInParent = Parent ? Parent->GetComponentTransform().InverseTransformPosition(Hub) : Hub;
+			WheelAxisInParent = Parent
+				? Parent->GetComponentTransform().InverseTransformVectorNoScale(Ship->GetActorForwardVector())
+				: Ship->GetActorForwardVector();
+			break;
+		}
+	}
+	const ADCTreadmill* Treadmill=ADCTreadmill::Get(this);
+	const float Steer=Treadmill ? Treadmill->GetSteer() : 0.f;
+	if (USceneComponent* Wheel = HelmWheel.Get())
+	{
+		WheelAngle = FMath::FInterpTo(WheelAngle, DCWheelVisual::Degrees(Steer), DeltaSeconds, 5.f);
+		const FQuat Turn(WheelAxisInParent, FMath::DegreesToRadians(WheelAngle));
+		// Compensate the component origin so the hub stays fixed to the ship.
+		Wheel->SetRelativeLocationAndRotation(
+			WheelPivotInParent + Turn.RotateVector(WheelRestLocation - WheelPivotInParent), Turn * WheelRestRotation);
+#if !UE_BUILD_SHIPPING
+		if (FParse::Param(FCommandLine::Get(), TEXT("DCHelmLog")))
+		{
+			WheelLogTimer -= DeltaSeconds;
+			if (WheelLogTimer <= 0.f)
+			{
+				WheelLogTimer = .25f;
+				const USceneComponent* Parent = Wheel->GetAttachParent();
+				const FVector Hub = Wheel->GetSocketLocation(TEXT("Bone_001"));
+				const FVector HubInParent = Parent ? Parent->GetComponentTransform().InverseTransformPosition(Hub) : Hub;
+				UE_LOG(LogDC, Log, TEXT("Helm pivot: angle=%.2f hubDrift=%.4f hub=%s t=%.2f input=%.2f player=%d"),
+					WheelAngle, FVector::Distance(HubInParent, WheelPivotInParent), *HubInParent.ToString(), GetWorld()->GetTimeSeconds(), Steer, ActiveType==EDCStationType::Helm);
+			}
+		}
+#endif
+	}
 }
 
 void ADCPlayerCharacter::RestoreWheel()
@@ -356,6 +391,7 @@ void ADCPlayerCharacter::RestoreWheel()
 #endif
 	}
 	HelmWheel.Reset();
+	WheelShip.Reset();
 	WheelAngle = 0.f;
 	WheelLogTimer = 0.f;
 }
@@ -381,29 +417,7 @@ void ADCPlayerCharacter::TickHelm(APlayerController* PC, float DeltaSeconds)
 	}
 #endif
 	if (ADCTreadmill* Treadmill = ADCTreadmill::Get(this)) { Treadmill->SetPlayerSteer(Steer); }
-	if (USceneComponent* Wheel = HelmWheel.Get())
-	{
-		WheelAngle = FMath::FInterpTo(WheelAngle, DCWheelVisual::Degrees(Steer), DeltaSeconds, 5.f);
-		const FQuat Turn(WheelAxisInParent, FMath::DegreesToRadians(WheelAngle));
-		// Compensate the component origin so the hub stays fixed to the ship.
-		Wheel->SetRelativeLocationAndRotation(
-			WheelPivotInParent + Turn.RotateVector(WheelRestLocation - WheelPivotInParent), Turn * WheelRestRotation);
-#if !UE_BUILD_SHIPPING
-		if (FParse::Param(FCommandLine::Get(), TEXT("DCHelmLog")))
-		{
-			WheelLogTimer -= DeltaSeconds;
-			if (WheelLogTimer <= 0.f)
-			{
-				WheelLogTimer = .25f;
-				const USceneComponent* Parent = Wheel->GetAttachParent();
-				const FVector Hub = Wheel->GetSocketLocation(TEXT("Bone_001"));
-				const FVector HubInParent = Parent ? Parent->GetComponentTransform().InverseTransformPosition(Hub) : Hub;
-				UE_LOG(LogDC, Log, TEXT("Helm pivot: angle=%.2f hubDrift=%.4f hub=%s t=%.2f"),
-					WheelAngle, FVector::Distance(HubInParent, WheelPivotInParent), *HubInParent.ToString(), GetWorld()->GetTimeSeconds());
-			}
-		}
-#endif
-	}
+
 	if (PC->WasInputKeyJustPressed(EKeys::C)) { bClearHelmView = !bClearHelmView; }
 	Prompt = bClearHelmView ? TEXT("A/D  steer     C  wheel view     T  ship view     E  leave helm")
 		: TEXT("A/D  steer     C  clear view     T  ship view     E  leave helm");
