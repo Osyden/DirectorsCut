@@ -1,6 +1,32 @@
-# Escarpment workflow: physical adaptation tested, primary landform still rejected
+# Escarpment workflow: natural parent terrain found, crater adaptation still pending
 
-Branch: `codex/maelstrom-saturday`. **The game scene is unchanged.** The verified upstream method now has two fresh, physically sized adaptations to the measured crater coast. Both fail actual visual review. Their boundary and numerical checks pass separately; neither is a finished cliff or ready for integration.
+Branch: `codex/maelstrom-saturday`. **The game scene is unchanged.** A new historical-datum terrain model produces useful branching ravines and unequal interlocking ridges at native physical scale. It is a starting landform for a separate crater-cut experiment, not an accepted cliff or a replacement preserving current shore, route, seams or temple foundations.
+
+## Latest parent-landform pass, 15 November 04:23
+
+First, `generate_fastscape_parent_landform.py` extended the measured 500 m sector inland to 1,100 m. Two unequal uplift corridors and the current sloping coastal datum produced smooth mounds rather than natural rock masses. A longer single-flow revision preserved total uplift but still failed visually, and one outlet collected 99.67% of drainage. Both remain rejected. [A whole](review/cliff-parent-15nov/parent-a-whole.png), [A wall](review/cliff-parent-15nov/parent-a-wall.png), [B whole](review/cliff-parent-15nov/parent-b-whole.png), [B wall](review/cliff-parent-15nov/parent-b-wall.png). [Implementation](FASTSCAPE-PARENT-LANDFORM-15NOV.md), [independent audit](CLIFF-FASTSCAPE-PARENT-AUDIT.md).
+
+The useful diagnostic separates natural land formation from the modern whirlpool. It uses a flat authored historical receiving band at -150 m, uniform uplift, single-flow incision and limited slope diffusion, with no hand-shaped uplift corridors. At the same native 500 x 1,100 m domain and 2 m sampling, it creates connected branching valleys and unequal spurs. The whole parent spans 250.264 m vertically; the actual 500 m crop spans 220.242 m. No mesh scaling, height exaggeration or renderer displacement is applied. [Actual whole terrain](review/cliff-parent-15nov/historical-whole.png).
+
+This alternative changes several model conditions together: historical datum/base levels, forcing distribution, initialization, erosion/diffusion settings, model time and rainfall mask. Its success does not isolate the modern shoreline as the sole cause of earlier failures. It also exhausts its 250,000-model-year ceiling without meeting the declared convergence criterion, and its largest basin still receives 88.67% of drainage. It is authored terrain-method evidence, not calibrated or mature geology.
+
+`Tools/generate_fastscape_historical_terrain.py` now reproduces the exact diagnostic with explicit paths. An independent replay matches all 40 numeric height, drainage, frame and parent/crop mesh arrays bitwise. Archived inputs, helpers, source, licence and provenance make the bundle portable. [Reproduction and limits](FASTSCAPE-HISTORICAL-TERRAIN-15NOV.md), [independent audit](CLIFF-HISTORICAL-TERRAIN-AUDIT.md).
+
+### Shading diagnosis and scale
+
+The first close clay review overstated geometric terracing: the angle-15 normal policy split 24,538 edges and created substantial artificial strip segmentation. A matched angle-179 diagnostic changes no positions or triangles and removes much of that component. Real broad corrugations and the pointed skyline remain. Use continuous terrain normals to assess the base shape before deciding it requires geometric repair; retain deliberate sharp edges later on actual geological faces. [Same crop, angle 15](review/cliff-parent-15nov/historical-crop-angle15.png), [same exact geometry, smooth normals](review/cliff-parent-15nov/historical-crop-smooth.png).
+
+Fixed 1.5 km and 3.2 km cameras retain 35 mm / 36 mm perspective, with no zoom or atmosphere. Primary ridges survive at the opposite rim while fine detail diminishes naturally; the 500 m crop occupies roughly 230 pixels in a 1440-pixel frame. [Opposite-rim diagnostic](review/cliff-parent-15nov/historical-opposite-rim.png). These distance captures retain angle-15 shading, so their fine striping includes that diagnosed normal artifact. [Full actual review](FASTSCAPE-PARENT-VISUAL-REVIEW.md).
+
+### Next concrete implementation
+
+Use the existing historical terrain and its portable replay as the starting geometry; do not launch another broad terrain-solver or strength sweep. Select a representative headland and construct its bedrock volume, then expose an inward cliff through a separate curved crater cut. The upper landform and exposed faces must remain related. Keep physical feature sizes; any rigid placement or elevation offset must be explicit. Do not bend or stretch a complete demonstration landscape around the rim, or smooth-fit it back into the same rejected old curtain.
+
+The historical geometry deliberately changes current coastal heights by roughly -82 to +20 m and does not preserve any gameplay support. The cut/contact stage must derive its lower edge from the actual receiving-water surface and safe route footprint. Match adjacent sectors from the same authoritative parent surface rather than freezing arbitrary old crop seams. Judge one actual section with its water context before full-arena rollout. Low upper plateaus and deep side ravines should frame temple/column silhouettes against clouds; any foundation or placement proposal needs explicit surface checks and recorded changes, not floating actors or frozen islands.
+
+Use continuous base-terrain normals, then genuine 3D exposed rock faces, physical-scale joints/strata and limited undercuts. Test the new cut in neutral near and far views before material/lighting embellishment. Once a convincing face and contact exist, add the installed stone material and consider the isolated native preview; no current historical mesh warrants a drop-in import. Waterfall attachment, lit spray and receiving foam follow that accepted surface. Boss work remains deferred.
+
+This pass changes offline authoring tools and evidence only. No Unreal build, normal-game geometry, cloud/sky/light, water, boss, main merge or package was changed. Earlier experiments below remain for provenance.
 
 ## Latest physical adaptation, 15 November 03:53 pass
 
@@ -15,7 +41,7 @@ Root and independent workers inspected these matched CPU renders. Mean-water con
 
 Existing temple actors were untouched. Their islands were not frozen into the new simulation, and the proposals do **not** support their old foundations: some are buried about 12-14 m, others lose tens of metres of ground beneath them. A coast/seam pass does not certify foundations. Any eventual support or placement revision must be explicit and retain the irregular city composition.
 
-## Next construction: parent terrain before cliff extraction
+## Previous parent-construction plan, exercised above
 
 Build one physically sized wider hinterland with unequal divides, branching valleys and coastal outlets before selecting its exposed cliff. The official [Mountain model](https://fastscapelib.readthedocs.io/en/latest/examples/mountain_py.html) offers uplift opposed by channel/hillslope erosion as a process reference. Do not rescale its 75 x 50 km demonstration or repeat a long reference-verification exercise. Define metres, elevations and contributing extent first. Preserve the actual coast and ship route, but judge the complete parent form before imposing old arbitrary tile seams. Terrain beyond the measured crop is authored proposal data; it cannot certify neighbouring scene support. Generate matching sector seams from an accepted parent field later.
 

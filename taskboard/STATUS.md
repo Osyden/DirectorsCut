@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 15 Nov Codex: natural parent terrain and shading diagnosis; crater cut next
+
+- Wider terrain tied to the modern coast still failed as smooth mounds. A separate historical-datum/uniform-uplift model now produces useful branching valleys and interlocking ridges at native scale. Portable CLI replay matches all 40 numeric arrays exactly. [Actual images, limits and next crater-cut stage](CRATER-ESCARPMENT-WORKFLOW-15NOV.md).
+- Found that 24,538 split normal edges caused much of the apparent striping; a same-geometry smooth-normal comparison removes it. Broad corrugation and pointed skyline still need work. Fixed 1.5/3.2 km views preserve scale. The model is not converged and deliberately does not preserve current coast/route/temple supports, so it remains offline. No scene, water/sky/boss, build or main changes.
+
 ## 15 Nov Codex: physical escarpment adaptation tested; neither shape accepted
 
 - Built fresh 500 m terrain at 2 m spacing with the real coast/frame and exact outer boundaries. The API's default smoothing violated interior constraints; replaced it with checked valid-edge diffusion for a matched second trial. [Implementation, actual A/B images and next construction](CRATER-ESCARPMENT-WORKFLOW-15NOV.md).
