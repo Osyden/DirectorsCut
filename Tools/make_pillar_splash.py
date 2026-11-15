@@ -13,23 +13,12 @@ asset = unreal.load_asset(destination) if eal.does_asset_exist(destination) else
 if not isinstance(asset, unreal.ParticleSystem):
     raise RuntimeError('Unable to create the pillar splash ParticleSystem')
 
-required_count = 0
-for emitter in asset.get_editor_property('emitters'):
-    if not emitter:
-        continue
-    for lod in emitter.get_editor_property('lod_levels'):
-        if not lod:
-            continue
-        required = lod.get_editor_property('required_module')
-        if not required:
-            continue
-        required.set_editor_property('use_local_space', True)
-        if not required.get_editor_property('use_local_space'):
-            raise RuntimeError('Pillar splash failed to retain local-space setting')
-        required_count += 1
+# UE5.8 protects ParticleSystem.Emitters from Python reflection. Traverse its
+# public C++ API through this editor-only helper, which also marks the copy dirty.
+required_count = unreal.DCPillarAssetTools.make_pillar_splash_local(asset)
 
-if required_count == 0:
-    raise RuntimeError('Pillar splash has no required emitter modules')
+if required_count <= 0:
+    raise RuntimeError('Pillar splash authoring failed or has no required emitter modules')
 if not eal.save_loaded_asset(asset, only_if_is_dirty=False):
     raise RuntimeError('Could not save the pillar splash asset')
 unreal.log_warning('PILLAR_SPLASH saved=%s local_space_modules=%d' % (destination, required_count))
