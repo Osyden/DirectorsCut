@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 15 Nov 16:15 Codex: inlet shoulder artifact removed; overview shutdown recheck pending
+
+Exact native camera rays attributed the pointed gray patch to distant exposed shoulder tips outside the receiving river. A stronger early-fog trial did not hide them and was reverted. The new source lowers only those finite tips, preserves wet-corridor/upper geometry, and regenerates matching shoreline/support data. Low bank haze and dense waterfall-foot fog retain their original settings. Player screenshots now show water where the patch was.
+
+Source-triangle/ray/anchor checks, actual imported mesh audit, installer, Editor/Game builds and native player/open-sea/backward-seek review pass. The external overview produced its screenshot but then crashed with0xc0000005 in UnrealEditor-Core.dll at shutdown; cause unproven. One clean overview rerun remains before integration acceptance. [Actual before/after, source identities, local bundle and limits](CALDERA-INLET-TOE-15NOV.md). Main and its packaged build are untouched. GPU slot released to ACE; no further engine jobs this turn.
+
 ## 15 Nov 15:35 Codex: inlet patch isolated; deeper-bed trial rejected visually
 
 An underwater-only bed candidate passes sampled static source-triangle clearance, but the native gray patches beside the ship remain. Targeted visibility checks attribute the patch to the installed cliff component; ship helpers and bank scans are not the remedy, and coarse Nanite fallback is not established as the cause. The candidate is not accepted for integration. Restored the original terrain/support/fog runtime exactly; main and its local packaged playable are untouched.

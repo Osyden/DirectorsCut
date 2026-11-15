@@ -1,6 +1,10 @@
 # Inlet bed investigation — 15 November, 15:35
 
-Review branch: `codex/maelstrom-saturday`, based on combined main `3368536`. **The deeper-bed trial is not accepted for integration.** The original installed terrain, support data and shoreline fog have been restored byte-for-byte. Main and its packaged local playable were never changed.
+Review branch: `codex/maelstrom-saturday`, based on combined main `3368536`. **The deeper-bed trial is not accepted for integration.** Its byte-for-byte rollback below is historical. The later [bounded shoulder correction](CALDERA-INLET-TOE-15NOV.md) is now installed only in this review checkout; player verification passes and a clean overview rerun remains. Main and its packaged local playable were never changed.
+
+## 16:15 follow-up: fog trial reverted, shoulder geometry corrected
+
+Stronger early density in the existing impact volumes did not visibly conceal the pointed shoulder. Restored the original height/radial expressions and rebuilt both targets. The separate `Rounded` candidate lowers only the identified finite outer tips, preserves the wet corridor and upper banks, and regenerates source/support/shoreline data. Native player evidence removes the photographed patch. The external overview captured successfully but crashed during process shutdown, so full overview acceptance is pending. See the linked handoff for exact identities, validation and limitations; the old WetFoot candidate remains rejected.
 
 ## 15:44 correction: the photographed patch is distant shoreline
 

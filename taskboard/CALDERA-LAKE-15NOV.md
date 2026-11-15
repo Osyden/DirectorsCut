@@ -1,8 +1,10 @@
 # Caldera lake - 15 November
 
+**16:15 current local revision:** [Rounded inlet shoulders and regenerated bank-fog contacts](CALDERA-INLET-TOE-15NOV.md) replace only the exposed lower tips. Source `4e8340ee...`, FBX `5e32bbed...`. Player review passes; the external overview rendered then crashed at shutdown, requiring one clean rerun before integration acceptance. Main/package remain unchanged. Parent-source identities and install commands below are historical. Fog density/footprint remain unchanged; current contacts cover9,130 segments, with six volumes touching the nominal orbit and ten the outer steering circle.
+
 **15 November afternoon:** combined main `3368536` is now the review baseline, including Kraken, pirate crew/ACE and individual cannons. Earlier statements below that the boss is unmerged are historical. [The lake hull-clearance follow-up](CALDERA-LAKE-SHELF-15NOV.md) records a bounded displacement correction, actual integrated native frames and the still-unresolved river-bed sliver. Main's packaged local candidate is unchanged.
 
-**Current revision:** the inlet banks are part of the connected cliff mesh, with original fracture relief restored on the dry shoulders in `IntegratedBanksFractured`. The smooth first integrated banks were rejected in native review. The detached procedural embankment, stretched one-row lower wall and large mist cards from checkpoint **`a368e8f` are superseded**. Their screenshots and successful build/exit checks remain historical evidence, not acceptance of this revision. Root owns final native review and STATUS.
+**Parent revision:** the inlet banks are part of the connected cliff mesh, with original fracture relief restored on the dry shoulders in `IntegratedBanksFractured`. The smooth first integrated banks were rejected in native review. The detached procedural embankment, stretched one-row lower wall and large mist cards from checkpoint **`a368e8f` are superseded**. Their screenshots and successful build/exit checks remain historical evidence, not acceptance of this revision. Root owns final native review and STATUS.
 
 ## Current assembly
 
@@ -34,7 +36,7 @@ Lower cliffs and banks now use physically scaled owned rock through **`cliff_phy
 
 There are **160 shoreline volumes with 46m radius**, centred at Z=-398m over actual final-surface intersections with Z=-400m, **80 staggered river spray volumes with 37-43m radius**, and **nine connected impact-fog volumes with 42-48m radius** across the foot. The denser foot fog follows the user's request to obscure the waterfall bottom. Spray local Z aligns with the water surface normal to avoid horizontal fog bands; the former giant cards are removed. This is249 scene volumes, or253 including four ending-fog volumes, within the stage-scoped budget of256. Budget changes use `SetWithCurrentPriority` and restore without priority escalation. Ending fog covers ride seconds **440-457**, with seek-safe fade reset and suppression of the old white exposure flash. Perimeter falls remain disabled.
 
-## Frozen source and export
+## Parent source and export (superseded locally by the linked shoulder correction)
 
 Source: `E:/Projects/DirectorsCut/Crater-Workers/Cliff-Contact/Saved/CompleteCliffRing/IntegratedBanksFractured/candidate.npz`
 SHA-256: **`6eac5bba828f84ef2196f3a6598c23829c503722eb056f7ad59269bd6ab444e7`**.
@@ -46,7 +48,7 @@ Matching JSON/NPZ and `original_mesh_reference.json.gz` are beside the FBX. The 
 
 The base generator reads historical `CalderaSubmergedToe` (`e4d85d00...`) and its recorded pre-toe `CalderaEntry` parent (`8ce34f7f...`). The final correction reads `IntegratedBanks` (`ac616b7c...`) plus the actual residuals from `SurfaceRockBounded` (`a0ef5da4...`), which also remains the explicit ancestor of retained upper context paint. These are dependencies, not the final runtime mesh. All owned scans and generated assets remain local and Git-ignored.
 
-## Replay and install
+## Parent replay and install (historical; use the current handoff above)
 
 Choose fresh output directories for a replay; the paths below identify the frozen deliverable. Keep the parent source bundles available. Run Unreal jobs serially with the editor closed.
 
