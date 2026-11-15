@@ -36,7 +36,10 @@ void ADCEarlyEncounters::TickEncounterVerification()
 			if (Guns->ResolveAim(EDCSide::Port, View, (Point - View).GetSafeNormal(), Aim) && Guns->FireGun(Gun, Aim, true)) { ++VerifyShots; }
 		}
 	}
-	if (VerifyStage < 2 && Director->RideTime >= 146.f)
+	// A particular statue may correctly lose its firing window behind masonry.
+	// Exercise all three opportunities rather than requiring the first to fire
+	// through whatever scenery the natural route presents.
+	if (VerifyStage < 2 && Director->RideTime >= 236.f)
 	{
 		auto Check = [this](bool bPassed, const TCHAR* What)
 		{
@@ -83,6 +86,9 @@ void ADCEarlyEncounters::TickVerification(float DeltaSeconds)
 	};
 	if (VerifyStage == 0 && GetWorld()->GetTimeSeconds() > 2.f)
 	{
+		// Observe contacts after the player's tick. A first-use loading hitch can
+		// cross both timers in one frame; elapsed time alone does not order actors.
+		AddTickPrerequisiteActor(Captain);
 		VerifyFire = Troubles->DeckPoints[1];
 		Troubles->StartFire(VerifyFire);
 		Troubles->StartFire(VerifyFire + FVector(10, 0, 0));

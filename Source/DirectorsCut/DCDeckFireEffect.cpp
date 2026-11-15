@@ -98,6 +98,11 @@ void ADCDeckFireEffect::Initialize(float Seed)
 	EmberMaterial = Bind(Embers, TEXT("/Game/DC/Materials/M_DeckEmber.M_DeckEmber"));
 }
 
+void ADCDeckFireEffect::ReactToSwat()
+{
+	bSwatPending = true;
+}
+
 void ADCDeckFireEffect::Extinguish()
 {
 	if (StopTime >= 0.f) { return; }
@@ -109,6 +114,9 @@ void ADCDeckFireEffect::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	Clock += DeltaSeconds;
+	// A contact arrives before this visual tick. Start its pulse now so a loading
+	// hitch is not incorrectly counted as time elapsed since the new contact.
+	if (bSwatPending) { SwatTime = Clock; bSwatPending = false; }
 	APlayerController* PC = GetWorld()->GetFirstPlayerController();
 	if (!PC || !PC->PlayerCameraManager || !FlameMaterial || !SmokeMaterial || !EmberMaterial) { return; }
 	const FVector Eye = GetActorTransform().InverseTransformPosition(PC->PlayerCameraManager->GetCameraLocation());
@@ -117,7 +125,9 @@ void ADCDeckFireEffect::Tick(float DeltaSeconds)
 	if (Right.IsNearlyZero()) { Right = FVector::RightVector; }
 	const FVector CameraUp = FVector::CrossProduct(ToEye, Right).GetSafeNormal();
 	const float SinceStop = StopTime >= 0.f ? Clock-StopTime : 0.f;
-	const float Burning = Strength * (1.f-FMath::SmoothStep(0.f,.35f,SinceStop));
+	const float SinceSwat = FMath::Max(0.f, Clock - SwatTime);
+	const float Smother = 1.f - FMath::SmoothStep(0.f, .36f, SinceSwat);
+	const float Burning = Strength * (1.f-FMath::SmoothStep(0.f,.35f,SinceStop)) * (1.f - .55f * Smother);
 	const float Smolder = StopTime >= 0.f ? 1.f-FMath::SmoothStep(.3f,3.3f,SinceStop) : Strength;
 	const float Flicker = .82f + .12f*FMath::Sin(Clock*11.7f+SeedValue) + .06f*FMath::Sin(Clock*23.1f+SeedValue*2.f);
 	Light->SetIntensity(1800.f*Burning*Flicker);
@@ -162,6 +172,24 @@ void ADCDeckFireEffect::Tick(float DeltaSeconds)
 		const FVector U = CameraUp*FMath::Cos(Angle)-Right*FMath::Sin(Angle);
 		FColor Color(Rng.RandRange(0,255),Rng.RandRange(0,255),Rng.RandRange(0,255),FMath::RoundToInt(Alive*255));
 		Cards.Add({Center,R,U,FVector2D(Width,Width*1.2f),Color});
+	}
+	// A successful cloth contact briefly flattens the flame and pushes a small
+	// gust of smoke out at its base. Keep the cards present with zero opacity
+	// between hits so UpdateMeshSection retains a fixed vertex/index layout.
+	FRandomStream GustRng(928 + FMath::RoundToInt(SeedValue * 100.f));
+	const float GustAge = FMath::Clamp(SinceSwat / .65f, 0.f, 1.f);
+	const float GustAlpha = FMath::SmoothStep(0.f, .05f, SinceSwat)
+		* (1.f - FMath::SmoothStep(.12f, .65f, SinceSwat)) * .25f;
+	for (int32 I = 0; I < 4; ++I)
+	{
+		const float Angle = GustRng.FRandRange(0.f, 2.f * PI);
+		FVector Center(FMath::Cos(Angle), FMath::Sin(Angle), 0.f);
+		Center *= 20.f + GustAge * 65.f;
+		Center += Drift * (GustAge * .65f);
+		Center.Z = 20.f + GustAge * GustRng.FRandRange(65.f, 110.f);
+		const float Width = 45.f + GustAge * 85.f;
+		const FColor Color(GustRng.RandRange(0,255), GustRng.RandRange(0,255), GustRng.RandRange(0,255), FMath::RoundToInt(GustAlpha * 255.f));
+		Cards.Add({Center, Right, CameraUp, FVector2D(Width, Width * .75f), Color});
 	}
 	DrawCards(Smoke,Cards,Eye);
 	Cards.Reset();

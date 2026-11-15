@@ -16,7 +16,7 @@ if ($running) { throw "The selected runtime project is already open. Finish that
 $options = switch ($Case) {
     'rag' { '-DCEarlyVerify -DCSkipIntro -DCRunThrough -DCTenths -DCAutoShots=2.9,3.1,3.8,4.0,4.7,4.9,5.4,9,12,20' }
     'cannons' { '-DCCannonVerify' }
-    'encounters' { '-DCEncounterVerify -DCStartAt=90 -DCRunThrough -DCOrders=Hold_fire -DCAutoShots=101,108,119,121,123,126,129,135,146 -DCShotCam=-2200,0,1200,7,55 -DCGunLog' }
+    'encounters' { '-DCEncounterVerify -DCStartAt=90 -DCRunThrough -DCOrders=Hold_fire -DCAutoShots=101,108,119,121,123,126,129,135,146,175,208,225,235,236 -DCShotCam=-2200,0,1200,7,55 -DCGunLog' }
     'city' { '-DCRunThrough -DCOrders=Hold_fire -DCAutoShots=34,55,100,110,125,150,175,205,235 -DCShotCam=-2200,0,1200,5,-55 -DCLaneLog -DCCurrentLog' }
     'fogband' { '-DCRunThrough -DCOrders=Hold_fire -DCAutoShots=100,110,125 -DCShotCam=-2200,0,1200,5,-55' }
     'statue' { '-DCStartAt=112 -DCRunThrough -DCStation=starboard -DCTrackThreat -DCOrders=Hold_fire -DCTenths -DCAutoShots=118,122,126,128,130.2,130.8,131.2,132,140' }

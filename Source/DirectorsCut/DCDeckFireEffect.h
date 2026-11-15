@@ -17,6 +17,7 @@ public:
 	ADCDeckFireEffect();
 	void Initialize(float Seed);
 	void SetStrength(float Value) { Strength = Value; }
+	void ReactToSwat();
 	void Extinguish();
 	virtual void Tick(float DeltaSeconds) override;
 
@@ -32,4 +33,6 @@ private:
 	float SeedValue = 0.f;
 	float Strength = 0.25f;
 	float StopTime = -1.f;
+	float SwatTime = -10.f;
+	bool bSwatPending = false;
 };

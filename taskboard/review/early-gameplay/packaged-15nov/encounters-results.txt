@@ -1,0 +1,87 @@
+[2026.11.15-05.56.25:782][  1]LogDC: Bow spray waterline: x=1216 halfwidth=78
+[2026.11.15-05.56.25:782][  1]LogDC: Bow wash: tuned 2 live water materials; shared assets unchanged
+[2026.11.15-05.56.25:939][  2]LogDC: Display: Encounter group 1: 2 creatures on port at 90.4
+[2026.11.15-05.56.30:534][452]LogDC: Display: Encounter firing window: creature port distance=18556 at 95.0
+[2026.11.15-05.56.32:123][612]LogDC: Display: Encounter firing window: creature port distance=20114 at 96.6
+[2026.11.15-05.56.36:528][ 66]LogDC: Auto shot shot_0101.png at ride time 101.0, 98 fps (game 4.9 ms, render 10.7 ms, gpu 5.9 ms)
+[2026.11.15-05.56.36:528][ 66]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 101.0
+[2026.11.15-05.56.37:998][198]LogDC: Display: Encounter defeated: creature at 102.5
+[2026.11.15-05.56.42:924][763]LogDC: Display: Encounter charge: creature exposure=10.8 at 107.4
+[2026.11.15-05.56.43:529][825]LogDC: Auto shot shot_0108.png at ride time 108.0, 103 fps (game 4.9 ms, render 9.5 ms, gpu 5.7 ms)
+[2026.11.15-05.56.43:529][825]LogDC: Capture state: hull=100.0 score=100 fires=0 rigging=0 at 108.0
+[2026.11.15-05.56.47:520][245]LogDC: Sentinel eye 0 local=V(X=-69.17, Y=-27.18, Z=1737.33) figure bounds=V(X=1779.84, Y=1739.63, Z=4108.27)
+[2026.11.15-05.56.47:520][245]LogDC: Sentinel eye 1 local=V(X=-69.17, Y=27.18, Z=1737.33) figure bounds=V(X=1779.84, Y=1739.63, Z=4108.27)
+[2026.11.15-05.56.47:520][245]LogDC: Display: Sentinel 1 placed on starboard at 112.0
+[2026.11.15-05.56.48:325][330]LogDC: Display: Encounter impact: fireball deck=V(X=-190.63, Y=140.00, Z=471.88) fires=0->1 at 112.8
+[2026.11.15-05.56.54:525][922]LogDC: Auto shot shot_0119.png at ride time 119.0, 95 fps (game 5.2 ms, render 10.2 ms, gpu 6.0 ms)
+[2026.11.15-05.56.54:526][922]LogDC: Capture state: hull=98.3 score=100 fires=1 rigging=0 at 119.0
+[2026.11.15-05.56.56:522][ 93]LogDC: Auto shot shot_0121.png at ride time 121.0, 93 fps (game 6.1 ms, render 10.2 ms, gpu 5.7 ms)
+[2026.11.15-05.56.56:522][ 93]LogDC: Capture state: hull=98.1 score=100 fires=1 rigging=0 at 121.0
+[2026.11.15-05.56.57:239][148]LogDC: Display: Encounter firing window: sentinel starboard distance=13810 at 121.7
+[2026.11.15-05.56.58:531][273]LogDC: Auto shot shot_0123.png at ride time 123.0, 96 fps (game 5.8 ms, render 9.9 ms, gpu 5.9 ms)
+[2026.11.15-05.56.58:532][273]LogDC: Capture state: hull=98.0 score=100 fires=1 rigging=0 at 123.0
+[2026.11.15-05.57.01:529][549]LogDC: Auto shot shot_0126.png at ride time 126.0, 95 fps (game 6.0 ms, render 9.7 ms, gpu 6.4 ms)
+[2026.11.15-05.57.01:529][549]LogDC: Capture state: hull=97.7 score=100 fires=1 rigging=0 at 126.0
+[2026.11.15-05.57.01:842][569]LogDC: Display: Encounter charge: creature exposure=2.5 at 126.3
+[2026.11.15-05.57.04:526][832]LogDC: Auto shot shot_0129.png at ride time 129.0, 96 fps (game 5.6 ms, render 10.6 ms, gpu 5.6 ms)
+[2026.11.15-05.57.04:526][832]LogDC: Capture state: hull=97.5 score=100 fires=1 rigging=0 at 129.0
+[2026.11.15-05.57.06:609][ 32]LogDC: Display: Encounter charge: sentinel exposure=6.3 at 131.1
+[2026.11.15-05.57.07:243][ 97]LogDC: Display: Encounter impact: fireball deck=V(X=139.37, Y=-120.00, Z=471.88) fires=1->2 at 131.7
+[2026.11.15-05.57.07:519][125]LogDC: Display: Encounter group 2: 2 creatures on starboard at 132.0
+[2026.11.15-05.57.10:530][434]LogDC: Auto shot shot_0135.png at ride time 135.0, 103 fps (game 5.3 ms, render 10.0 ms, gpu 7.0 ms)
+[2026.11.15-05.57.10:530][434]LogDC: Capture state: hull=95.6 score=100 fires=2 rigging=0 at 135.0
+[2026.11.15-05.57.10:816][453]LogDC: Display: Encounter impact: sentinel beam deck=V(X=-1257.75, Y=-170.00, Z=627.13) fires=2->2 at 135.3
+[2026.11.15-05.57.15:645][939]LogDC: Display: Encounter firing window: creature starboard distance=13386 at 140.1
+[2026.11.15-05.57.17:021][ 79]LogDC: Display: Encounter firing window: creature starboard distance=15192 at 141.5
+[2026.11.15-05.57.21:525][532]LogDC: Auto shot shot_0146.png at ride time 146.0, 102 fps (game 5.3 ms, render 9.2 ms, gpu 5.9 ms)
+[2026.11.15-05.57.21:525][532]LogDC: Capture state: hull=92.6 score=100 fires=2 rigging=0 at 146.0
+[2026.11.15-05.57.23:645][734]LogDC: Display: Encounter charge: creature exposure=8.0 at 148.1
+[2026.11.15-05.57.27:814][147]LogDC: Display: Encounter charge: creature exposure=10.8 at 152.3
+[2026.11.15-05.57.29:042][267]LogDC: Display: Encounter impact: fireball deck=V(X=-440.63, Y=-150.00, Z=471.88) fires=1->2 at 153.5
+[2026.11.15-05.57.33:221][657]LogDC: Display: Encounter impact: fireball deck=V(X=-1257.75, Y=-170.00, Z=627.13) fires=2->2 at 157.7
+[2026.11.15-05.57.33:515][685]LogDC: Sentinel eye 0 local=V(X=-69.17, Y=-27.18, Z=1737.33) figure bounds=V(X=1779.84, Y=1739.63, Z=4108.27)
+[2026.11.15-05.57.33:516][685]LogDC: Sentinel eye 1 local=V(X=-69.17, Y=27.18, Z=1737.33) figure bounds=V(X=1779.84, Y=1739.63, Z=4108.27)
+[2026.11.15-05.57.33:516][685]LogDC: Display: Sentinel 2 placed on port at 158.0
+[2026.11.15-05.57.42:560][492]LogDC: Display: Encounter charge: creature exposure=2.5 at 167.0
+[2026.11.15-05.57.44:415][636]LogDC: Display: Encounter firing window: sentinel port distance=12173 at 168.9
+[2026.11.15-05.57.46:734][833]LogDC: Display: Encounter charge: creature exposure=2.5 at 171.2
+[2026.11.15-05.57.47:962][938]LogDC: Display: Encounter impact: fireball deck=V(X=-190.63, Y=140.00, Z=471.88) fires=1->2 at 172.4
+[2026.11.15-05.57.50:531][163]LogDC: Auto shot shot_0175.png at ride time 175.0, 89 fps (game 6.8 ms, render 11.2 ms, gpu 6.3 ms)
+[2026.11.15-05.57.50:531][163]LogDC: Capture state: hull=84.5 score=100 fires=2 rigging=0 at 175.0
+[2026.11.15-05.57.50:742][172]LogDC: Display: Encounter charge: sentinel exposure=6.3 at 175.2
+[2026.11.15-05.57.52:131][298]LogDC: Display: Encounter impact: fireball deck=V(X=-190.63, Y=140.00, Z=471.88) fires=2->2 at 176.6
+[2026.11.15-05.57.53:518][408]LogDC: Display: Encounter group 3: 3 creatures on port at 178.0
+[2026.11.15-05.57.54:954][541]LogDC: Display: Encounter impact: sentinel beam deck=V(X=-1257.75, Y=-170.00, Z=627.13) fires=2->2 at 179.4
+[2026.11.15-05.58.01:585][154]LogDC: Display: Encounter firing window: creature port distance=13610 at 186.1
+[2026.11.15-05.58.03:187][310]LogDC: Display: Encounter firing window: creature port distance=15061 at 187.7
+[2026.11.15-05.58.05:603][545]LogDC: Display: Encounter firing window: creature port distance=16221 at 190.1
+[2026.11.15-05.58.09:580][841]LogDC: Display: Encounter charge: creature exposure=8.0 at 194.1
+[2026.11.15-05.58.13:981][157]LogDC: Display: Encounter charge: creature exposure=10.8 at 198.5
+[2026.11.15-05.58.14:978][235]LogDC: Display: Encounter impact: fireball deck=V(X=-440.63, Y=-150.00, Z=471.88) fires=1->2 at 199.5
+[2026.11.15-05.58.19:389][535]LogDC: Display: Encounter impact: fireball deck=V(X=139.37, Y=-120.00, Z=471.88) fires=2->2 at 203.9
+[2026.11.15-05.58.21:971][723]LogDC: Display: Encounter charge: creature exposure=13.6 at 206.5
+[2026.11.15-05.58.23:527][830]LogDC: Sentinel eye 0 local=V(X=-69.17, Y=-27.18, Z=1737.33) figure bounds=V(X=1779.84, Y=1739.63, Z=4108.27)
+[2026.11.15-05.58.23:527][830]LogDC: Sentinel eye 1 local=V(X=-69.17, Y=27.18, Z=1737.33) figure bounds=V(X=1779.84, Y=1739.63, Z=4108.27)
+[2026.11.15-05.58.23:527][830]LogDC: Display: Sentinel 3 placed on starboard at 208.0
+[2026.11.15-05.58.23:537][831]LogDC: Auto shot shot_0208.png at ride time 208.0, 71 fps (game 7.2 ms, render 13.5 ms, gpu 12.4 ms)
+[2026.11.15-05.58.23:537][831]LogDC: Capture state: hull=74.9 score=100 fires=2 rigging=0 at 208.0
+[2026.11.15-05.58.27:369][ 99]LogDC: Display: Encounter impact: fireball deck=V(X=-1257.75, Y=-170.00, Z=627.13) fires=2->2 at 211.9
+[2026.11.15-05.58.28:504][175]LogDC: Display: Encounter charge: creature exposure=2.5 at 213.0
+[2026.11.15-05.58.32:915][485]LogDC: Display: Encounter charge: creature exposure=2.5 at 217.4
+[2026.11.15-05.58.33:604][540]LogDC: Display: Encounter firing window: sentinel starboard distance=13378 at 218.1
+[2026.11.15-05.58.33:901][566]LogDC: Display: Encounter impact: fireball deck=V(X=139.37, Y=-120.00, Z=471.88) fires=1->2 at 218.4
+[2026.11.15-05.58.38:308][925]LogDC: Display: Encounter impact: fireball deck=V(X=409.37, Y=60.00, Z=509.73) fires=2->2 at 222.8
+[2026.11.15-05.58.38:598][949]LogDC: Display: Encounter charge: sentinel exposure=5.0 at 223.1
+[2026.11.15-05.58.40:537][ 93]LogDC: Auto shot shot_0225.png at ride time 225.0, 74 fps (game 6.3 ms, render 13.5 ms, gpu 13.5 ms)
+[2026.11.15-05.58.40:537][ 93]LogDC: Capture state: hull=69.0 score=100 fires=2 rigging=0 at 225.0
+[2026.11.15-05.58.42:808][250]LogDC: Display: Encounter impact: sentinel beam deck=V(X=-1257.75, Y=-170.00, Z=627.13) fires=2->2 at 227.3
+[2026.11.15-05.58.50:526][  8]LogDC: Auto shot shot_0235.png at ride time 235.0, 111 fps (game 5.0 ms, render 10.8 ms, gpu 6.1 ms)
+[2026.11.15-05.58.50:526][  8]LogDC: Capture state: hull=66.2 score=100 fires=2 rigging=0 at 235.0
+[2026.11.15-05.58.51:519][103]LogDC: Display: ENCOUNTER VERIFY PASS: captain cannon kills a moving creature before its attack releases
+[2026.11.15-05.58.51:519][103]LogDC: Display: ENCOUNTER VERIFY PASS: three-health target needs three hits with at most one missed shot
+[2026.11.15-05.58.51:519][103]LogDC: Display: ENCOUNTER VERIFY PASS: ignored creatures deliver visible projectiles to the deck
+[2026.11.15-05.58.51:519][103]LogDC: Display: ENCOUNTER VERIFY PASS: ignored statue warms up and ignites a deck point
+[2026.11.15-05.58.51:519][103]LogDC: Display: ENCOUNTER VERIFY PASS: overlapping attacks respect the deck fire cap
+[2026.11.15-05.58.51:519][103]LogDC: Display: ENCOUNTER VERIFY METRICS shots=3 fireballs=11 beams=3
+[2026.11.15-05.58.51:529][104]LogDC: Display: ENCOUNTER VERIFY PASS: phase exit removes encounter actors and projectiles
+[2026.11.15-05.58.51:529][104]LogDC: Display: ENCOUNTER VERIFICATION PASSED

@@ -116,6 +116,7 @@ bool ADCTroubles::SwatNear(const FVector& Location, float Reach)
 		if (FVector::DistSquared(F.Location, Location) >= Reach * Reach) { continue; }
 		F.Suppression = FMath::Min(1.f, F.Suppression + 1.f / 3.f);
 		const FVector At = F.Location;
+		if (ADCDeckFireEffect* V = Cast<ADCDeckFireEffect>(F.Visual.Get())) { V->ReactToSwat(); }
 		if (F.Suppression >= .999f) { return ExtinguishNear(At, 1.f); }
 		if (ADCDeckFireEffect* V = Cast<ADCDeckFireEffect>(F.Visual.Get())) { V->SetStrength(1.f - F.Suppression); }
 		return true;
