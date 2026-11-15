@@ -111,11 +111,19 @@ def material(role):
     code=NOISE+f'''
 float across=UV.x*{width:.9g},along=1-UV.y;
 float2 p=float2(across,along-{speed:.9g}*T);
-float large=field.evaluate(p/float2(.75,3.7)).x;
-float small=field.evaluate(p/float2(.19,.63)+float2(17.3,4.9)).x;
-float stretch=field.evaluate(p/float2(.38,1.9)+float2(-8.2,13.7)).x;
-float bubbles=smoothstep(.36,.73,.50*large+.30*small+.20*stretch);
-float edge=smoothstep(0,.10,UV.x)*(1-smoothstep(.90,1,UV.x));
+// Metre-wide, several-metre-long packets break the actual sheet coverage.
+// Fine bubbles are filtered by physical pixel footprint, not amplified at
+// distant cameras into stippled white pixels or persistent specular stripes.
+float warp=field.evaluate(p/float2(2.3,7.1)+float2(3.7,-5.1)).x-.5;
+float large=field.evaluate((p+float2(warp*.72,warp*.65))/float2(1.15,4.9)).x;
+float footprint=max(length(ddx(p)),length(ddy(p)));
+float fineFade=1-smoothstep(.14,.42,footprint);
+float small=lerp(.5,field.evaluate(p/float2(.27,.83)+float2(17.3,4.9)).x,fineFade);
+float stretch=field.evaluate((p+float2(warp*.4,0))/float2(.62,2.7)+float2(-8.2,13.7)).x;
+float bubbles=smoothstep(.31,.68,.52*large+.18*small+.30*stretch);
+float left=.025+.065*field.evaluate(float2(along*.22-T*1.8,13.7)).x;
+float right=.025+.065*field.evaluate(float2(along*.17-T*1.7,41.3)).x;
+float edge=smoothstep(left,left+.055,UV.x)*(1-smoothstep(1-right-.055,1-right,UV.x));
 return float4(bubbles,large,small,edge);
 '''
     field=custom(code,unreal.CustomMaterialOutputType.CMOT_FLOAT4,{'UV':uv,'T':time})
@@ -125,22 +133,26 @@ return float4(bubbles,large,small,edge);
         rough_code='return lerp(.54,.82,Field.x);'
     elif aerated:
         color_code='return lerp(float3(.035,.09,.105),float3(.64,.73,.73),Field.x);'
-        mask_code='return Field.w*lerp(.45,1.,smoothstep(.12,.40,Field.y));'
-        rough_code='return lerp(.26,.64,Field.x);'
+        # Previous floor .45 exceeded the .38 clip threshold: every interior
+        # pixel survived, so the supposedly broken aerated layer was solid.
+        mask_code='return Field.w*smoothstep(.22,.56,.75*Field.y+.25*Field.x);'
+        rough_code='return lerp(.44,.73,Field.x);'
     else:
         color_code='return lerp(float3(.018,.055,.065),float3(.23,.34,.35),Field.x*.48);'
-        mask_code='return smoothstep(0,.055,Field.w);'
-        rough_code='return lerp(.16,.35,Field.x);'
+        mask_code='return Field.w*smoothstep(.13,.43,.72*Field.y+.28*Field.x);'
+        rough_code='return lerp(.29,.48,Field.x);'
     output(custom(color_code,unreal.CustomMaterialOutputType.CMOT_FLOAT3,{'Field':field}),unreal.MaterialProperty.MP_BASE_COLOR)
     output(custom(rough_code,unreal.CustomMaterialOutputType.CMOT_FLOAT1,{'Field':field}),unreal.MaterialProperty.MP_ROUGHNESS)
     output(custom(mask_code,unreal.CustomMaterialOutputType.CMOT_FLOAT1,{'Field':field}),unreal.MaterialProperty.MP_OPACITY_MASK)
     normal=custom(NOISE+f'''
 float2 p=float2(UV.x*{width:.9g},1-UV.y-{speed:.9g}*T)/float2(.38,1.9);
 float3 n=field.evaluate(p);
-return normalize(float3(-n.y*.22,n.z*.08,1));
+float footprint=max(length(ddx(p*float2(.38,1.9))),length(ddy(p*float2(.38,1.9))));
+float fineFade=1-smoothstep(.18,.65,footprint);
+return normalize(float3(-n.y*.18*fineFade,n.z*.08*fineFade,1));
 ''',unreal.CustomMaterialOutputType.CMOT_FLOAT3,{'UV':uv,'T':time})
     output(normal,unreal.MaterialProperty.MP_NORMAL)
-    output(scalar(.5),unreal.MaterialProperty.MP_SPECULAR)
+    output(scalar(.25 if aerated or foam else .35),unreal.MaterialProperty.MP_SPECULAR)
     output(scalar(0.),unreal.MaterialProperty.MP_METALLIC)
     output(scalar(0.),unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     M.recompile_material(mat)
