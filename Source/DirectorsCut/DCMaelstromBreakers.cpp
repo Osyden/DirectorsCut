@@ -12,7 +12,7 @@ void ADCMaelstrom::BuildBreakers()
     FRandomStream Random(14011);
     // These are height-field crests in the SAME water mesh. No overlapping
     // opaque ribbons, detached edges or second water volume interfaces.
-    for(int32 Wave=0;Wave<180;++Wave)
+    for(int32 Wave=0;Wave<360;++Wave)
     {
         const bool InChannel=Wave>=12 && Wave<32;
         const float A=Wave<12 ? DCMaelstromRoute::Angle(5.f+Wave*13.f) : (InChannel
@@ -22,13 +22,37 @@ void ADCMaelstrom::BuildBreakers()
         const float R=Wave<12 ? RouteR+(Wave%2 ? 14500.f : -8500.f)*Width : (InChannel
             ? RouteR+Random.FRandRange(-5000.f,5000.f) : Radius*Random.FRandRange(.22f,.91f));
         if(!InChannel && FMath::Abs(R-RouteR)<8500.f) { continue; }
+        // Added full-basin breakers never enter the protected hull corridor.
+        // Account for their full asymmetric cross-section, not just the centre.
+        if(Wave>=180 && FMath::Abs(R-RouteR)<17500.f) { continue; }
         const FVector2D Across(FMath::Cos(A),FMath::Sin(A));
         const FVector2D Along(Across.Y,-Across.X);
         if(R>WaterEdgeRadius(A)-1200.f) { continue; }
-        BreakingWaves.Add({Across*R,Along,Across,static_cast<float>(Random.FRandRange(2200.f,6500.f)),
+        const FBreakingWave Candidate={Across*R,Along,Across,static_cast<float>(Random.FRandRange(2200.f,6500.f)),
             static_cast<float>(InChannel ? Random.FRandRange(650.f,1300.f) : Random.FRandRange(500.f,1100.f)),
             static_cast<float>(InChannel ? Random.FRandRange(160.f,330.f) : Random.FRandRange(220.f,550.f)),
-            static_cast<float>(Random.FRandRange(0.f,20.f))});
+            static_cast<float>(Random.FRandRange(0.f,20.f))};
+        if(Wave>=180)
+        {
+            bool Clear=true;
+            for(int32 Sample=0;Sample<=8 && Clear;++Sample)
+            {
+                const float AlongDistance=(Sample/8.f-.5f)*Candidate.Length;
+                const float Bend=AlongDistance*.29f+AlongDistance*AlongDistance/(2.f*R)
+                    +FMath::Sin(AlongDistance/Candidate.Length*9.f+Candidate.Seed)*100.f;
+                for(float Offset:{-Candidate.Width*.60f,0.f,Candidate.Width*2.f})
+                {
+                    const FVector2D P=Candidate.Center+Candidate.Along*AlongDistance+Candidate.Across*(Offset-Bend);
+                    const float PA=FMath::Atan2(P.Y,P.X),PR=P.Size();
+                    const float Route=Radius*DCMaelstromRoute::RadialFraction(DCMaelstromRoute::SecondsAtAngle(PA));
+                    // Sample the entire support with another5m route margin.
+                    // No added wave reaches the shoreline receiving band.
+                    if(FMath::Abs(PR-Route)<13000.f || WaterEdgeRadius(PA)-PR<4000.f) { Clear=false; break; }
+                }
+            }
+            if(!Clear) { continue; }
+        }
+        BreakingWaves.Add(Candidate);
     }
     for(const FBreakingWave& W:BreakingWaves) for(int32 J=-2;J<=2;++J)
     {

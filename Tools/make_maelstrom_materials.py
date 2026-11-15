@@ -466,7 +466,7 @@ struct SourceFoamRaft {
   float fresh=max(vertexFresh,currentSource.r*.85*available);
   // The animated geometric lips are a subordinate renewal source. Their
   // .975..999 warped-sine isolines must not draw opaque hooks over clear water.
-  fresh=max(fresh,lip*.18)*(1-shelfGuard*.65);
+  fresh=max(fresh,lip*.40)*(1-shelfGuard*.65);
   float aged=saturate(max(max(wake*.85,impact*.95),transported));
   // Source strength and spatial occupancy are separate. A concentration of1
   // used to defeat every threshold (maximum .71), repainting whole crests;
@@ -487,10 +487,10 @@ struct SourceFoamRaft {
     if(k>0) forward+=value; else if(k<0) backward+=value;
   }
   // Restore variance lost by the seven-sample triangular convolution. The
-  // unchanged .30 area budget still controls coverage, not a global white lift.
+  // The bounded area budget controls coverage, not a global white lift.
   float massVariation=saturate(.5+(mass/16.-.5)*2.15);
   float rank=massVariation*massVariation*(3-2*massVariation);
-  float areaBudget=.30*sourceStrength*saturate(phaseWeight);
+  float areaBudget=.44*sourceStrength*saturate(phaseWeight);
   float packetAA=clamp(fwidth(rank)*.5,.008,.18);
   // Only exiting/downstream aged edges get a soft~5m trailing transition.
   // Its rank-space width is bounded; packet interiors remain bright, and the
@@ -556,7 +556,7 @@ return lerp(body,foamColor,Foam);
 """, FLOAT3, {"VC":vc,"Foam":foam}, 100)
 output(color, unreal.MaterialProperty.MP_BASE_COLOR)
 # Mix water/foam roughness by covered area; weak wake fringes stay liquid.
-roughness = custom(water, "float f=saturate(Foam); return lerp(sqrt(lerp(0.30*0.30,0.78*0.78,f)),lerp(.30,.78,sqrt(f)),saturate(Tunnel));", FLOAT, {"Foam":foam,"Tunnel":tunnel_flow}, 200)
+roughness = custom(water, "float f=saturate(Foam); float distanceM=length(P-Cam)*.01; float liquid=lerp(.30,.40,smoothstep(350.,1800.,distanceM)); return lerp(sqrt(lerp(liquid*liquid,.78*.78,f)),lerp(.30,.78,sqrt(f)),saturate(Tunnel));", FLOAT, {"Foam":foam,"Tunnel":tunnel_flow,"P":position,"Cam":camera}, 200)
 if fft_surface:
     roughness=custom(water,r"""
 float distanceM=length(P-Cam)*0.01;

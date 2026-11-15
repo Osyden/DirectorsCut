@@ -300,6 +300,22 @@ float ADCMaelstrom::HeightAt(const FVector2D& Point, bool bWaves) const
         : 1.f-FMath::SmoothStep(3500.f*Width,13000.f*Width,-Across);
     const float ChannelHeight=CenterHeight+DCMaelstromRoute::BankedHeight(Across,RouteT);
     Height=FMath::Lerp(Height,ChannelHeight,Lane*Channel);
+    // Keep the complete +/-110m steering range plus15m hull clearance exact.
+    // Outside it, unequal finite reaches vary the hydraulic bank width rather
+    // than drawing one constant-width raised ribbon around the whole descent.
+    // The35m shore fade preserves all existing waterfall/contact elevations.
+    const float Protected=FMath::SmoothStep(12500.f,16500.f,Across);
+    const float ShoreFade=FMath::SmoothStep(0.f,3500.f,WaterEdgeRadius(A)-R);
+    if(Protected>0.f && ShoreFade>0.f && Lane>0.f)
+    {
+        const float Reach=FMath::PerlinNoise2D(Point/18000.f+FVector2D(31.7f,12.3f));
+        const float WidthVariation=1.f+.24f*Reach;
+        const float BrokenChannel=1.f-FMath::SmoothStep(17000.f*Width*WidthVariation,
+            33000.f*Width*WidthVariation,Across);
+        const float Target=FMath::Lerp(BaseHeightAt(Point),ChannelHeight,Lane*BrokenChannel);
+        const float Delta=Target-Height;
+        Height+=Delta/FMath::Sqrt(1.f+FMath::Square(Delta/1500.f))*Protected*ShoreFade;
+    }
     if (!bWaves) { return Height; }
     // Low relief carries the flowing banks. The former 16m crossing sine waves
     // read as mountains from across the crater; ordinary wave scale must stay
@@ -338,7 +354,9 @@ void ADCMaelstrom::BuildBasin()
 	{
 		for (int32 Side = 0; Side <= Sectors; ++Side)
 		{
-            const float A=UE_TWO_PI*static_cast<float>(Side)/Sectors;
+            // Evaluate the duplicate seam column at exactly zero, avoiding
+            // sin(2PI) round-off in position, normal and advected water UVs.
+            const float A=Side==Sectors ? 0.f : UE_TWO_PI*static_cast<float>(Side)/Sectors;
 			const float R = FMath::Lerp(120.f, WaterEdgeRadius(A), static_cast<float>(Ring) / Rings);
 			const FVector2D P(FMath::Cos(A) * R, FMath::Sin(A) * R);
 			const float Z = HeightAt(P);
@@ -363,6 +381,14 @@ void ADCMaelstrom::BuildBasin()
 			}
 		}
 	}
+    // Close the former1.2m centre opening with the same continuous water
+    // surface. Shared first-ring vertices prevent a crack at the throat.
+    const int32 Center=Vertices.Num();
+    Vertices.Add(FVector(0.f,0.f,HeightAt(FVector2D(0.f,0.f))));
+    Normals.Add(FVector::UpVector); UVs.Add(FVector2D(0.f,0.f));
+    Colors.Add(FLinearColor(0.f,0.f,1.f,0.f).ToFColor(false));
+    Tangents.Add(FProcMeshTangent(FVector::ForwardVector,false));
+    for(int32 Side=0;Side<Sectors;++Side) { Triangles.Append({Center,Side+1,Side}); }
 	Basin->CreateMeshSection(0, Vertices, Triangles, Normals, UVs, Colors, Tangents, false);
 
 	// Rock walls and discrete cliff falls are built separately from the water.
