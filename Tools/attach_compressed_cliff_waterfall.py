@@ -267,11 +267,11 @@ def main():
             # remains physical; shader animation is a separate native task.
             strand=j in (2,3,6,7,10)
             if a.hero_source_index is not None and i>=launch_index:
-                progress=(i-launch_index)/max(len(path)-1-launch_index,1)
-                # Retain a short sheet near the lip; only unequal, interrupted
-                # thin ligaments remain farther down. Airborne volume carries
-                # the broken water between them, not an opaque150m ribbon.
-                keep=progress<.10 or (j in (2,3,6,9,10) and progress<.36) or (j in (2,6,10) and math.sin(s[i]*.47+j*2.3)>.25)
+                drop_from_lip=path[launch_index,2]-path[i,2]
+                # Native review rejected the regularly spaced long-tail pieces
+                # as road dashes. Keep only the first25m of sheet/ligaments;
+                # the unchanged physical volume carries the remaining fall.
+                keep=drop_from_lip<4. or (j in (2,3,6,9,10) and drop_from_lip<25.)
                 if not keep:
                     del faces[-2:]
                     continue
@@ -407,6 +407,7 @@ def main():
         frame_origin_arena_m=origin.tolist(),basis_u_arena=B[:,0].tolist(),basis_v_arena=B[:,1].tolist(),basis_z_arena=B[:,2].tolist(),
         drop_m=float(path[0,2]-foot[2]),length_m=float(s[-1]),width_range_m=[min(widths),max(widths)],
         terminal_jet=jet,mean_water_endpoint_residual_m=endpoint_error,core_triangles=len(faces),foam_triangles=len(foam_faces),
+        opaque_core_max_drop_m=25. if a.hero_source_index is not None else None,
         native_material_slots=['WetCore','AeratedCore','ReceivingFoam'],fbx_chart_units='metres',fbx_axes=['-Y','Z'],
         runtime_integrated=False,photorealistic_accepted=False,
         limitations=profile['limitations'])
