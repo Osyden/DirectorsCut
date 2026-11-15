@@ -87,20 +87,22 @@ def material(role):
     mat.set_editor_property('opacity_mask_clip_value',.38)
     def node(cls):return M.create_material_expression(mat,cls)
     def custom(code,kind,inputs):
-        n=node(unreal.MaterialExpressionCustom);n.code=code;n.output_type=kind
+        n=node(unreal.MaterialExpressionCustom)
+        n.set_editor_property('code',code);n.set_editor_property('output_type',kind)
         pins=[]
         for key in inputs:
-            p=unreal.CustomInput();p.input_name=key;pins.append(p)
-        n.inputs=pins
+            p=unreal.CustomInput();p.set_editor_property('input_name',key);pins.append(p)
+        n.set_editor_property('inputs',pins)
         for key,value in inputs.items():
             if not M.connect_material_expressions(value,'',n,key):raise RuntimeError('Material input failed:'+key)
         return n
     def output(n,prop):
         if not M.connect_material_property(n,'',prop):raise RuntimeError('Material output failed')
     def scalar(value):
-        n=node(unreal.MaterialExpressionConstant);n.r=value;return n
+        n=node(unreal.MaterialExpressionConstant);n.set_editor_property('r',value);return n
     uv=node(unreal.MaterialExpressionTextureCoordinate)
-    time=node(unreal.MaterialExpressionScalarParameter);time.parameter_name='PreviewTime';time.default_value=0.
+    time=node(unreal.MaterialExpressionScalarParameter)
+    time.set_editor_property('parameter_name','PreviewTime');time.set_editor_property('default_value',0.)
     # Export UV: U is normalized across the sheet, V is physical arc metres.
     # FBX import reverses texture V; 1-UV.y recovers increasing downstream arc.
     foam=role=='ReceivingFoam';aerated=role=='AeratedCore'
