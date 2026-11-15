@@ -220,6 +220,52 @@ struct StoneTile {
 """
 
 
+def fitted_wet_rock(saved):
+    """Authored spray proximity around the actual fitted paths, in mesh metres.
+
+    This is a visual wet-rock response, not a saturation simulation. The paths
+    come from the active fall contract; no vertical noise stripes are invented.
+    """
+    contract = json.loads((saved/'CliffPreviewWaterfall.json').read_text())
+    audit = json.loads((saved/'CliffPreviewSourceAudit.json').read_text())
+    if contract['cliff_fbx_sha256'] != audit['source_fbx_sha256']:
+        raise RuntimeError('Wet-rock fall contract does not match active cliff')
+    profile = json.loads(Path(contract['profile_path']).read_text())
+    if profile['profile_sha1'] != contract['profile_sha1']:
+        raise RuntimeError('Wet-rock profile mismatch')
+    frame = audit['geometry']['arena_reconstruction']
+    origin, axes = frame['origin_cm'], frame['basis_for_imported_xyz']
+    segments = []
+    def mesh_point(outlet, point):
+        basis = [outlet['basis_x_arena'],outlet['basis_y_arena'],outlet['basis_z_arena']]
+        arena = [outlet['local_origin_arena_cm'][j]+sum(point[k]*basis[k][j] for k in range(3)) for j in range(3)]
+        return [sum((arena[j]-origin[j])*axis[j] for j in range(3))*.01 for axis in axes]
+    for outlet in profile.get('ballistic_outlets',[profile]):
+        samples = outlet['samples_local_cm']
+        # Twenty-four chords per actual trajectory are sufficient for a broad
+        # metre-scale spray proximity mask, not used for collision/contact.
+        indices = sorted(set(round(i*(len(samples)-1)/24) for i in range(25)))
+        points = [mesh_point(outlet,samples[i]) for i in indices]
+        width = outlet['source_half_width_cm']*.01
+        for a,b in zip(points,points[1:]):
+            if sum((b[j]-a[j])**2 for j in range(3)) > 1.e-8:
+                segments.append((a,b,width+2.5))
+    if not segments or len(segments)>96:
+        raise RuntimeError('Invalid fitted wet-rock segment count')
+    def vector(values): return 'float3('+','.join(f'{v:.6f}' for v in values)+')'
+    code = ['float3 p=P*.01; float wet=0;']
+    for a,b,radius in segments:
+        code.append('{ float3 a='+vector(a)+',b='+vector(b)+'; float3 d=b-a; '
+                    'float t=saturate(dot(p-a,d)/max(dot(d,d),.000001)); '
+                    f'float distance=length(p-a-t*d); wet=max(wet,1-smoothstep({radius*.55:.6f},{radius:.6f},distance)); }}')
+    code.append('return saturate(wet*Strength);')
+    return '\n'.join(code), dict(profile_sha1=profile['profile_sha1'],
+        cliff_fbx_sha256=contract['cliff_fbx_sha256'], segments=len(segments),
+        response='Authored proximity to actual falling-water trajectories; not measured rock saturation',
+        dry_chromaticity_preserved=True, albedo_multiplier_at_full_wetness=.52,
+        roughness_at_full_wetness=.24)
+
+
 def create_material():
     candidate = os.environ.get('DC_CLIFF_SCAN_CANDIDATE', '0')
     if candidate not in ('0', '1'):
@@ -438,6 +484,14 @@ float3 z=tile.sampleMap(Albedo,AlbedoSampler,float2(p.x*s.z,-p.y)).rgb;
 return saturate((x*w.x+y*w.y+z*w.z)*max(AlbedoScale,0));
 """, types.CMOT_FLOAT3, {'P':position,'N':normal,'Albedo':scan_nodes['D'],
             'TileMetres':scan_tile_size,'AlbedoScale':parameter('AlbedoScale',1.)})
+    fitted_wet = None
+    fitted_wet_report = None
+    if candidate and os.environ.get('DC_CLIFF_FITTED_WETNESS','0') == '1':
+        saved = Path(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_saved_dir()))
+        wet_code,fitted_wet_report = fitted_wet_rock(saved)
+        fitted_wet = custom(wet_code,types.CMOT_FLOAT1,
+            {'P':position,'Strength':parameter('FittedWetness',1.)})
+        color = custom('return Dry*lerp(1.,.52,Wet);',types.CMOT_FLOAT3,{'Dry':color,'Wet':fitted_wet})
     output(color, unreal.MaterialProperty.MP_BASE_COLOR)
     local_normal = custom(r"""
 float3 n=normalize(N);
@@ -537,6 +591,8 @@ float y=tile.sampleMap(Rough,RoughSampler,float2(-p.x*s.y,-p.z)).r;
 float z=tile.sampleMap(Rough,RoughSampler,float2(p.x*s.z,-p.y)).r;
 return clamp(dot(float3(x,y,z),w),.52,.94);
 """, types.CMOT_FLOAT1, {'P':position,'N':normal,'Rough':scan_nodes['R'],'TileMetres':scan_tile_size})
+    if fitted_wet is not None:
+        roughness = custom('return lerp(Dry,.24,Wet);',types.CMOT_FLOAT1,{'Dry':roughness,'Wet':fitted_wet})
     output(roughness, unreal.MaterialProperty.MP_ROUGHNESS)
     output(constant(.35), unreal.MaterialProperty.MP_SPECULAR)
     output(constant(0), unreal.MaterialProperty.MP_METALLIC)
@@ -575,6 +631,7 @@ return clamp(dot(float3(x,y,z),w),.52,.94);
                   scan_projection=scan_projection if preset=='scan' else None,
                   scan_cell_rotation_degrees=[-25.78310078,25.78310078] if candidate else None,
                   albedo_response='Unmodified source chromaticity; achromatic AlbedoScale1' if candidate else 'Existing preset response',
+                  fitted_wet_rock=fitted_wet_report,
                   drainage_response='None: current whole-face geometry has no verified transport masks' if candidate else 'Existing preset response',
                   scan_coordinates=('Signed local triplanar, shared D/N/R offsets; DX gradients transformed by exact signed UV axes' if scan_projection=='triplanar' else 'Source-chart U/Z, native physical tile, top projection blend; DX normal mapped back to source axes') if preset=='scan' else None,
                   slate_sampling='Three-offset triangular blend per local triplanar projection; same albedo/normal offsets, explicit continuous UV mip gradients' if preset=='slate' else None,
