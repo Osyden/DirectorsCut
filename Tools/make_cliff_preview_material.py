@@ -17,6 +17,9 @@ remains authored: no unverified packed-map channels are used.
 DC_CLIFF_STONE=scan uses the verified CC0 material imported by
 import_cliff_scan_textures.py at its source-reported physical tile size.
 Exposed-face U/Z coordinates match the mesh displacement; no tile enlargement.
+DC_CLIFF_SCAN_SAMPLING=offsets enables shared three-offset colour/normal/roughness
+sampling ONLY for geometry without raw scan displacement. Default raw preserves
+the A/B displacement registration.
 Large fracture volume belongs to the mesh. Detail is shallow centimetre/metre
 surface relief with derivative filtering; no displaced vertices or fake blocks.
 """
@@ -178,6 +181,16 @@ def create_material():
         raise RuntimeError('DC_CLIFF_STONE must be procedural, slate or scan')
     texture_assets = {}
     scan = None
+    scan_sampling = os.environ.get('DC_CLIFF_SCAN_SAMPLING', 'raw')
+    if scan_sampling not in ('raw', 'offsets'):
+        raise RuntimeError('DC_CLIFF_SCAN_SAMPLING must be raw or offsets')
+    scan_tile_code = STONE_TILE if scan_sampling == 'offsets' else r"""
+struct StoneTile {
+ float4 sampleMap(Texture2D tex,SamplerState samp,float2 uv) {
+  return tex.SampleGrad(samp,uv,ddx(uv),ddy(uv));
+ }
+}; StoneTile tile;
+"""
     if preset == 'scan':
         scan = json.loads((Path(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_saved_dir())) /
                            'CliffScanImport.json').read_text(encoding='utf-8'))
@@ -312,12 +325,12 @@ return stone*lerp(1,.62,Weather.y);
         # U/Z on the exposed face matches the geometry displacement exactly.
         # Unreal imports source chart V with reflected Y. PNG rows and DX
         # normal convention require -Z texture V and -normal.y below.
-        color = custom(r"""
+        color = custom(scan_tile_code + r"""
 float3 p=P*.01/max(TileMetres,.1), n=normalize(N);
 float top=smoothstep(.55,.88,abs(n.z));
 float2 faceUV=float2(p.x,-p.z), topUV=p.xy;
-float3 face=Albedo.SampleGrad(AlbedoSampler,faceUV,ddx(faceUV),ddy(faceUV)).rgb;
-float3 upper=Albedo.SampleGrad(AlbedoSampler,topUV,ddx(topUV),ddy(topUV)).rgb;
+float3 face=tile.sampleMap(Albedo,AlbedoSampler,faceUV).rgb;
+float3 upper=tile.sampleMap(Albedo,AlbedoSampler,topUV).rgb;
 float3 stone=lerp(face,upper,top);
 // Restrained cool mineral tint; preserve measured fine-scale colour.
 stone=lerp(dot(stone,float3(.2126,.7152,.0722)).xxx,stone,.4);
@@ -348,10 +361,10 @@ perturb-=n*dot(n,perturb);
 return normalize(n+perturb*max(Strength,0));
 """, types.CMOT_FLOAT3, {'P':position,'N':normal,'NormalTex':texture_nodes['N'],'TileMetres':tile_size,'Strength':parameter('SlateNormalStrength', .7)})
     if preset == 'scan':
-        local_normal = custom(r"""
+        local_normal = custom(scan_tile_code + r"""
 float3 p=P*.01/max(TileMetres,.1), n=normalize(N);
 float2 uv=float2(p.x,-p.z);
-float3 map=UnpackNormalMap(NormalTex.SampleGrad(NormalTexSampler,uv,ddx(uv),ddy(uv))).xyz;
+float3 map=UnpackNormalMap(tile.sampleMap(NormalTex,NormalTexSampler,uv)).xyz;
 float3 perturb=float3(map.x,0,-map.y)/max(map.z,.25);
 perturb-=n*dot(n,perturb);
 float face=1-smoothstep(.55,.88,abs(n.z));
@@ -366,11 +379,11 @@ return normalize(n+perturb*Strength*face);
     roughness = custom("return clamp(.82+.08*Weather.x+.06*Weather.z-.05*Weather.w-.24*Weather.y,.53,.94);",
                        types.CMOT_FLOAT1, {"Weather":weather})
     if preset == 'scan':
-        roughness = custom(r"""
+        roughness = custom(scan_tile_code + r"""
 float3 p=P*.01/max(TileMetres,.1),n=normalize(N);
 float2 uv=float2(p.x,-p.z),topUV=p.xy;
-float face=Rough.SampleGrad(RoughSampler,uv,ddx(uv),ddy(uv)).r;
-float top=Rough.SampleGrad(RoughSampler,topUV,ddx(topUV),ddy(topUV)).r;
+float face=tile.sampleMap(Rough,RoughSampler,uv).r;
+float top=tile.sampleMap(Rough,RoughSampler,topUV).r;
 return clamp(lerp(face,top,smoothstep(.55,.88,abs(n.z))),.52,.94);
 """, types.CMOT_FLOAT1, {'P':position,'N':normal,'Rough':scan_nodes['R'],'TileMetres':scan_tile_size})
     output(roughness, unreal.MaterialProperty.MP_ROUGHNESS)
@@ -405,7 +418,8 @@ return clamp(lerp(face,top,smoothstep(.55,.88,abs(n.z))),.52,.94);
                   normal_fully_filtered_above_metres_per_pixel=.38 if preset=='procedural' else None, cracks_filtered_above_metres_per_pixel=.0645 if preset=='procedural' else None,
                   slate_normal_strength=.7 if preset=='slate' else None,
                   scan_normal_strength=.5 if preset=='scan' else None,
-                  scan_sampling='Registered source-chart U/Z, native physical tile, top projection blend; DX normal mapped back to source axes' if preset=='scan' else None,
+                  scan_sampling=scan_sampling if preset=='scan' else None,
+                  scan_coordinates='Source-chart U/Z, native physical tile, top projection blend; DX normal mapped back to source axes' if preset=='scan' else None,
                   slate_sampling='Three-offset triangular blend per local triplanar projection; same albedo/normal offsets, explicit continuous UV mip gradients' if preset=='slate' else None,
                   roughness_bounds=[.52 if preset=='scan' else .53,.94], emissive=False, displacement=False,
                   runtime_integrated=False, actual_shader_compile_and_visual_review_pending=True)
