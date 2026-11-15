@@ -2,6 +2,22 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 15 Nov 09:04 Codex: continuous scan-cliff prototype delivered; visual target still unmet
+
+Current local demo uses connected 497m geometry, a unique 4K scan-derived atlas and irregular planar fracture relief; stacked scans, repeated waffle displacement and blank crest material are removed. Actual [wide frame](review/continuous-scan-15nov/cliff-wide.png) and [deck frame](review/continuous-scan-15nov/cliff-deck.png) still show overly uniform cliff massing and artificial joints. This is not accepted AAA art and does not replace normal gameplay terrain. [Source identities, critique, validation and launch commands](CONTINUOUS-SCAN-CLIFF-15NOV.md).
+
+Native source/triangle/mask audit passed, all50 ruin groups remain supported, 300/350s views and 250/451s restoration captures completed, and the final deck views rendered. No new C++ build or packaged-build claim. The interactive launcher is syntax-checked and ready for manual use; offscreen rendering was verified. Existing waterfall bindings are stale and disabled; boss, sky/lighting and voice remain untouched. Old scheduler stays paused. RTX Mega Geometry engine migration is deferred for the deadline. Existing pending water/VFX material edits are outside this cliff checkpoint.
+
+## 15 Nov 08:45 Codex: continuous scan-derived cliff in native review
+
+Stacked scans and whole-terrain placement are abandoned for this task. A connected 497 m sector now imports with measured Nordic scan relief and registered PBR maps. The actual first frame exposed repeated waffle geometry and an untextured crest, so it is rejected visually; a unique sector-wide field and broader asymmetric cliff forms are being prepared. [Native findings and local review command](CONTINUOUS-SCAN-CLIFF-15NOV.md). Source-mesh/vertex-mask audit, all50 ruin supports, reverse seek and ending restoration passed. Old fitted waterfalls are disabled because their bindings are stale. No normal-game terrain rollout or main merge. RTX Mega Geometry engine migration is deferred; see [decision](RTX-MEGA-GEOMETRY-15NOV.md). Existing scheduler stays paused.
+
+## 15 Nov 08:25 Codex: owned scans installed; stacked assembly rejected
+
+User authorized a fast installed-asset demo after the crash, then explicitly rejected the stacked-cliff result. Two owned Nordic coastal raw scans (vefkehbva/vfmjadufa) now import as local Nanite meshes with original 8K PBR maps under ignored Content/LocalScans. Optional `-DCCliffScanDemo` attaches an authored instance manifest to the existing Arena; Editor build/import/native renders pass. This is not visual acceptance: `Saved/SceneReview/OwnedScansFirst` and `OwnedScansOverlap` show shelves/pancakes, so no further row/courses placement is authorized by the latest direction. Cropped local derivatives preserve source UVs but do not solve the large-form problem.
+
+Next: evaluate the owned Desert Cliffs Terrain Scan as one continuous headland, retain whole-form geology, and use small coastal pieces only selectively. Root is downloading its GLTF source; no accepted replacement or gameplay rollout yet. Existing crater scale/route, sky, boss and main remain untouched. The old autonomous visual-iteration automation is now confirmed PAUSED. Root owns imports/GPU; workers must not restart procedural solver or stacking sweeps.
+
 ## 15 Nov 07:45 Codex: water shading/geometry faults isolated; cliff weathering continues
 
 The bank's old wave and shore masks never overlapped at ride350, producing zero added relief. Corrected region now carries roughly +/-1.3 m waves while preserving the ship corridor and shore. Actual source-mask capture shows the large silver sheet is mostly reflection; matching normal/displacement weights and removing a fresh-crest geometry freeze are now in native review. Focused CPU checks and Editor build pass.
