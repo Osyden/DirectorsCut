@@ -19,6 +19,16 @@ Conversation and command JSON reports include `selected_model`; conversation rep
 
 ## Native commands for the build owner
 
+### Gemma reasoning-budget correction
+
+The initial native command review passed **13/27** cases; a subsequent review with the model resident passed **18/27**. Neither run is accepted. Initial results are in main `Saved/PhononGemma/commands.json`; cold-start/deadline failures and content failures must remain distinct.
+
+The captured held-out request in `Saved/PhononGemma/raw-heldout-response.json` confirms a content failure: despite `chat_template_kwargs.enable_thinking=false`, the server generated all 80 completion tokens as reasoning, returned empty content and stopped with `finish_reason=length`. The same prompt with `reasoning_effort="none"` and `reasoning_budget_tokens=0` returned the correct Ruby/starboard/man JSON in 28 completion tokens, with 235.296 ms combined server prompt/generation time, in `raw-heldout-bounded-response.json`. This is a single direct HTTP reproduction; cache reuse differs, so it is not a controlled model-speed comparison.
+
+`DCDialogueRouting.cpp` now includes both explicit fields for LlamaCpp requests, retaining the existing template hint, production token/deadline limits and strict intent validation. The installed server fingerprint is `b12317-e0949d09b`. Its [Gemma parser](https://github.com/ggml-org/llama.cpp/blob/e0949d09b130707b3fa93d2cff616024231cf939/common/parsers/gemma4.cpp#L213) permits an optional thought block before structured output; the zero reasoning budget closes that route before it consumes the response allowance. The exact server version already enables Jinja by default, so omission of an explicit `--jinja` flag is not evidence of the failure's cause.
+
+**The two-field native fix has not yet been compiled or validated through the 27-case Unreal review.** Repeat the native command/acknowledgement review and actual conversation tests after integration; the raw HTTP success does not establish native or full-pipeline acceptance.
+
 After integrating all three candidate commits and compiling, use the dependency-complete main project, one process at a time. The supplied paths need no Phonon dev overrides now. Do not run these alongside the root's other native reviews.
 
 ```powershell

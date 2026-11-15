@@ -166,6 +166,9 @@ void ADCVoice::RequestDialogue(const FString& System, const FString& User, int32
     TSharedRef<FJsonObject> Kwargs = MakeShared<FJsonObject>();
     Kwargs->SetBoolField(TEXT("enable_thinking"), false);
     Root->SetObjectField(TEXT("chat_template_kwargs"), Kwargs);
+    // Gemma can emit thought tokens despite the template hint; keep the bounded reply budget for spoken/JSON content.
+    Root->SetStringField(TEXT("reasoning_effort"), TEXT("none"));
+    Root->SetNumberField(TEXT("reasoning_budget_tokens"), 0);
     if (bJson)
     {
         TSharedRef<FJsonObject> Format = MakeShared<FJsonObject>();
