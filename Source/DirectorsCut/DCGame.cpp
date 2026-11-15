@@ -737,6 +737,9 @@ void ADCGameMode::Tick(float DeltaSeconds)
 		UE_LOG(LogDC, Log, TEXT("Capture state: hull=%.1f score=%d fires=%d rigging=%d at %.1f"),
 			Director->ShipHealth, Director->Score, ShotTroubles ? ShotTroubles->NumFires() : 0,
 			ShotTroubles && ShotTroubles->IsRiggingLoose(), Director->RideTime);
+		const FDCEnvState& ShotWeather = Director->GetEnv();
+		UE_LOG(LogDC, Log, TEXT("Capture weather: rain=%.3f lightning=%.3f waves=%.1f at %.1f"),
+			ShotWeather.Rain, ShotWeather.LightningRate, ShotWeather.WaveHeight, Director->RideTime);
 		bAutoShotTaken = true;
 		AutoShotWait = bTenths ? 0.05f : 1.f;
 		return;

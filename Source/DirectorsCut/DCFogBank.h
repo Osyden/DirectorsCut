@@ -30,7 +30,7 @@ struct FDCFogBankDesc
 	/** Blend with the city atmosphere only; does not add ground haze to the opening storm. */
 	bool bCityLayer = false;
 	FLinearColor Tint = FLinearColor(0.8f, 0.86f, 0.95f);
-	/** Stays round the ship (wisps across the deck) instead of lying in the sea. */
+	/** Stays round the ship; fades in with the city after the unified storm clears. */
 	bool bOnDeck = false;
 	/** Draw it with the heterogeneous-volume renderer (sharp, self-shadowed) instead of the fog grid. */
 	bool bHero = false;
