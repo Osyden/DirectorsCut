@@ -1,0 +1,10 @@
+[2026.11.14-20.57.43:097][515]LogDC: Navigation: obstacle=-1 target=2356 lane=2356 velocity=-182 assist=2 helm=0.02 manual=0 t=154.6
+[2026.11.14-20.58.49:188][ 44]LogDC: Navigation: obstacle=-1 target=2330 lane=2330 velocity=-207 assist=0 helm=0.09 manual=0 t=220.7
+[2026.11.14-20.59.00:785][434]LogDC: Navigation: obstacle=-1 target=425 lane=425 velocity=-1188 assist=0 helm=-1.00 manual=0 t=232.3
+[2026.11.14-20.59.01:293][497]LogDC: Navigation: obstacle=-1 target=-210 lane=-210 velocity=-1289 assist=0 helm=-1.00 manual=0 t=232.8
+[2026.11.14-20.59.01:797][560]LogDC: Navigation: obstacle=15849 target=-856 lane=-856 velocity=-1258 assist=0 helm=-1.00 manual=0 t=233.3
+[2026.11.14-20.59.02:300][621]LogDC: Navigation: obstacle=7800 target=500 lane=-1028 velocity=393 assist=97 helm=1.00 manual=0 t=233.8
+[2026.11.14-20.59.02:808][684]LogDC: Navigation: obstacle=14399 target=500 lane=-624 velocity=1001 assist=97 helm=0.62 manual=0 t=234.3
+[2026.11.14-20.59.03:316][748]LogDC: Navigation: obstacle=14184 target=500 lane=-165 velocity=753 assist=66 helm=0.20 manual=0 t=234.8
+[2026.11.14-20.59.03:823][799]LogDC: Navigation: obstacle=13171 target=-3500 lane=80 velocity=-18 assist=-19 helm=-1.00 manual=0 t=235.3
+[2026.11.14-20.59.04:325][861]LogDC: Navigation: obstacle=12537 target=-3500 lane=-167 velocity=-834 assist=-74 helm=-1.00 manual=0 t=235.8

@@ -1,0 +1,19 @@
+[2026.11.14-22.51.34:490][  0]LogPython: Warning: DC_BOW scalar M_DRW_High InteractionFoamStrength
+[2026.11.14-22.51.34:490][  0]LogPython: Warning: DC_BOW scalar M_DRW_High InteractionWPOStrength
+[2026.11.14-22.51.34:490][  0]LogPython: Warning: DC_BOW scalar M_DRW_High InteractionResolution
+[2026.11.14-22.51.34:490][  0]LogPython: Warning: DC_BOW scalar M_DRW_High RiverFoamTime
+[2026.11.14-22.51.34:490][  0]LogPython: Warning: DC_BOW scalar M_DRW_High RiverFoamBlend
+[2026.11.14-22.51.34:490][  0]LogPython: Warning: DC_BOW scalar M_DRW_High FoamAlphaContrast
+[2026.11.14-22.51.34:490][  0]LogPython: Warning: DC_BOW scalar M_DRW_High FoamStretch
+[2026.11.14-22.51.34:490][  0]LogPython: Warning: DC_BOW scalar M_DRW_High DCShoreFoamWidth
+[2026.11.14-22.51.34:490][  0]LogPython: Warning: DC_BOW scalar M_DRW_High DCShoreFoam
+[2026.11.14-22.51.34:490][  0]LogPython: Warning: DC_BOW scalar M_DRW_Med InteractionFoamStrength
+[2026.11.14-22.51.34:490][  0]LogPython: Warning: DC_BOW scalar M_DRW_Med InteractionWPOStrength
+[2026.11.14-22.51.34:490][  0]LogPython: Warning: DC_BOW scalar M_DRW_Med InteractionResolution
+[2026.11.14-22.51.34:490][  0]LogPython: Warning: DC_BOW scalar M_DRW_Med RiverFoamTime
+[2026.11.14-22.51.34:490][  0]LogPython: Warning: DC_BOW scalar M_DRW_Med RiverFoamBlend
+[2026.11.14-22.51.34:491][  0]LogPython: Warning: DC_BOW scalar M_DRW_Med FoamAlphaContrast
+[2026.11.14-22.51.34:491][  0]LogPython: Warning: DC_BOW scalar M_DRW_Med FoamStretch
+[2026.11.14-22.51.34:491][  0]LogPython: Warning: DC_BOW scalar M_DRW_Med DCShoreFoamWidth
+[2026.11.14-22.51.34:491][  0]LogPython: Warning: DC_BOW scalar M_DRW_Med DCShoreFoam
+[2026.11.14-22.51.34:556][  0]LogPython: Warning: DC_BOW splash=/Game/ParagonRampage/FX/Particles/Abilities/RipNToss/FX/P_RipNToss_WaterImpact.P_RipNToss_WaterImpact

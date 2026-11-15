@@ -13,6 +13,7 @@
 #include "DCFogFront.h"
 #include "DCWaveCurl.h"
 #include "DCTroubles.h"
+#include "DCEarlyEncounters.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -134,6 +135,12 @@ void ADCHUD::DrawHUD()
 		}
 	}
 
+	if (ADCEarlyEncounters* Encounters = ADCEarlyEncounters::Get(this))
+	{
+		const FString Threat = Encounters->GetThreatText();
+		if (!Threat.IsEmpty()) { Centered(Threat, 72.f * S, 1.15f, Gold, Font); }
+	}
+
 	// Developer line, only with -DCDebug.
 	static const bool bDebug = FParse::Param(FCommandLine::Get(), TEXT("DCDebug"));
 	if (bDebug && D && T)
@@ -242,6 +249,10 @@ void ADCHUD::DrawHUD()
 			if (!Impact.IsEmpty()) { Centered(Impact, Y + 29.f * S, 1.2f, Impact == TEXT("HIT") ? Gold : White, Font); }
 		}
 
+		if (!Captain->IsTypingOrder() && !Captain->IsAtStation() && !Captain->IsShipView() && !Captain->GetFireFeedback().IsEmpty())
+		{
+			Centered(Captain->GetFireFeedback(), H * .69f, 1.1f, FLinearColor(.72f, .9f, .72f), Font);
+		}
 		if (!Captain->IsTypingOrder() && !Captain->GetPrompt().IsEmpty())
 		{
 			Centered(Captain->GetPrompt(), H * (Side == EDCSide::None ? 0.74f : 0.77f), 1.25f, Gold, Font);
@@ -251,7 +262,7 @@ void ADCHUD::DrawHUD()
 	// Title card at the start, score card at the end.
 	if (D)
 	{
-		if (D->RideTime < 16.f)
+		if (D->RideTime < 16.f && !FParse::Param(FCommandLine::Get(), TEXT("DCSkipIntro")))
 		{
 			const float A = FMath::Clamp((16.f - D->RideTime) / 3.f, 0.f, 1.f);
 			const FLinearColor G(Gold.R, Gold.G, Gold.B, A), Wh(1.f, 1.f, 1.f, A);
@@ -442,6 +453,7 @@ void ADCGameMode::StartPlay()
 	World->SpawnActor<ADCAudio>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
 	World->SpawnActor<ADCWeatherFX>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
 	World->SpawnActor<ADCWake>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
+	World->SpawnActor<ADCEarlyEncounters>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
 	World->SpawnActor<ADCFogFront>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
 	World->SpawnActor<ADCWaveCurl>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
 	if (!FParse::Param(FCommandLine::Get(), TEXT("DCNoVoice")))
@@ -600,6 +612,8 @@ void ADCGameMode::StartPlay()
 	// Test runs: speed the whole world up evenly so crew, guns and hazards stay in step.
 	float TestDilation = 1.f;
 	if (FParse::Value(FCommandLine::Get(), TEXT("DCTimeScale="), TestDilation)) { UGameplayStatics::SetGlobalTimeDilation(World, TestDilation); }
+	float StartAt = 0.f;
+	if (FParse::Value(FCommandLine::Get(), TEXT("DCStartAt="), StartAt)) { Director->Seek(StartAt); }
 	FString Shots;
 	if (FParse::Value(FCommandLine::Get(), TEXT("DCAutoShots="), Shots, false))
 	{
@@ -755,6 +769,10 @@ void ADCGameMode::Tick(float DeltaSeconds)
 		// -DCProfile also writes a GPU timing breakdown to the log at each shot.
 		if (FParse::Param(FCommandLine::Get(), TEXT("DCProfile")) && GEngine) { GEngine->Exec(GetWorld(), TEXT("ProfileGPU")); }
 		UE_LOG(LogDC, Log, TEXT("Auto shot %s at ride time %.1f, %.0f fps (game %.1f ms, render %.1f ms, gpu %.1f ms)"), *FPaths::GetCleanFilename(File), Director->RideTime, SmoothedFps, FPlatformTime::ToMilliseconds(GGameThreadTime), FPlatformTime::ToMilliseconds(GRenderThreadTime), FPlatformTime::ToMilliseconds(RHIGetGPUFrameCycles()));
+		const ADCTroubles* ShotTroubles = ADCTroubles::Get(this);
+		UE_LOG(LogDC, Log, TEXT("Capture state: hull=%.1f score=%d fires=%d rigging=%d at %.1f"),
+			Director->ShipHealth, Director->Score, ShotTroubles ? ShotTroubles->NumFires() : 0,
+			ShotTroubles && ShotTroubles->IsRiggingLoose(), Director->RideTime);
 		bAutoShotTaken = true;
 		AutoShotWait = bTenths ? 0.05f : 1.f;
 		return;

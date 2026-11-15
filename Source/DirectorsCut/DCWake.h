@@ -9,11 +9,9 @@ class UMaterialInstanceDynamic;
 class ADCRideDirector;
 
 /**
- * White water along the hull and a wake astern, for the plugin sea (Dynamic Real Water).
- * The ship stands still and the sea streams past it, so the wake is a fixed ribbon of foam down
- * each side and out behind the stern whose pattern runs aft (M_Wake). It rides on the plugin's
- * waves: the surface height is asked for at a row of points down each side every frame and the
- * ribbon is laid on those heights.
+ * Samples the Dynamic Real Water surface for ship motion and bow spray.
+ * Spray breaks away at the sampled waterline, moving aft and out as the ship
+ * advances. The old flat hull ribbon remains an opt-in diagnostic only.
  */
 UCLASS()
 class ADCWake : public AActor
@@ -32,6 +30,19 @@ protected:
 	void Build();
 	/** Height of the plugin sea at a point (world Z), or the flat sea level when it has no answer. Channel is one per point. */
 	float SurfaceAt(const FVector2D& Where, int32 Channel);
+	void TickBowSpray(float DeltaSeconds);
+	void TickHullFoam(float DeltaSeconds);
+	struct FHullFoamMaterial { TWeakObjectPtr<UMaterialInstanceDynamic> Material; float Width = 650.f, Strength = 1.f; };
+	TArray<FHullFoamMaterial> HullFoamMaterials;
+	float FoamTimer = 0.f;
+	UPROPERTY() TObjectPtr<class UParticleSystem> BowSplash;
+	struct FBowPulse { TWeakObjectPtr<class UParticleSystemComponent> Effect; float Age = 0.f; FVector Origin; float Side = 1.f; };
+	TArray<FBowPulse> BowPulses;
+	struct FBowContact { float PreviousDepth = 0.f, Closing = 0.f, Timer = 0.f; bool bValid = false; };
+	FBowContact BowContacts[2];
+	float BowLogTimer = 0.f;
+	TWeakObjectPtr<class UPrimitiveComponent> BowHull;
+	float BowSprayX = 2350.f, BowSprayY = 240.f;
 
 	UPROPERTY() TObjectPtr<UProceduralMeshComponent> Mesh;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> MID;

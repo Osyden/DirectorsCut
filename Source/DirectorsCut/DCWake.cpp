@@ -4,6 +4,29 @@
 #include "ProceduralMeshComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "EngineUtils.h"
+#include "Kismet/GameplayStatics.h"
+#include "Particles/ParticleSystem.h"
+#include "Particles/ParticleSystemComponent.h"
+#include "ParticleEmitterInstances.h"
+#include "ParticleHelper.h"
+#include "Particles/ParticleEmitter.h"
+#include "Particles/ParticleLODLevel.h"
+#include "Particles/ParticleModuleRequired.h"
+#include "Particles/TypeData/ParticleModuleTypeDataMesh.h"
+#include "Particles/ParticleSpriteEmitter.h"
+#include "Particles/Color/ParticleModuleColorOverLife.h"
+#include "Particles/Lifetime/ParticleModuleLifetime.h"
+#include "Particles/Location/ParticleModuleLocation.h"
+#include "Particles/Size/ParticleModuleSize.h"
+#include "Particles/Velocity/ParticleModuleVelocity.h"
+#include "Particles/Acceleration/ParticleModuleAcceleration.h"
+#include "Particles/Spawn/ParticleModuleSpawn.h"
+#include "Distributions/DistributionFloatConstant.h"
+#include "Distributions/DistributionFloatConstantCurve.h"
+#include "Distributions/DistributionFloatUniform.h"
+#include "Distributions/DistributionVectorConstant.h"
+#include "Distributions/DistributionVectorUniform.h"
+#include "Engine/StaticMesh.h"
 
 namespace
 {
@@ -11,6 +34,103 @@ namespace
 	const float WakeBowX = 2550.f;      // where the cutwater meets the sea
 	const float WakeSternX = -2000.f;
 	const float WakeEndX = -11000.f;    // the wake is followed 90 m astern
+
+	template <typename TRaw, typename TObject>
+	void BowDistribution(TRaw& Value, TObject* Distribution)
+	{
+		// Do not retain any baked class-default table after replacing its source.
+		Value = TRaw();
+		Value.Distribution = Distribution;
+		Value.InitLookupTable();
+	}
+
+	void BowConstant(UObject* Owner, FRawDistributionFloat& Value, float Constant)
+	{
+		UDistributionFloatConstant* D = NewObject<UDistributionFloatConstant>(Owner);
+		D->Constant = Constant; BowDistribution(Value, D);
+	}
+
+	void BowVector(UObject* Owner, FRawDistributionVector& Value, const FVector& Min, const FVector& Max)
+	{
+		UDistributionVectorUniform* D = NewObject<UDistributionVectorUniform>(Owner);
+		D->Min = Min; D->Max = Max; BowDistribution(Value, D);
+	}
+
+	UParticleSystem* MakeBowSpray(UObject* Owner)
+	{
+		// Small CPU bursts give us bounded counts and inspectable trajectories.
+		// Raw distributions also evaluate their runtime objects in non-editor builds;
+		// InitLookupTable only adds the editor's optional lookup-table acceleration.
+		UParticleSystem* System = NewObject<UParticleSystem>(Owner, NAME_None, RF_Transient);
+		System->LODDistances = {0.f};
+		for (bool bMist : {false, true})
+		{
+			UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, bMist
+				? TEXT("/Game/ParagonRampage/FX/Materials/Water/M_WaterMist.M_WaterMist")
+				: TEXT("/Game/ParagonRampage/FX/Materials/Water/M_Water_Drops_Master.M_Water_Drops_Master"));
+			if (!Base) { continue; }
+			UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(Base, System);
+			if (!bMist)
+			{
+				Material->SetScalarParameterValue(TEXT("Spec Brightness"), .9f);
+				Material->SetScalarParameterValue(TEXT("Mask Opacity"), .32f);
+			}
+			UParticleSpriteEmitter* Emitter = NewObject<UParticleSpriteEmitter>(System);
+			Emitter->SetEmitterName(bMist ? TEXT("BowAeratedSpray") : TEXT("BowDroplets"));
+			Emitter->CreateLODLevel(0);
+			UParticleLODLevel* LOD = Emitter->LODLevels[0];
+			LOD->RequiredModule->Material = Material;
+			LOD->RequiredModule->bUseLocalSpace = true;
+			LOD->RequiredModule->ScreenAlignment = PSA_FacingCameraPosition;
+			LOD->RequiredModule->EmitterDuration = .12f;
+			LOD->RequiredModule->EmitterLoops = 1;
+			BowConstant(LOD->SpawnModule, LOD->SpawnModule->Rate, 0.f);
+			BowConstant(LOD->SpawnModule, LOD->SpawnModule->RateScale, 1.f);
+			BowConstant(LOD->SpawnModule, LOD->SpawnModule->BurstScale, 1.f);
+			FParticleBurst Burst;
+			Burst.Count = bMist ? 30 : 140; Burst.CountLow = -1; Burst.Time = 0.f;
+			LOD->SpawnModule->BurstList = {Burst};
+
+			UParticleModuleLifetime* Life = NewObject<UParticleModuleLifetime>(System);
+			UDistributionFloatUniform* Lifetime = NewObject<UDistributionFloatUniform>(Life);
+			Lifetime->Min = bMist ? .38f : .55f; Lifetime->Max = bMist ? .65f : .95f;
+			BowDistribution(Life->Lifetime, Lifetime);
+			LOD->Modules.Add(Life);
+			UParticleModuleLocation* Location = NewObject<UParticleModuleLocation>(System);
+			BowVector(Location, Location->StartLocation, FVector(-25,-35,0), FVector(25,35,20));
+			LOD->Modules.Add(Location);
+			UParticleModuleVelocity* Velocity = NewObject<UParticleModuleVelocity>(System);
+			Velocity->bApplyOwnerScale = false;
+			BowVector(Velocity, Velocity->StartVelocity, FVector(-140,-160,280), FVector(140,160,560));
+			BowConstant(Velocity, Velocity->StartVelocityRadial, 0.f);
+			LOD->Modules.Add(Velocity);
+			UParticleModuleAcceleration* Gravity = NewObject<UParticleModuleAcceleration>(System);
+			Gravity->bAlwaysInWorldSpace = true; Gravity->bApplyOwnerScale = false;
+			UDistributionVectorConstant* Down = NewObject<UDistributionVectorConstant>(Gravity);
+			Down->Constant = FVector(0,0,-680);
+			BowDistribution(Gravity->Acceleration, Down);
+			LOD->Modules.Add(Gravity);
+			UParticleModuleSize* Size = NewObject<UParticleModuleSize>(System);
+			BowVector(Size, Size->StartSize, bMist ? FVector(40) : FVector(2), bMist ? FVector(80) : FVector(6));
+			LOD->Modules.Add(Size);
+			UParticleModuleColorOverLife* Color = NewObject<UParticleModuleColorOverLife>(System);
+			UDistributionVectorConstant* Tint = NewObject<UDistributionVectorConstant>(Color);
+			Tint->Constant = FVector(.62,.7,.76);
+			BowDistribution(Color->ColorOverLife, Tint);
+			UDistributionFloatConstantCurve* Fade = NewObject<UDistributionFloatConstantCurve>(Color);
+			const float Opacity = bMist ? .15f : .55f;
+			Fade->ConstantCurve.AddPoint(0.f, 0.f);
+			Fade->ConstantCurve.AddPoint(.1f, Opacity);
+			Fade->ConstantCurve.AddPoint(.5f, Opacity * .7f);
+			Fade->ConstantCurve.AddPoint(1.f, 0.f);
+			BowDistribution(Color->AlphaOverLife, Fade);
+			LOD->Modules.Add(Color);
+			LOD->UpdateModuleLists();
+			System->Emitters.Add(Emitter);
+		}
+		System->BuildEmitters();
+		return System;
+	}
 }
 
 ADCWake::ADCWake()
@@ -26,6 +146,31 @@ void ADCWake::Build()
 	if (!Base) { UE_LOG(LogDC, Warning, TEXT("Wake: M_Wake missing; no hull wash")); return; }
 	WaterLibrary = FindObject<UClass>(nullptr, TEXT("/Script/DynamicRealWater.DRW_BlueprintLibrary"));
 	SurfaceFn = WaterLibrary ? WaterLibrary->FindFunctionByName(TEXT("GetWaterSurfaceAtLocation")) : nullptr;
+	// The long raked stem reaches far ahead above water. Probe the actual hull
+	// at the waterline instead of putting spray under the tip of the bowsprit.
+	if (Director->ShipActor)
+	{
+		TInlineComponentArray<UPrimitiveComponent*> Parts(Director->ShipActor);
+		for (UPrimitiveComponent* Hull : Parts)
+		{
+			if (Hull->GetName() != TEXT("HullShip")) { continue; }
+			BowHull = Hull;
+			BowContacts[1].Timer = .21f;
+			FCollisionQueryParams Query(TEXT("DCBowWaterline"), true);
+			FHitResult Front, Side;
+			const float Z = Director->SeaLevelZ + 30.f;
+			if (Hull->LineTraceComponent(Front, Director->DeckToWorld(FVector(3500.f, 0.f, Z)), Director->DeckToWorld(FVector(-1800.f, 0.f, Z)), Query))
+			{
+				BowSprayX = Director->DeckTransform.InverseTransformPosition(Front.ImpactPoint).X - 100.f;
+				if (Hull->LineTraceComponent(Side, Director->DeckToWorld(FVector(BowSprayX, -1200.f, Z)), Director->DeckToWorld(FVector(BowSprayX, 0.f, Z)), Query))
+				{
+					BowSprayY = FMath::Abs(Director->DeckTransform.InverseTransformPosition(Side.ImpactPoint).Y) + 18.f;
+				}
+			}
+			UE_LOG(LogDC, Log, TEXT("Bow spray waterline: x=%.0f halfwidth=%.0f"), BowSprayX, BowSprayY);
+			break;
+		}
+	}
 
 	// Down each side from the bow, round the quarter and out astern. The inner edge hugs the hull's
 	// waterline (a blunt-ended oval about 47 m by 11 m) and closes to the centreline behind the
@@ -153,6 +298,7 @@ void ADCWake::Tick(float DeltaSeconds)
 		Build();
 	}
 	if (!Mesh || !MID) { return; }
+	TickBowSpray(DeltaSeconds);
 
 	// Only on the plugin sea: the tunnel and the maelstrom have water of their own.
 	const FDCEnvState& Env = Director->GetEnv();
@@ -196,6 +342,194 @@ void ADCWake::Tick(float DeltaSeconds)
 	const float Light = FMath::Lerp(0.16f, 1.f, Day);
 	MID->SetVectorParameterValue(TEXT("Tint"), FLinearColor(0.82f * Light, 0.9f * Light, 0.96f * Light, Shown * FMath::Clamp(0.55f + 0.3f * Speed, 0.f, 1.f)));
 	MID->SetScalarParameterValue(TEXT("Speed"), 1200.f * Speed);
+}
+
+void ADCWake::TickBowSpray(float DeltaSeconds)
+{
+	if (!Director) { return; }
+	TickHullFoam(DeltaSeconds);
+	const FDCEnvState& Env = Director->GetEnv();
+	const bool bActive = Director->GetPhase() <= EDCPhase::Fog && Env.Tube < .15f
+		&& !FParse::Param(FCommandLine::Get(), TEXT("DCNoBowSpray"));
+	for (int32 I = BowPulses.Num() - 1; I >= 0; --I)
+	{
+		FBowPulse& P = BowPulses[I]; P.Age += DeltaSeconds;
+		UParticleSystemComponent* Effect = P.Effect.Get();
+		if (!Effect || P.Age > 2.2f) { if (Effect) { Effect->DestroyComponent(); } BowPulses.RemoveAtSwap(I); continue; }
+		if (!bActive || P.Age > .45f) { Effect->DeactivateSystem(); }
+		// Breakaway spray is carried aft and out, never attached to a rocking deck.
+		// The hull widens rapidly behind the stem. Carry the wash round that
+		// shoulder; a straight aft path put almost all spray inside the planking.
+		const float Out = 240.f * P.Age + 340.f * (1.f - FMath::Exp(-3.f * P.Age));
+		Effect->SetWorldLocation(P.Origin + FVector(-Env.ShipSpeed * P.Age * .55f, P.Side * Out, 0.f));
+	}
+	if (FParse::Param(FCommandLine::Get(), TEXT("DCBowLog")) && (BowLogTimer -= DeltaSeconds) <= 0.f)
+	{
+		BowLogTimer = .5f;
+		int32 Particles = 0;
+		for (const FBowPulse& P : BowPulses) { if (P.Effect.IsValid()) { Particles += P.Effect->GetNumActiveParticles(); } }
+		UE_LOG(LogDC, Log, TEXT("Bow state: pulses=%d particles=%d at %.1f"), BowPulses.Num(), Particles, Director->RideTime);
+		if (FParse::Param(FCommandLine::Get(), TEXT("DCBowParticleAudit")))
+		{
+			for (const FBowPulse& P : BowPulses)
+			{
+				UParticleSystemComponent* Effect = P.Effect.Get();
+				if (!Effect || P.Age < .08f || P.Age > .5f) { continue; }
+				// Diagnostic only: join simulation before inspecting CPU particle data.
+				Effect->ForceAsyncWorkCompletion(UParticleSystemComponent::STALL);
+				for (FParticleEmitterInstance* Emitter : Effect->EmitterInstances)
+				{
+					if (!Emitter || !Emitter->CurrentLODLevel || !Emitter->ActiveParticles) { continue; }
+					FBox Positions(ForceInit);
+					float Size = 0.f, Alpha = 0.f;
+					int32 Count = 0;
+					for (int32 I = 0; I < FMath::Min(Emitter->ActiveParticles, 64); ++I)
+					{
+						const FBaseParticle* Particle = Emitter->GetParticle(I);
+						if (!Particle) { continue; }
+						const FVector World = Emitter->CurrentLODLevel->RequiredModule->bUseLocalSpace
+							? Effect->GetComponentTransform().TransformPosition(Particle->Location) : Particle->Location;
+						Positions += World - P.Origin;
+						Size = FMath::Max(Size, Particle->Size.GetAbsMax());
+						Alpha = FMath::Max(Alpha, Particle->Color.A);
+						++Count;
+					}
+					UE_LOG(LogDC, Log, TEXT("Bow particles: %s age=%.2f count=%d sampled=%d relative=%s size=%.2f alpha=%.2f ignoreScale=%d at %.1f"),
+						*Emitter->SpriteTemplate->GetEmitterName().ToString(), P.Age, Emitter->ActiveParticles, Count,
+						*Positions.ToString(), Size, Alpha, Emitter->bIgnoreComponentScale, Director->RideTime);
+				}
+				break;
+			}
+		}
+	}
+	if (!bActive) { for (FBowContact& Contact : BowContacts) { Contact.bValid = false; } return; }
+	if (!BowSplash)
+	{
+		// Runtime-only emitters avoid the shallow, reflective footfall mesh.
+		BowSplash = MakeBowSpray(this);
+		if (!BowSplash || !BowSplash->Emitters.Num()) { return; }
+		if (FParse::Param(FCommandLine::Get(), TEXT("DCBowAssetAudit")))
+		{
+			for (const TCHAR* Path : {
+				TEXT("/Game/ParagonRampage/FX/Particles/Abilities/RipNToss/FX/P_Rampage_Rock_HitWorld_WaterImpact"),
+				TEXT("/Game/ParagonRampage/FX/Particles/Abilities/RipNToss/FX/P_RipNToss_WaterImpact"),
+				TEXT("/Game/ParagonRampage/FX/Particles/Abilities/RipNToss/FX/P_RipNToss_Rip_WaterImpact"),
+				TEXT("/Game/ParagonRampage/FX/Particles/Abilities/Lunge/FX/P_Rampage_Lunge_Impact_WaterImpact")})
+			{
+				UParticleSystem* System = LoadObject<UParticleSystem>(nullptr, Path);
+				if (!System) { continue; }
+				UE_LOG(LogDC, Log, TEXT("Bow asset: %s"), *System->GetPathName());
+				for (UParticleEmitter* Emitter : System->Emitters)
+				{
+					UParticleLODLevel* LOD = Emitter && Emitter->LODLevels.Num() ? Emitter->LODLevels[0] : nullptr;
+					if (!LOD || !LOD->RequiredModule) { continue; }
+					UParticleModuleTypeDataMesh* Type = Cast<UParticleModuleTypeDataMesh>(LOD->TypeDataModule);
+					UE_LOG(LogDC, Log, TEXT("Bow emitter: %s enabled=%d local=%d material=%s mesh=%s meshMaterial=%s"), *Emitter->GetEmitterName().ToString(), LOD->bEnabled,
+						LOD->RequiredModule->bUseLocalSpace, *GetNameSafe(LOD->RequiredModule->Material),
+						Type ? *GetNameSafe(Type->Mesh) : TEXT("none"), Type && Type->Mesh ? *GetNameSafe(Type->Mesh->GetMaterial(0)) : TEXT("none"));
+				}
+			}
+		}
+	}
+	const float Speed = FMath::Clamp(Env.ShipSpeed / 1500.f, .3f, 1.25f);
+	const float Roughness = FMath::Clamp(Env.WaveHeight / 250.f, .15f, 1.f);
+	for (int32 Index = 0; Index < 2; ++Index)
+	{
+		const float Side = Index == 0 ? -1.f : 1.f;
+		FBowContact& Contact = BowContacts[Index];
+		const FVector Anchor = Director->DeckToWorld(FVector(BowSprayX, Side * BowSprayY, Director->SeaLevelZ));
+		// Keep asynchronous water queries warm every frame, not only at emission.
+		// Measure water relative to the pitching hull: a lifting bow sheds spray,
+		// while a rising wave striking a descending bow gives a stronger burst.
+		const float Surface = SurfaceAt(FVector2D(Anchor.X, Anchor.Y), 221 + Index);
+		const float Depth = Surface - Anchor.Z;
+		const float Closing = Contact.bValid ? FMath::Clamp((Depth - Contact.PreviousDepth) / FMath::Max(DeltaSeconds, .001f), -400.f, 400.f) : 0.f;
+		Contact.Closing = FMath::FInterpTo(Contact.Closing, Closing, DeltaSeconds, 7.f);
+		Contact.PreviousDepth = Depth; Contact.bValid = true;
+		Contact.Timer -= DeltaSeconds;
+		const float Wet = FMath::SmoothStep(-45.f, 25.f, Depth);
+		if (Contact.Timer > 0.f || Wet < .08f || BowPulses.Num() >= 16) { continue; }
+		const float Impact = FMath::Clamp(Contact.Closing / 180.f, 0.f, 1.f);
+		const float Force = FMath::Clamp((.20f + .40f * Roughness + .55f * Impact) * Wet, 0.f, 1.f);
+		Contact.Timer = FMath::Lerp(.95f, .36f, Force) / Speed + (Index == 0 ? .04f : .11f);
+		FVector Origin(Anchor.X, Anchor.Y, Surface + 8.f);
+		if (UPrimitiveComponent* Hull = BowHull.Get())
+		{
+			FCollisionQueryParams Probe(TEXT("DCBowContact"), true);
+			FHitResult Front, Edge;
+			FVector From = Director->DeckToWorld(FVector(3500.f, 0.f, Director->SeaLevelZ));
+			FVector To = Director->DeckToWorld(FVector(-1800.f, 0.f, Director->SeaLevelZ));
+			From.Z = To.Z = Origin.Z;
+			if (!Hull->LineTraceComponent(Front, From, To, Probe)) { continue; }
+			const float X = Director->DeckTransform.InverseTransformPosition(Front.ImpactPoint).X - 80.f;
+			From = Director->DeckToWorld(FVector(X, Side * 1200.f, Director->SeaLevelZ));
+			To = Director->DeckToWorld(FVector(X, 0.f, Director->SeaLevelZ));
+			From.Z = To.Z = Origin.Z;
+			if (!Hull->LineTraceComponent(Edge, From, To, Probe)) { continue; }
+			Origin = Edge.ImpactPoint + Director->DeckTransform.TransformVectorNoScale(FVector(0.f, Side * 18.f, 0.f));
+			Origin.Z = Surface + 8.f;
+		}
+		const FVector Outward = Director->DeckTransform.TransformVectorNoScale(FVector(-.35f, Side * .85f, .8f));
+		const float Variation = 1.f + .08f * FMath::Sin(Director->RideTime * 2.7f + Side * 1.3f);
+		// A contact fan grows with impact, while gentle wash stays low.
+		const float Scale = (.75f + .7f * Force) * Speed * Variation;
+		UParticleSystemComponent* Effect = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BowSplash, Origin,
+			FRotationMatrix::MakeFromZ(Outward).Rotator(), FVector(Scale), true);
+		if (Effect)
+		{
+			Effect->SetCastShadow(false);
+			BowPulses.Add({Effect, 0.f, Origin, Side});
+			if (FParse::Param(FCommandLine::Get(), TEXT("DCBowLog")))
+			{
+				UE_LOG(LogDC, Log, TEXT("Bow pulse: side=%.0f depth=%.0f closing=%.0f scale=%.2f origin=%s active=%d at %.1f"),
+					Side, Depth, Contact.Closing, Scale, *Origin.ToCompactString(), BowPulses.Num(), Director->RideTime);
+			}
+		}
+	}
+}
+
+void ADCWake::TickHullFoam(float DeltaSeconds)
+{
+	FoamTimer -= DeltaSeconds;
+	if (FoamTimer > 0.f) { return; }
+	FoamTimer = 1.f;
+	// Only live MIDs change; the installed water assets and their defaults remain
+	// untouched. Keep the patch optional when the water plugin is unavailable.
+	UClass* ManagerClass = FindObject<UClass>(nullptr, TEXT("/Script/DynamicRealWater.DRW_GridManager"));
+	if (!ManagerClass) { return; }
+	HullFoamMaterials.RemoveAll([](const FHullFoamMaterial& V) { return !V.Material.IsValid(); });
+	const int32 Before = HullFoamMaterials.Num();
+	for (TActorIterator<AActor> It(GetWorld(), ManagerClass); It; ++It)
+	{
+		for (int32 LOD = 0; LOD < 5; ++LOD)
+		{
+			FArrayProperty* Array = FindFProperty<FArrayProperty>(ManagerClass, *FString::Printf(TEXT("LOD%dMaterialInstances"), LOD));
+			FObjectPropertyBase* Object = Array ? CastField<FObjectPropertyBase>(Array->Inner) : nullptr;
+			if (!Object) { continue; }
+			FScriptArrayHelper Items(Array, Array->ContainerPtrToValuePtr<void>(*It));
+			for (int32 I = 0; I < Items.Num(); ++I)
+			{
+				UMaterialInstanceDynamic* M = Cast<UMaterialInstanceDynamic>(Object->GetObjectPropertyValue(Items.GetRawPtr(I)));
+				if (!M || HullFoamMaterials.ContainsByPredicate([M](const FHullFoamMaterial& V) { return V.Material.Get() == M; })) { continue; }
+				FHullFoamMaterial V; V.Material = M;
+				if (M->GetScalarParameterValue(FMaterialParameterInfo(TEXT("DCShoreFoamWidth")), V.Width)
+					&& M->GetScalarParameterValue(FMaterialParameterInfo(TEXT("DCShoreFoam")), V.Strength)) { HullFoamMaterials.Add(V); }
+			}
+		}
+	}
+	const bool bEarly = Director->GetPhase() <= EDCPhase::Fog && !FParse::Param(FCommandLine::Get(), TEXT("DCLegacyHullFoam"));
+	if (HullFoamMaterials.Num() > Before) { UE_LOG(LogDC, Log, TEXT("Bow wash: tuned %d live water materials; shared assets unchanged"), HullFoamMaterials.Num()); }
+	const float Storm = FMath::Clamp(Director->GetEnv().WaveHeight / 300.f, 0.f, 1.f);
+	for (const FHullFoamMaterial& V : HullFoamMaterials)
+	{
+		if (UMaterialInstanceDynamic* M = V.Material.Get())
+		{
+			// The old 6.5m solid-white skirt swallowed the bow spray. Keep a narrow
+			// broken wash at the hull and let the moving droplets supply the height.
+			M->SetScalarParameterValue(TEXT("DCShoreFoamWidth"), V.Width * (bEarly ? FMath::Lerp(.16f, .30f, Storm) : 1.f));
+			M->SetScalarParameterValue(TEXT("DCShoreFoam"), V.Strength * (bEarly ? FMath::Lerp(.65f, .9f, Storm) : 1.f));
+		}
+	}
 }
 
 ADCWake* ADCWake::Get(const UObject* WorldContext)

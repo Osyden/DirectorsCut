@@ -38,7 +38,8 @@ public:
 	bool IsGunReady(int32 Gun) const;
 	bool FireGun(int32 Gun, const FVector& Target, bool bPlayer = false);
 	bool CanAimGun(int32 Gun, const FVector& Target) const;
-	bool FindCrewTarget(int32 Gun, FVector& OutTarget) const;
+	bool HasClearShot(int32 Gun, const AActor* Target) const;
+	bool FindCrewTarget(int32 Gun, FVector& OutTarget, bool bLeadTarget = true) const;
 	float GetReloadSeconds(EDCSide Side) const;
 	FString GetPlayerImpactLabel(EDCSide Side) const;
 	bool IsReady(EDCSide Side) const { return IsGunReady(GetPlayerGun(Side)); }

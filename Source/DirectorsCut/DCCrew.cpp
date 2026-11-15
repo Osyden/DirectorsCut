@@ -295,7 +295,7 @@ void ADCCrewMember::TickHelm(float DeltaSeconds, ADCTreadmill* Treadmill)
 	const float Target = Treadmill->FindClearLane(Sight);
 	// He steers for where she will be in a second, not where she is: she carries her swing, and with the wheel thrown
 	// hard over for every 2.5 m of error she swung past each gap and on to the stone beyond it (seen in the log, 14 Nov).
-	const float Carried = Treadmill->GetTurn() * 900.f * 0.9f;
+	const float Carried = Treadmill->GetLateralVelocity() * 0.7f;
 	Treadmill->SetSteer(FMath::Clamp((Target - Treadmill->GetLaneOffset() - Carried) / 700.f, -1.f, 1.f));
 }
 

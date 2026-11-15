@@ -25,6 +25,7 @@ public:
 
 	/** One line of help for the HUD, e.g. "E  take the helm". */
 	const FString& GetPrompt() const { return Prompt; }
+	const FString& GetFireFeedback() const { return FireFeedback; }
 	int32 GetNearbyStation() const { return NearbyStation; }
 	EDCSide GetGunSide() const { return ActiveSide; }
 	bool HasGunSolution() const { return bGunSolution; }
@@ -34,6 +35,8 @@ public:
 	bool IsShipView() const { return bShipView; }
 	/** For unattended tests and debug commands. */
 	void DebugTakeStation(EDCStationType Type, EDCSide Side);
+	/** Starts the same rag animation/contact path as a player input, for integration review. */
+	bool TrySwatFire();
 
 	UPROPERTY(EditAnywhere) float LookSensitivity = 0.12f;
 	UPROPERTY(EditAnywhere) float InteractRange = 300.f;
@@ -47,6 +50,17 @@ protected:
 	void TickMeta(APlayerController* PC);
 	void TickCameraFeel(float DeltaSeconds);
 	void TickGraphicsKeys(APlayerController* PC);
+	void TickRag(float DeltaSeconds);
+	void CancelSwat();
+	void BuildRag();
+	UPROPERTY() TObjectPtr<class UProceduralMeshComponent> Rag;
+	UPROPERTY() TObjectPtr<class UStaticMeshComponent> RagHand;
+	UPROPERTY() TObjectPtr<class UStaticMeshComponent> RagSleeve;
+	float SwatAge = 10.f;
+	bool bSwatContact = false;
+	FVector SwatTarget = FVector::ZeroVector;
+	FString FireFeedback;
+	float FireFeedbackTime = 0.f;
 	int32 DLSSModeIndex = 0;
 	bool bFrameGen = false;
 	void EnterStation(APlayerController* PC, int32 Index);

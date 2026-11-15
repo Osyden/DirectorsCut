@@ -43,6 +43,7 @@ void ADCPlayerCharacter::Tick(float DeltaSeconds)
 
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (!PC) { return; }
+	TickRag(DeltaSeconds);
 
 	if (bTyping) { return; }
 	if (PC->WasInputKeyJustPressed(EKeys::Enter)) { OpenOrderBox(PC); return; }
@@ -75,6 +76,7 @@ void ADCPlayerCharacter::SetShipView(APlayerController* PC, bool bOn)
 {
 	if (bOn == bShipView) { return; }
 	bShipView = bOn;
+	if (bOn) { CancelSwat(); }
 	if (bOn && !ShipCamera)
 	{
 		FActorSpawnParameters Params;
@@ -143,6 +145,8 @@ void ADCPlayerCharacter::Look(APlayerController* PC)
 void ADCPlayerCharacter::TickOnFoot(APlayerController* PC)
 {
 	Look(PC);
+	const ADCRideDirector* Ride = ADCRideDirector::Get(this);
+	const FVector DeckPosition = Ride ? Ride->DeckTransform.InverseTransformPosition(GetActorLocation()) : GetActorLocation();
 
 	const FRotator YawRot(0.f, PC->GetControlRotation().Yaw, 0.f);
 	float F = 0.f, R = 0.f;
@@ -163,11 +167,12 @@ void ADCPlayerCharacter::TickOnFoot(APlayerController* PC)
 	{
 		const float Dt = GetWorld()->GetDeltaSeconds();
 		FVector Fire;
-		if (Troubles->NearestFire(GetActorLocation(), Fire) && FVector::Dist(Fire, GetActorLocation()) < 280.f)
+		if (Troubles->NearestFire(DeckPosition, Fire) && FVector::Dist(Fire, DeckPosition) < 330.f
+			&& FVector::DotProduct(Camera->GetForwardVector(), ((Ride ? Ride->DeckToWorld(Fire) : Fire) - Camera->GetComponentLocation()).GetSafeNormal()) > .2f)
 		{
-			Prompt = TEXT("Hold E   beat out the flames");
-			HoldTime = PC->IsInputKeyDown(EKeys::E) ? HoldTime + Dt : 0.f;
-			if (HoldTime > 1.8f) { HoldTime = 0.f; Troubles->ExtinguishNear(Fire, 350.f); }
+			const int32 Remaining = Troubles->SwatsRemaining(Fire);
+			Prompt = FString::Printf(TEXT("E / Click   swat with rag   %d swat%s left"), Remaining, Remaining == 1 ? TEXT("") : TEXT("s"));
+			if (PC->IsInputKeyDown(EKeys::E) || PC->WasInputKeyJustPressed(EKeys::LeftMouseButton)) { TrySwatFire(); }
 			return;
 		}
 		if (Troubles->IsRiggingLoose())
@@ -175,7 +180,7 @@ void ADCPlayerCharacter::TickOnFoot(APlayerController* PC)
 			if (UDCCrewSubsystem* CrewSub = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
 			{
 				const FDCStation* Rig = CrewSub->GetStation(CrewSub->FindStation(EDCStationType::Rigging, EDCSide::None));
-				if (Rig && FVector::Dist(Rig->Location, GetActorLocation()) < InteractRange)
+				if (Rig && FVector::Dist(Rig->Location, DeckPosition) < InteractRange)
 				{
 					Prompt = FString::Printf(TEXT("Hold E   haul the sail in   %d%%"), FMath::RoundToInt(Troubles->GetRiggingProgress() * 100.f));
 					if (PC->IsInputKeyDown(EKeys::E)) { Troubles->RepairRigging(Dt / 4.f); }
@@ -198,7 +203,7 @@ void ADCPlayerCharacter::TickOnFoot(APlayerController* PC)
 		if (Stations[i].Type != EDCStationType::Helm && Stations[i].Type != EDCStationType::Cannons) { continue; }
 		if (Stations[i].Type == EDCStationType::Cannons && (!Stations[i].bPlayerGun || !Guns || Guns->NumGuns(Stations[i].Side) == 0)) { continue; }
 		const FVector Feet = GetActorLocation() - FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
-		const FVector D = Stations[i].Location - Feet;
+		const FVector D = Stations[i].Location - (Ride ? Ride->DeckTransform.InverseTransformPosition(Feet) : Feet);
 		if (FMath::Abs(D.Z) < 115.f && D.Size() < BestDist)
 		{
 			BestDist = D.Size();
@@ -226,6 +231,7 @@ void ADCPlayerCharacter::EnterStation(APlayerController* PC, int32 Index)
 	}
 
 	// Whoever was here steps aside.
+	CancelSwat();
 	if (ADCCrewMember* Old = S->Operator.Get())
 	{
 		Old->AssignStation(INDEX_NONE);
@@ -292,7 +298,7 @@ void ADCPlayerCharacter::LeaveStation(APlayerController* PC)
 	if (ActiveType == EDCStationType::Helm)
 	{
 		RestoreWheel();
-		if (ADCTreadmill* Treadmill = ADCTreadmill::Get(this)) { Treadmill->SetSteer(0.f); }
+		if (ADCTreadmill* Treadmill = ADCTreadmill::Get(this)) { Treadmill->ReleasePlayerHelm(); }
 	}
 	if (ActiveType == EDCStationType::Cannons)
 	{
@@ -321,7 +327,15 @@ void ADCPlayerCharacter::TickHelm(APlayerController* PC, float DeltaSeconds)
 	float Steer = 0.f;
 	if (PC->IsInputKeyDown(EKeys::D)) { Steer += 1.f; }
 	if (PC->IsInputKeyDown(EKeys::A)) { Steer -= 1.f; }
-	if (ADCTreadmill* Treadmill = ADCTreadmill::Get(this)) { Treadmill->SetSteer(Steer); }
+#if !UE_BUILD_SHIPPING
+	// Repeatable wheel response capture through the same input path as A/D.
+	if (FParse::Param(FCommandLine::Get(), TEXT("DCHelmSequence")))
+	{
+		const float T = GetWorld()->GetTimeSeconds();
+		Steer = T < 3.f ? 0.f : (T < 7.f ? .7f : (T < 11.f ? -.7f : 0.f));
+	}
+#endif
+	if (ADCTreadmill* Treadmill = ADCTreadmill::Get(this)) { Treadmill->SetPlayerSteer(Steer); }
 	if (USceneComponent* Wheel = HelmWheel.Get())
 	{
 		WheelAngle = FMath::FInterpTo(WheelAngle, Steer * 65.f, DeltaSeconds, 5.f);
@@ -342,7 +356,7 @@ void ADCPlayerCharacter::TickCannons(APlayerController* PC)
 	PC->GetInputMouseDelta(DX, DY);
 	FRotator AimRotation = GunCamera->GetActorRotation();
 	AimRotation.Yaw = SideYaw + FMath::Clamp(FMath::FindDeltaAngleDegrees(SideYaw, AimRotation.Yaw) + DX * LookSensitivity * 10.f, -62.f, 62.f);
-	AimRotation.Pitch = FMath::Clamp(AimRotation.Pitch + DY * LookSensitivity * 10.f, -62.f, 12.f);
+	AimRotation.Pitch = FMath::Clamp(AimRotation.Pitch + DY * LookSensitivity * 10.f, -62.f, 30.f);
 	if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
 	{
 		if (const FDCStation* Station = Crew->GetStation(ActiveStation))
@@ -356,6 +370,17 @@ void ADCPlayerCharacter::TickCannons(APlayerController* PC)
 	GunCamera->SetActorRotation(AimRotation);
 
 	ADCGunnery* Guns = ADCGunnery::Get(this);
+	// Review from the actual cannon camera; clamp exactly as mouse aiming does.
+#if !UE_BUILD_SHIPPING
+	FVector ReviewAim;
+	if (Guns && FParse::Param(FCommandLine::Get(), TEXT("DCTrackThreat")) && Guns->FindCrewTarget(Guns->GetPlayerGun(ActiveSide), ReviewAim, false))
+	{
+		AimRotation = (ReviewAim - GunCamera->GetActorLocation()).Rotation();
+		AimRotation.Yaw = SideYaw + FMath::Clamp(FMath::FindDeltaAngleDegrees(SideYaw, AimRotation.Yaw), -62.f, 62.f);
+		AimRotation.Pitch = FMath::Clamp(AimRotation.Pitch, -62.f, 30.f);
+		GunCamera->SetActorRotation(AimRotation);
+	}
+#endif
 	FVector Target;
 	bGunSolution = Guns && Guns->ResolveAim(ActiveSide, GunCamera->GetActorLocation(), AimRotation.Vector(), Target);
 	const bool bAutoFire = FParse::Param(FCommandLine::Get(), TEXT("DCAutoFire"));
@@ -379,6 +404,7 @@ void ADCPlayerCharacter::DebugTakeStation(EDCStationType Type, EDCSide Side)
 void ADCPlayerCharacter::OpenOrderBox(APlayerController* PC)
 {
 	if (bTyping || !GEngine || !GEngine->GameViewport) { return; }
+	CancelSwat();
 	bTyping = true;
 
 	TWeakObjectPtr<ADCPlayerCharacter> Weak(this);

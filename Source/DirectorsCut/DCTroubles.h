@@ -14,6 +14,8 @@ struct FDCFire
 	FVector Location = FVector::ZeroVector;
 	float Age = 0.f;
 	float Seed = 0.f;
+	/** Three deliberate rag strikes put out a fresh fire. Partial work is retained. */
+	float Suppression = 0.f;
 	TWeakObjectPtr<AActor> Visual;
 	TWeakObjectPtr<UPointLightComponent> Light;
 };
@@ -42,6 +44,11 @@ public:
 	void StartFire(const FVector& Location);
 	/** Puts out the fire nearest to Location if it is within reach. */
 	bool ExtinguishNear(const FVector& Location, float Reach = 250.f);
+	/** Applies one rag strike; returns true on contact, including a partial extinguish. */
+	bool SwatNear(const FVector& Location, float Reach = 300.f);
+	int32 SwatsRemaining(const FVector& Location, float Reach = 300.f) const;
+	/** Pick an unoccupied, authored deck point for an incoming attack. */
+	bool FindIgnitionPoint(int32 Preference, FVector& OutLocation) const;
 
 	bool IsRiggingLoose() const { return bRiggingLoose; }
 	/** Amount is a fraction of the whole job; returns true when the repair is finished. */
