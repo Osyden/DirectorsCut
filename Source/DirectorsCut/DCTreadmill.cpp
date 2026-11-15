@@ -502,8 +502,17 @@ void ADCTreadmill::Tick(float DeltaSeconds)
                     return Current && Current->Base.X>0.f && Current->Base.X<17000.f
                         && FMath::Abs(Current->Base.Y-Owner->LaneOffset)<Owner->ShipHalfWidth+Current->Radius+150.f;
                 };
+                // Steering clear answers the warning; it must not cut off the
+                // words already being spoken while the same pillars are ahead.
+                const auto Continuing=[Owner=TWeakObjectPtr<ADCTreadmill>(this),Stone=TWeakObjectPtr<AActor>(Actor)]()
+                {
+                    if (!Owner.IsValid() || !Stone.IsValid() || Stone->IsHidden() || !Owner->Director
+                        || Owner->Director->GetPhase()!=EDCPhase::Fog) { return false; }
+                    const FDCWorldObject* Current=Owner->Objects.FindByPredicate([Stone](const FDCWorldObject& O){return O.Actor==Stone;});
+                    return Current && Current->Base.X>0.f && Current->Base.X<17000.f;
+                };
                 Obj.bCalled=Crew->Report(Actor->ActorHasTag(TEXT("DCPillarObstacle"))
-                    ? TEXT("Broken pillars ahead! Mind the gap!") : TEXT("Rocks ahead! Mind the gap!"),true,Relevant);
+                    ? TEXT("Broken pillars ahead! Mind the gap!") : TEXT("Rocks ahead! Mind the gap!"),true,Relevant,Continuing);
                 if (Obj.bCalled) { UE_LOG(LogDC,Log,TEXT("LOOKOUT_WARNING actor=%s ahead=%.0f side=%.0f ride=%.2f"),*Actor->GetName(),Local.X,Local.Y,Director->RideTime); }
             }
         }
