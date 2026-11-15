@@ -1,0 +1,31 @@
+{
+  "source_commit": "c6708cc",
+  "package": "Builds/2026-11-15_0607_c6708cc_combined",
+  "uat_exit": 0,
+  "build_cook_run_seconds": 159.41,
+  "manifest_file_count": 80,
+  "manifest_matches_worktree_and_runtime": true,
+  "rag_checks_passed": 29,
+  "cast_bindings": 4,
+  "missing_cloud_object_warnings": 0,
+  "missing_hair_solver_warnings": 0,
+  "audio": "Disabled during gameplay checks; not auditioned",
+  "limitations": [
+    "Legacy ship EnableInput/DisableInput controller messages during station test",
+    "Engine LineSetComponentMaterial startup warning remains",
+    "Plugin asset cook warnings remain; cook succeeded",
+    "Audio, voice and clean-machine installation were not validated",
+    "Navigation still has occasional contacts; visual polish remains"
+  ],
+  "final_route": {
+    "seconds": 246,
+    "exited_normally": true,
+    "hull_percent": 82.5,
+    "score": 1000,
+    "fires": 0,
+    "stone_contacts": 1,
+    "rapid_helm_reversals": 0
+  },
+  "main_editor_build": "Succeeded in 16.12 seconds after main fast-forward",
+  "preserved_other_chat_files": 6
+}

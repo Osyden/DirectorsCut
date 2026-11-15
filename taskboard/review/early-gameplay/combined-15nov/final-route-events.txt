@@ -1,0 +1,23 @@
+[2026.11.15-06.11.33:319][277]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 34.0
+[2026.11.15-06.11.54:317][377]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 55.0
+[2026.11.15-06.12.39:316][111]LogDC: Capture state: hull=100.0 score=0 fires=0 rigging=0 at 100.0
+[2026.11.15-06.12.41:894][298]LogDC: Display: Encounter defeated: creature at 102.6
+[2026.11.15-06.12.51:288][112]LogDC: Display: Encounter defeated: creature at 112.0
+[2026.11.15-06.12.52:080][178]LogDC: Display: Encounter impact: fireball deck=V(X=409.37, Y=60.00, Z=509.73) fires=0->1 at 112.8
+[2026.11.15-06.13.04:311][219]LogDC: Capture state: hull=97.8 score=200 fires=1 rigging=0 at 125.0
+[2026.11.15-06.13.06:896][429]LogDC: Display: Encounter defeated: sentinel at 127.6
+[2026.11.15-06.13.25:602][980]LogDC: Display: Encounter defeated: creature at 146.3
+[2026.11.15-06.13.29:654][319]LogDC: Hull struck stone at V(X=-1420.00, Y=334.27, Z=370.00) (in 145 cm, closing 2077 cm/s, strength 1.10) at ride time 150.3
+[2026.11.15-06.13.34:412][749]LogDC: Display: Encounter impact: fireball deck=V(X=-440.63, Y=-150.00, Z=471.88) fires=0->1 at 155.1
+[2026.11.15-06.13.37:209][  3]LogDC: Display: Encounter defeated: creature at 157.9
+[2026.11.15-06.13.54:308][564]LogDC: Capture state: hull=88.5 score=500 fires=1 rigging=0 at 175.0
+[2026.11.15-06.13.54:426][565]LogDC: Display: Encounter defeated: sentinel at 175.1
+[2026.11.15-06.14.09:833][ 27]LogDC: Display: Encounter defeated: creature at 190.5
+[2026.11.15-06.14.19:117][978]LogDC: Display: Encounter defeated: creature at 199.8
+[2026.11.15-06.14.20:968][167]LogDC: Display: Encounter impact: fireball deck=V(X=-1257.75, Y=-170.00, Z=627.13) fires=0->1 at 201.7
+[2026.11.15-06.14.29:304][991]LogDC: Capture state: hull=85.0 score=800 fires=1 rigging=0 at 210.0
+[2026.11.15-06.14.35:868][626]LogDC: Display: Encounter defeated: creature at 216.6
+[2026.11.15-06.14.43:478][391]LogDC: Display: Encounter defeated: sentinel at 224.2
+[2026.11.15-06.14.55:304][647]LogDC: Capture state: hull=83.0 score=1000 fires=1 rigging=0 at 236.0
+[2026.11.15-06.14.58:306][953]LogDC: Capture state: hull=82.7 score=1000 fires=1 rigging=0 at 239.0
+[2026.11.15-06.15.05:305][751]LogDC: Capture state: hull=82.5 score=1000 fires=0 rigging=0 at 246.0

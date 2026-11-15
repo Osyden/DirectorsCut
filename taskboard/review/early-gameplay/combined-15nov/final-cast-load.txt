@@ -1,0 +1,5 @@
+[2026.11.15-06.10.39:030][  0]LogStreaming: Warning: LoadPackage: SkipPackage: /Engine/EngineMaterials/LineSetComponentMaterial (0x9E160B14803BD477) - The package to load does not exist on disk or in the loader
+[2026.11.15-06.10.40:310][  0]LogTemp: Pirate cast: bound DCCrewMember_2147482272 -> /Game/PirateCast/Assembled/Finch/BP_Finch.BP_Finch_C, body=Body
+[2026.11.15-06.10.40:328][  0]LogTemp: Pirate cast: bound DCCrewMember_2147482267 -> /Game/PirateCast/Assembled/Marlow/BP_Marlow.BP_Marlow_C, body=Body
+[2026.11.15-06.10.40:346][  0]LogTemp: Pirate cast: bound DCCrewMember_2147482262 -> /Game/PirateCast/Assembled/Odessa/BP_Odessa.BP_Odessa_C, body=Body
+[2026.11.15-06.10.40:366][  0]LogTemp: Pirate cast: bound DCPlayerCharacter_2147482344 -> /Game/PirateCast/Assembled/Captain/BP_Captain.BP_Captain_C, body=Body

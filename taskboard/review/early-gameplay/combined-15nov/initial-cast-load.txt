@@ -1,0 +1,7 @@
+[2026.11.15-06.04.44:328][  0]LogStreaming: Warning: LoadPackage: SkipPackage: /Engine/EngineMaterials/LineSetComponentMaterial (0x9E160B14803BD477) - The package to load does not exist on disk or in the loader
+[2026.11.15-06.04.45:727][  0]LogTemp: Pirate cast: bound DCCrewMember_2147482272 -> /Game/PirateCast/Assembled/Finch/BP_Finch.BP_Finch_C, body=Body
+[2026.11.15-06.04.45:750][  0]LogTemp: Pirate cast: bound DCCrewMember_2147482267 -> /Game/PirateCast/Assembled/Marlow/BP_Marlow.BP_Marlow_C, body=Body
+[2026.11.15-06.04.45:765][  0]LogStreaming: Warning: LoadPackage: SkipPackage: /HairStrands/Emitters/StableRodsSystem (0x753AD7EB84CEE2A9) - The package to load does not exist on disk or in the loader
+[2026.11.15-06.04.45:765][  0]LogUObjectGlobals: Warning: Failed to find object 'NiagaraSystem /HairStrands/Emitters/StableRodsSystem.StableRodsSystem'
+[2026.11.15-06.04.45:771][  0]LogTemp: Pirate cast: bound DCCrewMember_2147482262 -> /Game/PirateCast/Assembled/Odessa/BP_Odessa.BP_Odessa_C, body=Body
+[2026.11.15-06.04.45:793][  0]LogTemp: Pirate cast: bound DCPlayerCharacter_2147482344 -> /Game/PirateCast/Assembled/Captain/BP_Captain.BP_Captain_C, body=Body
