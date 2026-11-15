@@ -182,9 +182,11 @@ void ADCEarlyEncounters::SpawnGroup(int32 Group)
 		G.Body = Body; G.Size = 10.f + I * .8f; G.Side = Side;
 		G.X = 23500.f + I * 3800.f;
 		G.HoldX = 3000.f + I * 4600.f;
-		G.SeaY = Side * (Treadmill->GetCityBankY() + I * 650.f);
+		const FBoxSphereBounds Reference = Mesh->GetImportedBounds();
+		const float MeshRadius = (FVector2D(Reference.BoxExtent).Size() + FVector2D(Reference.Origin).Size()) * G.Size;
+		G.SeaY = Side * (Treadmill->GetCityBankY() + DCFogRouteLayout::WalkerOffset(I,MeshRadius));
 		// Imported reference geometry, excluding optional culling-bound extensions.
-		G.FootHeight = (Mesh->GetImportedBounds().Origin.Z - Mesh->GetImportedBounds().BoxExtent.Z) * G.Size;
+		G.FootHeight = (Reference.Origin.Z - Reference.BoxExtent.Z) * G.Size;
 		G.InitialWait = 8.f + I * 2.8f;
 		G.bGroupLeader = I == 0;
 		Body->SetActorScale3D(FVector(G.Size));

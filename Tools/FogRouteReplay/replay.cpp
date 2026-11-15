@@ -39,7 +39,11 @@ int main()
         if(I) { Check(GroupTimes[I]-GroupTimes[I-1]>=34,"Only modest group overlap"); }
         Check(GroupTimes[I]+34<240,"All pursuit ends before tunnel");
         for(int J=0;J<GroupSize(I);++J)
-            Check(J*650.f+1100.f<BankWidth*.5f,"Walker stance fits supported bank width");
+        {
+            // Installed imported bounds, including the off-centre mesh origin.
+            const float Radius=(std::sqrt(137.114f*137.114f+92.421f*92.421f)+13.227f)*(10.f+J*.8f);
+            Check(WalkerOffset(J,Radius)+Radius<=BankWidth*.5f-99.9f,"Whole rotated walker reference footprint fits supported bank width");
+        }
     }
     Check(Creatures==9,"Nine creatures total, previously seven");
     Check(sizeof(StatueTimes)/sizeof(float)==4,"Four attack statues total, previously three");

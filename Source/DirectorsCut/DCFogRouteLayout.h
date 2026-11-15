@@ -12,6 +12,8 @@ constexpr float BankTop = 1600.f;
 constexpr float BankBottom = -2200.f;
 inline float BankCentre(float Clear) { return Clear + BankWidth*.5f; }
 inline float SceneryEdge(float Clear) { return Clear + BankWidth + 500.f; }
+inline float WalkerOffset(int Index, float MeshRadius)
+{ return std::min(Index*650.f, std::max(0.f, BankWidth*.5f-MeshRadius-100.f)); }
 // Bounds are already rotated into route space and relative to the actor origin.
 inline float FitSide(float RequestedY, float MinY, float MaxY, float Clear)
 { return RequestedY < 0.f ? std::min(RequestedY, -Clear-MaxY) : std::max(RequestedY, Clear-MinY); }
