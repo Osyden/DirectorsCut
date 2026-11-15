@@ -119,6 +119,7 @@ private:
 	void LogLightingDiagnostics();
 	int32 LightingDiagnosticSamples = 0;
 	double NextLightingDiagnosticTime = 0.0;
+	float SunGroundBalanceLuxScale = 1.f;
 	void SetSkyNumber(const TCHAR* Name, double Value);
 	void SetSkyColor(const TCHAR* Name, FLinearColor Value);
 	TWeakObjectPtr<AActor> StageSky;

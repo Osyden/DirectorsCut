@@ -21,6 +21,36 @@
 #include "MaterialShared.h"
 #endif
 
+namespace
+{
+struct FMaelstromSunLook
+{
+	FLinearColor Color;
+	float LuxScale = 1.f;
+};
+
+FMaelstromSunLook GetMaelstromSunLook()
+{
+	FMaelstromSunLook Look;
+	Look.Color = FParse::Param(FCommandLine::Get(), TEXT("DCMaelSunNeutral"))
+		? FLinearColor::White : FLinearColor(1.f, 0.94f, 0.84f);
+	if (!FParse::Param(FCommandLine::Get(), TEXT("DCMaelSunGroundBalance"))) { return Look; }
+	// Fixed art-direction control for the existing 18-degree sun, based on settled
+	// CliffH2Three diagnostics. Partial inverse transmission; no live feedback loop.
+	const FLinearColor Transmission(0.694727f, 0.511457f, 0.268807f);
+	const FLinearColor TemperatureRGB(1.044155f, 0.983268f, 1.035693f); // observed 6500 K
+	const FLinearColor Tint(
+		FMath::Clamp(FMath::Pow(Transmission.B / Transmission.R, 0.85f), 0.4f, 1.f),
+		FMath::Clamp(FMath::Pow(Transmission.B / Transmission.G, 0.85f), 0.4f, 1.f), 1.f);
+	const FLinearColor Before = Look.Color * TemperatureRGB * Transmission;
+	Look.Color *= Tint; // all channels remain <= 1, avoiding light-colour clipping
+	const FLinearColor After = Look.Color * TemperatureRGB * Transmission;
+	auto Luminance = [](FLinearColor C) { return 0.2126f * C.R + 0.7152f * C.G + 0.0722f * C.B; };
+	Look.LuxScale = FMath::Clamp(Luminance(Before) / FMath::Max(Luminance(After), 0.001f), 1.f, 2.f);
+	return Look;
+}
+}
+
 bool ADCMaelstromAtmosphere::CompileSkyMaterial(UMaterialInterface* Material)
 {
 #if WITH_EDITOR
@@ -163,8 +193,16 @@ void ADCMaelstromAtmosphere::CaptureSky()
 	SetSkyNumber(TEXT("Cloud Wisps Opacity (Cloudy)"), 0.08);
 	// Set UDS's live sun through its saved property; RefreshSky applies/restores it.
 	const bool bNeutralSun = FParse::Param(FCommandLine::Get(), TEXT("DCMaelSunNeutral"));
-	SetSkyColor(TEXT("Sun Light Color"), bNeutralSun ? FLinearColor::White : FLinearColor(1.f, 0.94f, 0.84f));
-	if (bNeutralSun) { UE_LOG(LogDC, Log, TEXT("MAEL_SKY neutral UDS sun colour override enabled")); }
+	const FMaelstromSunLook SunLook = GetMaelstromSunLook();
+	SunGroundBalanceLuxScale = SunLook.LuxScale;
+	SetSkyColor(TEXT("Sun Light Color"), SunLook.Color);
+	if (bNeutralSun) { UE_LOG(LogDC, Log, TEXT("MAEL_SKY neutral UDS sun base colour selected")); }
+	if (SunLook.LuxScale > 1.f)
+	{
+		UE_LOG(LogDC, Log, TEXT("MAEL_SKY ground-balance art preset colour=%s luxScale=%.4f strength=0.85"), *SunLook.Color.ToString(), SunLook.LuxScale);
+		if (const ADCRideDirector* Director = ADCRideDirector::Get(this))
+		{ SetSkyNumber(TEXT("Sun Light Intensity"), (Director->GetEnv().SunIntensity * 0.75f + 2.f) * SunGroundBalanceLuxScale); }
+	}
 	SetSkyNumber(TEXT("Mie Scattering Scale Multiplier"), 0.7);
 	SetSkyNumber(TEXT("Enable Volumetric Cloud Light Rays"), 0);
 	// Numeric test overrides support repeatable look development without a build.
@@ -247,6 +285,17 @@ void ADCMaelstromAtmosphere::CaptureSky()
 
 void ADCMaelstromAtmosphere::UpdateSkyVolume()
 {
+	if (StageSky.IsValid() && SunGroundBalanceLuxScale > 1.f)
+	{
+		if (const ADCRideDirector* Director = ADCRideDirector::Get(this))
+		{
+			// Derive from unmodified weather, never from the already corrected light.
+			// Match TickUDS without changing Env or its exposure consumers.
+			const float Lux = (Director->GetEnv().SunIntensity * 0.75f + 2.f) * SunGroundBalanceLuxScale;
+			SetSkyNumber(TEXT("Sun Light Intensity"), Lux);
+			if (UDirectionalLightComponent* Sun = FindSun()) { Sun->SetIntensity(Lux); }
+		}
+	}
 	if (SkyCloudMID && StageCloud.IsValid())
 	{
 		if (FParse::Param(FCommandLine::Get(), TEXT("DCMaelSkyDiagnostics")) && GFrameCounter % 120 == 0)
@@ -386,9 +435,26 @@ void ADCMaelstromAtmosphere::RestoreSky()
 			if (FProperty* P = FindFProperty<FProperty>(Sky->GetClass(), Saved.Key))
 			{ P->ImportText_Direct(*Saved.Value, P->ContainerPtrToValuePtr<void>(Sky), Sky, PPF_None); }
 		}
+		if (SunGroundBalanceLuxScale > 1.f)
+		{
+			// A seek may already have applied another phase's weather. Release to that
+			// current intensity rather than freezing the stage-entry value.
+			if (const ADCRideDirector* Director = ADCRideDirector::Get(this))
+			{ SetSkyNumber(TEXT("Sun Light Intensity"), Director->GetEnv().SunIntensity * 0.75f + 2.f); }
+		}
 		RefreshSky();
+		if (SunGroundBalanceLuxScale > 1.f && GetWorld() && !GetWorld()->bIsTearingDown)
+		{
+			if (const ADCRideDirector* Director = ADCRideDirector::Get(this))
+			{
+				const float Lux = Director->GetEnv().SunIntensity * 0.75f + 2.f;
+				if (UDirectionalLightComponent* Sun = FindSun()) { Sun->SetIntensity(Lux); }
+				UE_LOG(LogDC, Log, TEXT("MAEL_SKY ground-balance released to current weather lux=%.4f"), Lux);
+			}
+		}
 		UE_LOG(LogDC, Log, TEXT("MAEL_SKY restored %d properties"), SavedSkyProperties.Num());
 	}
+	SunGroundBalanceLuxScale = 1.f;
 	SavedSkyProperties.Empty();
 	StageSky.Reset();
 	if (PreviousLightShaftDistance >= 0.f)
