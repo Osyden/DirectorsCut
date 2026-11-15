@@ -3,6 +3,9 @@
 Standalone: --source <compressed-parent.npz> --output <new Saved directory>.
 UE Python: set DC_CLIFF_WEATHER_CONFIG=<prepared weather.json>, then run this
 script after make_cliff_preview_material.py. Root owns all UE execution.
+DC_CLIFF_WEATHER_COORDINATES=arena transforms an identity-arena ring back to
+the stored source chart; default sourcechart keeps the isolated sector mapping.
+All added weather is bounded to the measured lateral span and near-shore zone.
 Only preview base colour/roughness change; scan UV, normals, AO and lights stay.
 """
 import argparse
@@ -102,6 +105,9 @@ def apply_unreal():
     data = json.loads(config.read_text(encoding='utf-8'))
     if data['schema'] != 'directorscut.cliff_preview_weather.v1':
         raise ValueError('Unexpected weather config')
+    coordinates = os.environ.get('DC_CLIFF_WEATHER_COORDINATES', 'sourcechart')
+    if coordinates not in ('sourcechart', 'arena'):
+        raise ValueError('DC_CLIFF_WEATHER_COORDINATES must be sourcechart or arena')
     if sha(data['profile_path']) != data['profile_sha256'] or sha(data['source_path']) != data['source_sha256']:
         raise ValueError('Prepared weather data or source geometry changed')
     root = '/Game/DC/Maelstrom/GeneratedCliffPreview'
@@ -180,12 +186,30 @@ def apply_unreal():
     low, span = data['profile_low_m'], data['profile_span_m']
     wet_z0, wet_z1 = data['wet_band_vertical_m']
     wet_v0, wet_v1 = data['wet_band_landward_m']
-    code = f'''float3 p=P*.01;
+    coordinate_code = 'float3 p=P*.01;\n'
+    if coordinates == 'arena':
+        # Imported identity-frame UE coordinates reflect source arena Y.
+        # Recover arena metres, then the original source chart (also UE Y-reflected).
+        origin = data['frame_origin_world_m']
+        basis = data['frame_basis_columns']
+        def vector(values):
+            return 'float3(' + ','.join(f'{float(v):.16g}' for v in values) + ')'
+        u_axis, v_axis, z_axis = [[basis[r][c] for r in range(3)] for c in range(3)]
+        coordinate_code = f'''float3 arena=float3(P.x,-P.y,P.z)*.01;
+float3 q=arena-{vector(origin)};
+float3 p=float3(dot(q,{vector(u_axis)}),-dot(q,{vector(v_axis)}),dot(q,{vector(z_axis)}));
+'''
+    code = coordinate_code + f'''
 float u=saturate((p.x-({u0:.12g}))/({u1-u0:.12g}));
 float4 encoded=Profile.SampleLevel(ProfileSampler,float2((u*({n-1}.0)+.5)/{n}.0,.5),0);
 float2 packed=float2(dot(encoded.rg,float2(65280,255)),dot(encoded.ba,float2(65280,255)))/65535;
 float2 shore=float2({low[0]:.12g},{low[1]:.12g})+packed*float2({span[0]:.12g},{span[1]:.12g});
 float height=p.z-shore.y,landward=-p.y-shore.x;
+// A clamped lookup is not a shoreline extension around the rest of the ring.
+// Fade wholly inside the measured 400 m span; only the local near-shore rock
+// gets weather. Wetness itself uses the tighter 4..20 m band below.
+float lateral=smoothstep({u0:.12g},{u0+4:.12g},p.x)*(1-smoothstep({u1-4:.12g},{u1:.12g},p.x));
+float zone=lateral*smoothstep(-8,-4,landward)*(1-smoothstep(100,140,landward));
 float wet=(1-smoothstep({wet_z0:.12g},{wet_z1:.12g},height))*(1-smoothstep({wet_v0:.12g},{wet_v1:.12g},landward));
 float cliff=1-smoothstep(.45,.85,abs(normalize(N).z));
 float stain=0;
@@ -196,8 +220,8 @@ float across=abs(p.x-({e['u_m']:.12g}))/({e['half_width_m']:.12g});
 float strand=(1-smoothstep(.35,1,across))*smoothstep(0,4,down)*(1-smoothstep({e['length_m']*.65:.12g},{e['length_m']:.12g},down));
 stain=max(stain,strand);}}
 '''
-    code += 'return float2(saturate(wet),saturate(stain*cliff)*(1-saturate(wet)));'
-    masks = custom(code, unreal.CustomMaterialOutputType.CMOT_FLOAT2,
+    code += 'return float3(saturate(wet)*zone,saturate(stain*cliff)*(1-saturate(wet))*zone,zone);'
+    masks = custom(code, unreal.CustomMaterialOutputType.CMOT_FLOAT3,
                    {'P': (position, ''), 'N': (normal, ''), 'Profile': (profile, '')}, 'DCCliffWeatherMasks')
     color_out = M.get_material_property_input_node_output_name(material, color_prop)
     rough_out = M.get_material_property_input_node_output_name(material, rough_prop)
@@ -205,18 +229,21 @@ stain=max(stain,strand);}}
     tint = settings['dry_tint']
     color = custom(f'''float luma=dot(Base,float3(.2126,.7152,.0722));
 float3 stone=lerp(luma.xxx,Base,{settings['retained_chroma']:.12g})*float3({tint[0]:.12g},{tint[1]:.12g},{tint[2]:.12g});
-return stone*lerp(1,{settings['wet_color_factor']:.12g},Masks.x)*lerp(1,{settings['stain_color_factor']:.12g},Masks.y);''', unreal.CustomMaterialOutputType.CMOT_FLOAT3,
+return lerp(Base,stone,Masks.z)*lerp(1,{settings['wet_color_factor']:.12g},Masks.x)*lerp(1,{settings['stain_color_factor']:.12g},Masks.y);''', unreal.CustomMaterialOutputType.CMOT_FLOAT3,
                    {'Base': (color_base, color_out), 'Masks': (masks, '')}, 'DCCliffWeatherColor')
     rough = custom(f'''float wet=clamp(Base*{settings['wet_roughness_factor']:.12g},.28,.60);
 return clamp(lerp(Base,wet,Masks.x)-.035*Masks.y,.28,.94);''', unreal.CustomMaterialOutputType.CMOT_FLOAT1,
                    {'Base': (rough_base, rough_out), 'Masks': (masks, '')}, 'DCCliffWeatherRoughness')
-    if not M.connect_material_property(color, color_prop) or not M.connect_material_property(rough, rough_prop):
+    if not M.connect_material_property(color, '', color_prop) or not M.connect_material_property(rough, '', rough_prop):
         raise RuntimeError('Cannot connect weather outputs')
     M.recompile_material(material)
     if not unreal.EditorAssetLibrary.save_loaded_asset(material, only_if_is_dirty=False):
         raise RuntimeError('Cannot save preview weather material')
     (saved / 'CliffPreviewWeather.json').write_text(json.dumps(dict(config=str(config), config_sha256=sha(config),
-        material=material.get_path_name(), profile=texture.get_path_name(), data=data, applied=True), indent=2), encoding='utf-8')
+        material=material.get_path_name(), profile=texture.get_path_name(), data=data, applied=True,
+        coordinates=coordinates, finite_lateral_range_m=[u0,u1], lateral_inside_fade_m=4.,
+        near_shore_landward_zone_m=[-8.,-4.,100.,140.],
+        note='All weather including dry tint is local; no profile extrapolation to other ring sectors.'), indent=2), encoding='utf-8')
     unreal.log_warning('DC_CLIFF_PREVIEW_WEATHER applied to isolated colour/roughness outputs')
 
 

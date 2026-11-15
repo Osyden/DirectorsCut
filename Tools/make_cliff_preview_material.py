@@ -20,6 +20,9 @@ Exposed-face U/Z coordinates match the mesh displacement; no tile enlargement.
 DC_CLIFF_SCAN_SAMPLING=offsets enables shared three-offset colour/normal/roughness
 sampling ONLY for geometry without raw scan displacement. Default raw preserves
 the A/B displacement registration.
+DC_CLIFF_SCAN_PROJECTION=triplanar is an optional physical-scale ring preview;
+default sourcechart preserves U/Z registration. The triplanar candidate uses
+source normal strength1.0; sourcechart retains0.5. No scan geometry is enlarged.
 Large fracture volume belongs to the mesh. Detail is shallow centimetre/metre
 surface relief with derivative filtering; no displaced vertices or fake blocks.
 """
@@ -184,6 +187,10 @@ def create_material():
     scan_sampling = os.environ.get('DC_CLIFF_SCAN_SAMPLING', 'raw')
     if scan_sampling not in ('raw', 'offsets'):
         raise RuntimeError('DC_CLIFF_SCAN_SAMPLING must be raw or offsets')
+    scan_projection = os.environ.get('DC_CLIFF_SCAN_PROJECTION', 'sourcechart')
+    if scan_projection not in ('sourcechart', 'triplanar'):
+        raise RuntimeError('DC_CLIFF_SCAN_PROJECTION must be sourcechart or triplanar')
+    scan_strength = 1. if scan_projection == 'triplanar' else .5
     scan_tile_code = STONE_TILE if scan_sampling == 'offsets' else r"""
 struct StoneTile {
  float4 sampleMap(Texture2D tex,SamplerState samp,float2 uv) {
@@ -337,6 +344,21 @@ stone=lerp(dot(stone,float3(.2126,.7152,.0722)).xxx,stone,.4);
 return stone*float3(.80,.86,.91)*lerp(.90,1.06,Weather.x);
 """, types.CMOT_FLOAT3, {'P':position,'N':normal,'Albedo':scan_nodes['D'],
                          'TileMetres':scan_tile_size,'Weather':weather})
+        if scan_projection == 'triplanar':
+            color = custom(scan_tile_code + r"""
+float3 p=P*.01/max(TileMetres,.1), n=normalize(N);
+float3 w=pow(abs(n),4);w/=max(w.x+w.y+w.z,.001);
+float3 s=float3(n.x<0?-1:1,n.y<0?-1:1,n.z<0?-1:1);
+// The signed projection convention matches slate; texture V is negated for
+// top-origin imported pixels from the bottom-up source scan.
+float3 x=tile.sampleMap(Albedo,AlbedoSampler,float2(p.y*s.x,-p.z)).rgb;
+float3 y=tile.sampleMap(Albedo,AlbedoSampler,float2(-p.x*s.y,-p.z)).rgb;
+float3 z=tile.sampleMap(Albedo,AlbedoSampler,float2(p.x*s.z,-p.y)).rgb;
+float3 stone=x*w.x+y*w.y+z*w.z;
+stone=lerp(dot(stone,float3(.2126,.7152,.0722)).xxx,stone,.4);
+return stone*float3(.80,.86,.91)*lerp(.90,1.06,Weather.x);
+""", types.CMOT_FLOAT3, {'P':position,'N':normal,'Albedo':scan_nodes['D'],
+                         'TileMetres':scan_tile_size,'Weather':weather})
     output(color, unreal.MaterialProperty.MP_BASE_COLOR)
     local_normal = custom(r"""
 float3 n=normalize(N);
@@ -370,7 +392,24 @@ perturb-=n*dot(n,perturb);
 float face=1-smoothstep(.55,.88,abs(n.z));
 return normalize(n+perturb*Strength*face);
 """, types.CMOT_FLOAT3, {'P':position,'N':normal,'NormalTex':scan_nodes['N'],
-                         'TileMetres':scan_tile_size,'Strength':parameter('ScanNormalStrength', .5)})
+                         'TileMetres':scan_tile_size,'Strength':parameter('ScanNormalStrength', scan_strength)})
+        if scan_projection == 'triplanar':
+            local_normal = custom(scan_tile_code + r"""
+float3 p=P*.01/max(TileMetres,.1),n=normalize(N);
+float3 w=pow(abs(n),4);w/=max(w.x+w.y+w.z,.001);
+float3 s=float3(n.x<0?-1:1,n.y<0?-1:1,n.z<0?-1:1);
+float3 x=UnpackNormalMap(tile.sampleMap(NormalTex,NormalTexSampler,float2(p.y*s.x,-p.z))).xyz;
+float3 y=UnpackNormalMap(tile.sampleMap(NormalTex,NormalTexSampler,float2(-p.x*s.y,-p.z))).xyz;
+float3 z=UnpackNormalMap(tile.sampleMap(NormalTex,NormalTexSampler,float2(p.x*s.z,-p.y))).xyz;
+// DX maps contain negative texture-coordinate height gradients. Transform
+// them with the SAME signed UV derivatives used by D/R, then project onto N.
+float3 perturb=(float3(0,x.x*s.x,-x.y)/max(x.z,.25))*w.x
+              +(float3(-y.x*s.y,0,-y.y)/max(y.z,.25))*w.y
+              +(float3(z.x*s.z,-z.y,0)/max(z.z,.25))*w.z;
+perturb-=n*dot(n,perturb);
+return normalize(n+perturb*saturate(Strength));
+""", types.CMOT_FLOAT3, {'P':position,'N':normal,'NormalTex':scan_nodes['N'],
+                         'TileMetres':scan_tile_size,'Strength':parameter('ScanNormalStrength', scan_strength)})
     world_normal = node(unreal.MaterialExpressionTransform)
     world_normal.set_editor_property("transform_source_type", unreal.MaterialVectorCoordTransformSource.TRANSFORMSOURCE_LOCAL)
     world_normal.set_editor_property("transform_type", unreal.MaterialVectorCoordTransform.TRANSFORM_WORLD)
@@ -385,6 +424,16 @@ float2 uv=float2(p.x,-p.z),topUV=p.xy;
 float face=tile.sampleMap(Rough,RoughSampler,uv).r;
 float top=tile.sampleMap(Rough,RoughSampler,topUV).r;
 return clamp(lerp(face,top,smoothstep(.55,.88,abs(n.z))),.52,.94);
+""", types.CMOT_FLOAT1, {'P':position,'N':normal,'Rough':scan_nodes['R'],'TileMetres':scan_tile_size})
+        if scan_projection == 'triplanar':
+            roughness = custom(scan_tile_code + r"""
+float3 p=P*.01/max(TileMetres,.1),n=normalize(N);
+float3 w=pow(abs(n),4);w/=max(w.x+w.y+w.z,.001);
+float3 s=float3(n.x<0?-1:1,n.y<0?-1:1,n.z<0?-1:1);
+float x=tile.sampleMap(Rough,RoughSampler,float2(p.y*s.x,-p.z)).r;
+float y=tile.sampleMap(Rough,RoughSampler,float2(-p.x*s.y,-p.z)).r;
+float z=tile.sampleMap(Rough,RoughSampler,float2(p.x*s.z,-p.y)).r;
+return clamp(dot(float3(x,y,z),w),.52,.94);
 """, types.CMOT_FLOAT1, {'P':position,'N':normal,'Rough':scan_nodes['R'],'TileMetres':scan_tile_size})
     output(roughness, unreal.MaterialProperty.MP_ROUGHNESS)
     output(constant(.35), unreal.MaterialProperty.MP_SPECULAR)
@@ -417,9 +466,10 @@ return clamp(lerp(face,top,smoothstep(.55,.88,abs(n.z))),.52,.94);
                   fracture_length_m=[.9,2.3] if preset=='procedural' else [], fracture_width_m=[.036,.086] if preset=='procedural' else [], fracture_depth_m=[.003,.009] if preset=='procedural' else [],
                   normal_fully_filtered_above_metres_per_pixel=.38 if preset=='procedural' else None, cracks_filtered_above_metres_per_pixel=.0645 if preset=='procedural' else None,
                   slate_normal_strength=.7 if preset=='slate' else None,
-                  scan_normal_strength=.5 if preset=='scan' else None,
+                  scan_normal_strength=scan_strength if preset=='scan' else None,
                   scan_sampling=scan_sampling if preset=='scan' else None,
-                  scan_coordinates='Source-chart U/Z, native physical tile, top projection blend; DX normal mapped back to source axes' if preset=='scan' else None,
+                  scan_projection=scan_projection if preset=='scan' else None,
+                  scan_coordinates=('Signed local triplanar, shared D/N/R offsets; DX gradients transformed by exact signed UV axes' if scan_projection=='triplanar' else 'Source-chart U/Z, native physical tile, top projection blend; DX normal mapped back to source axes') if preset=='scan' else None,
                   slate_sampling='Three-offset triangular blend per local triplanar projection; same albedo/normal offsets, explicit continuous UV mip gradients' if preset=='slate' else None,
                   roughness_bounds=[.52 if preset=='scan' else .53,.94], emissive=False, displacement=False,
                   runtime_integrated=False, actual_shader_compile_and_visual_review_pending=True)
