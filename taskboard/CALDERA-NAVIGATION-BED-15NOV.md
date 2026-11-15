@@ -2,6 +2,22 @@
 
 Review branch: `codex/maelstrom-saturday`, based on combined main `3368536`. **The deeper-bed trial is not accepted for integration.** The original installed terrain, support data and shoreline fog have been restored byte-for-byte. Main and its packaged local playable were never changed.
 
+## 15:44 correction: the photographed patch is distant shoreline
+
+Exact viewport-deprojected rays now resolve the apparent contradiction. The gray points photographed beside the ship are **220-247m away on the lower inlet's exposed outer shoulder**, not the adjacent hull bed. Their screen placement was misread. They lie outside the previous near-hull sample rectangle and beyond the narrowed 160m river half-width. Both their triangles and ray intersections are identical in the accepted and WetFoot sources, so the deeper-bed trial could not change them.
+
+| Pixel at 1600x900 | Terrain face | Camera distance | Beyond river edge | Above lake |
+| --- | --- | --- | --- | --- |
+| 400.5,780.5 | 999838 | 219.580m | 23.886m | 16.865m |
+| 450.5,740.5 | 118173 | 246.591m | 26.052m | 6.028m |
+| 600.5,780.5, control | Water first | Cataract at 15.636m | Within river | Water correctly occludes distant rock |
+
+The two shoulder hits precede the lake water by 29.580m and 10.928m along their camera rays. This is ordinary geometric occlusion, not evidence of a Nanite or Single Layer Water depth defect. Source arrays confirm the same triangle coordinates in both candidates. The earlier CPU result remains valid for its near-hull footprint; it did not attribute these pixels.
+
+`-DCCliffRayTime=15` logs the current viewport's actual deprojection rays and full arena transform around encounter 15. `Tools/probe_caldera_camera_rays.py` consumes that JSON, queries original source triangles and production flattened-water triangles, and reports exact face IDs, barycentrics, depths and previous sampling coverage. It also supports explicit camera input and separate candidate comparison. Native data: `Saved/CalderaCameraRays/native-285.json`; report: `Saved/CalderaCameraRays/Native285/report.json`; screenshot: `Saved/SceneReview/CalderaNativeRayProbe/shot_0279.png`. Encounter time is 15.0031433; viewport 0,0,1600,900. The CPU comparison took 2.34s. Synthetic intersection/backface/camera-axis and end-to-end checks also pass, separately from native evidence.
+
+Both actual shoulder points lie inside existing impact-fog lobe 8 (42m radius), 7.82m and 23.66m from its centre. Their viewing rays traverse 36.43m and 63.00m of that volume before reaching rock. The scoped next visual test is stronger **early** impact spray at these existing contacts, preserving the accepted footprint and later density. The user explicitly requested dense fog obscuring this waterfall foot. No additional bed excavation or renderer work is justified by these pixels.
+
 ## What was tested
 
 `Tools/deepen_caldera_navigation_bed.py` creates an isolated underwater clearance envelope from immutable source `6eac5bba828f84ef2196f3a6598c23829c503722eb056f7ad59269bd6ab444e7`. It samples the current route, full radial steering range and banking velocities, and only lowers submerged vertices. The trial changes no XY coordinates, topology, UVs, masks or exposed bank/lake shoreline faces. Already submerged lake-plane intersections under the river are allowed to move explicitly; their source/support/fog data were regenerated rather than relabelled.

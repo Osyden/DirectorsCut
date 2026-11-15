@@ -4,6 +4,9 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/LocalPlayer.h"
+#include "Engine/GameViewportClient.h"
+#include "SceneView.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/Pawn.h"
 #include "Materials/MaterialInterface.h"
@@ -329,6 +332,36 @@ void ADCMaelstrom::UpdateCliffPreview()
     // hiding this mesh, so bed artifacts can be distinguished from scan accents.
     static const bool HideCliff=FParse::Param(FCommandLine::Get(),TEXT("DCCliffHideMesh"));
     CliffPreviewMesh->SetVisibility(!HideCliff);
+    // Capture viewport-derived rays for the independent source-triangle probe.
+    // An explicit time opts in; default play performs no projection or logging.
+    static float RayTime=-1.f;
+    static const bool CaptureRays=FParse::Value(FCommandLine::Get(),TEXT("DCCliffRayTime="),RayTime);
+    if(CaptureRays&&FMath::Abs(Elapsed-RayTime)<.06f)
+    {
+        APlayerController* PC=GetWorld()->GetFirstPlayerController();
+        ULocalPlayer* LP=PC?PC->GetLocalPlayer():nullptr;
+        FSceneViewProjectionData Projection;
+        if(LP&&LP->ViewportClient&&LP->ViewportClient->Viewport
+            &&LP->GetProjectionData(LP->ViewportClient->Viewport,Projection))
+        {
+            const FTransform Frame=GetArenaTransform();
+            const FVector L=Frame.GetLocation(),S=Frame.GetScale3D();
+            const FRotator R=Frame.Rotator();
+            const FIntRect Rect=Projection.GetConstrainedViewRect();
+            const FMatrix Inverse=Projection.ComputeViewProjectionMatrix().Inverse();
+            FString Record=FString::Printf(TEXT("{\"encounter_time_s\":%.7f,\"arena_location_cm\":[%.8f,%.8f,%.8f],\"arena_rotation_deg\":[%.8f,%.8f,%.8f],\"arena_scale\":[%.8f,%.8f,%.8f],\"viewport_rect\":[%d,%d,%d,%d],\"rays\":["),
+                Elapsed,L.X,L.Y,L.Z,R.Pitch,R.Yaw,R.Roll,S.X,S.Y,S.Z,Rect.Min.X,Rect.Min.Y,Rect.Max.X,Rect.Max.Y);
+            int32 Index=0;
+            for(const FVector2D Pixel:{FVector2D(400.5,780.5),FVector2D(450.5,740.5),FVector2D(250.5,820.5),FVector2D(600.5,780.5)})
+            {
+                FVector Origin,Direction;
+                FSceneView::DeprojectScreenToWorld(Pixel,Rect,Inverse,Origin,Direction);
+                Record+=FString::Printf(TEXT("%s{\"pixel\":[%.1f,%.1f],\"origin_cm\":[%.8f,%.8f,%.8f],\"direction\":[%.10f,%.10f,%.10f]}"),
+                    Index++?TEXT(","):TEXT(""),Pixel.X,Pixel.Y,Origin.X,Origin.Y,Origin.Z,Direction.X,Direction.Y,Direction.Z);
+            }
+            UE_LOG(LogTemp,Display,TEXT("DC_CLIFF_RAYS %s]}"),*Record);
+        }
+    }
     UpdateCliffPreviewFalls();
     UpdateCliffDetailPreview();
     if(CliffPreviewHidden.IsEmpty())
