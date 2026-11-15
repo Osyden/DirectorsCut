@@ -1,5 +1,6 @@
 #include "DCVoice.h"
 #include "DCACESpeechCallback.h"
+#include "DCPhononSpeech.h"
 #include "DCSpeech.h"
 #include "DCACEDialogue.h"
 #include "DCLanguageModelResponse.h"
@@ -182,6 +183,9 @@ void ADCVoice::SynchronizeScene()
 void ADCVoice::BeginPlay()
 {
 	Super::BeginPlay();
+	FParse::Value(FCommandLine::Get(), TEXT("DCTTSBackend="), TTSBackend);
+	bUsePhonon = TTSBackend.Equals(TEXT("Phonon"), ESearchCase::IgnoreCase);
+	if (bUsePhonon) { bStreamSpeech = true; }
 	if (FParse::Param(FCommandLine::Get(), TEXT("DCStreamSpeech"))) { bStreamSpeech = true; }
 	FParse::Value(FCommandLine::Get(), TEXT("DCStreamPrebuffer="), StreamPrebufferSeconds);
 	StreamPrebufferSeconds = FMath::Clamp(StreamPrebufferSeconds, .5f, 2.5f);
@@ -217,6 +221,7 @@ void ADCVoice::BeginPlay()
 	const FString Dir = SidecarDir();
 	bTTSReady = FPaths::FileExists(Dir / TEXT("bin/piper/piper/piper.exe"));
 	UE_LOG(LogDC, Log, TEXT("Voice: sidecars at %s, piper %s"), *Dir, bTTSReady ? TEXT("found") : TEXT("missing"));
+	if (bUsePhonon) { InitializePhonon(); }
 
 	// The capture backends register when this plugin module loads.
 	FModuleManager::Get().LoadModule(TEXT("AudioCapture"));
@@ -341,6 +346,7 @@ void ADCVoice::LaunchSidecars()
 void ADCVoice::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	if (bUsePhonon) { bTTSReady = bUseACE && PhononSpeech && PhononSpeech->IsReady(); }
 	SynchronizeScene();
 
 	if (!bLLMReady || !bSTTReady)
@@ -413,13 +419,19 @@ void ADCVoice::Tick(float DeltaSeconds)
 	if (ActiveCurves && ((bACESent && bACEEnded) || Now > ACEDeadline))
 	{
 		const bool bFallback = !bACEStarted;
+		const bool bWasPhonon = bActivePhonon;
 		const int32 BatchId = ActiveSpeechBatchId;
-		const bool bSucceeded = bACEStarted && bACESent && bACEEnded && bUseACE && Now <= ACEDeadline;
+		const bool bSucceeded = bACEStarted && bACESent && bACESendSucceeded && bACEEnded && bUseACE && Now <= ACEDeadline;
 		const FString Speaker = ActiveSpeaker, Path = ActiveWav;
 		if (Now > ACEDeadline) { UE_LOG(LogDC, Warning, TEXT("Voice: ACE playback timed out; disabling ACE for this run")); bUseACE = false; }
 		ClearACE();
 		ActiveSpeechBatchId = 0;
-		if (bFallback) { PlayWav(Speaker, Path, BatchId); }
+		if (bFallback && !bWasPhonon) { PlayWav(Speaker, Path, BatchId); }
+		else if (bFallback)
+		{
+			ShowSpeech(Speaker, ActiveText, FMath::Clamp(ActiveText.Len() * .055, 4.0, 9.0));
+			CompleteSpeechChunk(BatchId, false, false);
+		}
 		else { CompleteSpeechChunk(BatchId, bSucceeded, bSucceeded); }
 	}
 	if (bStreamSpeech)
@@ -735,6 +747,9 @@ void ADCVoice::Speak(const FString& Speaker, const FString& Text, bool bReport)
 
 void ADCVoice::StartNextLine()
 {
+	// Phonon feeds one live native session directly. Never overlap a legacy WAV
+	// send with that worker, including its asynchronous cancellation/drain.
+	if ((PhononSpeech && PhononSpeech->IsBusy()) || (bUsePhonon && (ActiveCurves || GFrameCounter < EarliestSpeechStartFrame))) { return; }
 	while (!SpeechQueue.IsEmpty() && !bSmokeTest && SpeechQueue[0].BatchId == 0 &&
 		FPlatformTime::Seconds() - SpeechQueue[0].QueuedAt > (SpeechQueue[0].bReport ? 6.0 : 12.0))
 	{
@@ -746,6 +761,11 @@ void ADCVoice::StartNextLine()
 	SpeechQueue.RemoveAt(0);
 	const FString& Speaker = Line.Speaker;
 	const FString& Text = Line.Text;
+	if (bUsePhonon)
+	{
+		if (!TryPhonon(Speaker, Text, Line.BatchId)) { QueueSynthesisFailure(Speaker, Text, Line.BatchId); }
+		return;
+	}
 	const FString Dir = SidecarDir();
 	const FString OutDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("TTS"));
 	IFileManager::Get().MakeDirectory(*OutDir, true);
@@ -812,7 +832,7 @@ bool ADCVoice::TryACE(const FString& Speaker, const FString& Path, double Durati
 	// Short crew replies are buffered while GPU inference runs. Starting with only
 	// 100 ms queued produced gaps under the fog scene's graphics load.
 	ActiveCurves->BufferLengthInSeconds = bStreamSpeech ? StreamPrebufferSeconds : 60.f;
-	bACEStarted = bACESent = bACEEnded = false;
+	bACEStarted = bACESent = bACESendSucceeded = bACEEnded = false;
 	ACEDeadline = FPlatformTime::Seconds() + Duration + 30;
 	ActiveCurves->OnAnimationStarted.AddDynamic(this, &ADCVoice::ACEStarted);
 	ActiveCurves->OnAnimationEnded.AddDynamic(this, &ADCVoice::ACEEnded);
@@ -848,6 +868,7 @@ void ADCVoice::ACEEnded()
 void ADCVoice::ACESent(bool bSuccess)
 {
 	bACESent = true;
+	bACESendSucceeded = bSuccess;
 	if (bStreamSpeech) { UE_LOG(LogDC, Display, TEXT("SPEECH_STREAM_AUDIO_SENT batch=%d playing=%d success=%d"), ActiveSpeechBatchId, bACEStarted && !bACEEnded, bSuccess); }
 	if (bSuccess && ActiveCurves) { ActiveCurves->BufferLengthInSeconds = .04f; }
 	if (!bSuccess)
@@ -862,16 +883,20 @@ void ADCVoice::ClearACE()
 	++ACERequestSerial;
 	if (ActiveACERequest && ActiveACERelay) { ActiveACERequest->AudioSendCompleted.RemoveDynamic(ActiveACERelay.Get(), &UDCACESpeechCallback::Sent); }
 	ActiveACERelay = nullptr;
+	if (bActivePhonon && PhononSpeech) { PhononSpeech->Cancel(); }
 	if (ActiveCurves)
 	{
 		ActiveCurves->OnAnimationStarted.RemoveDynamic(this, &ADCVoice::ACEStarted);
 		ActiveCurves->OnAnimationEnded.RemoveDynamic(this, &ADCVoice::ACEEnded);
-		ActiveCurves->Stop();
+		// The incremental worker detaches first and schedules Stop on the game
+		// thread itself; doing Stop here can invert the plugin's callback locks.
+		if (!bActivePhonon) { ActiveCurves->Stop(); }
 		// Let the old component's ENDING state drain before another streamed clip.
 		EarliestSpeechStartFrame = GFrameCounter + 2;
 	}
 	ActiveCurves = nullptr;
 	ActiveACERequest = nullptr;
+	bActivePhonon = false;
 }
 
 void ADCVoice::PlayWav(const FString& Speaker, const FString& Path, int32 BatchId)

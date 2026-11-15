@@ -14,6 +14,7 @@ class UAsyncActionAnimateCharacter;
 class UDCACEDialogue;
 class IHttpRequest;
 class UDCACESpeechCallback;
+class UDCPhononSpeech;
 
 /**
  * The voice loop: microphone -> speech-to-text -> order, and crew line -> (LLM) -> text-to-speech.
@@ -72,6 +73,8 @@ public:
 	UPROPERTY(Config, EditAnywhere) bool bUseLLM = true;
 	/** LlamaCpp (external server) or ACE (local NVIDIA runtime). Selected per launch for comparison. */
 	UPROPERTY(Config, EditAnywhere) FString DialogueBackend = TEXT("LlamaCpp");
+	/** Experimental persistent CPU Phonon31M PCM producer; Piper remains the default. */
+	UPROPERTY(Config, EditAnywhere) FString TTSBackend = TEXT("Piper");
 	/** Whisper vocabulary/context hint, not a strict grammar or guaranteed whitelist. */
 	UPROPERTY(Config, EditAnywhere) FString STTVocabulary = TEXT("Rex, Duncan, Ruby. Rex, take the helm. Duncan, fire at will. Ruby, put out the fire. Hard to port. Hard to starboard. Steady as she goes. Man the cannons. Hold fire. Repair the rigging. Report.");
 	/** Seconds to wait for the LLM before speaking the canned line instead. */
@@ -124,6 +127,10 @@ protected:
 	void ShowSpeech(const FString& Speaker, const FString& Text, double Duration);
 	void PlayWav(const FString& Speaker, const FString& Path, int32 BatchId = 0);
 	void StartNextLine();
+	void InitializePhonon();
+	bool TryPhonon(const FString& Speaker, const FString& Text, int32 BatchId);
+	UPROPERTY(Transient) TObjectPtr<UDCPhononSpeech> PhononSpeech;
+	bool bUsePhonon = false, bActivePhonon = false;
 	void StartReadySpeech();
 	void QueueSynthesisFailure(const FString& Speaker, const FString& Text, int32 BatchId);
 	bool TryACE(const FString& Speaker, const FString& Path, double Duration);
@@ -162,6 +169,7 @@ protected:
 	double ACEDeadline = 0;
 	bool bACEStarted = false;
 	bool bACESent = false;
+	bool bACESendSucceeded = false;
 	bool bACEEnded = false;
 	bool bEnding = false;
 	bool bSmokeTest = false;
