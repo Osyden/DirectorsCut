@@ -280,17 +280,37 @@ void ADCVoice::CheckHealth()
 	else if (!bLLMReady && bUseLLM)
 	{
 		auto Req = FHttpModule::Get().CreateRequest();
-		Req->SetURL(FString::Printf(TEXT("http://127.0.0.1:%d/health"), LLMPort));
+		Req->SetURL(FString::Printf(TEXT("http://127.0.0.1:%d/v1/models"), LLMPort));
 		Req->SetVerb(TEXT("GET"));
 		Req->SetTimeout(2.f);
 		Req->OnProcessRequestComplete().BindLambda([Weak](FHttpRequestPtr, FHttpResponsePtr Resp, bool bOk)
 		{
 			if (ADCVoice* V = Weak.Get())
 			{
-				const bool bUp = bOk && Resp.IsValid() && Resp->GetResponseCode() == 200;
-				if (bUp && !V->bLLMReady) { UE_LOG(LogDC, Log, TEXT("Voice: LLM ready")); }
+				bool bUp = false;
+				TSharedPtr<FJsonObject> Models;
+				const TArray<TSharedPtr<FJsonValue>>* Data = nullptr;
+				if (bOk && Resp.IsValid() && Resp->GetResponseCode() == 200 &&
+					FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Resp->GetContentAsString()), Models) &&
+					Models.IsValid() && Models->TryGetArrayField(TEXT("data"), Data))
+				{
+					for (const auto& Entry : *Data)
+					{
+						FString Id;
+						if (Entry.IsValid() && Entry->Type == EJson::Object && Entry->AsObject()->TryGetStringField(TEXT("id"), Id) &&
+							FPaths::GetCleanFilename(Id) == FPaths::GetCleanFilename(V->LLMModel)) { bUp = true; }
+					}
+				}
+				if (bUp && !V->bLLMReady) { UE_LOG(LogDC, Display, TEXT("DIALOGUE_READY backend=LlamaCpp model=%s port=%d"), *V->LLMModel, V->LLMPort); }
 				V->bLLMReady = bUp;
-				if (!bUp) { V->LaunchSidecars(); }
+				// An occupied endpoint must not be treated as the selected model or
+				// trigger a second GPU model process. The owner can stop/reconfigure it.
+				if (!bUp && bOk && Resp.IsValid() && Resp->GetResponseCode() == 200 && !V->bModelMismatchReported)
+				{
+					V->bModelMismatchReported = true;
+					UE_LOG(LogDC, Warning, TEXT("DIALOGUE_MODEL_MISMATCH expected=%s port=%d; not using another model"), *V->LLMModel, V->LLMPort);
+				}
+				if (!Resp.IsValid() || Resp->GetResponseCode() == 0) { V->LaunchSidecars(true); }
 			}
 		});
 		Req->ProcessRequest();
@@ -316,25 +336,29 @@ void ADCVoice::CheckHealth()
 	}
 }
 
-void ADCVoice::LaunchSidecars()
+void ADCVoice::LaunchSidecars(bool bAllowLLM)
 {
-	if (bLaunched) { return; }
-	bLaunched = true;
 	const FString Dir = SidecarDir();
 
 	const FString LLMExe = Dir / TEXT("bin/llama/llama-server.exe");
 	const FString LLMModelPath = Dir / TEXT("models") / LLMModel;
-	if (bUseLLM && !bUseACEDialogue && !bLLMReady && FPaths::FileExists(LLMExe) && FPaths::FileExists(LLMModelPath))
+	if (bAllowLLM && !bLLMLaunched && bUseLLM && !bUseACEDialogue && !bLLMReady)
 	{
-		const FString Args = FString::Printf(TEXT("-m \"%s\" --host 127.0.0.1 --port %d -ngl 99 -c 4096"), *LLMModelPath, LLMPort);
-		LLMProc = FPlatformProcess::CreateProc(*LLMExe, *Args, false, true, true, nullptr, 0, *(Dir / TEXT("bin/llama")), nullptr);
-		UE_LOG(LogDC, Log, TEXT("Voice: started llama-server (%s)"), LLMProc.IsValid() ? TEXT("ok") : TEXT("failed"));
+		bLLMLaunched = true;
+		if (FPaths::FileExists(LLMExe) && FPaths::FileExists(LLMModelPath))
+		{
+			const FString Args = FString::Printf(TEXT("-m \"%s\" --host 127.0.0.1 --port %d -ngl 99 -c 4096"), *LLMModelPath, LLMPort);
+			LLMProc = FPlatformProcess::CreateProc(*LLMExe, *Args, false, true, true, nullptr, 0, *(Dir / TEXT("bin/llama")), nullptr);
+			UE_LOG(LogDC, Log, TEXT("Voice: started llama-server model=%s (%s)"), *LLMModel, LLMProc.IsValid() ? TEXT("ok") : TEXT("failed"));
+		}
+		else { UE_LOG(LogDC, Error, TEXT("DIALOGUE_MODEL_MISSING selected=%s; no alternate model loaded"), *LLMModel); }
 	}
 
 	const FString STTExe = Dir / TEXT("bin/whisper/Release/whisper-server.exe");
 	const FString STTModelPath = Dir / TEXT("models") / STTModel;
-	if (!bSTTReady && !FParse::Param(FCommandLine::Get(), TEXT("DCDialogueProbe")) && FPaths::FileExists(STTExe) && FPaths::FileExists(STTModelPath))
+	if (!bSTTLaunched && !bSTTReady && !FParse::Param(FCommandLine::Get(), TEXT("DCDialogueProbe")) && FPaths::FileExists(STTExe) && FPaths::FileExists(STTModelPath))
 	{
+		bSTTLaunched = true;
 		const FString Args = FString::Printf(TEXT("-m \"%s\" --host 127.0.0.1 --port %d -t 8"), *STTModelPath, STTPort);
 		STTProc = FPlatformProcess::CreateProc(*STTExe, *Args, false, true, true, nullptr, 0, *(Dir / TEXT("bin/whisper/Release")), nullptr);
 		UE_LOG(LogDC, Log, TEXT("Voice: started whisper-server (%s)"), STTProc.IsValid() ? TEXT("ok") : TEXT("failed"));

@@ -114,7 +114,7 @@ protected:
 	bool bUseACEDialogue = false;
 	FString SidecarDir() const;
 	void CheckHealth();
-	void LaunchSidecars();
+	void LaunchSidecars(bool bAllowLLM = false);
 
 	void StartRecording();
 	void StopRecordingAndTranscribe();
@@ -211,7 +211,7 @@ protected:
 	// Shared across level reloads (R to sail again) so the models stay loaded; stopped only when the game quits.
 	static FProcHandle LLMProc;
 	static FProcHandle STTProc;
-	bool bLaunched = false;
+	bool bLLMLaunched = false, bSTTLaunched = false, bModelMismatchReported = false;
 	bool bLLMReady = false;
 	bool bSTTReady = false;
 	bool bTTSReady = false;

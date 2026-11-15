@@ -212,6 +212,8 @@ void ADCDialogueReviewGameMode::Finish()
     bCompleted=true; bPending=false;
     TSharedRef<FJsonObject> Report=MakeShared<FJsonObject>();
     Report->SetStringField(TEXT("backend"),Backend);
+    Report->SetStringField(TEXT("selected_model"),Voice ? Voice->LLMModel : TEXT("unknown"));
+    Report->SetBoolField(TEXT("selected_model_ready"),Voice && Voice->IsLLMReady());
     Report->SetNumberField(TEXT("readiness_ms"),ReadyMilliseconds);
     Report->SetNumberField(TEXT("elapsed_ms"),(FPlatformTime::Seconds()-Started)*1000.0);
     Report->SetNumberField(TEXT("planned_cases"),Cases.Num());

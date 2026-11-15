@@ -241,6 +241,10 @@ void UDCConversationReview::Finish(const FString& Error)
     TSharedRef<FJsonObject> Report=MakeShared<FJsonObject>();
     Report->SetBoolField(TEXT("success"),Error.IsEmpty()); Report->SetStringField(TEXT("error"),Error);
     Report->SetStringField(TEXT("backend"),Voice ? Voice->DialogueBackend : TEXT("unknown"));
+    Report->SetStringField(TEXT("selected_model"),Voice ? Voice->LLMModel : TEXT("unknown"));
+    Report->SetStringField(TEXT("tts_backend"),Voice ? Voice->TTSBackend : TEXT("unknown"));
+    Report->SetBoolField(TEXT("streaming_enabled"),Voice && Voice->bStreamSpeech);
+    Report->SetBoolField(TEXT("selected_model_ready"),Voice && Voice->bLLMReady);
     Report->SetStringField(TEXT("scope"),TEXT("Real conversation entry, no order execution, generated speech/A2F and scene-memory reset. Streaming validates matching finalized batch text and every chunk's face completion; stable mode validates the whole line. Positive sample logs and answer/context semantic review remain required."));
     Report->SetArrayField(TEXT("results"),Results);
     FString Json; FJsonSerializer::Serialize(Report,TJsonWriterFactory<>::Create(&Json));
