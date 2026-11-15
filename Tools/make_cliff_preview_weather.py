@@ -113,8 +113,10 @@ def apply_unreal():
     root = '/Game/DC/Maelstrom/GeneratedCliffPreview'
     saved = Path(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_saved_dir()))
     base_report = json.loads((saved / 'CliffRockMaterialPreview.json').read_text(encoding='utf-8'))
-    if base_report.get('preset') != 'scan':
-        raise ValueError('Weather calibration requires the verified scan preview preset')
+    if base_report.get('preset') not in ('scan','slate'):
+        raise ValueError('Weather calibration requires the scan or installed slate preview preset')
+    if base_report.get('preset') == 'slate' and base_report.get('transport_masks') != 'none':
+        raise ValueError('Slate shore comparison requires transport_masks=none to avoid unverified vertex-colour wetness')
     material = unreal.load_asset(root + '/M_CliffRock')
     if not isinstance(material, unreal.Material):
         raise ValueError('Regenerate the isolated scan material first')
@@ -225,7 +227,11 @@ stain=max(stain,strand);}}
                    {'P': (position, ''), 'N': (normal, ''), 'Profile': (profile, '')}, 'DCCliffWeatherMasks')
     color_out = M.get_material_property_input_node_output_name(material, color_prop)
     rough_out = M.get_material_property_input_node_output_name(material, rough_prop)
-    settings = data['defaults']
+    settings = dict(data['defaults'])
+    if base_report.get('preset') == 'slate':
+        # The selected installed slate already has the desired cool grey colour.
+        # Keep that source colour; only actual local wet/stain masks alter it.
+        settings.update(dry_tint=[1.,1.,1.],retained_chroma=1.)
     tint = settings['dry_tint']
     color = custom(f'''float luma=dot(Base,float3(.2126,.7152,.0722));
 float3 stone=lerp(luma.xxx,Base,{settings['retained_chroma']:.12g})*float3({tint[0]:.12g},{tint[1]:.12g},{tint[2]:.12g});
@@ -241,7 +247,8 @@ return clamp(lerp(Base,wet,Masks.x)-.035*Masks.y,.28,.94);''', unreal.CustomMate
         raise RuntimeError('Cannot save preview weather material')
     (saved / 'CliffPreviewWeather.json').write_text(json.dumps(dict(config=str(config), config_sha256=sha(config),
         material=material.get_path_name(), profile=texture.get_path_name(), data=data, applied=True,
-        coordinates=coordinates, finite_lateral_range_m=[u0,u1], lateral_inside_fade_m=4.,
+        coordinates=coordinates, material_preset=base_report['preset'],effective_settings=settings,
+        finite_lateral_range_m=[u0,u1], lateral_inside_fade_m=4.,
         near_shore_landward_zone_m=[-8.,-4.,100.,140.],
         note='All weather including dry tint is local; no profile extrapolation to other ring sectors.'), indent=2), encoding='utf-8')
     unreal.log_warning('DC_CLIFF_PREVIEW_WEATHER applied to isolated colour/roughness outputs')

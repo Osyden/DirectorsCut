@@ -1,0 +1,7 @@
+# Cooler slate comparison
+
+The actual `rock_face_03` diffuse is brown/ochre, so it is unsuitable for replacing the tan marble appearance. The installed Paragon slate diffuse has darker cool gray fractured planes. Its source export is `Maelstrom-Saturday/Saved/CliffTextureReviewParagon/T_SlateTextureTile_000_D_review.png`; the material references the installed texture assets directly. No vendor pixels are committed or imported again.
+
+Run `make_cliff_preview_material.py` with `DC_CLIFF_STONE=slate` and `DC_CLIFF_TRANSPORT_MASKS=none`. The latter is important for the ring pilot, which has no scientific vertex colours: default white otherwise becomes full historical flow/deposition, adding brown sediment and whole-wall wetness. This option sets those masks to zero, uses the native normal at strength1, and keeps an explicitly authored dry roughness0.80. The4m slate tile size is authored, **not a verified scan dimension**. No measured slate roughness map is available; no unrelated source roughness or unknown packed channel is substituted.
+
+Existing triplanar D/N offsets stay co-registered. The shoreline helper now accepts this slate option and preserves the original slate dry colour while applying only the existing bounded wet/stain masks. Use the same `DC_CLIFF_WEATHER_CONFIG` and `DC_CLIFF_WEATHER_COORDINATES=arena` for the ring. Python syntax and source diff checks pass; root owns actual shader compilation and matched native visual acceptance. This does not repair the remaining smooth macro geometry.

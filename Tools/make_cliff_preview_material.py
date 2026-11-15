@@ -14,6 +14,10 @@ Default is original procedural stone: no cliff atlas or copied pixels.
 DC_CLIFF_STONE=slate uses installed Paragon tileable albedo/normal by reference,
 at an authored4m tile size. Vendor pixels never enter the repository. Roughness
 remains authored: no unverified packed-map channels are used.
+DC_CLIFF_TRANSPORT_MASKS=none is required when the source mesh has no verified
+erosion colours (e.g. the ring pilot). It avoids treating default white vertex
+colours as full deposition/flow. Slate then uses its original colour, unit
+normal strength and an explicitly authored0.80 dry roughness.
 DC_CLIFF_STONE=scan uses the verified CC0 material imported by
 import_cliff_scan_textures.py at its source-reported physical tile size.
 Exposed-face U/Z coordinates match the mesh displacement; no tile enlargement.
@@ -184,6 +188,10 @@ def create_material():
         raise RuntimeError('DC_CLIFF_STONE must be procedural, slate or scan')
     texture_assets = {}
     scan = None
+    transport_masks = os.environ.get('DC_CLIFF_TRANSPORT_MASKS', 'vertex')
+    if transport_masks not in ('vertex', 'none'):
+        raise RuntimeError('DC_CLIFF_TRANSPORT_MASKS must be vertex or none')
+    slate_strength = 1. if transport_masks == 'none' else .7
     scan_sampling = os.environ.get('DC_CLIFF_SCAN_SAMPLING', 'raw')
     if scan_sampling not in ('raw', 'offsets'):
         raise RuntimeError('DC_CLIFF_SCAN_SAMPLING must be raw or offsets')
@@ -284,7 +292,11 @@ struct StoneTile {
     normal.set_editor_property("transform_source_type", unreal.MaterialVectorCoordTransformSource.TRANSFORMSOURCE_WORLD)
     normal.set_editor_property("transform_type", unreal.MaterialVectorCoordTransform.TRANSFORM_LOCAL)
     connect(vertex_normal, "", normal, "")
-    masks = node(unreal.MaterialExpressionVertexColor)
+    if transport_masks == 'none':
+        masks = node(unreal.MaterialExpressionConstant4Vector)
+        masks.set_editor_property('constant', unreal.LinearColor(0.,0.,0.,1.))
+    else:
+        masks = node(unreal.MaterialExpressionVertexColor)
     types = unreal.CustomMaterialOutputType
     weather = custom(WEATHER, types.CMOT_FLOAT4, {"P":position,"N":normal,"Masks":masks,"FlowWetness":parameter("FlowWetness", .65)})
     detail = custom(MINERAL_RELIEF, types.CMOT_FLOAT4, {"P":position})
@@ -381,7 +393,7 @@ float3 perturb=(float3(0,x.x*s.x,x.y)/max(x.z,.2))*w.x
               +(float3(z.x*s.z,z.y,0)/max(z.z,.2))*w.z;
 perturb-=n*dot(n,perturb);
 return normalize(n+perturb*max(Strength,0));
-""", types.CMOT_FLOAT3, {'P':position,'N':normal,'NormalTex':texture_nodes['N'],'TileMetres':tile_size,'Strength':parameter('SlateNormalStrength', .7)})
+""", types.CMOT_FLOAT3, {'P':position,'N':normal,'NormalTex':texture_nodes['N'],'TileMetres':tile_size,'Strength':parameter('SlateNormalStrength', slate_strength)})
     if preset == 'scan':
         local_normal = custom(scan_tile_code + r"""
 float3 p=P*.01/max(TileMetres,.1), n=normalize(N);
@@ -417,6 +429,10 @@ return normalize(n+perturb*saturate(Strength));
     output(world_normal, unreal.MaterialProperty.MP_NORMAL)
     roughness = custom("return clamp(.82+.08*Weather.x+.06*Weather.z-.05*Weather.w-.24*Weather.y,.53,.94);",
                        types.CMOT_FLOAT1, {"Weather":weather})
+    if preset == 'slate' and transport_masks == 'none':
+        # No measured slate roughness map is installed. Do not borrow another
+        # rock's map or interpret unknown packed channels as physical evidence.
+        roughness = parameter('SlateDryRoughness', .80)
     if preset == 'scan':
         roughness = custom(scan_tile_code + r"""
 float3 p=P*.01/max(TileMetres,.1),n=normalize(N);
@@ -465,7 +481,9 @@ return clamp(dot(float3(x,y,z),w),.52,.94);
                   relief_bands_m=[.75,.18,.045] if preset=='procedural' else [], relief_heights_m=[.012,.002,.00055] if preset=='procedural' else [],
                   fracture_length_m=[.9,2.3] if preset=='procedural' else [], fracture_width_m=[.036,.086] if preset=='procedural' else [], fracture_depth_m=[.003,.009] if preset=='procedural' else [],
                   normal_fully_filtered_above_metres_per_pixel=.38 if preset=='procedural' else None, cracks_filtered_above_metres_per_pixel=.0645 if preset=='procedural' else None,
-                  slate_normal_strength=.7 if preset=='slate' else None,
+                  transport_masks=transport_masks,
+                  slate_normal_strength=slate_strength if preset=='slate' else None,
+                  slate_dry_roughness=.80 if preset=='slate' and transport_masks=='none' else None,
                   scan_normal_strength=scan_strength if preset=='scan' else None,
                   scan_sampling=scan_sampling if preset=='scan' else None,
                   scan_projection=scan_projection if preset=='scan' else None,
