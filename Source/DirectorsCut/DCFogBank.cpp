@@ -99,7 +99,10 @@ void ADCFogBank::Tick(float DeltaSeconds)
 	const float CityBlend = FMath::SmoothStep(76.f, 94.f, Director->RideTime)
 		* (1.f - FMath::SmoothStep(240.f, 248.f, Director->RideTime));
 	const float Weather = FMath::Clamp(Director->GetEnv().Mist / 0.5f, 0.f, 1.f)
-		* (Desc.bCityLayer ? CityBlend : 1.f);
+		// The unified storm already contains its own low mist. Ship-following
+		// wisps belong to the city too; stacking them beneath its cloud mouth
+		// drew a separate bright horizontal belt across the opening.
+		* ((Desc.bCityLayer || Desc.bOnDeck) ? CityBlend : 1.f);
 	const float Distance = FVector2D(At.X, At.Y).Size();
 	const bool bRevealed = Desc.RevealWithin > 0.f && Distance < Desc.RevealWithin;
 	// A revealing curtain parts in a few seconds; everything else comes and goes slowly.

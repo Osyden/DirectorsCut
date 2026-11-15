@@ -1395,7 +1395,7 @@ void ADCTreadmill::SpawnAtlantis()
 		if (ADCFogBank* Wisps = ADCFogBank::Spawn(World, W, 77)) { Wisps->SetActorLocation(FVector(500.f, 0.f, SeaZ + 800.f)); }
 		// Sea smoke: one wide, thin, low layer that goes with the ship, so the water out to the ruins lies under
 		// pale mist everywhere and not only where a bank happens to stand. (The reference's fog is everywhere.)
-		float Smoke = 0.016f;   // -DCSeaSmoke=<density>, 0 = off
+		float Smoke = 0.016f;   // City-only via bOnDeck's 76–94s gate; -DCSeaSmoke=0 disables it.
 		FParse::Value(FCommandLine::Get(), TEXT("DCSeaSmoke="), Smoke);
 		if (Smoke > 0.f)
 		{

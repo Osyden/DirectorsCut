@@ -238,6 +238,9 @@ void ADCFogFront::BuildTunnel()
 					ULightComponent* L = FrontFill->GetLightComponent();
 					L->SetMobility(EComponentMobility::Movable);
 					L->SetIntensity(0.f);
+					// This is soft atmospheric fill. A second whole-scene shadow
+					// map duplicates the sun's work across the enormous sea/front.
+					L->SetCastShadows(false);
 					L->SetLightColor(FLinearColor(0.78f, 0.84f, 0.94f));
 					L->SetVolumetricScatteringIntensity(1.f);
 				}
@@ -379,7 +382,10 @@ void ADCFogFront::TickTunnel(float T)
 		const float Reach = ArrivalTime * (1.f - 6000.f / 1500000.f);
 		const float Mouth = FMath::Max(Director->StormFrontX, 6000.f - (T - Reach) * 11250.f);
 		const float Opening = FMath::SmoothStep(ArrivalTime - 18.f, ArrivalTime - 2.f, T);
-		const float Shown = FMath::SmoothStep(0.25f, 0.9f, Director->StormGrowth) * (1.f - FMath::SmoothStep(ArrivalTime + 16.f, ArrivalTime + 20.f, T));
+		// Hand over to the interior atmosphere as the bow crosses the wall.
+		// Keeping the enormous front around the camera leaves a dark waterline
+		// where its volume intersects the distant sea.
+		const float Shown = FMath::SmoothStep(0.25f, 0.9f, Director->StormGrowth) * (1.f - FMath::SmoothStep(ArrivalTime - 2.f, ArrivalTime + 2.f, T));
 		Tunnel->SetActorTransform(FTransform(FRotator::ZeroRotator, FVector(Mouth+65000.f, 0.f, Director->SeaLevelZ+80000.f), FVector(1000.f,1200.f,750.f)));
 		TunnelMID->SetScalarParameterValue(TEXT("Opening"), Opening);
 		TunnelMID->SetScalarParameterValue(TEXT("StormTime"), T);
@@ -387,7 +393,7 @@ void ADCFogFront::TickTunnel(float T)
 		if (FrontFill)
 		{
 			const float Fill = FMath::SmoothStep(34.f, 50.f, T) * (1.f - FMath::SmoothStep(58.f, 68.f, T));
-			FrontFill->GetLightComponent()->SetIntensity(2.f * Fill);
+			FrontFill->GetLightComponent()->SetIntensity(2.f * Fill * Shown);
 		}
 		if (TunnelShown <= 0.01f && Shown > 0.01f)
 		{

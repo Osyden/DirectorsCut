@@ -86,6 +86,7 @@ void ADCAudio::StartLayer(FLayer& Layer, TArray<float>&& Samples)
 	Wave->Duration = INDEFINITELY_LOOPING_DURATION;
 	Wave->SoundGroup = SOUNDGROUP_Effects;
 	Wave->bLooping = true;
+	Wave->VirtualizationMode = EVirtualizationMode::PlayWhenSilent;
 	// Refill from the same buffer whenever the mixer runs dry: an endless loop.
 	TSharedPtr<TArray<uint8>, ESPMode::ThreadSafe> Pcm = Layer.Pcm;
 	Wave->OnSoundWaveProceduralUnderflow.BindLambda([Pcm](USoundWaveProcedural* W, int32)
@@ -320,7 +321,8 @@ void ADCAudio::BeginPlay()
 
 void ADCAudio::OnLightning()
 {
-	if (Director && Director->GetPhase() >= EDCPhase::Breach) { return; }
+	if (Director && (Director->GetPhase() >= EDCPhase::Breach ||
+		(Director->GetPhase() == EDCPhase::Fog && Director->RideTime >= 76.f))) { return; }
 	// Sound arrives after the light: near strikes almost at once, far ones seconds later.
 	PendingThunder.Add(FPlatformTime::Seconds() + FMath::FRandRange(0.15f, 2.2f));
 }
@@ -328,15 +330,19 @@ void ADCAudio::OnLightning()
 float ADCAudio::GetStormGain() const
 {
 	if (!Director) { return 1.f; }
+	float CityStart = 76.f, TunnelStart = 240.f, ExitStart = BIG_NUMBER;
 	for (const FDCPhaseDef& Phase : Director->Phases)
 	{
-		if (Phase.Phase != EDCPhase::Breach) { continue; }
-		// Follow the authored route (including the optional hell detour), not a
-		// fixed timestamp. The tunnel storm is gone seven seconds into the exit.
-		const float Exit = FMath::Clamp((Director->RideTime - Phase.StartTime) / 7.f, 0.f, 1.f);
-		return 1.f - Exit * Exit * (3.f - 2.f * Exit);
+		if (Phase.Phase == EDCPhase::Fog) { CityStart = FMath::Max(CityStart, Phase.StartTime); }
+		if (Phase.Phase == EDCPhase::Slide) { TunnelStart = Phase.StartTime; }
+		if (Phase.Phase == EDCPhase::Breach) { ExitStart = Phase.StartTime; }
 	}
-	return 1.f;
+	auto Smooth = [](float Value) { const float T = FMath::Clamp(Value, 0.f, 1.f); return T * T * (3.f - 2.f * T); };
+	const float Time = Director->RideTime;
+	// Quiet ruins after the storm front; the descending tunnel earns a short,
+	// gradual return of wind/water roar before the caldera exit silences it again.
+	const float CityGain = Time < TunnelStart ? 1.f - Smooth((Time - CityStart) / 18.f) : Smooth((Time - TunnelStart) / 3.f);
+	return CityGain * (1.f - Smooth((Time - ExitStart) / 7.f));
 }
 
 void ADCAudio::PlayOneShot(const TArray<uint8>& Pcm, float Volume, bool bStorm)
@@ -348,7 +354,7 @@ void ADCAudio::PlayOneShot(const TArray<uint8>& Pcm, float Volume, bool bStorm)
 	Wave->SoundGroup = SOUNDGROUP_Effects;
 	Wave->QueueAudio(Pcm.GetData(), Pcm.Num());
 	Waves.Add(Wave);
-	if (UAudioComponent* C = UGameplayStatics::SpawnSound2D(this, Wave, Volume * MasterVolume * SpeechDuck, FMath::FRandRange(0.85f, 1.1f)))
+	if (UAudioComponent* C = UGameplayStatics::SpawnSound2D(this, Wave, Volume * MasterVolume * SpeechDuck * (bStorm ? GetStormGain() : 1.f), FMath::FRandRange(0.85f, 1.1f)))
 	{
 		FOneShot O;
 		O.Component = C;
@@ -377,10 +383,11 @@ void ADCAudio::Tick(float DeltaSeconds)
 	const float VoiceTarget = Voice && Voice->IsSpeaking() ? .25f : 1.f;
 	SpeechDuck = FMath::FInterpTo(SpeechDuck, VoiceTarget, DeltaSeconds, VoiceTarget < SpeechDuck ? 12.f : 2.f);
 	const float StormGain = GetStormGain();
-	if (Director->GetPhase() >= EDCPhase::Breach) { PendingThunder.Empty(); }
+	const bool bQuietCity = Director->GetPhase() == EDCPhase::Fog && Director->RideTime >= 76.f;
+	if (Director->GetPhase() >= EDCPhase::Breach || bQuietCity) { PendingThunder.Empty(); }
 	if (StormGain <= 0.f && !bStormSilenced)
 	{
-		UE_LOG(LogDC, Log, TEXT("STORM_AUDIO_OFF ride=%.2f wind/rain/rumble/drone/thunder muted; sea and impacts retained"), Director->RideTime);
+		UE_LOG(LogDC, Log, TEXT("STORM_AUDIO_OFF ride=%.2f storm beds/thunder muted; quiet water/mist and impacts retained"), Director->RideTime);
 	}
 	bStormSilenced = StormGain <= 0.f;
 
@@ -409,9 +416,15 @@ void ADCAudio::Tick(float DeltaSeconds)
 	SetLayer(Crackle, bRealFire ? 0.f : FireTarget, DeltaSeconds);
 	// Apply the exit envelope after bed interpolation, so even the minimum
 	// keep-alive volume reaches true silence. Calm water and deck fires continue.
-	for (FLayer* Layer : { &Wind, &Rain, &Rumble, &Drone })
+	for (FLayer* Layer : { &Wind, &Rain, &Rumble })
 	{
 		if (UAudioComponent* C = Layer->Component.Get()) { C->SetVolumeMultiplier(FMath::Max(.001f, Layer->Volume * MasterVolume * AmbienceVolume * SpeechDuck) * StormGain); }
+	}
+	if (UAudioComponent* C = Drone.Component.Get())
+	{
+		// A very quiet tonal bed keeps the ruined city mysterious without storm roar.
+		const float MistGain = bQuietCity ? FMath::Lerp(.15f, 1.f, StormGain) : StormGain;
+		C->SetVolumeMultiplier(FMath::Max(.001f, Drone.Volume * MasterVolume * AmbienceVolume * SpeechDuck) * MistGain);
 	}
 	for (const FName Name : { FName(TEXT("wind_storm")), FName(TEXT("rain_storm")), FName(TEXT("sea_rough")) })
 	{
@@ -558,6 +571,9 @@ bool ADCAudio::SetReal(FName Name, float Target, float DeltaSeconds)
 {
 	USoundBase* Sound = FindReal(Name);
 	if (!Sound) { return false; }
+	// Silent city beds must remain resumable for the tunnel instead of being
+	// discarded by the audio mixer when their exit envelope reaches zero.
+	Sound->VirtualizationMode = EVirtualizationMode::PlayWhenSilent;
 	FRealBed& Bed = RealBeds.FindOrAdd(Name);
 	if (!Bed.Component.IsValid())
 	{

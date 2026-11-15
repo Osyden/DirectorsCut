@@ -141,14 +141,14 @@ void ADCRideDirector::BuildDefaultPhases()
 		E.SeaColor = FLinearColor(0.01f, 0.03f, 0.035f); E.SeaRoughness = 2.5f; E.Rain = 0.7f; E.LightningRate = 8.f; E.ShipSpeed = 1500.f; E.WaveHeight = 130.f; E.Foam = 0.7f; E.Exposure = 0.6f;
 	}
 	{
-		// Then it thins, and the drowned city stands in layered blue-grey haze out to a couple of kilometres:
-		// cold moonlight from behind the statues, lightning to pick out their outlines, warm lanterns on deck.
+		// The storm clears into a quiet ruined city: grey mist, gentle water and
+		// warm lanterns, with rain and lightning easing out over this blend.
 		FDCEnvState& E = Add(EDCPhase::Fog, 76.f, 15.f);
 		E.FogColor = FLinearColor(0.2f, 0.26f, 0.33f); E.FogDensity = 0.006f; E.FogHeightFalloff = 0.0012f; E.CloudCover = 0.8f; E.CloudBase = 110000.f; E.Mist = 0.75f;
 		// (13 Nov: darker. The owner's pictures are a storm at dusk, the fog the brightest thing in them, the lanterns the only warmth.)
 		E.SkyIntensity = 0.5f;
 		E.SunColor = FLinearColor(1.f, 0.82f, 0.62f); E.SunIntensity = 0.8f; E.SunPitch = -11.f; E.SunYaw = 168.f; // low sun ahead to port, behind the ruins: silhouettes and long shafts through the mist E.SkyIntensity = 0.55f;
-		E.SeaColor = FLinearColor(0.012f, 0.019f, 0.025f); E.SeaRoughness = 3.f; E.Rain = 0.35f; E.LightningRate = 10.f; E.ShipSpeed = 1500.f; E.WaveHeight = 190.f; E.Foam = 1.f; E.Exposure = 0.05f;
+		E.SeaColor = FLinearColor(0.012f, 0.019f, 0.025f); E.SeaRoughness = 1.4f; E.Rain = 0.f; E.LightningRate = 0.f; E.ShipSpeed = 1500.f; E.WaveHeight = 80.f; E.Foam = 0.5f; E.Exposure = 0.05f;
 	}
 	{
 		FDCEnvState& E = Add(EDCPhase::Slide, 240.f, 6.f);
@@ -967,7 +967,9 @@ void ADCRideDirector::SetupUDS()
 
 void ADCRideDirector::TickUDS()
 {
-	// City-only atmosphere: preserve the accepted front and restore the later ride.
+	// The unified front supplies its own mist; global low haze takes over only
+	// as it clears into the city, rather than layering a flat belt under its mouth.
+	const float CityTakeover = FMath::SmoothStep(76.f, 94.f, RideTime);
 	const float CityFog = FMath::SmoothStep(76.f, 94.f, RideTime)
 		* (1.f - FMath::SmoothStep(240.f, 248.f, RideTime));
 	static float CityDensityScale = 1.25f, CityFalloff = 0.055f, CityFogLight = 1.6f;
@@ -981,7 +983,7 @@ void ADCRideDirector::TickUDS()
 	}
 	// UDW's Fog=0 still retains UDS's base and cloud-coverage fog contributions.
 	// Keep a little aerial perspective so the wall reads as cloud, then restore city fog on entering.
-	SkyNum(UDSSky, TEXT("Scale Fog Density"), FMath::Lerp(0.2f, 1.f, FMath::SmoothStep(56.f, 62.f, RideTime)) * FMath::Lerp(1.f, CityDensityScale, CityFog));
+	SkyNum(UDSSky, TEXT("Scale Fog Density"), FMath::Lerp(0.2f, 1.f, CityTakeover) * FMath::Lerp(1.f, CityDensityScale, CityFog));
 	SkyNum(UDSSky, TEXT("Volumetric Fog Distance"), FMath::Lerp(70000.f, 100000.f, CityFog));
 	// Keep the original later-stage lighting; only remove the early front's screen-space glare.
 	SkyFlag(UDSSky, TEXT("Enable Sun Light Shaft Bloom"), RideTime >= 240.f);
@@ -1015,10 +1017,10 @@ void ADCRideDirector::TickUDS()
 		const double K = FMath::Clamp(Env.Mist / 0.75, 0.0, 1.0);
 		static float Falloff = 0.3f; static bool bFalloffRead = false;   // test hook: -DCFogFalloff=
 		if (!bFalloffRead) { bFalloffRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCFogFalloff="), Falloff); }
-		SkyNum(UDSSky, TEXT("Foggy Height Fog Falloff"), FMath::Lerp(FMath::Lerp(0.015, (double)Falloff, K), (double)CityFalloff, (double)CityFog));
+		SkyNum(UDSSky, TEXT("Foggy Height Fog Falloff"), FMath::Lerp(FMath::Lerp(0.015, (double)Falloff, K * CityTakeover), (double)CityFalloff, (double)CityFog));
 		const double OvercastBase = FMath::Lerp(0.6, 0.2, static_cast<double>(FMath::SmoothStep(58.f, 66.f, RideTime)));
 		SkyNum(UDSSky, TEXT("Overcast Brightness Day"), FMath::Lerp(FMath::Lerp(OvercastBase, 1.0, K), 0.8, (double)CityFog));
-		SkyNum(UDSSky, TEXT("Fog Color Intensity Scale"), FMath::Lerp(FMath::Lerp(1.0, 3.0, K), (double)CityFogLight, (double)CityFog));
+		SkyNum(UDSSky, TEXT("Fog Color Intensity Scale"), FMath::Lerp(FMath::Lerp(1.0, 3.0, K * CityTakeover), (double)CityFogLight, (double)CityFog));
 		// Test hooks on the pack's own height fog: -DCFogCutoff= (cm; nothing further than this is fogged, so the sky is not) and -DCFogMaxOpacity=.
 		{
 			static float Cutoff = -1.f, MaxOpacity = -1.f; static bool bFogHooks = false;
@@ -1152,7 +1154,8 @@ void ADCRideDirector::TickUDS()
 		SkyNum(UDSSky, TEXT("Sun Volumetric Scattering Intensity"), FMath::Lerp(FMath::Lerp(0.6, 3.0, K), 0.25, (double)CityFog));
 	}
 	SkyNum(UDSWeather, TEXT("Rain"), FMath::Clamp(Env.Rain * 10.0, 0.0, 10.0));
-	SkyNum(UDSWeather, TEXT("Wind Intensity"), FMath::Clamp(Env.WaveHeight / 30.0, 1.0, 10.0));
+	const float CalmCity = FMath::SmoothStep(76.f,91.f,RideTime) * (1.f-FMath::SmoothStep(240.f,246.f,RideTime));
+	SkyNum(UDSWeather, TEXT("Wind Intensity"), FMath::Lerp(FMath::Clamp(Env.WaveHeight / 30.0, 1.0, 10.0),1.0,static_cast<double>(CalmCity)));
 	// The pack's own lightning (bolts, flashes in the cloud, thunder) replaces the director's.
 	SkyNum(UDSWeather, TEXT("Thunder/Lightning"), RideTime < 76.f ? 0.0 : FMath::Clamp(Env.LightningRate * 0.45, 0.0, 10.0));
 	SkyNum(UDSWeather, TEXT("Material Wetness"), FMath::Clamp(Env.Rain * 3.0, 0.0, 1.0));
@@ -1171,13 +1174,13 @@ void ADCRideDirector::TickUDS()
 		StormGrowth = G;
 		const float Radius = StormRadius * FMath::Lerp(0.12f, 1.f, G);
 		SkyNum(UDSStorm, TEXT("Outer Radius"), Radius);
-		// Keep the radial storm out of the VDB throat: the independent volumes otherwise
-		// overlap across its opening. Ordinary sky coverage supplies the overcast on entry;
-		// the radial storm takes over after the VDB finishes fading at 80 s.
-		static float LateFrom = 50.f, LateTo = 61.f; static bool bLateRead = false;   // test hooks: -DCStormLateFrom= -DCStormLateTo=
-		if (!bLateRead) { bLateRead = true; FParse::Value(FCommandLine::Get(), TEXT("DCStormLateFrom="), LateFrom); FParse::Value(FCommandLine::Get(), TEXT("DCStormLateTo="), LateTo); }
-		const float Alpha = bCloudWall ? FMath::SmoothStep(FMath::Max(LateFrom, 80.f), FMath::Max(LateTo, 88.f), RideTime) : FMath::Clamp(G * 1.6f, 0.f, 1.f);
+		// The unified storm owns the opening. Reintroducing this independent
+		// radial storm at80s kept the ruins stormy after the weather had cleared.
+		// The fallback front also dissipates into the calm city, never respawning.
+		const float FrontRemaining=1.f-FMath::SmoothStep(76.f,91.f,RideTime);
+		const float Alpha = bCloudWall ? 0.f : FMath::Clamp(G * 1.6f, 0.f, 1.f)*FrontRemaining;
 		SkyNum(UDSStorm, TEXT("Storm Alpha"), Alpha);
+		SkyNum(UDSStorm, TEXT("Lightning Spawn Rate"), 1.5f*FrontRemaining);
 		SkyCall(UDSStorm, TEXT("Set Storm Location"), FVector(Face + Radius, 0.f, SeaLevelZ));
 	}
 	ApplyCityFog(CityFog);
