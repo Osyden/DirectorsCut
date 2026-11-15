@@ -26,6 +26,7 @@
 #include "Misc/Paths.h"
 #include "Misc/App.h"
 #include "UnrealClient.h"
+#include "EngineUtils.h"
 
 void ADCGameMode::SetMenuInfoPage(int32 Page)
 {
@@ -38,6 +39,7 @@ void ADCGameMode::ShowMainMenu()
 {
     if(!Director || !GetWorld()->GetGameViewport()) { bAwaitingStart=false; return; }
     Director->Seek(0.f); Director->TimeScale=0.f; MenuInfoPage=0;
+    MenuWaterReadyAge=-1.f; MenuWaterReadyFrames=0; MenuReveal=0.f; MenuWaterManager=nullptr;
     APlayerController* PC=GetWorld()->GetFirstPlayerController();
     if(!PC) { return; }
     PC->SetIgnoreMoveInput(true); PC->SetIgnoreLookInput(true); PC->bShowMouseCursor=true;
@@ -63,10 +65,12 @@ void ADCGameMode::ShowMainMenu()
     if(Backdrop.IsValid()) { BackdropBrush.SetResourceObject(Backdrop.Get()); BackdropBrush.ImageSize=FVector2D(500,720); }
     static const FSlateRoundedBoxBrush InfoPanel(FLinearColor(.004f,.017f,.022f,.97f),2.f,FLinearColor(.44f,.30f,.13f),1.f);
     static const FSlateRoundedBoxBrush Divider(FLinearColor(.49f,.32f,.13f),0.f);
+    static const FSlateRoundedBoxBrush Warmup(FLinearColor(.004f,.017f,.022f),0.f);
     static const FButtonStyle Primary=FButtonStyle()
         .SetNormal(FSlateRoundedBoxBrush(FLinearColor(.10f,.065f,.027f,.95f),2.f,FLinearColor(.78f,.53f,.20f),2.f))
         .SetHovered(FSlateRoundedBoxBrush(FLinearColor(.24f,.14f,.045f,.98f),2.f,FLinearColor(1.f,.77f,.38f),2.f))
-        .SetPressed(FSlateRoundedBoxBrush(FLinearColor(.05f,.035f,.015f),2.f,FLinearColor(.85f,.62f,.28f),2.f));
+        .SetPressed(FSlateRoundedBoxBrush(FLinearColor(.05f,.035f,.015f),2.f,FLinearColor(.85f,.62f,.28f),2.f))
+        .SetDisabled(FSlateRoundedBoxBrush(FLinearColor(.015f,.025f,.027f),2.f,FLinearColor(.24f,.19f,.10f),1.f));
     static const FButtonStyle Secondary=FButtonStyle()
         .SetNormal(FSlateRoundedBoxBrush(FLinearColor(.005f,.025f,.031f,.9f),2.f,FLinearColor(.45f,.29f,.10f),1.f))
         .SetHovered(FSlateRoundedBoxBrush(FLinearColor(.022f,.075f,.08f,.96f),2.f,FLinearColor(.88f,.65f,.28f),1.5f))
@@ -98,6 +102,13 @@ void ADCGameMode::ShowMainMenu()
     MainMenuWidget=SNew(SScaleBox).Stretch(EStretch::ScaleToFit)
     [SNew(SBox).WidthOverride(1280).HeightOverride(720)
         [SNew(SOverlay)
+            +SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Fill)
+            [SNew(SBox).WidthOverride(780)
+                .Visibility_Lambda([Weak](){return Weak.IsValid() && Weak->MenuReveal<1.f?EVisibility::HitTestInvisible:EVisibility::Collapsed;})
+                [SNew(SBorder).BorderImage(&Warmup).HAlign(HAlign_Center).VAlign(VAlign_Center)
+                    .BorderBackgroundColor_Lambda([Weak](){return FLinearColor(1.f,1.f,1.f,Weak.IsValid()?1.f-Weak->MenuReveal:0.f);})
+                    .ColorAndOpacity_Lambda([Weak](){return FLinearColor(1.f,1.f,1.f,Weak.IsValid()?1.f-Weak->MenuReveal:0.f);})
+                    [Title(TEXT("Preparing the sea..."),18,Cream)]]]
             +SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Fill)
             [SNew(SBox).WidthOverride(500)[SNew(SImage).Image(&BackdropBrush)]]
             +SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Top).Padding(25,26,0,0)
@@ -111,6 +122,7 @@ void ADCGameMode::ShowMainMenu()
                     +SVerticalBox::Slot().AutoHeight().Padding(48,15,48,22)[SNew(SBox).HeightOverride(1)[SNew(SImage).Image(&Divider)]]
                     +SVerticalBox::Slot().AutoHeight().Padding(24,0,24,12)
                     [SNew(SBox).HeightOverride(58)[SAssignNew(StartButton,SButton).ButtonStyle(&Primary).HAlign(HAlign_Center).VAlign(VAlign_Center)
+                        .IsEnabled_Lambda([Weak](){return Weak.IsValid() && Weak->MenuReveal>=1.f;})
                         .OnClicked_Lambda([Weak](){if(Weak.IsValid()){Weak->StartVoyage();}return FReply::Handled();})
                         [Title(TEXT("START GAME"),25,Cream)]]]
                     +SVerticalBox::Slot().AutoHeight().Padding(45,0,45,11)
@@ -153,6 +165,24 @@ void ADCGameMode::TickMainMenu(float DeltaSeconds)
 {
     const float PreviousMenuAge=MenuAge;
     MenuAge+=FApp::GetDeltaTime();
+    // Let the actual ocean initialize and render beneath the menu before its
+    // reveal. Hiding the ocean actor would merely defer its first-use PSOs.
+    if(MenuReveal<1.f) {
+        if(!MenuWaterManager) {
+            UClass* GridClass=FindObject<UClass>(nullptr,TEXT("/Script/DynamicRealWater.DRW_GridManager"));
+            for(TActorIterator<AActor> It(GetWorld(),GridClass?GridClass:AActor::StaticClass());GridClass && It;++It) { MenuWaterManager=*It; break; }
+        }
+        bool Ready=false;
+        if(MenuWaterManager) {
+            if(UFunction* Query=MenuWaterManager->FindFunction(TEXT("IsDRWReady"))) { MenuWaterManager->ProcessEvent(Query,&Ready); }
+        }
+        if(Ready) {
+            if(MenuWaterReadyAge<0.f) { MenuWaterReadyAge=MenuAge; UE_LOG(LogDC,Log,TEXT("MAIN_MENU ocean ready at %.2f; settling visible scene"),MenuAge); }
+            ++MenuWaterReadyFrames;
+            if(MenuWaterReadyFrames>=60) { MenuReveal=FMath::Clamp((MenuAge-MenuWaterReadyAge-2.f)/.8f,0.f,1.f); }
+            if(MenuReveal>=1.f) { UE_LOG(LogDC,Log,TEXT("MAIN_MENU ocean revealed at %.2f frames=%d"),MenuAge,MenuWaterReadyFrames); }
+        }
+    }
     if (Director) { Director->TimeScale=0.f; }
     // Hold the route, not the world: ocean simulation, sail animation and the
     // ship's sampled heave/pitch continue behind the title.
@@ -185,7 +215,7 @@ void ADCGameMode::TickMainMenu(float DeltaSeconds)
 
 void ADCGameMode::StartVoyage()
 {
-    if(!bAwaitingStart) { return; }
+    if(!bAwaitingStart || MenuReveal<1.f) { return; }
     bAwaitingStart=false;
     UGameplayStatics::SetGamePaused(this,false);
     if(MainMenuWidget.IsValid() && GetWorld()->GetGameViewport()) { GetWorld()->GetGameViewport()->RemoveViewportWidgetContent(MainMenuWidget.ToSharedRef()); }

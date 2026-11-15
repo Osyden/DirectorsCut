@@ -68,6 +68,10 @@ protected:
 	void TickMainMenu(float DeltaSeconds);
 	void SetMenuInfoPage(int32 Page);
 	int32 MenuInfoPage = 0;
+	float MenuWaterReadyAge = -1.f;
+	float MenuReveal = 0.f;
+	int32 MenuWaterReadyFrames = 0;
+	UPROPERTY() TObjectPtr<AActor> MenuWaterManager;
 	bool bAwaitingStart = false;
 	bool bMenuCaptured = false;
 	float MenuAge = 0.f;
