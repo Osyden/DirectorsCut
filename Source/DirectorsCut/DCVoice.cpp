@@ -270,6 +270,7 @@ void ADCVoice::EndPlay(const EEndPlayReason::Type Reason)
 
 void ADCVoice::CheckHealth()
 {
+	if (bEnding) { return; }
 	TWeakObjectPtr<ADCVoice> Weak(this);
 
 	if (bUseACEDialogue && bUseLLM)
@@ -288,6 +289,7 @@ void ADCVoice::CheckHealth()
 		{
 			if (ADCVoice* V = Weak.Get())
 			{
+				if (V->bEnding) { return; }
 				bool bUp = false;
 				TSharedPtr<FJsonObject> Models;
 				const TArray<TSharedPtr<FJsonValue>>* Data = nullptr;
@@ -327,6 +329,7 @@ void ADCVoice::CheckHealth()
 		{
 			if (ADCVoice* V = Weak.Get())
 			{
+				if (V->bEnding) { return; }
 				const bool bUp = bOk && Resp.IsValid() && Resp->GetResponseCode() == 200;
 				if (bUp && !V->bSTTReady) { UE_LOG(LogDC, Log, TEXT("Voice: speech-to-text ready")); }
 				V->bSTTReady = bUp;
@@ -339,6 +342,7 @@ void ADCVoice::CheckHealth()
 
 void ADCVoice::LaunchSidecars(bool bAllowLLM)
 {
+	if (bEnding) { return; }
 	const FString Dir = SidecarDir();
 
 	const FString LLMExe = Dir / TEXT("bin/llama/llama-server.exe");
