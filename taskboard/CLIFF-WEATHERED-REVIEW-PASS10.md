@@ -93,8 +93,33 @@ additional triangles would address the demonstrated large-form problem.
 Second candidate SHA256:
 `157769fb9a8c8dedbf83f177034538532627aa5c510ba3f77e77bd95f40273d3`.
 The same independent topology checks pass and all4,448 full-sector boundary
-edges are preserved. The two-trial limit is reached; no third candidate,
-FBX exporter, Unreal import or shader tuning was started during this pass.
+edges are preserved. The two noise-field trials stopped here. No FBX exporter,
+Unreal import or shader tuning was started. The parent subsequently authorized
+one separate mapping proof, below; this was not another noise-setting variant.
+
+## Separately authorized radial-shear crop proof
+
+Input: `Flow-Seams/Saved/WeatheredCliff/radial_shear/{baseline,candidate}.npz`.
+Candidate SHA256:
+`efe9c799778c9da5925fe9b5c4ec97323f0890e61aa1e7a3f0572aeb6a185c58`.
+Output: `Saved/WeatheredReview/RadialShearClose/`, close wall and oblique only,
+using the exact first close camera manifest, angle35 normals and identical clay.
+
+This proof keeps chart U/Z fixed and shifts the radial V coordinate with the
+bounded field. It produces visibly stronger relief than the0.125 biased-normal
+versions, establishing that the earlier mapping suppressed the signal. However,
+actual clay still reads as puffy rounded ridges and mottling with repetitive
+diagonal/horizontal marks. It does not produce convincing broken bedrock planes.
+**Appearance is rejected; stop this approach for this pass.** No full-sector
+generation/render, export, or further density/noise tuning was requested.
+
+Independent open-topology checks pass:19,481 vertices,38,496 triangles, one
+component, no degenerate/duplicate faces, nonmanifold/inconsistent edges or
+unused vertices. All464 crop boundary edges move, so this remains an isolated
+unconstrained proof rather than an integration tile. Source dimensions are
+72×42.568×65.133m. The0.195m² of normal-selected downward-facing area does not
+establish a useful visible overhang; discrete mapping and intersection validation
+are separate from this visual/topology review.
 
 The reviewer does not prove arbitrary self-intersection absence, absolute
 outward orientation, temple support, or game contact correctness. Vertex colors
