@@ -1,0 +1,23 @@
+ATLANTEAN ODYSSEY - SYSTEM REQUIREMENTS
+
+Windows 10 or Windows 11, 64-bit, with DirectX 12 support.
+NVIDIA RTX 30-series, 40-series or 50-series GPU, or a supported NVIDIA
+Ampere, Ada or Blackwell workstation GPU, for the full AI crew experience.
+Minimum 12 GB VRAM expected.
+
+The game shares GPU memory between Unreal Engine graphics, the local Gemma
+language model and NVIDIA ACE / Audio2Face. Close other GPU-heavy programs.
+Install a current graphics driver compatible with your GPU.
+AMD, Intel and older NVIDIA GPUs are not validated for the full AI crew
+experience. The current Phonon speech path requires local NVIDIA ACE;
+unsupported hardware may have subtitles without voiced crew dialogue.
+
+Extract the entire download to a writable folder, then run
+Atlantean Odyssey.exe. Keep all included folders and DLLs together.
+The Visual C++ runtime, Python, AI runtimes and model files are bundled.
+No separate game prerequisite installer, Python installation, Unreal Editor
+or AI account/API key is needed. Windows and graphics drivers are required.
+A microphone is needed for spoken orders; typed and key orders also work.
+
+The 12 GB VRAM figure is an expected minimum, not a verified performance
+guarantee. This jam build has not yet been validated on a clean second PC.

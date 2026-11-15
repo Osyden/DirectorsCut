@@ -66,4 +66,5 @@ if ([Diagnostics.FileVersionInfo]::GetVersionInfo($leaf).ProductName -ne 'Atlant
 }
 Move-Item -LiteralPath $bootstrap -Destination $launcher
 & (Join-Path $PSScriptRoot 'ACE/stage_sidecars.ps1') -SourceRoot $SidecarsRoot -GameRoot $gameRoot
+& (Join-Path $PSScriptRoot 'stage_portable_runtime.ps1') -WindowsRoot (Join-Path $output 'Windows')
 Write-Output "Packaged candidate: $launcher. Run and inspect it before accepting the build."
