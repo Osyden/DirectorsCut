@@ -32,7 +32,10 @@ $manifest | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $output 'source
 $log = Join-Path $output 'package.log'
 $uat = Join-Path $EngineRoot 'Engine\Build\BatchFiles\RunUAT.bat'
 $uatArgs = @('BuildCookRun',"-project=$project",'-platform=Win64','-clientconfig=Development',
-    '-build','-ubtargs=-WaitMutex','-cook','-stage','-pak','-archive',"-archivedirectory=$output",'-nop4','-utf8output','-unattended')
+    '-build','-ubtargs=-WaitMutex','-cook','-stage','-pak','-archive',"-archivedirectory=$output",'-nop4','-utf8output','-unattended',
+    # UE 5.8 TryGetUsedTexturesInCookCache indexes past the cached texture table
+    # when stripping M_DeckFire. Retain default textures during cooking instead.
+    '-AdditionalCookerOptions=-NullRHI -ini:Engine:[SystemSettings]:r.Material.StripUnusedDefaultTextures=0')
 Write-Output "Packaging started; log: $log"
 & $uat @uatArgs *> $log
 $code = $LASTEXITCODE
@@ -43,7 +46,5 @@ if (($manifest | ConvertTo-Json -Compress) -ne ((Get-SourceManifest) | ConvertTo
 $gameRoot = Join-Path $output 'Windows\DirectorsCut'
 $launcher = Join-Path $output 'Windows\DirectorsCut.exe'
 if (!(Test-Path -LiteralPath $launcher -PathType Leaf)) { throw 'Packaging reported success without a Windows launcher.' }
-$sidecars = Join-Path $gameRoot 'Sidecars'
-New-Item -ItemType Directory -Path $sidecars -Force | Out-Null
-foreach ($part in @('bin','models')) { Copy-Item -LiteralPath (Join-Path $SidecarsRoot $part) -Destination $sidecars -Recurse }
+& (Join-Path $PSScriptRoot 'ACE/stage_sidecars.ps1') -SourceRoot $SidecarsRoot -GameRoot $gameRoot
 Write-Output "Packaged candidate: $launcher. Run and inspect it before accepting the build."

@@ -19,7 +19,7 @@ Editable characters: `/Game/PirateCast/Presets/{Captain,Finch,Marlow,Odessa}`. A
 
 The full captain is visible to external cameras. Her outfit is hidden for her first-person camera, with hidden shadows retained, to prevent hat, shoulder and coat clipping. This is a full-body external appearance, not separate first-person arms.
 
-`DefaultGame.ini` enables the subsystem and cooks the assembled directory. Set `bEnabled=False` under `/Script/DirectorsCut.DCPirateCastSettings` to restore previous appearances. DLSS/Streamline remain enabled in main. ACE remains a separate comparison; pirate facial animation is not connected to gameplay speech yet.
+`DefaultGame.ini` enables the subsystem and cooks the assembled directory. Set `bEnabled=False` under `/Script/DirectorsCut.DCPirateCastSettings` to restore previous appearances. DLSS/Streamline remain enabled in main. Update 15 Nov: the three crew now have local GPU ACE facial animation connected to gameplay speech; see [integration and tests](ACE-INTEGRATION.md).
 
 ## Setup repairs
 

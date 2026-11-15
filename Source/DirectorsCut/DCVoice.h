@@ -9,6 +9,8 @@
 
 class UAudioComponent;
 class USoundWaveProcedural;
+class UACEAudioCurveSourceComponent;
+class UAsyncActionAnimateCharacter;
 
 /**
  * The voice loop: microphone -> speech-to-text -> order, and crew line -> (LLM) -> text-to-speech.
@@ -54,6 +56,16 @@ public:
 	UPROPERTY(Config, EditAnywhere) bool bUseLLM = true;
 	/** Seconds to wait for the LLM before speaking the canned line instead. */
 	UPROPERTY(Config, EditAnywhere) float LLMTimeout = 1.5f;
+	/** Uses a separate CUDA context; shared graphics contexts remain blocked. */
+	UPROPERTY(Config, EditAnywhere) bool bUseACE = true;
+	UPROPERTY(Config, EditAnywhere) FName ACEProvider = TEXT("LocalA2F-Mark-AR");
+	UPROPERTY(Config, EditAnywhere) FString FinchVoice = TEXT("en_GB-vctk-medium.onnx");
+	UPROPERTY(Config, EditAnywhere) int32 FinchSpeakerId = 95; // VCTK p226
+	UPROPERTY(Config, EditAnywhere) FString MarlowVoice = TEXT("en_GB-northern_english_male-medium.onnx");
+	UPROPERTY(Config, EditAnywhere) FString OdessaVoice = TEXT("en_GB-alba-medium.onnx");
+	UPROPERTY(Config, EditAnywhere) float FinchLengthScale = 1.04f;
+	UPROPERTY(Config, EditAnywhere) float MarlowLengthScale = .95f;
+	UPROPERTY(Config, EditAnywhere) float OdessaLengthScale = 1.f;
 
 protected:
 	FString SidecarDir() const;
@@ -67,6 +79,27 @@ protected:
 
 	void FinishLine(const FString& Speaker, const FString& Text);
 	void PlayWav(const FString& Speaker, const FString& Path);
+	void StartNextLine();
+	bool TryACE(const FString& Speaker, const FString& Path, double Duration);
+	void ClearACE();
+	UFUNCTION() void ACEStarted();
+	UFUNCTION() void ACEEnded();
+	UFUNCTION() void ACESent(bool bSuccess);
+	struct FQueuedLine { FString Speaker; FString Text; double QueuedAt; };
+	TArray<FQueuedLine> SpeechQueue;
+	UPROPERTY() TObjectPtr<UACEAudioCurveSourceComponent> ActiveCurves;
+	UPROPERTY() TObjectPtr<UAsyncActionAnimateCharacter> ActiveACERequest;
+	FString ActiveSpeaker, ActiveWav;
+	double ACEDeadline = 0;
+	bool bACEStarted = false;
+	bool bACESent = false;
+	bool bACEEnded = false;
+	bool bEnding = false;
+	bool bSmokeTest = false;
+	bool bSmokeStarted = false;
+	TSet<FString> SmokeCompleted;
+	int32 SmokeRepeats = 1;
+	int32 SmokeCycle = 0;
 	FString VoiceFor(const FString& Speaker) const;
 	FString PersonaFor(const FString& Speaker) const;
 
