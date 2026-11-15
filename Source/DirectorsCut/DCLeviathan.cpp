@@ -237,12 +237,9 @@ void ADCLeviathan::UpdateBody(float Elapsed,const FTransform& Arena)
     // clear at full inward helm. Mouth height remains independently reachable.
     const float Scale=FMath::Min(9000.f/FMath::Max(1.f,static_cast<float>(MeshBoundsExtent.Z)*2.f),9000.f/FMath::Max(1.f,Horizontal));
     int32 Pose=0; float PoseTime=Elapsed-36.f;
-    for(const auto& Event:DCBossTimeline::Events)
-    {
-        const float Since=Elapsed-DCBossTimeline::At(Event.At,FinaleAt);
-        if(Event.Kind==DCBossTimeline::EAttack::Slam && !(Combat && Combat->IsLimbSevered(Event.Limb)) && Since>=0.f && Since<DCBossTimeline::SlamTell+1.f)
-        { Pose=2; PoseTime=Since/DCBossTimeline::SlamTell*(Poses[2]?Poses[2]->GetPlayLength():1.f); }
-    }
+    // The authored detached tentacle owns slam anticipation and physical contact.
+    // Playing an entire body smash across the twelve-second warning made other
+    // limbs appear to hit before the real interrupt/contact window.
     if(Combat && Combat->IsMouthCharging()) { Pose=1; PoseTime=Poses[1]?Poses[1]->GetPlayLength()*.45f:0.f; }
     if(Combat && Elapsed-Combat->GetHitTime()<.7f) { Pose=3; PoseTime=Elapsed-Combat->GetHitTime(); }
     if(DefeatedAt>=0.f) { Pose=4; PoseTime=Elapsed-DefeatedAt; }

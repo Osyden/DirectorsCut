@@ -1,4 +1,5 @@
 #include "DCBossTimeline.h"
+#include "DCBossDamagePolicy.h"
 #include "DCMaelstromRoute.h"
 #include <iostream>
 #include <stdexcept>
@@ -189,8 +190,8 @@ int main()
             }
         }
         // Passive upper bound: two obstacles, two slams, two fireballs and two full-duration fires.
-        const float Passive=2*3.f+2*5.f+2*2.f+2*40.f*.08f;
-        Check(Passive<30.f,"Passive encounter has a bounded sub-30 hull damage budget");
+        const float Passive=2*3.f+2*DCBossDamagePolicy::SlamDamage+2*2.f+2*40.f*.08f;
+        Check(std::abs(Passive-36.4f)<.01f && Passive<40.f,"Two heavier slams preserve a survivable 36.4 hull damage budget");
         // Interrupted and exhausted targets cannot farm score; damage never changes the clock.
         float Remaining=4.f, Damage=0.f; bool Severed=false;
         for(int I=0;I<100;++I)

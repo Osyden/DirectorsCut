@@ -32,6 +32,7 @@ public:
     float GetCharge() const;
     bool GetAppendagePose(FVector& Base,FVector& Bend,FVector& Joint,FVector& Tip) const;
     UPROPERTY(BlueprintReadOnly) float BossDamage=0.f;
+    UPROPERTY(BlueprintReadOnly) float BodyDamage=0.f;
     UPROPERTY(BlueprintReadOnly) float ShipDamage=0.f;
     UPROPERTY(BlueprintReadOnly) int32 Interrupts=0;
     UPROPERTY(BlueprintReadOnly) int32 PerformanceScore=0;
@@ -42,7 +43,7 @@ private:
         DCBossTimeline::EAttack Kind=DCBossTimeline::EAttack::Obstacle;
         int32 Index=INDEX_NONE,Side=1,Limb=INDEX_NONE;
         float Start=0,Strike=0,End=0,Remaining=0,InterruptedAt=-1,LastSpray=-100;
-        bool Applied=false,Interrupted=false,Cancelled=false,Released=false;
+        bool Applied=false,Interrupted=false,Cancelled=false,Released=false,ReachLogged=false;
         FVector Anchor=FVector::ZeroVector,Previous=FVector::ZeroVector;
         FVector FireFrom=FVector::ZeroVector,FireTo=FVector::ZeroVector;
         TWeakObjectPtr<AActor> Target,Projectile;
@@ -52,6 +53,8 @@ private:
     struct FSplinter { TWeakObjectPtr<AActor> Visual; FVector From,Velocity; float At; };
     TArray<FSplinter> Splinters;
     float AcceptTargetHit(float Damage,int32 Event);
+    float AcceptBodyHit(float Damage);
+    void UpdateBodyTarget();
     void StartAttack(int32 Index,float Start,const FTransform& Arena,float Radius,bool Reconstruct);
     void UpdateAttack(float DT,const FTransform& Arena);
     void ClearAttack();
@@ -74,6 +77,9 @@ private:
     UPROPERTY() TObjectPtr<UMaterialInterface> Wet;
     UPROPERTY() TObjectPtr<UProceduralMeshComponent> LooseRopes;
     FDelegateHandle HUDHandle;
+    TWeakObjectPtr<AActor> BodyTarget;
+    float BodyHitAt=-100.f, HitMarkerAt=-100.f, LastContactAt=-100.f, LastContactDamage=0.f;
+    bool LastContactWasSlam=false;
     FVector PoseBase,PoseBend,PoseJoint,PoseTip;
     bool PoseVisible=false,Severed[2]={false,false};
     float Now=-1,Previous=-1,Deadline=160,RideOrigin=270,DamageBaseline=0,HitAt=-100;
