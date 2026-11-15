@@ -133,7 +133,7 @@ void ADCBossCombat::MakeTarget(const FVector& P)
     {
         // A visual child of the existing target: removing or severing that
         // target also removes this cue. No extra collision/aim target is made.
-        Attack.WeakPointCue=UDCCombatCueComponent::Create(A,TEXT("ExposedJointBand"));
+        Attack.WeakPointCue=UDCCombatCueComponent::Create(A,TEXT("ExposedJointBand"),true);
     }
     // Route appendages travel roughly 8m/s through the ship's frame. Allow
     // for that travel during a staggered cannon volley; stationary slam and

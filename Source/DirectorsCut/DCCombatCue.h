@@ -9,7 +9,7 @@ class UDCCombatCueComponent : public UProceduralMeshComponent
 {
     GENERATED_BODY()
 public:
-    static UDCCombatCueComponent* Create(AActor* Owner,FName Name);
+    static UDCCombatCueComponent* Create(AActor* Owner,FName Name,bool bWeakPoint=false);
     void ShowAlert(const FVector& WorldPosition,float WorldRadius,float Charge01,float Age,bool bShowCue);
     void ShowWeakPoint(const FVector& WorldPosition,const FVector& Axis,float WorldRadius,float Charge01,float Age,float HitFlash,bool bShowCue);
 private:

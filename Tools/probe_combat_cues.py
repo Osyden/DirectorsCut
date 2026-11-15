@@ -68,6 +68,21 @@ int main(){
  }
  FDCCombatCueGeometry Band;Band.Band(180,58,.1f,1.47f,FLinearColor(.86,.54,.18,.8));MeshCheck(Band);
  Check(Band.C[0].A==0&&Band.C[1].A>0&&Band.C[2].A==0,"joint band has soft axial edges");
+ FDCCombatCueGeometry Contrast;Contrast.ContrastBand(180,99,.1f,1.47f,FLinearColor(.9,.62,.24,.96));MeshCheck(Contrast);
+ for(int row=0;row<8;++row){
+  auto p=Contrast.V[row];
+  Check(std::abs(std::sqrt(p.X*p.X+p.Y*p.Y)-180)<.01,"contrast change preserves target radius");
+ }
+ Check(Contrast.C[0].A==0&&Contrast.C[7].A==0,"contrast band fades only at outer edges");
+ Check(Contrast.C[3].A>.95&&Contrast.C[4].A>.95&&Contrast.V[3].Z<-43&&Contrast.V[4].Z>43,"filled core retains measurable axial width and coverage");
+ auto Luma=[](FLinearColor c){return .2126*c.R+.7152*c.G+.0722*c.B;};
+ for(double background:{.03,.3,1.,3.})for(double glow:{.62,.9,1.28}){
+  auto core=Contrast.C[3],edge=Contrast.C[1];
+  double corePixel=Luma(core)*glow*core.A+background*(1-core.A);
+  double edgePixel=Luma(edge)*glow*edge.A+background*(1-edge.A);
+  Check(corePixel-edgePixel>.28,"translucent core/shoulder contrast survives bright and dark backgrounds without bloom boost");
+  Check(edgePixel<background||background<.1,"non-additive shoulder can darken a bright background");
+ }
  std::printf("PASS: %d cue geometry, bounded appearance and authoritative lifecycle checks\n",Checks);
 }
 '''

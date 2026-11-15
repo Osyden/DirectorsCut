@@ -58,16 +58,42 @@ struct FDCCombatCueGeometry
             const int32 N=First+S*3+R; I.Append({N,N+3,N+1,N+1,N+3,N+4});
         }
     }
+    // A filled core with dark shoulders keeps contrast against bright water
+    // without raising emissive intensity. The outside still fades softly.
+    void ContrastBand(float Radius,float HalfWidth,float Start,float End,FLinearColor Core)
+    {
+        constexpr int32 Segments=24, Rows=8;
+        constexpr float Axial[Rows]={-1.f,-.86f,-.60f,-.44f,.44f,.60f,.86f,1.f};
+        const int32 First=V.Num();
+        for(int32 S=0;S<=Segments;++S)
+        {
+            const float A=FMath::Lerp(Start,End,S/float(Segments));
+            for(int32 Row=0;Row<Rows;++Row)
+            {
+                V.Add(FVector(FMath::Cos(A)*Radius,FMath::Sin(A)*Radius,Axial[Row]*HalfWidth));
+                FLinearColor Tint=Row==3 || Row==4?Core:FLinearColor(.015f,.06f,.065f,.94f);
+                if(Row==0 || Row==Rows-1) { Tint.A=0; }
+                C.Add(Tint);
+            }
+        }
+        for(int32 S=0;S<Segments;++S) for(int32 Row=0;Row<Rows-1;++Row)
+        {
+            const int32 N=First+S*Rows+Row; I.Append({N,N+Rows,N+1,N+1,N+Rows,N+Rows+1});
+        }
+    }
 };
 }
 
-UDCCombatCueComponent* UDCCombatCueComponent::Create(AActor* Owner,FName Name)
+UDCCombatCueComponent* UDCCombatCueComponent::Create(AActor* Owner,FName Name,bool bWeakPoint)
 {
     if(!Owner || !Owner->GetRootComponent()) return nullptr;
-    auto* Material=LoadObject<UMaterialInterface>(nullptr,TEXT("/Game/DC/Materials/M_CombatCue.M_CombatCue"));
+    auto* Material=LoadObject<UMaterialInterface>(nullptr,bWeakPoint
+        ?TEXT("/Game/DC/Materials/M_BossWeakPoint.M_BossWeakPoint")
+        :TEXT("/Game/DC/Materials/M_CombatCue.M_CombatCue"));
     if(!Material)
     {
-        UE_LOG(LogDC,Warning,TEXT("Combat cue material missing; run Tools/make_combat_cue_material.py before packaging"));
+        UE_LOG(LogDC,Warning,TEXT("Combat cue material missing; run Tools/%s before packaging"),
+            bWeakPoint?TEXT("make_boss_weakpoint_material.py"):TEXT("make_combat_cue_material.py"));
         return nullptr;
     }
     auto* Cue=NewObject<UDCCombatCueComponent>(Owner,Name);
@@ -130,15 +156,13 @@ void UDCCombatCueComponent::ShowWeakPoint(const FVector& Position,const FVector&
     const auto Look=DCCombatCuePolicy::Look(Progress,Age,HitFlash);
     Radius=FMath::Clamp(Radius,140.f,260.f)*Look.RadiusScale;
     FDCCombatCueGeometry G;
-    const FLinearColor Gold=FMath::Lerp(FLinearColor(.86f,.54f,.18f,.8f),FLinearColor(1.f,.86f,.55f,.9f),FMath::Clamp(HitFlash,0.f,1.f));
-    // Four broken gold bands closely hug the existing vulnerable joint.
-    // Narrow sea-green rims separate the exposed band from dark wet flesh.
+    const FLinearColor Gold=FMath::Lerp(FLinearColor(.90f,.62f,.24f,.96f),FLinearColor(1.f,.86f,.55f,.96f),FMath::Clamp(HitFlash,0.f,1.f));
+    // Same target center, axis and radius. A broader filled band replaces
+    // the nearly transparent additive stripe; the hall's alert is unchanged.
     for(int32 A=0;A<4;++A)
     {
         const float Start=A*UE_HALF_PI+.10f, End=(A+1)*UE_HALF_PI-.10f;
-        G.Band(Radius,Radius*.32f,Start,End,Gold);
-        G.Arc(Radius,Radius*.035f,Start,End,-Radius*.22f,FLinearColor(.20f,.52f,.43f,.5f));
-        G.Arc(Radius,Radius*.035f,Start,End,Radius*.22f,FLinearColor(.20f,.52f,.43f,.5f));
+        G.ContrastBand(Radius,Radius*.55f,Start,End,Gold);
     }
     Present(Position,FRotationMatrix::MakeFromZ(Axis).ToQuat(),G.V,G.I,G.C,Look.Glow);
 }
