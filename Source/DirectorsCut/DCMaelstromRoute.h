@@ -21,6 +21,19 @@ namespace DCMaelstromRoute
     constexpr float LakeRadiusFraction=.58f;
     constexpr float OrbitAngularSpeed=.009f;
 
+    inline float DeckPitch(float GradeDegrees, float Seconds)
+    {
+        return FMath::Clamp(GradeDegrees,-34.f,4.f)*FMath::SmoothStep(-8.f,-2.f,Seconds);
+    }
+
+    inline float LandingHeave(float Age)
+    {
+        // One downward compression and a smaller rebound, fully settled at 3s.
+        if(Age<0.f || Age>=3.f) { return 0.f; }
+        return -90.f*FMath::Sin(Age*9.f)*FMath::Exp(-Age*2.2f)
+            *(1.f-FMath::SmoothStep(2.f,3.f,Age));
+    }
+
     inline float RadialFraction(float Seconds)
     {
         // One downhill approach, then a level, constant-radius lake orbit.

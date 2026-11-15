@@ -8,6 +8,12 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDCMaelstromRouteTest,"DirectorsCut.Maelstrom.R
 bool FDCMaelstromRouteTest::RunTest(const FString& Parameters)
 {
     using namespace DCMaelstromRoute;
+    TestTrue(TEXT("Physical deck follows a substantial downhill grade"),DeckPitch(-29.f,12.f)<-28.f);
+    TestTrue(TEXT("Deck pitch does not precede the visible inlet"),DeckPitch(-29.f,-8.f)==0.f);
+    TestTrue(TEXT("Deck settles level on the lake"),DeckPitch(0.f,40.f)==0.f);
+    TestTrue(TEXT("Extreme grade cannot overturn the ship"),DeckPitch(-80.f,12.f)==-34.f);
+    TestTrue(TEXT("Landing compresses before rebounding"),LandingHeave(.15f)<-50.f && LandingHeave(.5f)>0.f);
+    TestTrue(TEXT("Landing has no residual heave after three seconds"),LandingHeave(-1.f)==0.f && LandingHeave(3.f)==0.f && LandingHeave(10.f)==0.f);
     // Continuous route through the drop, acceleration and phase boundaries.
     for (float T : {0.f,8.f,12.f,22.f,34.f,40.f,85.f,158.f,160.f,165.f,180.f})
     {

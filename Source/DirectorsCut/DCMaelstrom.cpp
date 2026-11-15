@@ -672,7 +672,10 @@ float ADCMaelstrom::SampleSurfaceWorld(const FVector& Position) const
         Z -= FMath::Clamp(Error/Derivative,-150000.f,150000.f);
         if(FMath::Abs(Error)<.5f) { break; }
     }
-    return FMath::Lerp(Director ? Director->SeaLevelZ : 230.f, Z,
+    const FVector HullUp=Director ? Director->DeckTransform.GetRotation().GetUpVector() : FVector::UpVector;
+    const FVector HullOrigin=Director ? Director->DeckTransform.TransformPosition(FVector(0.f,0.f,Director->SeaLevelZ)) : FVector(0.f,0.f,230.f);
+    const float HullHeight=HullOrigin.Z-(HullUp.X*Position.X+HullUp.Y*Position.Y)/FMath::Max(.2f,static_cast<float>(HullUp.Z));
+    return FMath::Lerp(HullHeight, Z,
         FMath::SmoothStep(1200.f,3500.f,static_cast<float>(FVector2D(Position.X*.5f,Position.Y*2.f).Size())));
 }
 
@@ -828,19 +831,24 @@ void ADCMaelstrom::Tick(float DeltaSeconds)
 	PreviousTime = Director->RideTime;
 }
 
-void ADCMaelstrom::EmitWaterContact(const FVector& Position, float Strength, bool ProjectToSurface)
+float ADCMaelstrom::GetLandingHeave() const
+{
+	return bActive && LakeLandingAt >= 0.f ? DCMaelstromRoute::LandingHeave(Elapsed-LakeLandingAt) : 0.f;
+}
+
+void ADCMaelstrom::EmitWaterContact(const FVector& Position, float Strength, bool ProjectToSurface, bool bPlaySound)
 {
 	if (!bActive || Elapsed < 0.f) { return; }
 	const FTransform Frame = GetArenaTransform();
 	FVector Surface = Position;
 	if (ProjectToSurface) { Surface.Z = SampleSurfaceWorld(Surface) + 35.f; }
-	if (ContactSound && Strength>=1.f && Elapsed>NextContactSoundAt)
+	if (bPlaySound && ContactSound && Strength>=1.f && Elapsed>NextContactSoundAt)
 	{
 		const ADCAudio* Mix=Cast<ADCAudio>(UGameplayStatics::GetActorOfClass(GetWorld(),ADCAudio::StaticClass()));
 		const float Distance=FVector2D(Position.X,Position.Y).Size();
-		const float Volume=(Mix ? Mix->MasterVolume : .8f)*FMath::Clamp(1.f-Distance/60000.f,.08f,1.f)*.8f;
+		const float Volume=(Mix ? Mix->MasterVolume*Mix->GetSpeechDuck() : .8f)*FMath::Clamp(1.f-Distance/60000.f,.08f,1.f)*.8f;
 		UGameplayStatics::PlaySoundAtLocation(this,ContactSound,Surface,Volume,FMath::FRandRange(.78f,.95f));
-		NextContactSoundAt=Elapsed+.3f;
+		NextContactSoundAt=Elapsed+1.2f;
 	}
 	const int32 Count = FMath::Clamp(FMath::RoundToInt(Strength * 45.f), 8, 110);
 	for (int32 I = 0; I < Count && ContactParticles.Num() < 900; ++I)
@@ -916,7 +924,7 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
     static const bool bReviewSteer = FParse::Value(FCommandLine::Get(),TEXT("DCMaelstromSteer="),ReviewSteer);
     if (bReviewSteer) { Input=FMath::Clamp(ReviewSteer,-1.f,1.f); }
     const bool Reset = PreviousTime<0.f || Director->RideTime<PreviousTime || Director->RideTime-PreviousTime>1.f;
-    if (Reset) { RouteOffset=0.f; RouteVelocity=0.f; HelmTurn=0.f; ContactParticles.Reset(); NextWakeAt=0.f; NextContactSoundAt=-100.f; }
+    if (Reset) { RouteOffset=0.f; RouteVelocity=0.f; HelmTurn=0.f; ContactParticles.Reset(); NextWakeAt=0.f; NextContactSoundAt=-100.f; LakeLandingAt=-1.f; }
     const float DT = FMath::Min(DeltaSeconds*Director->TimeScale,.1f);
     const float Riding = FMath::SmoothStep(-4.f,12.f,Elapsed);
     // Smooth hydraulic restoring force at the visible banks. Centre stays free to steer.
@@ -938,11 +946,12 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
     const FVector2D Behind=DCMaelstromRoute::Point(Elapsed-.10f,Radius,RouteOffset);
     const float PathSlope=FMath::RadiansToDegrees(FMath::Atan2(HeightAt(Ahead,false)-HeightAt(Behind,false),
         FMath::Max(1.f,static_cast<float>((Ahead-Behind).Size()))));
-    // Keep the shared sky and rim horizon level. Full inverse pitch tilts
-    // the whole crater against its sky; vertical route travel supplies descent.
-    const float Pitch=0.f; // Keep the shared sky/rim horizon level; the route itself supplies the drop.
+    // Tilt the physical ship, not the entire crater. DCGame composes this with
+    // the existing deck/waterline transform so crew, helm and camera follow it.
+    const float TargetPitch=DCMaelstromRoute::DeckPitch(PathSlope,Elapsed);
+    DeckPitch=Reset ? TargetPitch : FMath::FInterpTo(DeckPitch,TargetPitch,DT,5.f);
     const float BankRoll=FMath::Clamp(RouteVelocity*.0014f+RouteOffset*.00018f,-3.5f,3.5f)*Riding;
-    const FQuat Over=FRotator(Pitch+.35f*FMath::Sin(Elapsed*.65f)*Riding,0.f,BankRoll).Quaternion();
+    const FQuat Over=FRotator(.35f*FMath::Sin(Elapsed*.65f)*Riding,0.f,BankRoll).Quaternion();
     const FQuat Pose=Over*Rotation.Quaternion();
     const FVector Ship(0.f,0.f,Director->SeaLevelZ);
     const float Heave=FMath::Sin(Director->RideTime*.85f)*25.f;
@@ -954,20 +963,25 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
     if(!Reset && !bLakeLandingPlayed && AtLake && Elapsed>0.f)
     {
         bLakeLandingPlayed=true;
+        LakeLandingAt=Elapsed;
         Director->PendingJolt+=FVector(8.f,65.f,-3.f);
         Director->Trauma=FMath::Min(1.f,Director->Trauma+.8f);
+        // Start at the bow, in view from the helm; the rest of the impact runs
+        // down both rails. All spray belongs to this one landing event.
+        for(int32 Side : {-1,1})
+        { EmitWaterContact(FVector(3100.f,Side*1000.f,Director->SeaLevelZ),4.2f,true,false); }
         for(int32 Side : {-1,1})
         {
             for(float Along : {-1600.f,400.f,2300.f})
-            { EmitWaterContact(FVector(Along,Side*1100.f,Director->SeaLevelZ),3.f); }
+            { EmitWaterContact(FVector(Along,Side*1100.f,Director->SeaLevelZ),3.f,true,false); }
         }
         if(ADCAudio* Audio=Cast<ADCAudio>(UGameplayStatics::GetActorOfClass(this,ADCAudio::StaticClass()))) { Audio->Boom(1.f); }
-        UE_LOG(LogDC,Log,TEXT("MAEL_LANDING elapsed=%.2f routeHeight=%.1f offset=%.1f pitchImpulse=65 damage=0"),Elapsed,HeightAt(P,false),RouteOffset);
+        UE_LOG(LogDC,Log,TEXT("MAEL_LANDING elapsed=%.2f routeHeight=%.1f offset=%.1f pitchImpulse=65 spray=%d heave=90 damage=0"),Elapsed,HeightAt(P,false),RouteOffset,ContactParticles.Num());
     }
     if(Elapsed>NextRouteLog && FParse::Param(FCommandLine::Get(),TEXT("DCMaelstromRouteLog")))
     {
         NextRouteLog=Elapsed+5.f;
-        UE_LOG(LogDC,Log,TEXT("MAEL_ROUTE t=%.1f arc=%.1f radius=%.1fm offset=%.1fm velocity=%.1fm/s grade=%.1f depth=%.1fm travel=%.1fm/s"),Elapsed,FMath::RadiansToDegrees(Angle-UE_PI),ShipRadius*.01f,RouteOffset*.01f,RouteVelocity*.01f,PathSlope,-HeightAt(P,false)*.01f,(Ahead-Behind).Size()*.05f);
+        UE_LOG(LogDC,Log,TEXT("MAEL_ROUTE t=%.1f arc=%.1f radius=%.1fm offset=%.1fm velocity=%.1fm/s grade=%.1f deckPitch=%.1f depth=%.1fm travel=%.1fm/s"),Elapsed,FMath::RadiansToDegrees(Angle-UE_PI),ShipRadius*.01f,RouteOffset*.01f,RouteVelocity*.01f,PathSlope,DeckPitch,-HeightAt(P,false)*.01f,(Ahead-Behind).Size()*.05f);
     }
 	const float ExitX = FMath::Clamp(26000.f - Elapsed * 4000.f, -15000.f, 145000.f);
 	const float Entry = FMath::SmoothStep(SlideStart, SlideStart + 7.f, Director->RideTime);
@@ -1017,7 +1031,14 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
 		WaterMID->SetScalarParameterValue(TEXT("Clock"), Director->RideTime);
 		WaterMID->SetScalarParameterValue(TEXT("HullFlatten"), 1.f);
 		WaterMID->SetScalarParameterValue(TEXT("OverflowFoam"), 1.f);
-		WaterMID->SetScalarParameterValue(TEXT("SeaLevel"), Director->SeaLevelZ);
+		const FVector HullOrigin=Director->DeckTransform.TransformPosition(FVector(0.f,0.f,Director->SeaLevelZ));
+		const FVector HullUp=Director->DeckTransform.GetRotation().GetUpVector();
+		WaterMID->SetScalarParameterValue(TEXT("SeaLevel"), HullOrigin.Z);
+		WaterMID->SetVectorParameterValue(TEXT("HullUp"), FLinearColor(HullUp));
+		// FFTs are sampled in the same basin chart as the authored foam/shore.
+		// Rotate their horizontal vectors back to stage world after sampling.
+		WaterMID->SetVectorParameterValue(TEXT("BasinAxisX"),FLinearColor(Rotation.Vector()));
+		WaterMID->SetVectorParameterValue(TEXT("BasinAxisY"),FLinearColor(FRotationMatrix(Rotation).GetUnitAxis(EAxis::Y)));
 		WaterMID->SetVectorParameterValue(TEXT("BowlCenter"), FLinearColor(Arena->GetComponentLocation()));
 	}
 	if (TunnelMID)
@@ -1706,10 +1727,11 @@ void ADCMaelstrom::UpdateBoulders(float DeltaSeconds)
 
 void ADCMaelstrom::UpdateView(float DeltaSeconds)
 {
-	if (CaptainCamera.IsValid()) { CaptainCamera->ClearAdditiveOffset(); }
+	// The pawn resets its additive offset every frame before this PostPhysics
+	// tick. Preserve its deck lean and impact shake, then add reveal framing.
 	APlayerController* PC = GetWorld()->GetFirstPlayerController();
 	ADCPlayerCharacter* Captain = PC ? Cast<ADCPlayerCharacter>(PC->GetPawn()) : nullptr;
-	if (!Captain || PC->GetViewTarget() != Captain || Captain->GetGunSide() != EDCSide::None) { return; }
+	if (!Captain || Captain->IsTypingOrder() || PC->GetViewTarget() != Captain || Captain->GetGunSide() != EDCSide::None) { return; }
 	UCameraComponent* Camera = Captain->FindComponentByClass<UCameraComponent>();
 	if (!Camera) { return; }
 	if (!bHadView)

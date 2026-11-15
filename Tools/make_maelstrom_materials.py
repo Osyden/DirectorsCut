@@ -302,6 +302,11 @@ foam_coverage = scalar(water, "FoamCoverage", 1.1)
 overflow_foam = scalar(water, "OverflowFoam", 0.0)
 hull_flatten = scalar(water, "HullFlatten", 0.0)
 sea_level = scalar(water, "SeaLevel", 230.0)
+hull_up = vector(water,"HullUp",(0,0,1,0))
+hull_level = custom(water,"return Level-dot(Up.xy,P.xy)/max(Up.z,.2);",FLOAT,
+                    {"Level":sea_level,"Up":hull_up,"P":position})
+basin_axis_x = vector(water,"BasinAxisX",(1,0,0,0))
+basin_axis_y = vector(water,"BasinAxisY",(0,1,0,0))
 calm_caldera=scalar(water,"CalmCaldera",0.0)
 cataract_flow=scalar(water,"CataractFlow",0.0)
 base_inputs = {"UV": uv, "VC": vc, "P": position, "T": time, "Center": center, "Flow": flow, "Tunnel": tunnel_flow, "Handedness":flow_handedness,"RadiusM":basin_radius,"Calm":calm_caldera,"Cataract":cataract_flow}
@@ -345,7 +350,8 @@ if all(live_array_assets.values()):
         # Vector parameters default to RGB. Explicit RGBA is essential for the
         # fourth cascade and the four-component roughness coefficient packing.
         live_vectors[name]=(vector(water,name,default),"RGBA")
-    live_common={"P":position,"Cam":camera,"Enabled":use_live_fft,"Count":live_count}
+    live_common={"P":position,"UV":uv,"Cam":camera,"Enabled":use_live_fft,"Count":live_count,
+                 "Calm":calm_caldera,"Tunnel":tunnel_flow,"AxisX":basin_axis_x,"AxisY":basin_axis_y}
     surface_inputs=dict(live_common,
         Derivatives=live_objects["DRWDerivativesRT"],Displacement=live_objects["DRWDisplacementRT"],
         InvA=live_vectors["DRWInvTileA"],InvB=live_vectors["DRWInvTileB"],
@@ -363,22 +369,45 @@ LiveFoam=0.0;
 LiveDisplacement=float3(0,0,0);
 [branch] if (Enabled < 0.001 || Count < 0.5) { return float4(0,0,1,0.30); }
 DRWWorldCascades fft;
+// The arena moves around a stationary ship. Stage-world XY would keep waves
+// stuck to the ship while its banks turn. Use the immutable basin chart for
+// every FFT channel, then transform sampled vectors back into stage world.
+float anchored=saturate(Calm)*(1-saturate(Tunnel));
+float3 sampleP=float3(lerp(P.xy,UV*10000.0,anchored),P.z);
+float3 view=normalize(Cam-P);
+float3 sampleView=normalize(lerp(view,float3(dot(view,AxisX),dot(view,AxisY),view.z),anchored));
 #if VERTEXSHADER
 // Use the installed vertex-safe helper, not the pixel Surface function.
 // A minimum footprint respects our approximately 3â€“5m corridor mesh edges.
-LiveDisplacement=fft.Displacement(Displacement,DisplacementSampler,P,InvA,InvB,
+LiveDisplacement=fft.Displacement(Displacement,DisplacementSampler,sampleP,InvA,InvB,
     ShortA,ShortB,Count,max(350.0,fft.VertexFootprintCm(P)));
+LiveDisplacement=lerp(LiveDisplacement,AxisX*LiveDisplacement.x+AxisY*LiveDisplacement.y
+    +float3(0,0,LiveDisplacement.z),anchored);
 return float4(0,0,1,0.30);
 #else
 float unusedFoam=0.0, unusedHeight=0.0, variance=0.0;
 // Surface's Foam out parameter is unused in this plugin version. Accumulated
-// foam lives in its separate camera-centred array and must use actual world XY.
+// Foam's clipmap coverage remains camera-relative, but its toroidal samples
+// must share the basin chart of the displacement. Sampling stage-world foam
+// here would retain a second visibly sliding/rotating pattern on the waves.
 LiveFoam=saturate(fft.FarFoam(Levels,LevelsSampler,P,Sizes,ddx(P.xy),ddy(P.xy),0.0));
+if(anchored>.5) {
+    float fw,fh,fe; Levels.GetDimensions(fw,fh,fe);
+    float2 sizes=max(Sizes.xy,1.0),distance=abs(P.xy-Cam.xy);
+    float2 weights=1-saturate((max(distance.x,distance.y)-.40625*sizes)/(.0625*sizes));
+    float fine=fft.SampleFoamLevelForQuality(Levels,LevelsSampler,sampleP.xy/sizes.x,0.,fw,
+        ddx(sampleP.xy)/sizes.x,ddy(sampleP.xy)/sizes.x,0.);
+    float coarse=fft.SampleFoamLevelForQuality(Levels,LevelsSampler,sampleP.xy/sizes.y,1.,fw,
+        ddx(sampleP.xy)/sizes.y,ddy(sampleP.xy)/sizes.y,0.);
+    LiveFoam=saturate(lerp(coarse*weights.y,fine,weights.x));
+}
 // SampleGrad plus the helper's unresolved-slope treatment filter the cascades
 // by the actual world-XY pixel footprint. A further distance fade is below.
-return fft.Surface(Derivatives,DerivativesSampler,Displacement,DisplacementSampler,
-    P,InvA,InvB,ShortA,ShortB,VarA,VarB,Count,ddx(P.xy),ddy(P.xy),Scale,Rough,
-    normalize(Wind.xy+float2(1e-7,0)),normalize(Cam-P),unusedFoam,unusedHeight,variance);
+float4 result=fft.Surface(Derivatives,DerivativesSampler,Displacement,DisplacementSampler,
+    sampleP,InvA,InvB,ShortA,ShortB,VarA,VarB,Count,ddx(sampleP.xy),ddy(sampleP.xy),Scale,Rough,
+    normalize(Wind.xy+float2(1e-7,0)),sampleView,unusedFoam,unusedHeight,variance);
+result.xyz=normalize(lerp(result.xyz,AxisX*result.x+AxisY*result.y+float3(0,0,result.z),anchored));
+return result;
 #endif
 """,FLOAT4,surface_inputs,1200)
     # A single expression exposes both stages. The project wrapper guards the
@@ -796,7 +825,8 @@ float t=saturate((radius-1200.0)/2300.0);
 float weight=saturate(Flatten)*(1.0-t*t*(3.0-2.0*t));
 float derivative=-saturate(Flatten)*6.0*t*(1.0-t)/2300.0;
 float2 slope=-baseNormal.xy/max(baseNormal.z,0.02);
-float2 shelfSlope=(1.0-weight)*slope+(Level-P.z)*derivative*(P.xy*float2(0.25,4.0)/radius);
+float2 shelfSlope=(1.0-weight)*slope+weight*(-HullUp.xy/max(HullUp.z,.2))
+    +(Level-P.z)*derivative*(P.xy*float2(0.25,4.0)/radius);
 // Product rule for the spatial inlet gate; the ordinary scalar path is zero.
 float2 px=ddx(P.xy),py=ddy(P.xy);
 float det=px.x*py.y-px.y*py.x;
@@ -808,13 +838,12 @@ float3 shelfNormal=normalize(float3(-shelfSlope,1.0));
 // The detailed ripple is a small perturbation; preserve it around the changed base normal.
 return normalize(shelfNormal+(detail-baseNormal));
 """
-final_normal=custom(water,flatten_normal_code,FLOAT3,{"VN":vertex_normal,"DetailWS":detail_world,"P":position,"Flatten":protected_hull_flatten,"Level":sea_level},700)
+final_normal=custom(water,flatten_normal_code,FLOAT3,{"VN":vertex_normal,"DetailWS":detail_world,"P":position,"Flatten":protected_hull_flatten,"Level":hull_level,"HullUp":hull_up},700)
 if fft_surface:
-    # The simulation's XY derivatives are world aligned, not the bowl's rotating
-    # UV tangent frame. Rotate its flat-water normal from world-up to the actual
-    # curved/shelf normal; never treat its xyz as an already-curved world normal.
+    # FFT horizontal derivatives have already been rotated from basin to world.
+    # Bend that flat-water normal onto the actual curved/shelf normal once.
     shelf_base_code=flatten_normal_code.replace("float3 detail=normalize(DetailWS);", "float3 detail=baseNormal;").replace("return normalize(shelfNormal+(detail-baseNormal));", "return shelfNormal;")
-    shelf_base=custom(water,shelf_base_code,FLOAT3,{"VN":vertex_normal,"P":position,"Flatten":protected_hull_flatten,"Level":sea_level},1450)
+    shelf_base=custom(water,shelf_base_code,FLOAT3,{"VN":vertex_normal,"P":position,"Flatten":protected_hull_flatten,"Level":hull_level,"HullUp":hull_up},1450)
     final_normal=custom(water,WAVE_BLEND+r"""
 float weight=waveBlend.fft(length(P-Cam),Enabled,Count);
 float lake=saturate(Calm)*(1-saturate(Tunnel));
@@ -845,7 +874,7 @@ float3 waveNormal=normalize(lerp(VN,float3(0,0,1),flatten));
 float resolved=1-smoothstep(120000.0,350000.0,length(P-Cam));
 float3 wave=waveNormal*h*lerp(min(max(Amp,0),650.0),85.0,lake)*nearHull*resolved;
 """
-wpo_inputs=dict(base_inputs,VN=vertex_normal,VT=vertex_tangent,Amp=wave_height,Flatten=protected_hull_flatten,Level=sea_level,Cam=camera)
+wpo_inputs=dict(base_inputs,VN=vertex_normal,VT=vertex_tangent,Amp=wave_height,Flatten=protected_hull_flatten,Level=hull_level,Cam=camera)
 if fft_displacement:
     wpo_inputs.update(Live=fft_displacement,Enabled=use_live_fft,Count=live_count)
     wpo_code+=r"""

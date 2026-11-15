@@ -28,7 +28,10 @@ public:
 	bool IsCalderaLake() const { return true; }
 	float GetElapsed() const { return Elapsed; }
 	float GetRouteOffset() const { return RouteOffset; }
-	void EmitWaterContact(const FVector& Position, float Strength = 1.f, bool ProjectToSurface = true);
+	void EmitWaterContact(const FVector& Position, float Strength = 1.f, bool ProjectToSurface = true, bool bPlaySound = true);
+	/** Physical deck follows the inlet grade; the surrounding crater remains upright. */
+	float GetDeckPitch() const { return bActive ? DeckPitch : 0.f; }
+	float GetLandingHeave() const;
 	FTransform GetArenaTransform() const;
 	/** Yaw shared by distant sky and sun while the stationary ship follows the arena. */
 	float GetSkyYawOffset() const;
@@ -286,6 +289,8 @@ private:
 	float EndingStart = 450.f;
 	float PreviousTime = -1.f;
 	bool bLakeLandingPlayed = false;
+	float LakeLandingAt = -1.f;
+	float DeckPitch = 0.f;
 	float ShipRadius = 0.f;
 	float HelmTurn = 0.f;
 	float RouteOffset = 0.f;
