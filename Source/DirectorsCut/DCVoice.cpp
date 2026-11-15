@@ -142,6 +142,7 @@ void ADCVoice::ShowSpeech(const FString& Speaker, const FString& Text, double Du
 
 void ADCVoice::ResetPendingSpeech()
 {
+	ResetConversationState();
 	if (ACEDialogue) { ACEDialogue->CancelPending(); }
 	++SpeechEpoch;
 	SpeechQueue.Empty();
@@ -404,6 +405,7 @@ void ADCVoice::Tick(float DeltaSeconds)
 		if (bFallback) { PlayWav(Speaker, Path); }
 	}
 	if (PendingTTS.IsEmpty() && Playing.IsEmpty() && !ActiveCurves) { StartNextLine(); }
+	StartNextConversation();
 	if (bSmokeTest)
 	{
 		if (!bSmokeStarted && GetWorld()->GetTimeSeconds() > 5)
@@ -888,7 +890,12 @@ void ADCVoice::ResolveOrder(const FString& Text)
 		if (Epoch != V->SpeechEpoch || V->IsMenuOpen()) { return; }
 		FDCIntent Intent;
 		Intent.RawText = Text;
-		if (bOK) { DCLanguageModelResponse::ParseIntent(Content, Text, Intent); }
+		const bool bParsed = bOK && DCLanguageModelResponse::ParseIntent(Content, Text, Intent);
+		if (bParsed && !Intent.bValid)
+		{
+			V->QueueConversation(Text, false);
+			return;
+		}
 		UDCCrewSubsystem* CrewSub = V->GetWorld()->GetSubsystem<UDCCrewSubsystem>();
 		if (!Intent.bValid && CrewSub)
 		{
@@ -900,7 +907,8 @@ void ADCVoice::ResolveOrder(const FString& Text)
 		UE_LOG(LogDC, Log, TEXT("Voice: language model read \"%s\" as %s (%.0f ms)"), *Text, Intent.bValid ? *Content.Replace(TEXT("\n"), TEXT(" ")) : TEXT("not an order"), (FPlatformTime::Seconds() - Sent) * 1000.0);
 		if (UDCCrewSubsystem* Crew = V->GetWorld()->GetSubsystem<UDCCrewSubsystem>())
 		{
-			Crew->ExecuteIntent(Intent);
+			if (Intent.bValid) { Crew->ExecuteIntent(Intent); }
+			else { V->QueueConversation(Text, false); }
 		}
 	});
 }

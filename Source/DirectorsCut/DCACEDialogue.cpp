@@ -9,7 +9,8 @@ UDCACEDialogue::UDCACEDialogue()
     bSaveChatHistory = false;
     bAutoRunTools = false;
     bDestroyEngineOnEndPlay = false;
-    MaxContextSize = 2048;
+    // Character cards, live cast/scene state and bounded conversational history.
+    MaxContextSize = 4096;
     MaxHistoryMessages = 4;
     InferenceDefaults.EnableThinkMode = false;
     InferenceDefaults.OutputThinkTokens = false;

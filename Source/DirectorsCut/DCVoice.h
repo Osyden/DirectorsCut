@@ -28,6 +28,7 @@ class ADCVoice : public AActor
 	GENERATED_BODY()
 	friend class ADCDialogueReviewGameMode;
 	friend class UDCACEIntegrationReview;
+	friend class UDCConversationReview;
 
 public:
 	ADCVoice();
@@ -49,6 +50,8 @@ public:
 	float GetSpeechRemainingSeconds() const;
 	/** Asks the language model to make sense of an order the keyword grammar could not, then carries it out. */
 	void ResolveOrder(const FString& Text);
+	/** Returns true when typed/voiced input is handled as conversation instead of an order. */
+	bool TryConversationInput(const FString& Text);
 	/** Transcribe a wav file from disk as if it had been spoken. For unattended tests. */
 	void TranscribeWavFile(const FString& Path);
 
@@ -81,6 +84,16 @@ public:
 	UPROPERTY(Config, EditAnywhere) float OdessaLengthScale = 1.f;
 
 protected:
+	struct FConversationQuestion { FString Speaker, Text; double QueuedAt = 0; };
+	struct FConversationTurn { FString User, Reply; };
+	TArray<FConversationQuestion> ConversationQueue;
+	TMap<FString, TArray<FConversationTurn>> ConversationHistory;
+	FString LastConversationSpeaker;
+	bool bConversationPending = false;
+	int32 ConversationSerial = 0;
+	void QueueConversation(const FString& Text, bool bShowCaptain);
+	void StartNextConversation();
+	void ResetConversationState();
 	void InitializeDialogueBackend();
 	void RequestDialogue(const FString& System, const FString& User, int32 MaxTokens, float Temperature,
 		bool bJson, float Timeout, TFunction<void(bool, const FString&)> Completion);
