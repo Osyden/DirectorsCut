@@ -1,4 +1,4 @@
-"""Fetch a pinned Poly Haven CC0 cliff material into ignored authoring storage.
+"""Fetch and hash-verify a Poly Haven CC0 cliff material in ignored storage.
 
 No Unreal import, system installation or credentials. The API supplies URLs and
 MD5 integrity checks; SHA256 values are recorded for the local build pipeline.

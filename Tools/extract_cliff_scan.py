@@ -34,6 +34,14 @@ def main():
     if node.inputs['Scale'].is_linked or node.inputs['Midlevel'].is_linked:
         raise ValueError('Source displacement parameters need graph evaluation')
     height_path = next(r['path'] for name, r in manifest['files'].items() if '_disp_' in name)
+    links = list(node.inputs['Height'].links)
+    if len(links) != 1 or links[0].from_node.type != 'TEX_IMAGE':
+        raise ValueError('Expected direct image-to-height connection, no unexamined remapping')
+    connected_image = links[0].from_node.image
+    if (connected_image is None or Path(connected_image.filepath).name != Path(height_path).name
+            or connected_image.colorspace_settings.name != 'Non-Color'
+            or links[0].from_socket.name != 'Color'):
+        raise ValueError('Source height node does not directly use the verified linear displacement image')
     image = bpy.data.images.load(height_path, check_existing=False)
     image.colorspace_settings.name = 'Non-Color'
     rgba = np.empty(len(image.pixels), np.float32)

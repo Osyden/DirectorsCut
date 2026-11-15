@@ -303,6 +303,10 @@ return stone*lerp(1,.62,Weather.y);
             texture = node(unreal.MaterialExpressionTextureObjectParameter)
             texture.set_editor_property('parameter_name', 'ScanTexture' + suffix)
             texture.set_editor_property('texture', asset)
+            texture.set_editor_property('sampler_type',
+                unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL if suffix == 'N' else
+                unreal.MaterialSamplerType.SAMPLERTYPE_COLOR if suffix == 'D' else
+                unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
             scan_nodes[suffix] = texture
         scan_tile_size = parameter('ScanTileMetres', scan['width_metres'])
         # U/Z on the exposed face matches the geometry displacement exactly.
