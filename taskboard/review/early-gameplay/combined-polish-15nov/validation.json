@@ -82,5 +82,12 @@
       "path": "taskboard/SATURDAY-PRIORITIES-14NOV.md",
       "sha256": "7dcd1e206f3fb7f4f05688707a85d4fb668a4cb0b257409b72667f416b7438eb"
     }
-  ]
+  ],
+  "main_editor_target_build": "Succeeded in 14.62 seconds",
+  "main_source_comparison": {
+    "matching_paths": 85,
+    "method": "CRLF normalized to LF; owned/private bytes also match all cooked manifest hashes.",
+    "line_ending_only_differences": 36
+  },
+  "convenient_launcher": "E:\\Projects\\DirectorsCut\\Play Early Gameplay Packaged.cmd"
 }

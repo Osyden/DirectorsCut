@@ -1,0 +1,9 @@
+[1/7] Compile [x64] Module.DirectorsCut.3.cpp
+[2/7] Compile [x64] Module.DirectorsCut.1.cpp
+[3/7] Compile [x64] DCPirateCast.cpp
+[4/7] Compile [x64] Module.DirectorsCut.2.cpp
+[5/7] Link [x64] UnrealEditor-DirectorsCut.lib
+[6/7] Link [x64] UnrealEditor-DirectorsCut.dll
+Output binary: E:\Utilities\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe
+Result: Succeeded
+Total execution time: 14.62 seconds
