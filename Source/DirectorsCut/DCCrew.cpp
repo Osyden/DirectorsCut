@@ -27,7 +27,7 @@ namespace
 	{
 		for (const TCHAR* W : Words)
 		{
-			if (Text.Contains(W)) { return true; }
+			if (Text.Contains(TEXT(" ") + FString(W).TrimStartAndEnd() + TEXT(" "))) { return true; }
 		}
 		return false;
 	}
@@ -37,11 +37,15 @@ FDCIntent DCIntentParser::Parse(const FString& InText, const TArray<FString>& Cr
 {
 	FDCIntent I;
 	I.RawText = InText;
-	const FString T = FString(TEXT(" ")) + InText.ToLower() + TEXT(" ");
+	FString Normalized = InText.ToLower().Replace(TEXT("don't"), TEXT("do not")).Replace(TEXT("don’t"), TEXT("do not"));
+	for (TCHAR& C : Normalized) { if (!FChar::IsAlnum(C)) { C = TEXT(' '); } }
+	TArray<FString> Tokens;
+	Normalized.ParseIntoArrayWS(Tokens);
+	const FString T = TEXT(" ") + FString::Join(Tokens, TEXT(" ")) + TEXT(" ");
 
 	for (const FString& Name : CrewNames)
 	{
-		if (T.Contains(Name.ToLower())) { I.CrewName = Name; break; }
+		if (T.Contains(TEXT(" ") + Name.ToLower() + TEXT(" "))) { I.CrewName = Name; break; }
 	}
 
 	if (HasAny(T, { TEXT("starboard"), TEXT(" right") })) { I.Side = EDCSide::Starboard; }
@@ -49,18 +53,22 @@ FDCIntent DCIntentParser::Parse(const FString& InText, const TArray<FString>& Cr
 
 	const bool bExtinguish = HasAny(T, { TEXT("put out"), TEXT("extinguish"), TEXT("douse"), TEXT("bucket"), TEXT("flames"), TEXT("burning"), TEXT("on fire") });
 	const bool bHelmWord = HasAny(T, { TEXT("helm"), TEXT("wheel"), TEXT("steer"), TEXT("rudder") });
-	const bool bGunWord = HasAny(T, { TEXT("cannon"), TEXT("gun"), TEXT("battery"), TEXT("broadside") });
-	const bool bRigWord = HasAny(T, { TEXT("sail"), TEXT("rigging"), TEXT("rope"), TEXT("mast"), TEXT("repair"), TEXT("mend"), TEXT("fix") });
-	const bool bManWord = HasAny(T, { TEXT("man the"), TEXT("take the"), TEXT("get on"), TEXT("get to"), TEXT("go to"), TEXT(" take ") });
+	const bool bGunWord = HasAny(T, { TEXT("cannon"), TEXT("cannons"), TEXT("gun"), TEXT("guns"), TEXT("battery"), TEXT("broadside") });
+	const bool bRigWord = HasAny(T, { TEXT("sail"), TEXT("sails"), TEXT("rigging"), TEXT("rope"), TEXT("ropes"), TEXT("mast"), TEXT("repair"), TEXT("mend"), TEXT("fix") });
+	const bool bManWord = HasAny(T, { TEXT("man"), TEXT("take the"), TEXT("get on"), TEXT("get to"), TEXT("go to"), TEXT(" take ") });
 	const bool bTurnWord = HasAny(T, { TEXT("hard to"), TEXT("hard a"), TEXT("turn"), TEXT("come about"), TEXT("bear"), TEXT("veer"), TEXT("evade"), TEXT("dodge") });
 
-	if (bExtinguish)
+	if (HasAny(T, { TEXT("report"), TEXT("status"), TEXT("how are we") }))
 	{
-		I.Station = EDCStationType::Fire; I.Action = EDCAction::Extinguish;
+		I.Action = EDCAction::Report; I.Side = EDCSide::None;
 	}
-	else if (HasAny(T, { TEXT("hold fire"), TEXT("cease"), TEXT("stop firing"), TEXT("hold your fire") }))
+	else if (HasAny(T, { TEXT("hold fire"), TEXT("cease"), TEXT("stop firing"), TEXT("hold your fire"), TEXT("do not fire"), TEXT("do not shoot") }))
 	{
 		I.Station = EDCStationType::Cannons; I.Action = EDCAction::HoldFire;
+	}
+	else if (bExtinguish)
+	{
+		I.Station = EDCStationType::Fire; I.Action = EDCAction::Extinguish;
 	}
 	else if (HasAny(T, { TEXT("steady"), TEXT("midships"), TEXT("straight"), TEXT("hold course"), TEXT("as she goes") }))
 	{
@@ -468,7 +476,8 @@ void UDCCrewSubsystem::ExecuteIntent(const FDCIntent& I)
 	if (I.Action == EDCAction::Report)
 	{
 		ADCRideDirector* D = ADCRideDirector::Get(this);
-		Reply(Crew.Num() && Crew[0] ? Crew[0]->CrewName : TEXT("Crew"),
+		ADCCrewMember* Reporter = I.CrewName.IsEmpty() ? (Crew.Num() ? Crew[0].Get() : nullptr) : PickCrew(I.CrewName, INDEX_NONE);
+		Reply(Reporter ? Reporter->CrewName : TEXT("Crew"),
 			FString::Printf(TEXT("Hull at %d percent, Captain."), D ? FMath::RoundToInt(D->ShipHealth) : 100));
 		return;
 	}

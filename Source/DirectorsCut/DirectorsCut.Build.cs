@@ -8,6 +8,6 @@ public class DirectorsCut : ModuleRules
 		PublicDependencyModuleNames.AddRange(new string[] {
 			"Core", "CoreUObject", "Engine", "InputCore", "HTTP", "Json", "JsonUtilities", "UMG", "Slate", "SlateCore", "AudioCaptureCore", "ProceduralMeshComponent", "RHI", "RenderCore"
 		});
-		PrivateDependencyModuleNames.Add("HairStrandsCore");
+		PrivateDependencyModuleNames.AddRange(new string[] { "ACERuntime", "ACECore", "HairStrandsCore", "AnimGraphRuntime" });
 	}
 }

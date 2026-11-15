@@ -1,4 +1,6 @@
 #include "DCPirateCast.h"
+#include "DCAceFace.h"
+#include "DCVoice.h"
 #include "DCCrew.h"
 #include "DCPlayer.h"
 #include "Animation/AnimationAsset.h"
@@ -12,6 +14,8 @@
 #include "GameFramework/PlayerController.h"
 #include "GroomComponent.h"
 #include "Misc/Paths.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 
 bool UDCPirateCastSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 {
@@ -86,6 +90,10 @@ bool UDCPirateCastSubsystem::Bind(AActor* Owner, USkeletalMeshComponent* Driver,
 	Driver->SetCastShadow(false);
 	Body->SetLeaderPoseComponent(Driver, true, true);
 	Body->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
+	if ((GetDefault<ADCVoice>()->bUseACE || FParse::Param(FCommandLine::Get(), TEXT("DCEnableACE"))) && !FParse::Param(FCommandLine::Get(), TEXT("DCNoACE")))
+	{
+		DCAceFace::Bind(Actor);
+	}
 	FDCPirateVisual Binding;
 	Binding.Owner = Owner;
 	Binding.Visual = Visual;

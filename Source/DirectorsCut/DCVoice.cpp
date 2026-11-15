@@ -1,4 +1,11 @@
 #include "DCVoice.h"
+#include "ACEAudioCurveSourceComponent.h"
+#include "ACEBlueprintLibrary.h"
+#include "AsyncActionAnimateCharacter.h"
+#include "Components/ChildActorComponent.h"
+#include "Audio.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "DCTypes.h"
 #include "DCCrew.h"
 #include "DCRideDirector.h"
@@ -70,24 +77,15 @@ namespace
 	bool ReadWav(const FString& Path, TArray<uint8>& OutPcm, int32& OutRate, int32& OutChannels)
 	{
 		TArray<uint8> Bytes;
-		if (!FFileHelper::LoadFileToArray(Bytes, *Path) || Bytes.Num() < 44) { return false; }
-		OutChannels = *reinterpret_cast<const uint16*>(&Bytes[22]);
-		OutRate = *reinterpret_cast<const int32*>(&Bytes[24]);
-		const int32 Bits = *reinterpret_cast<const uint16*>(&Bytes[34]);
-		if (Bits != 16) { return false; }
-		int32 Pos = 12;
-		while (Pos + 8 <= Bytes.Num())
-		{
-			const uint32 Size = *reinterpret_cast<const uint32*>(&Bytes[Pos + 4]);
-			if (FMemory::Memcmp(&Bytes[Pos], "data", 4) == 0)
-			{
-				const int32 Len = FMath::Min<int64>(Size, Bytes.Num() - (Pos + 8));
-				OutPcm.Append(&Bytes[Pos + 8], Len);
-				return true;
-			}
-			Pos += 8 + Size + (Size & 1);
-		}
-		return false;
+		FWaveModInfo Info;
+		if (!FFileHelper::LoadFileToArray(Bytes, *Path) || !Info.ReadWaveInfo(Bytes.GetData(), Bytes.Num()) ||
+			!Info.pFormatTag || *Info.pFormatTag != 1 || !Info.pBitsPerSample || *Info.pBitsPerSample != 16 ||
+			!Info.pChannels || *Info.pChannels < 1 || *Info.pChannels > 2 ||
+			!Info.pSamplesPerSec || *Info.pSamplesPerSec < 8000 || *Info.pSamplesPerSec > 192000) { return false; }
+		OutChannels = *Info.pChannels;
+		OutRate = *Info.pSamplesPerSec;
+		OutPcm.Append(Info.SampleDataStart, Info.SampleDataSize);
+		return OutPcm.Num() > 0 && OutPcm.Num() % (2 * OutChannels) == 0;
 	}
 }
 
@@ -117,6 +115,33 @@ FString ADCVoice::SidecarDir() const
 void ADCVoice::BeginPlay()
 {
 	Super::BeginPlay();
+	// ACE 2.5's shared D3D12/CUDA context creation stalled the UE 5.8 voyage's
+	// graphics and compute queues on Blackwell. Use its supported separate-context
+	// path only, and refuse the shared-context command-line override below.
+	int32 CIGOverride = 0;
+	if (!FParse::Value(FCommandLine::Get(), TEXT("useCIGforAI="), CIGOverride))
+	{
+		FCommandLine::Append(TEXT(" -useCIGforAI=0"));
+	}
+	UACEBlueprintLibrary::OverrideA2F3DInferenceMode(false);
+	if (FParse::Param(FCommandLine::Get(), TEXT("DCEnableACE"))) { bUseACE = true; }
+	if (FParse::Param(FCommandLine::Get(), TEXT("DCNoACE"))) { bUseACE = false; }
+	if (CIGOverride != 0)
+	{
+		UE_LOG(LogDC, Warning, TEXT("Voice: refusing live ACE with shared CUDA/graphics context after the 15 Nov GPU hang"));
+		bUseACE = false;
+	}
+	if (FParse::Param(FCommandLine::Get(), TEXT("DCNoLLM"))) { bUseLLM = false; }
+	bSmokeTest = FParse::Param(FCommandLine::Get(), TEXT("DCVoiceSmokeTest"));
+	FParse::Value(FCommandLine::Get(), TEXT("DCVoiceSmokeRepeats="), SmokeRepeats);
+	SmokeRepeats = FMath::Clamp(SmokeRepeats, 1, 10);
+	if (bSmokeTest) { bUseLLM = false; }
+	if (bUseACE && (!ACEProvider.ToString().StartsWith(TEXT("LocalA2F-")) ||
+		!UACEBlueprintLibrary::GetAvailableA2FProviderNames().Contains(ACEProvider)))
+	{
+		UE_LOG(LogDC, Warning, TEXT("Voice: local ACE provider unavailable; using audio-only playback"));
+		bUseACE = false;
+	}
 	const FString Dir = SidecarDir();
 	bTTSReady = FPaths::FileExists(Dir / TEXT("bin/piper/piper/piper.exe"));
 	UE_LOG(LogDC, Log, TEXT("Voice: sidecars at %s, piper %s"), *Dir, bTTSReady ? TEXT("found") : TEXT("missing"));
@@ -134,6 +159,18 @@ void ADCVoice::BeginPlay()
 
 void ADCVoice::EndPlay(const EEndPlayReason::Type Reason)
 {
+	bEnding = true;
+	SpeechQueue.Empty();
+	ClearACE();
+	for (FPendingTTS& Pending : PendingTTS)
+	{
+		if (FPlatformProcess::IsProcRunning(Pending.Proc)) { FPlatformProcess::TerminateProc(Pending.Proc, true); }
+		FPlatformProcess::CloseProc(Pending.Proc);
+	}
+	PendingTTS.Empty();
+	for (FPlaying& Voice : Playing) { if (Voice.Component.IsValid()) { Voice.Component->Stop(); Voice.Component->DestroyComponent(); } }
+	Playing.Empty();
+	LiveWaves.Empty();
 	if (Capture.IsValid())
 	{
 		bRecording = false;
@@ -252,7 +289,13 @@ void ADCVoice::Tick(float DeltaSeconds)
 		{
 			if (bTimedOut && !bDone) { FPlatformProcess::TerminateProc(P.Proc, true); }
 			FPlatformProcess::CloseProc(P.Proc);
-			if (bDone) { PlayWav(P.Speaker, P.WavPath); }
+			if (bDone)
+			{
+				TArray<uint8> Pcm; int32 Rate = 0, Channels = 0;
+				if (ReadWav(P.WavPath, Pcm, Rate, Channels) &&
+					!TryACE(P.Speaker, P.WavPath, double(Pcm.Num()) / (2.0 * Rate * Channels))) { PlayWav(P.Speaker, P.WavPath); }
+			}
+			else { UE_LOG(LogDC, Warning, TEXT("Voice: synthesis timed out for %s"), *P.Speaker); }
 			PendingTTS.RemoveAt(i);
 		}
 	}
@@ -270,6 +313,44 @@ void ADCVoice::Tick(float DeltaSeconds)
 				C->DestroyComponent();
 			}
 			Playing.RemoveAt(i);
+		}
+	}
+	if (ActiveCurves && ((bACESent && bACEEnded) || Now > ACEDeadline))
+	{
+		const bool bFallback = !bACEStarted;
+		const FString Speaker = ActiveSpeaker, Path = ActiveWav;
+		if (Now > ACEDeadline) { UE_LOG(LogDC, Warning, TEXT("Voice: ACE playback timed out; disabling ACE for this run")); bUseACE = false; }
+		ClearACE();
+		if (bFallback) { PlayWav(Speaker, Path); }
+	}
+	if (PendingTTS.IsEmpty() && Playing.IsEmpty() && !ActiveCurves) { StartNextLine(); }
+	if (bSmokeTest)
+	{
+		if (!bSmokeStarted && GetWorld()->GetTimeSeconds() > 5)
+		{
+			bSmokeStarted = true;
+			Speak(TEXT("Finch"), TEXT("Aye, Captain. Bringing her hard to starboard."));
+			Speak(TEXT("Marlow"), TEXT("Port guns ready. Waiting for your order."));
+			Speak(TEXT("Odessa"), TEXT("The fire is out. Checking the rigging now."));
+		}
+		if (bSmokeStarted && SmokeCompleted.Num() == 3 && PendingTTS.IsEmpty() && Playing.IsEmpty() && !ActiveCurves && SpeechQueue.IsEmpty())
+		{
+			++SmokeCycle;
+			UE_LOG(LogDC, Display, TEXT("VOICE_SMOKE_CYCLE mode=%s cycle=%d completed=%d"), bUseACE ? TEXT("ACE") : TEXT("audio"), SmokeCycle, SmokeCompleted.Num());
+			if (SmokeCycle >= SmokeRepeats)
+			{
+				const bool bExpectedACE = (GetDefault<ADCVoice>()->bUseACE || FParse::Param(FCommandLine::Get(), TEXT("DCEnableACE"))) && !FParse::Param(FCommandLine::Get(), TEXT("DCNoACE"));
+				const bool bSuccess = bUseACE == bExpectedACE;
+				UE_LOG(LogDC, Display, TEXT("VOICE_SMOKE_%s mode=%s cycles=%d"), bSuccess ? TEXT("SUCCESS") : TEXT("FAILED"), bUseACE ? TEXT("ACE") : TEXT("audio"), SmokeCycle);
+				FGenericPlatformMisc::RequestExitWithStatus(false, bSuccess ? 0 : 1);
+			}
+			else { bSmokeStarted = false; SmokeCompleted.Reset(); }
+		}
+		else if ((bSmokeStarted && SpeechQueue.IsEmpty() && PendingTTS.IsEmpty() && Playing.IsEmpty() && !ActiveCurves)
+			|| GetWorld()->GetTimeSeconds() > 45 + 30 * SmokeRepeats)
+		{
+			UE_LOG(LogDC, Error, TEXT("VOICE_SMOKE_FAILED completed=%d"), SmokeCompleted.Num());
+			FGenericPlatformMisc::RequestExitWithStatus(false, 1);
 		}
 	}
 }
@@ -387,7 +468,7 @@ void ADCVoice::SendToWhisper(const TArray<float>& Mono, int32 SampleRate)
 	Req->OnProcessRequestComplete().BindLambda([Weak, Sent](FHttpRequestPtr, FHttpResponsePtr Resp, bool bOk)
 	{
 		ADCVoice* V = Weak.Get();
-		if (!V) { return; }
+		if (!V || V->bEnding) { return; }
 		if (!bOk || !Resp.IsValid() || Resp->GetResponseCode() != 200)
 		{
 			UE_LOG(LogDC, Warning, TEXT("Voice: speech-to-text request failed"));
@@ -421,9 +502,9 @@ void ADCVoice::OnHeard(const FString& Text)
 
 FString ADCVoice::VoiceFor(const FString& Speaker) const
 {
-	if (Speaker == TEXT("Marlow")) { return TEXT("en_GB-northern_english_male-medium.onnx"); }
-	if (Speaker == TEXT("Odessa")) { return TEXT("en_GB-alba-medium.onnx"); }
-	return TEXT("en_GB-alan-medium.onnx");
+	if (Speaker == TEXT("Marlow")) { return MarlowVoice; }
+	if (Speaker == TEXT("Odessa")) { return OdessaVoice; }
+	return FinchVoice;
 }
 
 FString ADCVoice::PersonaFor(const FString& Speaker) const
@@ -435,6 +516,7 @@ FString ADCVoice::PersonaFor(const FString& Speaker) const
 
 void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const FString& Context)
 {
+	if (bEnding || bSmokeTest) { return; }
 	if (!bUseLLM || !bLLMReady)
 	{
 		FinishLine(Speaker, Fallback);
@@ -506,7 +588,7 @@ void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const 
 	Req->OnProcessRequestComplete().BindLambda([Weak, Speaker, Fallback, Sent](FHttpRequestPtr, FHttpResponsePtr Resp, bool bOk)
 	{
 		ADCVoice* V = Weak.Get();
-		if (!V) { return; }
+		if (!V || V->bEnding) { return; }
 		FString Line;
 		if (bOk && Resp.IsValid() && Resp->GetResponseCode() == 200)
 		{
@@ -518,7 +600,8 @@ void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const 
 				if (Json->TryGetArrayField(TEXT("choices"), Choices) && Choices && Choices->Num())
 				{
 					const TSharedPtr<FJsonObject>* MsgObj = nullptr;
-					if ((*Choices)[0]->AsObject()->TryGetObjectField(TEXT("message"), MsgObj) && MsgObj)
+					const TSharedPtr<FJsonObject> Choice = (*Choices)[0].IsValid() && (*Choices)[0]->Type == EJson::Object ? (*Choices)[0]->AsObject() : nullptr;
+					if (Choice.IsValid() && Choice->TryGetObjectField(TEXT("message"), MsgObj) && MsgObj)
 					{
 						(*MsgObj)->TryGetStringField(TEXT("content"), Line);
 					}
@@ -535,6 +618,9 @@ void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const 
 		{
 			Line = Fallback;
 		}
+		// An acknowledgement must never reverse the actual order's direction.
+		if ((Fallback.Contains(TEXT("starboard")) && Line.Contains(TEXT("port"))) ||
+			(Fallback.Contains(TEXT("port")) && Line.Contains(TEXT("starboard")))) { Line = Fallback; }
 		UE_LOG(LogDC, Verbose, TEXT("Voice: LLM line in %.0f ms"), (FPlatformTime::Seconds() - Sent) * 1000.0);
 		V->FinishLine(Speaker, Line);
 	});
@@ -543,6 +629,7 @@ void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const 
 
 void ADCVoice::FinishLine(const FString& Speaker, const FString& Text)
 {
+	if (bEnding) { return; }
 	if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
 	{
 		Crew->Say(Speaker, Text);
@@ -552,24 +639,44 @@ void ADCVoice::FinishLine(const FString& Speaker, const FString& Text)
 
 void ADCVoice::Speak(const FString& Speaker, const FString& Text)
 {
-	if (!bTTSReady) { return; }
+	if (!bTTSReady || bEnding || Text.TrimStartAndEnd().IsEmpty()) { return; }
+	// Bound a burst of orders; old acknowledgements must not delay fresh warnings indefinitely.
+	if (SpeechQueue.Num() >= 8) { SpeechQueue.RemoveAt(0); }
+	SpeechQueue.Add({ Speaker, Text.Left(240), FPlatformTime::Seconds() });
+}
+
+void ADCVoice::StartNextLine()
+{
+	while (!SpeechQueue.IsEmpty() && FPlatformTime::Seconds() - SpeechQueue[0].QueuedAt > 40)
+	{
+		UE_LOG(LogDC, Log, TEXT("Voice: expired stale queued line for %s"), *SpeechQueue[0].Speaker);
+		SpeechQueue.RemoveAt(0);
+	}
+	if (SpeechQueue.IsEmpty() || bEnding) { return; }
+	const FQueuedLine Line = SpeechQueue[0];
+	SpeechQueue.RemoveAt(0);
+	const FString& Speaker = Line.Speaker;
+	const FString& Text = Line.Text;
 	const FString Dir = SidecarDir();
 	const FString OutDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("TTS"));
 	IFileManager::Get().MakeDirectory(*OutDir, true);
 	const int32 Id = LineCounter++ % 32;
-	const FString TextPath = OutDir / FString::Printf(TEXT("line_%02d.txt"), Id);
 	const FString WavPath = OutDir / FString::Printf(TEXT("line_%02d.wav"), Id);
 	IFileManager::Get().Delete(*WavPath, false, true, true);
-	FFileHelper::SaveStringToFile(Text, *TextPath, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
 
 	const FString Piper = Dir / TEXT("bin/piper/piper/piper.exe");
 	const FString Model = Dir / TEXT("models/voices") / VoiceFor(Speaker);
-	FString Cmd = FString::Printf(TEXT("/c \"type \"%s\" | \"%s\" --model \"%s\" --output_file \"%s\"\""), *TextPath, *Piper, *Model, *WavPath);
-	Cmd.ReplaceInline(TEXT("/"), TEXT("\\"));
-	Cmd = TEXT("/c") + Cmd.Mid(2); // keep the switch itself
+	if (!FPaths::FileExists(Model)) { UE_LOG(LogDC, Warning, TEXT("Voice: missing model for %s: %s"), *Speaker, *Model); return; }
+	const float Pace = Speaker == TEXT("Marlow") ? MarlowLengthScale : Speaker == TEXT("Odessa") ? OdessaLengthScale : FinchLengthScale;
+	const FString Cmd = FString::Printf(TEXT("--model \"%s\" --output_file \"%s\" --speaker %d --length_scale %.3f --noise_scale 0.5 --noise_w %.3f --sentence_silence 0.12 --quiet"),
+		*Model, *WavPath, Speaker == TEXT("Finch") ? FinchSpeakerId : 0, FMath::Clamp(Pace, .75f, 1.3f), Speaker == TEXT("Odessa") ? .333f : .65f);
+	void* ReadPipe = nullptr; void* WritePipe = nullptr;
+	if (!FPlatformProcess::CreatePipe(ReadPipe, WritePipe, true)) { return; }
 
 	FPendingTTS P;
-	P.Proc = FPlatformProcess::CreateProc(TEXT("cmd.exe"), *Cmd, false, true, true, nullptr, 0, nullptr, nullptr);
+	P.Proc = FPlatformProcess::CreateProc(*Piper, *Cmd, false, true, true, nullptr, 0, nullptr, nullptr, ReadPipe);
+	if (P.Proc.IsValid()) { FPlatformProcess::WritePipe(WritePipe, Text + TEXT("\n")); }
+	FPlatformProcess::ClosePipe(ReadPipe, WritePipe);
 	if (!P.Proc.IsValid())
 	{
 		UE_LOG(LogDC, Warning, TEXT("Voice: could not start piper"));
@@ -579,6 +686,77 @@ void ADCVoice::Speak(const FString& Speaker, const FString& Text)
 	P.WavPath = WavPath;
 	P.StartTime = FPlatformTime::Seconds();
 	PendingTTS.Add(MoveTemp(P));
+}
+
+bool ADCVoice::TryACE(const FString& Speaker, const FString& Path, double Duration)
+{
+	if (!bUseACE || bEnding) { return false; }
+	AActor* Avatar = nullptr;
+	if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
+	{
+		for (ADCCrewMember* Member : Crew->GetCrew())
+		{
+			if (!Member || Member->CrewName != Speaker) { continue; }
+			TInlineComponentArray<UChildActorComponent*> VisualChildren(Member);
+			for (UChildActorComponent* Child : VisualChildren)
+			{
+				if (Child->GetName() == TEXT("PirateAppearance")) { Avatar = Child->GetChildActor(); break; }
+			}
+		}
+	}
+	if (!Avatar) { return false; }
+	ActiveCurves = Avatar->FindComponentByClass<UACEAudioCurveSourceComponent>();
+	if (!ActiveCurves) { return false; }
+	ActiveSpeaker = Speaker; ActiveWav = Path;
+	// Short crew replies are buffered while GPU inference runs. Starting with only
+	// 100 ms queued produced gaps under the fog scene's graphics load.
+	ActiveCurves->BufferLengthInSeconds = 60.f;
+	bACEStarted = bACESent = bACEEnded = false;
+	ACEDeadline = FPlatformTime::Seconds() + Duration + 30;
+	ActiveCurves->OnAnimationStarted.AddDynamic(this, &ADCVoice::ACEStarted);
+	ActiveCurves->OnAnimationEnded.AddDynamic(this, &ADCVoice::ACEEnded);
+	ActiveACERequest = UAsyncActionAnimateCharacter::AnimateCharacterFromWavFileAsync(this, Avatar, Path,
+		FAudio2FaceEmotion(), nullptr, ACEProvider);
+	if (!ActiveACERequest) { ClearACE(); return false; }
+	ActiveACERequest->AudioSendCompleted.AddDynamic(this, &ADCVoice::ACESent);
+	ActiveACERequest->Activate();
+	UE_LOG(LogDC, Log, TEXT("Voice: ACE queued %s provider=%s"), *Speaker, *ACEProvider.ToString());
+	return true;
+}
+
+void ADCVoice::ACEStarted()
+{
+	bACEStarted = true;
+	UE_LOG(LogDC, Log, TEXT("Voice: ACE speaking %s"), *ActiveSpeaker);
+}
+void ADCVoice::ACEEnded()
+{
+	bACEEnded = true;
+	if (bSmokeTest && bACEStarted) { SmokeCompleted.Add(ActiveSpeaker); }
+	UE_LOG(LogDC, Log, TEXT("Voice: ACE finished %s"), *ActiveSpeaker);
+}
+void ADCVoice::ACESent(bool bSuccess)
+{
+	bACESent = true;
+	if (bSuccess && ActiveCurves) { ActiveCurves->BufferLengthInSeconds = .04f; }
+	if (!bSuccess)
+	{
+		UE_LOG(LogDC, Warning, TEXT("Voice: ACE inference failed for %s; disabling ACE for this run"), *ActiveSpeaker);
+		bUseACE = false;
+		bACEEnded = true;
+	}
+}
+void ADCVoice::ClearACE()
+{
+	if (ActiveACERequest) { ActiveACERequest->AudioSendCompleted.RemoveDynamic(this, &ADCVoice::ACESent); }
+	if (ActiveCurves)
+	{
+		ActiveCurves->OnAnimationStarted.RemoveDynamic(this, &ADCVoice::ACEStarted);
+		ActiveCurves->OnAnimationEnded.RemoveDynamic(this, &ADCVoice::ACEEnded);
+		ActiveCurves->Stop();
+	}
+	ActiveCurves = nullptr;
+	ActiveACERequest = nullptr;
 }
 
 void ADCVoice::PlayWav(const FString& Speaker, const FString& Path)
@@ -614,6 +792,7 @@ void ADCVoice::PlayWav(const FString& Speaker, const FString& Path)
 		: UGameplayStatics::SpawnSound2D(this, Wave, 1.6f);
 	if (Comp)
 	{
+		if (bSmokeTest && !bUseACE) { SmokeCompleted.Add(Speaker); }
 		FPlaying P;
 		P.Component = Comp;
 		P.EndTime = FPlatformTime::Seconds() + static_cast<double>(Pcm.Num()) / (2.0 * Channels * Rate) + 0.3;
@@ -683,7 +862,7 @@ void ADCVoice::ResolveOrder(const FString& Text)
 	Req->OnProcessRequestComplete().BindLambda([Weak, Text, Sent](FHttpRequestPtr, FHttpResponsePtr Resp, bool bOk)
 	{
 		ADCVoice* V = Weak.Get();
-		if (!V) { return; }
+		if (!V || V->bEnding) { return; }
 		FDCIntent Intent;
 		Intent.RawText = Text;
 
@@ -698,7 +877,8 @@ void ADCVoice::ResolveOrder(const FString& Text)
 				if (Json->TryGetArrayField(TEXT("choices"), Choices) && Choices && Choices->Num())
 				{
 					const TSharedPtr<FJsonObject>* MsgObj = nullptr;
-					if ((*Choices)[0]->AsObject()->TryGetObjectField(TEXT("message"), MsgObj) && MsgObj)
+					const TSharedPtr<FJsonObject> Choice = (*Choices)[0].IsValid() && (*Choices)[0]->Type == EJson::Object ? (*Choices)[0]->AsObject() : nullptr;
+					if (Choice.IsValid() && Choice->TryGetObjectField(TEXT("message"), MsgObj) && MsgObj)
 					{
 						(*MsgObj)->TryGetStringField(TEXT("content"), Content);
 					}
