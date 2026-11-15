@@ -10,9 +10,6 @@
 #include "Misc/Parse.h"
 #include "Particles/ParticleSystem.h"
 #include "Particles/ParticleSystemComponent.h"
-#include "Particles/ParticleEmitter.h"
-#include "Particles/ParticleLODLevel.h"
-#include "Particles/ParticleModuleRequired.h"
 #include "ProceduralMeshComponent.h"
 #include "UObject/UnrealType.h"
 
@@ -84,19 +81,17 @@ void UDCObstacleWaterContact::Build()
         FoamMaterial=UMaterialInstanceDynamic::Create(Base,this); Foam->SetMaterial(0,FoamMaterial);
         FoamMaterial->SetScalarParameterValue(TEXT("Speed"),180.f);
     }
-    if(auto* Base=LoadObject<UParticleSystem>(nullptr,TEXT("/Game/ParagonRampage/FX/Particles/Abilities/RipNToss/FX/P_RipNToss_WaterImpact.P_RipNToss_WaterImpact")))
+    // Cascade RequiredModule SubUV data cannot be duplicated from a cooked
+    // package. Local-space emitter settings must be authored BEFORE cooking.
+    Splash=LoadObject<UParticleSystem>(nullptr,TEXT("/Game/DC/FX/P_PillarWaterContact.P_PillarWaterContact"),nullptr,LOAD_NoWarn | LOAD_Quiet);
+    if(!Splash)
     {
-        Splash=DuplicateObject<UParticleSystem>(Base,this);
-        // World moves past the stationary ship. Local simulation keeps a burst
-        // with its stone instead of leaving the splash hovering beside the ship.
-        for(UParticleEmitter* Emitter:Splash->Emitters)
-        {
-            if(!Emitter) { continue; }
-            for(UParticleLODLevel* LOD:Emitter->LODLevels)
-            { if(LOD && LOD->RequiredModule) { LOD->RequiredModule->bUseLocalSpace=true; } }
-        }
+        // Missing generated content may lose attachment fidelity, but must not
+        // crash or mutate the vendor asset. The release cook includes the copy.
+        Splash=LoadObject<UParticleSystem>(nullptr,TEXT("/Game/ParagonRampage/FX/Particles/Abilities/RipNToss/FX/P_RipNToss_WaterImpact.P_RipNToss_WaterImpact"));
+        UE_LOG(LogDC,Warning,TEXT("PILLAR_CONTACT using original splash fallback; run Tools/make_pillar_splash.py before release cook"));
     }
-    UE_LOG(LogDC,Log,TEXT("PILLAR_CONTACT built feet=%d foundationDepth=%.0f actor=%s"),Feet.Num(),FoundationDepth,*Owner->GetName());
+    UE_LOG(LogDC,Log,TEXT("PILLAR_CONTACT built feet=%d foundationDepth=%.0f actor=%s splash=%s"),Feet.Num(),FoundationDepth,*Owner->GetName(),*GetPathNameSafe(Splash));
 }
 
 float UDCObstacleWaterContact::SurfaceAt(const FVector& Position,int32 Channel)

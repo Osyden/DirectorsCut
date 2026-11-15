@@ -107,6 +107,9 @@ void ADCTreadmill::Register(AActor* Actor, const FVector& Base, float Radius, bo
 	Obj.Health = Health;
 	Obj.Yaw = Yaw;
 	Obj.bSolid = bSolid;
+	// Cache only the fitted stone footprint. An empty absolute-space foam mesh
+	// initially contributes world origin to actor bounds, inflating them to 650m.
+	if(Actor->ActorHasTag(TEXT("DCCityObstacle"))) { Obj.Reach=Radius; }
 	Actor->SetActorLocation(Obj.Base);
 	if(Actor->ActorHasTag(TEXT("DCPillarObstacle"))) { UDCObstacleWaterContact::Attach(Actor); }
 }
