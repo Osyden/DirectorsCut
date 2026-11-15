@@ -6,25 +6,46 @@
  * The ship remains at the world origin; the arena's inverse pose expresses travel. */
 namespace DCMaelstromRoute
 {
+    constexpr float SteeringLimit=11000.f;
+    inline float SteeringAuthority(float RiggingAuthority) { return FMath::Clamp(RiggingAuthority,.75f,1.f); }
+    constexpr float MaximumSteeringYaw=40.f; // Fixed slam joint remains inside the cannon's broadside arc.
     inline void AdvanceSteering(float Input, float DT, float Riding, float& Helm, float& Offset, float& Velocity,
-        float OutwardLimit=11000.f)
+        float OutwardLimit=SteeringLimit)
     {
-        const float PreviousOffset=Offset;
-        OutwardLimit=FMath::Clamp(OutwardLimit,0.f,11000.f);
-        Helm = FMath::FInterpTo(Helm,Input,DT,1.5f);
-        const float Bank = Offset>0.f
-            ? FMath::SmoothStep(FMath::Max(0.f,OutwardLimit-6000.f),FMath::Max(1.f,OutwardLimit-1500.f),Offset)
-            : FMath::SmoothStep(5000.f,9500.f,FMath::Abs(Offset));
-        const float Acceleration = Helm*850.f - Velocity*.85f - FMath::Sign(Offset)*Bank*1900.f;
-        Velocity = FMath::Clamp(Velocity+Acceleration*DT,-1300.f,1300.f);
-        Offset += Velocity*DT*Riding;
-        if (FMath::Abs(Offset)>11000.f) { Offset=FMath::Clamp(Offset,-11000.f,11000.f); Velocity*=.25f; }
-        if(Offset>OutwardLimit)
+        // A real helm changes carried velocity, not position. A short fixed step
+        // keeps braking/reversal identical at ordinary and hitch frame rates.
+        OutwardLimit=FMath::Clamp(OutwardLimit,0.f,SteeringLimit);
+        const int32 Steps=FMath::Max(1,FMath::CeilToInt(FMath::Max(0.f,DT)*120.f));
+        const float H=FMath::Max(0.f,DT)/Steps;
+        for(int32 I=0;I<Steps;++I)
         {
-            Offset=OutwardLimit;
-            // If the river bank closes in, keep the velocity consistent with
-            // that carried inward motion instead of retaining an outward yaw.
-            Velocity=DT>0.f ? FMath::Min(0.f,(Offset-PreviousOffset)/DT) : 0.f;
+            const float PreviousOffset=Offset;
+            Helm=FMath::FInterpTo(Helm,FMath::Clamp(Input,-1.f,1.f),H,5.f);
+            constexpr float AccelerationLimit=1900.f, MaximumSpeed=1250.f;
+            float Target=Helm*MaximumSpeed;
+            // Brake only at the real boundary. The previous restoring spring
+            // began halfway across the lane and fought steering/cancelled dodges.
+            const float Braking=Velocity*FMath::Abs(Velocity)/(2.f*AccelerationLimit);
+            const float Predicted=Offset+Velocity*.30f+Braking;
+            if(Target>0.f)
+            {
+                const float Edge=FMath::Max(0.f,OutwardLimit-300.f);
+                Target*=1.f-FMath::SmoothStep(FMath::Max(0.f,Edge-1800.f),FMath::Max(1.f,Edge),Predicted);
+            }
+            else if(Target<0.f)
+            { Target*=1.f-FMath::SmoothStep(SteeringLimit-2100.f,SteeringLimit-300.f,-Predicted); }
+            const float Response=FMath::Abs(Input)<.05f ? .70f : .45f;
+            const float Acceleration=FMath::Clamp((Target-Velocity)/Response,-AccelerationLimit,AccelerationLimit);
+            Velocity=FMath::Clamp(Velocity+Acceleration*H,-MaximumSpeed,MaximumSpeed);
+            Offset+=Velocity*H*Riding;
+            if(Offset<-SteeringLimit) { Offset=-SteeringLimit; Velocity=FMath::Max(0.f,Velocity); }
+            if(Offset>OutwardLimit)
+            {
+                Offset=OutwardLimit;
+                // Keep the existing inlet guard: a closing bank carries the
+                // ship inward and its visible heading follows that actual motion.
+                Velocity=DT>0.f ? FMath::Min(0.f,(Offset-PreviousOffset)/DT) : 0.f;
+            }
         }
     }
 
@@ -32,6 +53,28 @@ namespace DCMaelstromRoute
     constexpr float LakeEntrySeconds=32.f;
     constexpr float LakeRadiusFraction=.58f;
     constexpr float OrbitAngularSpeed=.009f;
+    constexpr float LakeHeight=-40000.f;
+
+    inline float MeanSurfaceHeight(const FVector2D& P,float Radius)
+    {
+        const float R=P.Size(),Q=FMath::SmoothStep(LakeRadiusFraction,.985f,R/Radius);
+        const float A=UE_PI-.40f*(1.f-Q);
+        const float Across=FMath::Abs(FMath::UnwindRadians(FMath::Atan2(P.Y,P.X)-A))*R;
+        return R>=Radius*LakeRadiusFraction && Across<=22000.f && R<=Radius*1.08f
+            ? FMath::Lerp(LakeHeight,0.f,Q) : LakeHeight;
+    }
+
+    inline float BowLakeClearance(float CentreHeight,float PhysicalPitch,float BowReach)
+    {
+        // Bow waterline, rotated about the same amidships waterline as DCGame.
+        // A sloping hull touches the lake before its centre finishes descending.
+        return CentreHeight+FMath::Sin(PhysicalPitch*UE_PI/180.f)*BowReach-LakeHeight;
+    }
+
+    // The two foam crests are inset from the same enforced inner orbit limit.
+    // Kraken swims on the smaller authored inner orbit; the band encloses it.
+    inline float InnerBoundaryRadius(float Radius, float HullClearance=2500.f)
+    { return Radius*LakeRadiusFraction-SteeringLimit-HullClearance; }
 
     inline float DeckPitch(float GradeDegrees, float Seconds)
     {
@@ -115,7 +158,7 @@ namespace DCMaelstromRoute
         const float TravelYaw = FMath::RadiansToDegrees(FMath::Atan2(Travel.Y, Travel.X));
         // Let the hull visibly turn into its actual travel, while retaining a
         // comfortable broadside camera and a stable distant horizon.
-        return FMath::Clamp(FMath::FindDeltaAngleDegrees(CenterYaw, TravelYaw), -12.f, 12.f);
+        return FMath::Clamp(FMath::FindDeltaAngleDegrees(CenterYaw, TravelYaw), -MaximumSteeringYaw, MaximumSteeringYaw);
     }
 
     // The battle stays on the lake; there is no narrowing final throat.

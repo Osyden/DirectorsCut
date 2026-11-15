@@ -296,15 +296,7 @@ float ADCMaelstrom::BaseHeightAt(const FVector2D& Point) const
 
 float ADCMaelstrom::HeightAt(const FVector2D& Point, bool bWaves) const
 {
-    // One level lake, reached by one finite river. No sculpted spiral banks.
-    constexpr float LakeZ=-40000.f;
-    const float R=Point.Size();
-    const float Q=FMath::SmoothStep(.58f,.985f,R/Radius);
-    const float A=UE_PI-.40f*(1.f-Q);
-    const float Across=FMath::Abs(FMath::UnwindRadians(FMath::Atan2(Point.Y,Point.X)-A))*R;
-    if(R>=Radius*.58f&&Across<=22000.f&&R<=Radius*1.08f)
-    { return FMath::Lerp(LakeZ,0.f,Q); }
-    return LakeZ;
+    return DCMaelstromRoute::MeanSurfaceHeight(Point,Radius);
 }
 
 float ADCMaelstrom::RimGroundHeight(float R, float Angle) const
@@ -919,7 +911,9 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
 {
 	// The tunnel feeds a moving river: turn left before the lip, then descend.
     const ADCTreadmill* Treadmill = ADCTreadmill::Get(this);
-    float Input = Treadmill ? Treadmill->GetSteer()*Treadmill->SteerAuthority : 0.f;
+    // Torn rigging remains slower, but must not make a committed tentacle
+    // impossible to dodge from the inner edge. Fog keeps its original penalty.
+    float Input = Treadmill ? Treadmill->GetSteer()*DCMaelstromRoute::SteeringAuthority(Treadmill->SteerAuthority) : 0.f;
     static float ReviewSteer = 2.f;
     static const bool bReviewSteer = FParse::Value(FCommandLine::Get(),TEXT("DCMaelstromSteer="),ReviewSteer);
     if (bReviewSteer) { Input=FMath::Clamp(ReviewSteer,-1.f,1.f); }
@@ -927,7 +921,7 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
     if (Reset) { RouteOffset=0.f; RouteVelocity=0.f; HelmTurn=0.f; ContactParticles.Reset(); NextWakeAt=0.f; NextContactSoundAt=-100.f; LakeLandingAt=-1.f; }
     const float DT = FMath::Min(DeltaSeconds*Director->TimeScale,.1f);
     const float Riding = FMath::SmoothStep(-4.f,12.f,Elapsed);
-    // Smooth hydraulic restoring force at the visible banks. Centre stays free to steer.
+    // Carried helm response brakes near the actual route limits.
     // Integrate in normalized lane coordinates so visible banks and helm
     // containment narrow together without a late hard offset clamp.
     const float Width=DCMaelstromRoute::WidthScale(Elapsed);
@@ -958,8 +952,11 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
     const float Heave=FMath::Sin(Director->RideTime*.85f)*25.f;
     Arena->SetWorldLocationAndRotation(Ship-Pose.RotateVector(FVector(P.X,P.Y,HeightAt(P)))+FVector(0,0,Heave),Pose);
     // A seek initializes the landing state without replaying an impact. During
-    // travel the actual steered route reaching lake level triggers it once.
-    const bool AtLake=HeightAt(P,false)<=-39975.f;
+    // travel the pitched bow touching the lake triggers it once, rather than
+    // waiting several seconds for the centre of the hull to finish descending.
+    const float BowReach=Treadmill ? Treadmill->ShipHalfLength : 2500.f;
+    const float BowClearance=DCMaelstromRoute::BowLakeClearance(HeightAt(P,false),DeckPitch,BowReach);
+    const bool AtLake=BowClearance<=25.f;
     if(Reset) { bLakeLandingPlayed=AtLake; }
     if(!Reset && !bLakeLandingPlayed && AtLake && Elapsed>0.f)
     {
@@ -977,7 +974,7 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
             { EmitWaterContact(FVector(Along,Side*1100.f,Director->SeaLevelZ),3.f,true,false); }
         }
         if(ADCAudio* Audio=Cast<ADCAudio>(UGameplayStatics::GetActorOfClass(this,ADCAudio::StaticClass()))) { Audio->Boom(1.f); }
-        UE_LOG(LogDC,Log,TEXT("MAEL_LANDING elapsed=%.2f routeHeight=%.1f offset=%.1f pitchImpulse=65 spray=%d heave=90 damage=0"),Elapsed,HeightAt(P,false),RouteOffset,ContactParticles.Num());
+        UE_LOG(LogDC,Log,TEXT("MAEL_LANDING elapsed=%.2f routeHeight=%.1f bowClearance=%.1f bowReach=%.1f deckPitch=%.1f offset=%.1f pitchImpulse=65 spray=%d heave=90 damage=0"),Elapsed,HeightAt(P,false),BowClearance,BowReach,DeckPitch,RouteOffset,ContactParticles.Num());
     }
     if(Elapsed>NextRouteLog && FParse::Param(FCommandLine::Get(),TEXT("DCMaelstromRouteLog")))
     {
@@ -1030,6 +1027,12 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
 		static const bool ReadWaterReview=FParse::Value(FCommandLine::Get(),TEXT("DCWaterReview="),WaterReview);
 		WaterMID->SetScalarParameterValue(TEXT("WaterReview"),WaterReview);
 		WaterMID->SetScalarParameterValue(TEXT("Clock"), Director->RideTime);
+		// The inner no-go water starts at the nearest allowed hull edge, not at
+		// a screen-space marker or a ring that chases the boss/helm. Its foam uses
+		// the basin's existing UVs and FFT displacement, so it cannot float or slide.
+		const float HullClearance=Treadmill ? FVector2D(Treadmill->ShipHalfLength,Treadmill->ShipHalfWidth).Size() : 2500.f;
+		WaterMID->SetScalarParameterValue(TEXT("InnerBoundaryRadius"),DCMaelstromRoute::InnerBoundaryRadius(Radius,HullClearance)*.01f);
+		WaterMID->SetScalarParameterValue(TEXT("InnerBoundaryStrength"),FMath::SmoothStep(34.f,42.f,Elapsed));
 		WaterMID->SetScalarParameterValue(TEXT("HullFlatten"), 1.f);
 		WaterMID->SetScalarParameterValue(TEXT("OverflowFoam"), 1.f);
 		const FVector HullOrigin=Director->DeckTransform.TransformPosition(FVector(0.f,0.f,Director->SeaLevelZ));

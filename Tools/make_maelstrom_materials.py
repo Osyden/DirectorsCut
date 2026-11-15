@@ -469,11 +469,27 @@ return (st+drift*float2(7.,4.))/float2(9.,17.);
 else:
     foam_inputs["RiverLace"]=scalar(water,"FallbackRiverLace",.30)
 
+# Physical inner-orbit boundary shares the lake's FFT displacement and foam shading.
+# Metres in the basin UV chart; zero strength preserves portal and tunnel materials.
+foam_inputs["BoundaryRadius"]=scalar(water,"InnerBoundaryRadius",0.0)
+foam_inputs["BoundaryStrength"]=scalar(water,"InnerBoundaryStrength",0.0)
 foam_code = NOISE + FLOW + r"""
 // Ordinary lake whitecaps come from the installed ocean simulation below.
 // Disable all old ridge, spiral-wake and synthetic breaking-lip populations.
 if(lake>.5) {
-    if(cataract<=0.0) { return 0.0; }
+    // Two subdued, broken crests enclose the actual inner no-go region. The
+    // outer crest stays at the limit; small wavelets and carried flecks soften
+    // the circle without moving its navigation meaning or rotating the water.
+    float radial=length(UV*100.0);
+    float polar=atan2(UV.y,UV.x);
+    float inside=BoundaryRadius-radial+.8*sin(polar*17.0-T*1.7);
+    float outer=exp(-pow(inside/3.5,2.0));
+    float inner=.5*exp(-pow((inside-11.0)/3.0,2.0));
+    float2 boundaryUV=UV*100.0/float2(3.1,4.7)+float2(T*.55,-T*.8);
+    float fragments=smoothstep(.20,.70,wn.fbm(boundaryUV));
+    float boundary=saturate(BoundaryStrength)*step(1.0,BoundaryRadius)
+        *saturate(outer+inner)*(.18+.67*fragments);
+    if(cataract<=0.0) { return boundary; }
     float2 st=float2(riverAcross,riverAlong+30.0*T);
     // Bounded cross-stream eddies split and merge the carried foam. Shorter
     // clumps and fine ragged edges replace the uniform straight brush strokes.
@@ -505,7 +521,7 @@ if(lake>.5) {
     float lace=smoothstep(.055-laceAA,.30+laceAA,RiverLace);
     float pixelM=max(length(ddx(st)),length(ddy(st)));
     lace=lerp(lace,saturate((RiverLace-.012)*1.93),smoothstep(.30,2.0,pixelM));
-    return saturate(fingers*lace*supply*Coverage);
+    return max(boundary,saturate(fingers*lace*supply*Coverage));
 }
 float shelf=saturate(Flatten)*(1-smoothstep(1200,3500,length(P.xy*float2(.5,2))));
 float ageFade=lerp(exp(-phase*1.5),exp(-phase2*1.5),blend);

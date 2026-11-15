@@ -19,7 +19,12 @@ struct FVector2D
 struct FMath
 {
     static float Clamp(float V,float A,float B){return std::clamp(V,A,B);}
+    static int Max(int A,int B){return std::max(A,B);}
     static float Max(float A,float B){return std::max(A,B);}
+    static float Min(float A,float B){return std::min(A,B);}
+    static int CeilToInt(float A){return int(std::ceil(A));}
+    static float Exp(float A){return std::exp(A);}
+    static float UnwindRadians(float A){return std::remainder(A,UE_TWO_PI);}
     static float Abs(float A){return std::abs(A);}
     static float Sign(float A){return A>0?1.f:(A<0?-1.f:0.f);}
     static float Lerp(float A,float B,float U){return A+(B-A)*U;}

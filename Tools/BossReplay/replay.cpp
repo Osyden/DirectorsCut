@@ -68,7 +68,7 @@ int main()
                 for(int Frame=1;Frame<=FPS*(ObstacleLead+4);++Frame)
                 {
                     const float Age=Frame/float(FPS),DT=1.f/FPS;
-                    DCMaelstromRoute::AdvanceSteering(Age>=2.f?Direction*Authority:0.f,DT,1.f,H,O,V);
+                    DCMaelstromRoute::AdvanceSteering(Age>=2.f?Direction*DCMaelstromRoute::SteeringAuthority(Authority):0.f,DT,1.f,H,O,V);
                     const auto P=WorldPoint(Start+Age,O,V,Anchor);
                     if(Age>=ObstacleLead-3.f && Age<=ObstacleLead+3.f)
                         Hit|=SweptHull(Prev.X,Prev.Y,P.X,P.Y,ObstacleHalfLength,ObstacleHalfWidth);
@@ -81,6 +81,111 @@ int main()
                     Check(false,"The signposted clear side dodges after two-second reaction, even damaged rigging");
                 }
                 else ++Checks;
+            }
+        }
+        // Carried turn response: quick enough to dodge, no position teleport,
+        // no invisible spring pulling the released ship back toward mid-lane.
+        float ReversalWorst=0.f, CoastWorst=0.f;
+        for(int FPS:{15,30,60,120})
+        {
+            float H=0.f,O=0.f,V=0.f;
+            for(int I=0;I<FPS*4;++I) DCMaelstromRoute::AdvanceSteering(1,1.f/FPS,1,H,O,V);
+            const float InitialO=O;
+            float ReverseAt=0;
+            for(int I=0;I<FPS*3;++I)
+            {
+                const float Before=O;
+                DCMaelstromRoute::AdvanceSteering(-1,1.f/FPS,1,H,O,V);
+                Check(std::abs(O-Before)<=1250.f/FPS+.01f,"Helm cannot instantly strafe");
+                if(V<0 && ReverseAt==0) ReverseAt=(I+1.f)/FPS;
+            }
+            ReversalWorst=std::max(ReversalWorst,ReverseAt);
+            Check(ReverseAt>0 && ReverseAt<1.25f,"Full counter-rudder reverses carried turn within1.25s");
+            Check(O<InitialO,"Opposite helm makes actual inward progress");
+            const float ReleaseO=O;
+            for(int I=0;I<FPS*8;++I) DCMaelstromRoute::AdvanceSteering(0,1.f/FPS,1,H,O,V);
+            CoastWorst=std::max(CoastWorst,std::abs(O-ReleaseO));
+            Check(std::abs(V)<1.f && std::abs(O-ReleaseO)<1200.f,"Neutral settles in selected lane with bounded coasting");
+            for(int I=0;I<FPS*20;++I) DCMaelstromRoute::AdvanceSteering(-1,1.f/FPS,1,H,O,V);
+            Check(O>=-11000 && O<-9000,"Inner foam limit and helm containment coincide");
+            Check(DCMaelstromRoute::InnerBoundaryRadius(160000)+2500.f==160000*.58f-11000.f,"Foam no-go ring touches full inward hull envelope");
+            // Full outward input through actual moving inlet guard, not a static limit surrogate.
+            H=O=V=0;
+            for(int I=0;I<FPS*90;++I)
+            {
+                const float T=I/float(FPS),Limit=DCMaelstromRoute::InletOutwardLimit(T,160000);
+                DCMaelstromRoute::AdvanceSteering(1,1.f/FPS,1,H,O,V,Limit);
+                Check(O<=Limit+.01f && O>=-11000,"Steering preserves inlet side-shelf protection");
+            }
+        }
+        // Actual committed obstacle sweep, including two/three-second reaction,
+        // torn rigging, initial momentum and both sides of the current lane.
+        int DodgeCases=0;
+        for(int FPS:{15,30,60,120})
+        for(float Start:{50.f,106.f})
+        for(float InitialOffset:{-9500.f,-6000.f,0.f,6000.f,9500.f})
+        for(float InitialV:{-900.f,0.f,900.f})
+        for(float Reaction:{2.f,3.f})
+        for(float Authority:{1.f,.35f})
+        {
+            if(InitialOffset>DCMaelstromRoute::InletOutwardLimit(Start,160000)) continue;
+            const float Side=Start<100 ? 1.f:-1.f;
+            const auto T=DCMaelstromRoute::Tangent(Start+ObstacleLead,160000);
+            const FVector2D Across(-T.Y,T.X);
+            const auto Anchor=DCMaelstromRoute::Point(Start+ObstacleLead,160000,std::clamp(InitialOffset,-6500.f,6500.f));
+            float H=0,O=InitialOffset,V=InitialV;
+            auto Previous=WorldPoint(Start,O,V,Anchor);
+            bool Hit=false;
+            for(int Frame=1;Frame<=FPS*(ObstacleLead+3);++Frame)
+            {
+                const float Age=Frame/float(FPS),Now=Start+Age;
+                DCMaelstromRoute::AdvanceSteering(Age>=Reaction?-Side*DCMaelstromRoute::SteeringAuthority(Authority):0,1.f/FPS,1,H,O,V,
+                    DCMaelstromRoute::InletOutwardLimit(Now,160000));
+                const auto Current=WorldPoint(Now,O,V,Anchor);
+                const auto Bias=WorldPoint(Now,O,V,Anchor+Across*(Side*ObstacleSideBias))-Current;
+                if(FPS==60 && Authority==.35f && Reaction==2.f && InitialV==Side*900.f
+                    && InitialOffset==(Start<100?0.f:-9500.f) && (Frame==FPS*9 || Frame==FPS*12))
+                    std::cout<<"Damaged dodge start="<<Start<<" age="<<Age<<" offset="<<O*.01f
+                        <<"m speed="<<V*.01f<<"m/s obstacle=("<<(Current.X+Bias.X)*.01f<<","<<(Current.Y+Bias.Y)*.01f<<")m\n";
+                if(Age>=ObstacleLead-3 && Age<=ObstacleLead+3)
+                    Hit|=SweptHull(Previous.X+Bias.X,Previous.Y+Bias.Y,Current.X+Bias.X,Current.Y+Bias.Y,ObstacleHalfLength,ObstacleHalfWidth);
+                Previous=Current;
+            }
+            if(Hit) std::cerr<<"Dodge fail start="<<Start<<" offset="<<InitialOffset<<" v="<<InitialV<<" reaction="<<Reaction<<" authority="<<Authority<<" fps="<<FPS<<"\n";
+            Check(!Hit,"Signposted dodge clears committed obstacle with initial momentum and rigging damage");
+            ++DodgeCases;
+        }
+        const float SlamBearing=std::atan2(7000.f,2200.f)*180.f/UE_PI;
+        Check(SlamBearing-DCMaelstromRoute::MaximumSteeringYaw>std::atan(1.f/1.9f)*180.f/UE_PI,"Maximum heading retains fixed slam joint cannon arc");
+        std::cout<<"Helm metrics: reversal="<<ReversalWorst<<"s coast="<<CoastWorst*.01f<<"m committed dodges="<<DodgeCases<<"\n";
+        // Use the production inlet height and the same smoothed physical deck
+        // pitch to detect first bow contact with the lake, including held helm.
+        float FirstNeutralLanding=0.f;
+        for(int FPS:{15,30,60,120})
+        for(float Input:{-1.f,0.f,1.f})
+        {
+            using namespace DCMaelstromRoute;
+            float H=0,O=0,V=0,Pitch=0,BowAt=-1,CentreAt=-1;
+            for(int Frame=0;Frame<=FPS*50;++Frame)
+            {
+                const float T=-8.f+Frame/float(FPS),DT=1.f/FPS;
+                AdvanceSteering(Input,DT,FMath::SmoothStep(-4,12,T),H,O,V,InletOutwardLimit(T,160000));
+                const auto P=Point(T,160000,O),A=Point(T+.1f,160000,O),B=Point(T-.1f,160000,O);
+                const float Height=MeanSurfaceHeight(P,160000);
+                const float Grade=std::atan2(MeanSurfaceHeight(A,160000)-MeanSurfaceHeight(B,160000),std::max(1.f,float((A-B).Size())))*180.f/UE_PI;
+                Pitch=FMath::FInterpTo(Pitch,DeckPitch(Grade,T),DT,5);
+                const float Bow=BowLakeClearance(Height,Pitch,2369.f);
+                if(BowAt<0 && Bow<=25.f) BowAt=T;
+                if(CentreAt<0 && Height-LakeHeight<=25.f) CentreAt=T;
+                if(BowAt<0) Check(Bow>25.f,"Landing cannot trigger before physical bow reaches lake");
+            }
+            Check(BowAt>0 && BowAt<CentreAt,"Pitched bow reaches lake before amidships for every inlet steering path");
+            Check(BowLakeClearance(LakeHeight,0,2369)==0,"Seek on flat lake initializes already-landed state");
+            if(Input==0)
+            {
+                if(FirstNeutralLanding==0) FirstNeutralLanding=BowAt;
+                Check(std::abs(BowAt-FirstNeutralLanding)<.15f,"Landing contact is frame-rate stable");
+                std::cout<<"Landing fps="<<FPS<<" bow="<<BowAt<<"s centre="<<CentreAt<<"s earlier="<<CentreAt-BowAt<<"s\n";
             }
         }
         // Passive upper bound: two obstacles, two slams, two fireballs and two full-duration fires.

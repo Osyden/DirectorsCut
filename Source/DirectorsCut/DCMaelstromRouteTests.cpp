@@ -14,6 +14,8 @@ bool FDCMaelstromRouteTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("Extreme grade cannot overturn the ship"),DeckPitch(-80.f,12.f)==-34.f);
     TestTrue(TEXT("Landing compresses before rebounding"),LandingHeave(.15f)<-50.f && LandingHeave(.5f)>0.f);
     TestTrue(TEXT("Landing has no residual heave after three seconds"),LandingHeave(-1.f)==0.f && LandingHeave(3.f)==0.f && LandingHeave(10.f)==0.f);
+    TestTrue(TEXT("Pitched bow touches lake before the centre"),BowLakeClearance(LakeHeight+500.f,-15.f,2369.f)<0.f);
+    TestTrue(TEXT("Level bow above the lake has not landed"),BowLakeClearance(LakeHeight+500.f,0.f,2369.f)>25.f);
     TestTrue(TEXT("Inlet starts with full steering corridor"),InletOutwardLimit(16.f,160000.f)==11000.f);
     TestTrue(TEXT("Outward lane closes before the unsupported side shelf"),InletOutwardLimit(30.f,160000.f)==0.f && InletOutwardLimit(50.f,160000.f)==0.f);
     TestTrue(TEXT("Outward steering restores after actual inlet clearance"),InletOutwardLimit(75.f,160000.f)==11000.f);
@@ -55,7 +57,7 @@ bool FDCMaelstromRouteTest::RunTest(const FString& Parameters)
         const float Port=SteeringYaw(T,160000.f,0.f,-1000.f);
         const float Starboard=SteeringYaw(T,160000.f,0.f,1000.f);
         TestTrue(TEXT("Hull headings turn with opposing steering trajectories"),Port*Starboard<0.f);
-        TestTrue(TEXT("Steered visual heading stays comfortable"),FMath::Abs(Port)<=12.f && FMath::Abs(Starboard)<=12.f);
+        TestTrue(TEXT("Steered visual heading stays comfortable"),FMath::Abs(Port)<=MaximumSteeringYaw && FMath::Abs(Starboard)<=MaximumSteeringYaw);
         TestTrue(TEXT("Fast steering visibly turns the hull instead of side slipping"),FMath::Abs(Port)>3.f && FMath::Abs(Starboard)>3.f);
     }
     for(float T=0.f;T<180.f;T+=1.f)
@@ -78,7 +80,7 @@ bool FDCMaelstromRouteTest::RunTest(const FString& Parameters)
                 AdvanceSteering(Input,1.f/FPS,1.f,Helm,Offset,Velocity);
                 Peak=FMath::Max(Peak,FMath::Abs(Offset));
             }
-            TestTrue(TEXT("Full held rudder remains inside the steering corridor"),Peak<10500.f);
+            TestTrue(TEXT("Full held rudder remains inside the steering corridor"),Peak<=SteeringLimit);
             TestTrue(TEXT("Steering produces useful lateral travel"),Offset*Input>5000.f);
             if(Input>0) { if(FPS==30) {Final30=Offset;} else {Final120=Offset;} }
             for(int32 I=0;I<FPS*20;++I) { AdvanceSteering(0.f,1.f/FPS,1.f,Helm,Offset,Velocity); }
