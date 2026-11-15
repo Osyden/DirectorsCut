@@ -81,3 +81,13 @@ The sail instance enables `Normal-mask`, assigns `mask_Normal` to `T_Sail-brigan
 WPO is active: `WPO=true`, `WP=true` select the authored axis sine deformation in `MF_WPO-1`; the scalar named `wpo=0` belongs to a different SimpleGrassWind branch and must not be mistaken for all displacement being disabled. Preserve this sail motion in the first test. Emissive scalar powers remain zero; subsurface `SSS=0.35` is nonzero, with `SSS-RCHANNAL=0`, but changing it alongside the normal would confound the comparison.
 
 The test is supported by exact graph connectivity and reproduced geometry, while the visual cause remains unproven. Original temple/rigging reports remain broader than this strongest sail-lattice reproduction.
+
+## Latest evidence and next isolated check, 20:52
+
+The20:48 playable is selected and the GPU is reserved for the next human playtest. Do not repeat the earlier completed audits or run an engine review merely because no game process is visible yet. CPU preparation may continue; wait for the human playtest to finish before rendering.
+
+`Saved/PolishLighting/SailNormal` did not visibly remove the lattice, but that older hook ran before Blueprint BeginPlay and lacked effective-parameter logging, so it does not conclusively exclude the normal path. The subsequent `Saved/FourthPlaytest/SailSSS` test used the corrected post-BeginPlay hook. All nine assigned sail MIDs retained SSS0, normal.5893 and Camera0 at165/167/169s; the lattice remained. Do not ship an SSS change. Camera0 at those frames also supplies the previously missing runtime evidence for the opacity-camera branch.
+
+The installed UE5.8 fog composition source audit found half-resolution separate composition disabled; FSSS was also disabled in the recorded scene. No further generic half-resolution fog toggle is supported by that evidence.
+
+Next controlled render: use the same continuous route/camera and165/167/169 captures with **only `-DCHide=SM_Rope`** added, preserving the sail material, lighting, fog and WPO. Confirm the sail panels remain visible. This distinguishes physical rigging/depth edges from the sail pattern. The existing hook accepts one substring and propagates visibility to children; it cannot express mast plus ropes as a list. Do not use `-DCHide=SK_Mast` as a sail-preserving test without first establishing its attachment hierarchy or adding an opt-in non-propagating diagnostic. None of these diagnostic visibility settings belongs in the selected playable.
