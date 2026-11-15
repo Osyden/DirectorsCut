@@ -49,7 +49,21 @@ if (($manifest | ConvertTo-Json -Compress) -ne ((Get-SourceManifest) | ConvertTo
     throw 'Source/config changed during packaging; do not accept this candidate.'
 }
 $gameRoot = Join-Path $output 'Windows\DirectorsCut'
-$launcher = Join-Path $output 'Windows\DirectorsCut.exe'
-if (!(Test-Path -LiteralPath $launcher -PathType Leaf)) { throw 'Packaging reported success without a Windows launcher.' }
+$bootstrap = Join-Path $output 'Windows\DirectorsCut.exe'
+$launcher = Join-Path $output 'Windows\Atlantean Odyssey.exe'
+$leaf = Join-Path $gameRoot 'Binaries/Win64/Atlantean Odyssey.exe'
+if (!(Test-Path -LiteralPath $bootstrap -PathType Leaf) -or !(Test-Path -LiteralPath $leaf -PathType Leaf)) {
+    throw 'Packaging did not produce the bootstrap and branded game executable. Inspect the target receipt/output path.'
+}
+# UAT embeds its receipt-derived leaf path in resource 201. Renaming the
+# bootstrap is safe; renaming the leaf afterwards would break that resource.
+$bootstrapText = [Text.Encoding]::Unicode.GetString([IO.File]::ReadAllBytes($bootstrap))
+if (!$bootstrapText.Contains('DirectorsCut\Binaries\Win64\Atlantean Odyssey.exe')) {
+    throw 'Bootstrap does not reference the branded game executable; reject this package.'
+}
+if ([Diagnostics.FileVersionInfo]::GetVersionInfo($leaf).ProductName -ne 'Atlantean Odyssey') {
+    throw 'Game executable has stale Windows product branding; rebuild its resources before packaging.'
+}
+Move-Item -LiteralPath $bootstrap -Destination $launcher
 & (Join-Path $PSScriptRoot 'ACE/stage_sidecars.ps1') -SourceRoot $SidecarsRoot -GameRoot $gameRoot
 Write-Output "Packaged candidate: $launcher. Run and inspect it before accepting the build."

@@ -4,6 +4,13 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path -LiteralPath $ProjectRoot).Path
+$branding = Get-Content -LiteralPath (Join-Path $root 'Config/DefaultGame.ini') -Raw
+$gameTarget = Get-Content -LiteralPath (Join-Path $root 'Source/DirectorsCut.Target.cs') -Raw
+if ($branding -notmatch '(?m)^ProjectName=Atlantean Odyssey\s*$' -or
+    $branding -notmatch '(?m)^ProjectDisplayedTitle=.*Atlantean Odyssey' -or
+    !$gameTarget.Contains('OutputFile = "Binaries/Win64/Atlantean Odyssey.exe";')) {
+    throw 'Atlantean Odyssey window/product branding or Win64 executable target path is missing.'
+}
 function Assert-SteeringWaterPatch([string]$ProjectDirectory, [string]$EngineDirectory) {
     $manifestPath = Join-Path $ProjectDirectory 'Saved/OceanSteeringPatch/manifest.json'
     $repair = 'Run Tools/patch_drw_steering.py --backup, then its native generation with -AllowCommandletRendering before cooking. Preserve the resulting Saved/OceanSteeringPatch manifest in the selected project.'

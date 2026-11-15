@@ -8,12 +8,12 @@ param(
 $ErrorActionPreference = 'Stop'
 $exe = (Resolve-Path -LiteralPath $ExecutablePath).Path
 $gameRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $exe))
-if ([IO.Path]::GetFileName($exe) -ne 'DirectorsCut.exe' -or !(Test-Path -LiteralPath (Join-Path $gameRoot 'Content\Paks'))) {
-    throw 'Use the packaged DirectorsCut/Binaries/Win64/DirectorsCut.exe, with its cooked Content/Paks directory.'
+if ([IO.Path]::GetFileName($exe) -notin @('Atlantean Odyssey.exe','DirectorsCut.exe') -or !(Test-Path -LiteralPath (Join-Path $gameRoot 'Content\Paks'))) {
+    throw 'Use the packaged DirectorsCut/Binaries/Win64/Atlantean Odyssey.exe (or a prior DirectorsCut.exe candidate), with its cooked Content/Paks directory.'
 }
 $output = [IO.Path]::GetFullPath($OutputPath)
 if (Test-Path -LiteralPath $output) { throw 'Use a new review directory so stale evidence cannot pass.' }
-$running = Get-CimInstance Win32_Process -Filter "Name = 'DirectorsCut.exe'" | Where-Object { $_.ExecutablePath -eq $exe }
+$running = Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -eq $exe }
 if ($running) { throw 'This packaged executable is already running.' }
 $options = switch ($Case) {
     'helm' { '-DCRunThrough -DCStation=helm -DCHelmSequence -DCHelmLog -DCAutoShots=2,6,10,14 -DCShotCam=-700,-180,850,-18,142 -DCNoHUD' }

@@ -3,7 +3,8 @@ $ErrorActionPreference = 'Stop'
 $game = (Resolve-Path -LiteralPath $GameRoot).Path
 # Only generated packaged games: never delete the vendor model from a source checkout.
 if ((Test-Path -LiteralPath (Join-Path $game 'DirectorsCut.uproject')) -or
-    !(Test-Path -LiteralPath (Join-Path $game 'Binaries/Win64/DirectorsCut.exe')) -or
+    (!(Test-Path -LiteralPath (Join-Path $game 'Binaries/Win64/DirectorsCut.exe')) -and
+     !(Test-Path -LiteralPath (Join-Path $game 'Binaries/Win64/Atlantean Odyssey.exe'))) -or
     !(Test-Path -LiteralPath (Join-Path $game 'Content/Paks'))) {
     throw 'Expected a packaged DirectorsCut game directory.'
 }

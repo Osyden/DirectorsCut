@@ -18,6 +18,6 @@ cat "$PROJ/Saved/package.log"
 if [ "$RESULT" -eq 0 ]; then
   echo "$NAME  $(git -C $PROJ log -1 --format=%s)" >> $ROOT/Builds/INDEX.txt
   du -sh $OUT
-  echo "Play: $WINOUT/Windows/DirectorsCut.exe"
+  echo "Play: $WINOUT/Windows/Atlantean Odyssey.exe"
 fi
 exit "$RESULT"
