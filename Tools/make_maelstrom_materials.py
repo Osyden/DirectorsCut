@@ -203,12 +203,12 @@ float2 radial=delta/max(length(delta),1.0);
 float2 tangential=float2(-radial.y,radial.x)*Handedness;
 float arc=frac((3.14159265-atan2(delta.y,delta.x))/6.2831853)*6.2831853;
 float inlet=smoothstep(0.0,.16,arc)*(1-smoothstep(.35,.60,arc));
-// Match the CPU spiral tangent used to stamp impact trails (metres).
-float routeT=arc/.018-8.0;
-float u0=saturate((routeT+8.0)/16.0),u1=saturate((routeT-8.0)/157.0),u2=saturate((routeT-165.0)/15.0);
-float r=RadiusM*(.985-.035*smoothstep(-8.0,8.0,routeT)-.700*smoothstep(8.0,165.0,routeT)-.130*smoothstep(165.0,180.0,routeT));
-float dr=-RadiusM*(.035*6*u0*(1-u0)/16.0+.700*6*u1*(1-u1)/157.0+.130*6*u2*(1-u2)/15.0);
-float2 basinVector=radial*dr+tangential*max(r*.018,1.0);
+// The ship's terminal turn is a navigation curve, not a water velocity field.
+// Applying its angular acceleration across the whole bowl produced >20x UV
+// strain and near-vertical shading microfacets in a dark spiral band. A smooth
+// radial vortex keeps water transport continuous at every angle and radius.
+float inward=lerp(4.0,8.0,smoothstep(250.0,1400.0,length(delta)));
+float2 basinVector=radial*(-inward)+tangential*18.0;
 float2 basinFlow=basinVector/max(length(basinVector),.001)*18.0;
 // Tunnel UV.x runs forward along its axis. Water rushes aft with slight side drift.
 float2 flow=lerp(basinFlow,float2(-18.0,2.0),saturate(Tunnel))*Flow;
@@ -556,7 +556,7 @@ if fft_foam:
     live_foam_code+="if(Tunnel<.5) return Fallback; float liveWeight=saturate(Enabled)*step(0.5,Count); return max(Fallback,saturate(Live)*detail*.08*liveWeight);"
     foam=custom(water,live_foam_code,FLOAT,live_foam_inputs,1350)
 color = custom(water, r"""
-float3 body=lerp(float3(0.012,0.043,0.052),float3(0.005,0.020,0.028),saturate(VC.b));
+float3 body=lerp(float3(0.018,0.065,0.085),float3(0.009,0.034,0.052),saturate(VC.b));
 float3 foamColor=lerp(float3(0.74,0.81,0.80),float3(0.64,0.73,0.79),saturate(VC.b));
 return lerp(body,foamColor,Foam);
 """, FLOAT3, {"VC":vc,"Foam":foam}, 100)
@@ -773,25 +773,31 @@ return wave+float3(0,0,(Level-P.z)*flatten);
 """
 output(custom(water,wpo_code,FLOAT3,wpo_inputs,800),unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
 
+# Isolate diagnostic emission from the water BRDF and volume, not only albedo.
+review=scalar(water,"WaterReview",0.0)
 volume = expression(water,unreal.MaterialExpressionSingleLayerWaterMaterialOutput,0,1000)
 for input_name, value, name in [
-    ("ScatteringCoefficients",(0.00013,0.00025,0.00032,1),"Scattering"),
-    ("AbsorptionCoefficients",(0.0042,0.0022,0.0014,1),"Absorption")]:
+    ("ScatteringCoefficients",(0.00045,0.00085,0.00115,1),"Scattering"),
+    ("AbsorptionCoefficients",(0.0030,0.0018,0.0014,1),"Absorption")]:
     node=vector(water,name,value)
     if name == "Scattering":
         # Keep the abyss darker/cooler than the sunlit lip without a screen-space
         # haze layer. This also avoids a uniform teal body at every bowl depth.
         node=custom(water,"return Coefficient*lerp(1.0,0.68,saturate(VC.b));",FLOAT3,{"Coefficient":node,"VC":vc},1050)
+    node=custom(water,"return Mode<.5 ? Coefficient : float3(0,0,0);",FLOAT3,{"Mode":review,"Coefficient":node})
     if not MEL.connect_material_expressions(node,"",volume,input_name):
         raise RuntimeError("Could not bind single layer water " + input_name)
 MEL.connect_material_expressions(scalar(water,"ScatterDirection",0.35),"",volume,"PhaseG")
-# Diagnostic captures: 1 foam mask, 2 normals. Disabled in gameplay.
-review=scalar(water,"WaterReview",0.0)
+# 1 final foam; 2 shaded normals; 3 source foam; 4 raw FFT foam;
+# 5 RGB source atlas; 6 vertex crest; 7 undisplaced geometric normal.
+# Review images must not retain sparkling water reflections or absorption.
 output(custom(water,"return Mode<.5 ? Opacity : 1.0;",FLOAT,{"Mode":review,"Opacity":opacity}),unreal.MaterialProperty.MP_OPACITY)
 output(custom(water,"return Mode<.5 ? Spec : 0.0;",FLOAT,{"Mode":review,"Spec":specular}),unreal.MaterialProperty.MP_SPECULAR)
-review_inputs={"Mode":review,"F":foam,"N":final_normal,"Source":source_foam}
+output(custom(water,"return Mode<.5 ? Rough : 1.0;",FLOAT,{"Mode":review,"Rough":roughness}),unreal.MaterialProperty.MP_ROUGHNESS)
+output(custom(water,"return Mode<.5 ? N : float3(0,0,1);",FLOAT3,{"Mode":review,"N":final_normal}),unreal.MaterialProperty.MP_NORMAL)
+review_inputs={"Mode":review,"F":foam,"N":final_normal,"Source":source_foam,"Atlas":foam_inputs["ImpactSource"],"VC":vc,"VN":vertex_normal}
 review_inputs["Live"]=fft_foam if fft_foam else scalar(water,"NoLiveFoam",0.0)
-review_emission=custom(water,"if(Mode<.5) return float3(0,0,0); if(Mode<1.5) return F.xxx; if(Mode<2.5) return N*.5+.5; if(Mode<3.5) return Source.xxx; return Live.xxx;",FLOAT3,review_inputs)
+review_emission=custom(water,"if(Mode<.5) return float3(0,0,0); if(Mode<1.5) return F.xxx; if(Mode<2.5) return N*.5+.5; if(Mode<3.5) return Source.xxx; if(Mode<4.5) return Live.xxx; if(Mode<5.5) return Atlas.rgb; if(Mode<6.5) return VC.rrr; return VN*.5+.5;",FLOAT3,review_inputs)
 output(review_emission,unreal.MaterialProperty.MP_EMISSIVE_COLOR)
 review_color=custom(water,"return Mode<.5 ? C : float3(0,0,0);",FLOAT3,{"Mode":review,"C":color})
 output(review_color,unreal.MaterialProperty.MP_BASE_COLOR)
