@@ -80,3 +80,36 @@ passes. Reports/provenance stay in ignored `Saved/WeatheredAudit`.
 
 No exhaustive self-intersection test, final FBX/Nanite import validation, live
 waterfall contact integration, or rendering-quality acceptance is claimed.
+
+## Final faceted trial
+
+Reran the same unchanged audit and original-mesh BVH harness on
+`Flow-Seams/Saved/WeatheredCliff/faceted/sector_weathered.npz`, SHA-256
+`157769fb9a8c8dedbf83f177034538532627aa5c510ba3f77e77bd95f40273d3`.
+Reports are `Saved/WeatheredAudit/sector_faceted.json` and
+`Saved/WeatheredAudit/BVH-Faceted`. Use the reproduction commands above with
+those input/output paths; the source NPZ stays the same.
+
+All checks pass again. Topology, boundary, guard, source correspondence, material
+mask errors and temple sample coverage are unchanged. Projected area ratio
+minimum is `0.353329`; no normal reversal or downward face. Maximum relief is
+1.702 m, P95 0.643 m, P99 0.979 m. Maximum edge stretch increases to 2.416x;
+P99 is 1.234x. Sixty-four steep-face rays still hit their expected surfaces.
+The actual BVH has zero mismatches across 256 oracle rays, with maximum distance
+error `1.31e-10 cm`. Vertical probes still hit at most once.
+
+The final metadata correctly states that a global XY factor is applied to the
+source normals before normalization. That factor is again 0.125; the effective
+direction/scalar fields reconstruct positions within `1.01e-7 m`.
+
+Viewed the actual matched close oblique pair and final deck / 1,500 m clay frames
+under `Fitted-Waterfall/Saved/WeatheredReview/FacetedClose` and `FacetedFull`.
+The final shape adds small breakup, but nearby still reads as soft, wrinkled
+terrain with isolated pits rather than convincing fractured rock exposures.
+The distant wall conveys scale, but that does not resolve the close form.
+Do not expand this candidate around the crater based on the numerical pass.
+The lower sawtooth boundary and rectangular side cuts are inherited diagnostic
+domain boundaries, not new weathering spikes; their eventual joins to water and
+neighboring geometry still require validation in the real scene.
+
+No further shape iterations or tool extensions were made for this trial.
