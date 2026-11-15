@@ -175,3 +175,23 @@ diminish while broad ridges, valleys and the pointed silhouette remain. The
 diagnostic supports retaining physical feature diminution rather than enlarging
 distant details. It does not promote this pointed historical landform to the
 required low crater rim or certify current support and shoreline integration.
+
+### Matched normals diagnostic refines the terracing diagnosis
+
+One additional oblique at angle 179 is saved in
+`Saved/ImplicitCliffReview/FastscapeParent/UniformHistoricalANormals179/oblique_fractured.png`.
+The candidate NPZ hash remains `3f241a59e09caf599130956afc079f7f648bc449baa5d4479d7baaa2d7114c95`;
+both angle-15 and angle-179 reports have identical geometry hash
+`ce7e04a71861d6ad563c82c3e30ced2b8d1a0ff7a2499e6d81bab9a2783543e0`
+and `geometry_unchanged=true`. Sharp shading edges fall from 24,538 to zero
+out of 156,613 edges. Cameras, light, source triangles and all physical scales
+are unchanged.
+
+A substantial part of the segmented planar-strip and small stairstep appearance
+disappears. **The earlier terracing description included normal-split artifacts;
+it is not evidence that every visible dark band is a geometric cut.** Broad
+ribbed corrugation, sharp/notched silhouettes and valley shapes remain in the
+smooth view. It softens the face but does not establish natural rock surfaces.
+The next author should assess continuous terrain normals first, then inspect
+remaining geometry before deciding whether remeshing or shape changes are
+needed. This diagnostic is neither a remesh nor cosmetic art acceptance.
