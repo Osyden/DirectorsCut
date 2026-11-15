@@ -8,7 +8,15 @@ namespace DCMaelstromRoute
 {
     constexpr float SteeringLimit=11000.f;
     inline float SteeringAuthority(float RiggingAuthority) { return FMath::Clamp(RiggingAuthority,.75f,1.f); }
-    constexpr float MaximumSteeringYaw=40.f; // Fixed slam joint remains inside the cannon's broadside arc.
+    constexpr float MaximumSteeringYaw=10.f; // Radial drift, with only a small bow response like the fog helm.
+    constexpr float MaximumHeadingRate=6.f; // Degrees/second; never spin the whole arena on counter-rudder.
+    inline float AdvanceHeading(float Heading,float Target,float DT)
+    {
+        const float H=FMath::Max(0.f,DT);
+        const float Blend=1.f-FMath::Exp(-1.8f*H);
+        const float Desired=FMath::Clamp(Target,-MaximumSteeringYaw,MaximumSteeringYaw);
+        return Heading+FMath::Clamp((Desired-Heading)*Blend,-MaximumHeadingRate*H,MaximumHeadingRate*H);
+    }
     inline void AdvanceSteering(float Input, float DT, float Riding, float& Helm, float& Offset, float& Velocity,
         float OutwardLimit=SteeringLimit)
     {
@@ -161,9 +169,9 @@ namespace DCMaelstromRoute
             - Point(Seconds-.05f, Radius, Offset-RadialVelocity*.05f)).GetSafeNormal();
         const float CenterYaw = FMath::RadiansToDegrees(FMath::Atan2(Center.Y, Center.X));
         const float TravelYaw = FMath::RadiansToDegrees(FMath::Atan2(Travel.Y, Travel.X));
-        // Let the hull visibly turn into its actual travel, while retaining a
-        // comfortable broadside camera and a stable distant horizon.
-        return FMath::Clamp(FMath::FindDeltaAngleDegrees(CenterYaw, TravelYaw), -MaximumSteeringYaw, MaximumSteeringYaw);
+        // Most radial travel is sideways current drift. The bow stays near the
+        // circular route tangent, rather than yawing into a40-degree hard turn.
+        return FMath::Clamp(FMath::FindDeltaAngleDegrees(CenterYaw, TravelYaw)*.16f, -MaximumSteeringYaw, MaximumSteeringYaw);
     }
 
     // The battle stays on the lake; there is no narrowing final throat.

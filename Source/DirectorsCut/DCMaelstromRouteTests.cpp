@@ -8,6 +8,8 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDCMaelstromRouteTest,"DirectorsCut.Maelstrom.R
 bool FDCMaelstromRouteTest::RunTest(const FString& Parameters)
 {
     using namespace DCMaelstromRoute;
+    TestTrue(TEXT("Caldera drift uses a small heading amplitude"),MaximumSteeringYaw==10.f);
+    TestTrue(TEXT("Heading cannot jump on a full counter-rudder"),AdvanceHeading(10.f,-10.f,.1f)>=9.4f);
     TestTrue(TEXT("Physical deck follows a substantial downhill grade"),DeckPitch(-29.f,12.f)<-28.f);
     TestTrue(TEXT("Deck pitch does not precede the visible inlet"),DeckPitch(-29.f,-8.f)==0.f);
     TestTrue(TEXT("Deck settles level on the lake"),DeckPitch(0.f,40.f)==0.f);
@@ -58,7 +60,7 @@ bool FDCMaelstromRouteTest::RunTest(const FString& Parameters)
         const float Starboard=SteeringYaw(T,160000.f,0.f,1000.f);
         TestTrue(TEXT("Hull headings turn with opposing steering trajectories"),Port*Starboard<0.f);
         TestTrue(TEXT("Steered visual heading stays comfortable"),FMath::Abs(Port)<=MaximumSteeringYaw && FMath::Abs(Starboard)<=MaximumSteeringYaw);
-        TestTrue(TEXT("Fast steering visibly turns the hull instead of side slipping"),FMath::Abs(Port)>3.f && FMath::Abs(Starboard)>3.f);
+        TestTrue(TEXT("Lateral drift carries a small visible bow response"),FMath::Abs(Port)>2.f && FMath::Abs(Starboard)>2.f);
     }
     for(float T=0.f;T<180.f;T+=1.f)
     {

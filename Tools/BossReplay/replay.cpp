@@ -10,12 +10,12 @@ void Check(bool Passed,const char* Message)
     ++Checks;
     if(!Passed) throw std::runtime_error(Message);
 }
-FVector2D WorldPoint(float Time,float Offset,float Velocity,const FVector2D& Anchor)
+FVector2D WorldPoint(float Time,float Offset,float Heading,const FVector2D& Anchor)
 {
     using namespace DCMaelstromRoute;
     const auto D=Anchor-Point(Time,160000.f,Offset);
     const auto T=Tangent(Time,160000.f);
-    const float Yaw=-std::atan2(T.Y,T.X)-SteeringYaw(Time,160000.f,Offset,Velocity)*UE_PI/180.f;
+    const float Yaw=-std::atan2(T.Y,T.X)-Heading*UE_PI/180.f;
     return {D.X*std::cos(Yaw)-D.Y*std::sin(Yaw),D.X*std::sin(Yaw)+D.Y*std::cos(Yaw)};
 }
 int main()
@@ -58,7 +58,7 @@ int main()
             for(float Authority:{1.f,.35f})
             for(float Direction:{-1.f,0.f,1.f})
             {
-                float H=0.f,O=0.f,V=0.f;
+                float H=0.f,O=0.f,V=0.f,Heading=0.f;
                 const float Side=Start<100.f?1.f:-1.f;
                 const auto T=DCMaelstromRoute::Tangent(Start+ObstacleLead,160000.f);
                 const FVector2D Across(-T.Y,T.X);
@@ -70,7 +70,8 @@ int main()
                 {
                     const float Age=Frame/float(FPS),DT=1.f/FPS;
                     DCMaelstromRoute::AdvanceSteering(Age>=2.f?Direction*DCMaelstromRoute::SteeringAuthority(Authority):0.f,DT,1.f,H,O,V);
-                    const auto P=WorldPoint(Start+Age,O,V,Anchor);
+                    Heading=DCMaelstromRoute::AdvanceHeading(Heading,DCMaelstromRoute::SteeringYaw(Start+Age,160000,O,V),DT);
+                    const auto P=WorldPoint(Start+Age,O,Heading,Anchor);
                     if(Age>=ObstacleLead-3.f && Age<=ObstacleLead+3.f)
                         Hit|=SweptHull(Prev.X,Prev.Y,P.X,P.Y,ObstacleHalfLength,ObstacleHalfWidth);
                     Prev=P;
@@ -128,23 +129,25 @@ int main()
         for(float InitialV:{-900.f,0.f,900.f})
         for(float Reaction:{2.f,3.f})
         for(float Authority:{1.f,.35f})
+        for(float InitialHeading:{-10.f,0.f,10.f})
         {
             if(InitialOffset>DCMaelstromRoute::InletOutwardLimit(Start,160000)) continue;
             const float Side=Start<100 ? 1.f:-1.f;
             const auto T=DCMaelstromRoute::Tangent(Start+ObstacleLead,160000);
             const FVector2D Across(-T.Y,T.X);
             const auto Anchor=DCMaelstromRoute::Point(Start+ObstacleLead,160000,std::clamp(InitialOffset,-6500.f,6500.f));
-            float H=0,O=InitialOffset,V=InitialV;
-            auto Previous=WorldPoint(Start,O,V,Anchor);
+            float H=0,O=InitialOffset,V=InitialV,Heading=InitialHeading;
+            auto Previous=WorldPoint(Start,O,Heading,Anchor);
             bool Hit=false;
             for(int Frame=1;Frame<=FPS*(ObstacleLead+3);++Frame)
             {
                 const float Age=Frame/float(FPS),Now=Start+Age;
                 DCMaelstromRoute::AdvanceSteering(Age>=Reaction?-Side*DCMaelstromRoute::SteeringAuthority(Authority):0,1.f/FPS,1,H,O,V,
                     DCMaelstromRoute::InletOutwardLimit(Now,160000));
-                const auto Current=WorldPoint(Now,O,V,Anchor);
-                const auto Bias=WorldPoint(Now,O,V,Anchor+Across*(Side*ObstacleSideBias))-Current;
-                if(FPS==60 && Authority==.35f && Reaction==2.f && InitialV==Side*900.f
+                Heading=DCMaelstromRoute::AdvanceHeading(Heading,DCMaelstromRoute::SteeringYaw(Now,160000,O,V),1.f/FPS);
+                const auto Current=WorldPoint(Now,O,Heading,Anchor);
+                const auto Bias=WorldPoint(Now,O,Heading,Anchor+Across*(Side*ObstacleSideBias))-Current;
+                if(FPS==60 && InitialHeading==0 && Authority==.35f && Reaction==2.f && InitialV==Side*900.f
                     && InitialOffset==(Start<100?0.f:-9500.f) && (Frame==FPS*9 || Frame==FPS*12))
                     std::cout<<"Damaged dodge start="<<Start<<" age="<<Age<<" offset="<<O*.01f
                         <<"m speed="<<V*.01f<<"m/s obstacle=("<<(Current.X+Bias.X)*.01f<<","<<(Current.Y+Bias.Y)*.01f<<")m\n";
@@ -159,6 +162,32 @@ int main()
         const float SlamBearing=std::atan2(7000.f,2200.f)*180.f/UE_PI;
         Check(SlamBearing-DCMaelstromRoute::MaximumSteeringYaw>std::atan(1.f/1.9f)*180.f/UE_PI,"Maximum heading retains fixed slam joint cannon arc");
         std::cout<<"Helm metrics: reversal="<<ReversalWorst<<"s coast="<<CoastWorst*.01f<<"m committed dodges="<<DodgeCases<<"\n";
+        float PeakHeading=0,PeakHeadingRate=0,HeadingFlipWorst=0;
+        for(int FPS:{15,30,60,120})
+        {
+            using namespace DCMaelstromRoute;
+            float H=0,O=0,V=0,Heading=0,HeadingBeforeReverse=0,FlipAt=-1;
+            // Hold D, countersteer A, then release; both held periods last6s.
+            for(int Frame=1;Frame<=FPS*18;++Frame)
+            {
+                const float Age=Frame/float(FPS),DT=1.f/FPS,Input=Age<=6?1.f:(Age<=12?-1.f:0.f);
+                AdvanceSteering(Input,DT,1,H,O,V);
+                const float Before=Heading;
+                Heading=AdvanceHeading(Heading,SteeringYaw(90+Age,160000,O,V),DT);
+                PeakHeading=std::max(PeakHeading,std::abs(Heading));
+                PeakHeadingRate=std::max(PeakHeadingRate,std::abs(Heading-Before)/DT);
+                Check(std::abs(Heading)<=10.001f,"Caldera bow stays within ten degrees of orbit tangent");
+                Check(std::abs(Heading-Before)<=MaximumHeadingRate*DT+.0001f,"Countersteering cannot snap the world heading");
+                if(Frame==FPS*6) HeadingBeforeReverse=Heading;
+                if(Age>6 && Age<=12 && FlipAt<0 && Heading*HeadingBeforeReverse<0) FlipAt=Age-6;
+                if(FPS==60 && Frame%(FPS*2)==0)
+                    std::cout<<"Drift review age="<<Age<<" input="<<Input<<" offset="<<O*.01f<<"m velocity="<<V*.01f<<"m/s heading="<<Heading<<"deg\n";
+            }
+            Check(FlipAt>1 && FlipAt<3.f,"Visual heading crosses gradually after counter-rudder, not a fast spin");
+            HeadingFlipWorst=std::max(HeadingFlipWorst,FlipAt);
+            Check(std::abs(Heading)<.1f,"Released drift settles back to circular route tangent");
+        }
+        std::cout<<"Heading metrics: peak="<<PeakHeading<<"deg rate="<<PeakHeadingRate<<"deg/s reverse crossing="<<HeadingFlipWorst<<"s\n";
         // Use the production inlet height and the same smoothed physical deck
         // pitch to detect first bow contact with the lake, including held helm.
         float FirstNeutralLanding=0.f;

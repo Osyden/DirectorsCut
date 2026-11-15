@@ -299,6 +299,7 @@ private:
 	float DeckPitch = 0.f;
 	float ShipRadius = 0.f;
 	float HelmTurn = 0.f;
+	float HelmYaw = 0.f;
 	float RouteOffset = 0.f;
 	float RouteVelocity = 0.f;
 	float NextRouteLog = 0.f;

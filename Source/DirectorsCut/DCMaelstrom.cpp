@@ -960,7 +960,17 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
     static float ReviewSteer = 2.f;
     static const bool bReviewSteer = FParse::Value(FCommandLine::Get(),TEXT("DCMaelstromSteer="),ReviewSteer);
     if (bReviewSteer) { Input=FMath::Clamp(ReviewSteer,-1.f,1.f); }
+#if !UE_BUILD_SHIPPING
+    static float ReviewCycle=0.f;
+    static const bool bReviewCycle=FParse::Value(FCommandLine::Get(),TEXT("DCMaelstromSteerCycle="),ReviewCycle);
+    if(bReviewCycle && ReviewCycle>=1.f)
+    {
+        // Alternate held D/A from ride310, after the physical inlet landing.
+        Input=Elapsed<40.f ? 0.f : (FMath::Fmod(Elapsed-40.f,ReviewCycle*2.f)<ReviewCycle ? 1.f : -1.f);
+    }
+#endif
     const bool Reset = PreviousTime<0.f || Director->RideTime<PreviousTime || Director->RideTime-PreviousTime>1.f;
+    if(Reset) { HelmYaw=0.f; }
     if (Reset) { RouteOffset=0.f; RouteVelocity=0.f; HelmTurn=0.f; ContactParticles.Reset(); NextWakeAt=0.f; NextContactSoundAt=-100.f; LakeLandingAt=-1.f; NextLandingWashAt=-1.f; LandingWashPulse=0;
         for(auto& Burst:LandingBursts) { if(auto* Effect=Burst.Effect.Get()) { Effect->DestroyComponent(); } } LandingBursts.Reset(); }
     const float DT = FMath::Min(DeltaSeconds*Director->TimeScale,.1f);
@@ -978,8 +988,10 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
     ShipRadius=P.Size();
     const float Angle=DCMaelstromRoute::Angle(Elapsed);
     const FVector2D Forward=DCMaelstromRoute::Tangent(FMath::Max(-7.9f,Elapsed),Radius);
+    const float TargetYaw=DCMaelstromRoute::SteeringYaw(FMath::Max(-7.9f,Elapsed),Radius,RouteOffset,RouteVelocity*Riding);
+    HelmYaw=DCMaelstromRoute::AdvanceHeading(HelmYaw,TargetYaw,DT);
     const float Bearing=-FMath::RadiansToDegrees(FMath::Atan2(Forward.Y,Forward.X))
-        -DCMaelstromRoute::SteeringYaw(FMath::Max(-7.9f,Elapsed),Radius,RouteOffset,RouteVelocity*Riding);
+        -HelmYaw;
     const FRotator Rotation(0.f,Bearing,0.f);
     const FVector2D Ahead=DCMaelstromRoute::Point(Elapsed+.10f,Radius,RouteOffset);
     const FVector2D Behind=DCMaelstromRoute::Point(Elapsed-.10f,Radius,RouteOffset);
@@ -1019,8 +1031,8 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
     }
     if(Elapsed>NextRouteLog && FParse::Param(FCommandLine::Get(),TEXT("DCMaelstromRouteLog")))
     {
-        NextRouteLog=Elapsed+5.f;
-        UE_LOG(LogDC,Log,TEXT("MAEL_ROUTE t=%.1f arc=%.1f radius=%.1fm offset=%.1fm velocity=%.1fm/s grade=%.1f deckPitch=%.1f depth=%.1fm travel=%.1fm/s"),Elapsed,FMath::RadiansToDegrees(Angle-UE_PI),ShipRadius*.01f,RouteOffset*.01f,RouteVelocity*.01f,PathSlope,DeckPitch,-HeightAt(P,false)*.01f,(Ahead-Behind).Size()*.05f);
+        NextRouteLog=Elapsed+.5f;
+        UE_LOG(LogDC,Log,TEXT("MAEL_ROUTE t=%.1f arc=%.1f radius=%.1fm offset=%.1fm velocity=%.1fm/s input=%.2f yaw=%.2f targetYaw=%.2f grade=%.1f deckPitch=%.1f depth=%.1fm travel=%.1fm/s"),Elapsed,FMath::RadiansToDegrees(Angle-UE_PI),ShipRadius*.01f,RouteOffset*.01f,RouteVelocity*.01f,Input,HelmYaw,TargetYaw,PathSlope,DeckPitch,-HeightAt(P,false)*.01f,(Ahead-Behind).Size()*.05f);
     }
 	const float ExitX = FMath::Clamp(26000.f - Elapsed * 4000.f, -15000.f, 145000.f);
 	const float Entry = FMath::SmoothStep(SlideStart, SlideStart + 7.f, Director->RideTime);
