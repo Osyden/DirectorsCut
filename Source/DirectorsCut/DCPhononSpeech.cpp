@@ -5,6 +5,7 @@
 #include "Async/TaskGraphInterfaces.h"
 #include "Containers/Queue.h"
 #include "Dom/JsonObject.h"
+#include "Engine/World.h"
 #include "HAL/FileManager.h"
 #include "HAL/PlatformProcess.h"
 #include "HAL/Event.h"
@@ -36,6 +37,7 @@ namespace DCPhononSpeechPrivate
     // All registry/admission access is on the GT. Workers touch only atomics.
     bool bExitAdmissionClosed = false;
     bool bExitDrained = false;
+    bool bWorldDrainInProgress = false;
 
     struct FLease
     {
@@ -492,14 +494,99 @@ namespace DCPhononSpeechPrivate
         TSharedPtr<FWorker, ESPMode::ThreadSafe> State;
         TUniquePtr<FRunnableThread> Thread;
         TFunction<void()> ShutdownOwner;
+        TWeakObjectPtr<UWorld> World;
     };
     TArray<FRegisteredWorker> Workers;
-    FDelegateHandle EnginePreExitHandle, PreExitHandle;
+    FDelegateHandle EnginePreExitHandle, PreExitHandle, WorldTearDownHandle;
+
+    void DrainWorldTearDown(UWorld* World)
+    {
+        check(IsInGameThread());
+        TArray<int32> Indices;
+        TArray<TSharedPtr<FWorker, ESPMode::ThreadSafe>> States;
+        for (int32 Index = 0; Index < Workers.Num(); ++Index)
+        {
+            if (Workers[Index].World.Get() == World)
+            {
+                Indices.Add(Index);
+                States.Add(Workers[Index].State);
+            }
+        }
+        if (Indices.IsEmpty()) { return; }
+        if (bWorldDrainInProgress || bExitAdmissionClosed)
+        {
+            UE_LOG(LogDCPhononSpeech, Fatal, TEXT("PHONON_WORLD_DRAIN_UNSAFE: recursive world/application teardown with registered workers"));
+            return;
+        }
+        // UE5.8 LoadMap broadcasts this before actor EndPlay, CleanupWorld and
+        // TrimMemory's world-leak check. Async EndPlay alone releases leases too late.
+        bWorldDrainInProgress = true;
+        const FString WorldName = GetNameSafe(World);
+        const double Started = FPlatformTime::Seconds();
+        double NextWarning = Started + 5.0;
+        UE_LOG(LogDCPhononSpeech, Display, TEXT("PHONON_WORLD_DRAIN_BEGIN world=%s workers=%d"), *WorldName, States.Num());
+        for (int32 Index : Indices)
+        {
+            FRegisteredWorker& Entry = Workers[Index];
+            if (Entry.ShutdownOwner) { Entry.ShutdownOwner(); }
+            Entry.State->Ready.Store(false);
+            Entry.State->ShutdownRequested.Store(true);
+        }
+        for (;;)
+        {
+            bool bOutstanding = DeferredLeaseDeletes.Load() != 0;
+            for (const auto& State : States)
+            {
+                bOutstanding |= !State->Completed->Wait(0) || State->PendingGameThreadWork.Load() != 0;
+            }
+            if (!bOutstanding) { break; }
+            // Never re-enter task processing or wait on GT work from inside a
+            // GT task. Normal LoadMap is outside tasks. An unsupported caller
+            // must fail explicitly rather than hang or continue into GC with leases.
+            if (!FTaskGraphInterface::IsRunning() ||
+                FTaskGraphInterface::Get().IsThreadProcessingTasks(ENamedThreads::GameThread))
+            {
+                UE_LOG(LogDCPhononSpeech, Fatal, TEXT("PHONON_WORLD_DRAIN_UNSAFE: world=%s requires GT cleanup outside task processing"), *WorldName);
+                return;
+            }
+            // Only shared state snapshots survive the pump. Admission is closed,
+            // and recursive teardown is rejected, so registry indices stay stable.
+            FTaskGraphInterface::Get().ProcessThreadUntilIdle(ENamedThreads::GameThread);
+            const double Now = FPlatformTime::Seconds();
+            if (Now >= NextWarning)
+            {
+                UE_LOG(LogDCPhononSpeech, Warning, TEXT("PHONON_WORLD_DRAIN_WAIT world=%s elapsed=%.1f; native callbacks must drain before world GC"), *WorldName, Now - Started);
+                NextWarning = Now + 30.0;
+            }
+            FPlatformProcess::SleepNoStats(.001f);
+        }
+        // Frames cannot advance within this barrier. ReuseAfterFrame is irrelevant:
+        // these consumers are being destroyed, never reused for another request.
+        for (int32 Position = Indices.Num() - 1; Position >= 0; --Position)
+        {
+            FRegisteredWorker& Entry = Workers[Indices[Position]];
+            Entry.Thread->WaitForCompletion();
+            Entry.Thread.Reset();
+            Entry.State->ACE = nullptr;
+            Entry.State->Deliver = nullptr;
+            Entry.ShutdownOwner = nullptr;
+            Entry.World.Reset();
+            Workers.RemoveAt(Indices[Position]);
+        }
+        bWorldDrainInProgress = false;
+        UE_LOG(LogDCPhononSpeech, Display, TEXT("PHONON_WORLD_DRAIN_COMPLETE world=%s workers=%d elapsed=%.3f"),
+            *WorldName, States.Num(), FPlatformTime::Seconds() - Started);
+    }
 
     void DrainApplicationExit()
     {
         check(IsInGameThread());
         if (bExitDrained) { return; }
+        if (bWorldDrainInProgress)
+        {
+            UE_LOG(LogDCPhononSpeech, Fatal, TEXT("PHONON_EXIT_DRAIN_UNSAFE: application exit re-entered a world drain"));
+            return;
+        }
         // No new producer can enter while pumping arbitrary GT tasks below.
         bExitAdmissionClosed = true;
         for (FRegisteredWorker& Entry : Workers)
@@ -556,15 +643,17 @@ namespace DCPhononSpeechPrivate
         // into this DLL registered after its workers and cleanup have drained.
         FCoreDelegates::OnEnginePreExit.Remove(EnginePreExitHandle);
         FCoreDelegates::OnPreExit.Remove(PreExitHandle);
+        FWorldDelegates::OnWorldBeginTearDown.Remove(WorldTearDownHandle);
         EnginePreExitHandle.Reset();
         PreExitHandle.Reset();
+        WorldTearDownHandle.Reset();
         UE_LOG(LogDCPhononSpeech, Display, TEXT("PHONON_EXIT_DRAIN_COMPLETE elapsed=%.3f"), FPlatformTime::Seconds() - Started);
     }
 
-    bool StartWorker(const TSharedRef<FWorker, ESPMode::ThreadSafe>& State, TFunction<void()> ShutdownOwner)
+    bool StartWorker(const TSharedRef<FWorker, ESPMode::ThreadSafe>& State, UWorld* World, TFunction<void()> ShutdownOwner)
     {
         check(IsInGameThread());
-        if (bExitAdmissionClosed) { return false; }
+        if (bExitAdmissionClosed || bWorldDrainInProgress || !IsValid(World) || World->bIsTearingDown) { return false; }
         if (!EnginePreExitHandle.IsValid())
         {
             // UE5.8: UnrealEngine.cpp UEngine::PreExit broadcasts this BEFORE
@@ -572,6 +661,7 @@ namespace DCPhononSpeechPrivate
             // without a live engine; LaunchEngineLoop unloads modules afterward.
             EnginePreExitHandle = FCoreDelegates::OnEnginePreExit.AddStatic(&DrainApplicationExit);
             PreExitHandle = FCoreDelegates::OnPreExit.AddStatic(&DrainApplicationExit);
+            WorldTearDownHandle = FWorldDelegates::OnWorldBeginTearDown.AddStatic(&DrainWorldTearDown);
         }
         TUniquePtr<FRunnableThread> Thread(FRunnableThread::Create(&State.Get(), TEXT("DCPhononPCM")));
         if (!Thread) { return false; }
@@ -579,6 +669,7 @@ namespace DCPhononSpeechPrivate
         Entry.State = State;
         Entry.Thread = MoveTemp(Thread);
         Entry.ShutdownOwner = MoveTemp(ShutdownOwner);
+        Entry.World = World;
         Workers.Add(MoveTemp(Entry));
         return true;
     }
@@ -593,7 +684,8 @@ bool UDCPhononSpeech::Initialize(const FString& PythonPath, const FString& Scrip
     const FString& ModelDirectory, const FString& VoiceManifestPath)
 {
     check(IsInGameThread());
-    if (Worker.IsValid() || bStopped || DCPhononSpeechPrivate::bExitAdmissionClosed) { return false; }
+    if (Worker.IsValid() || bStopped || DCPhononSpeechPrivate::bExitAdmissionClosed ||
+        DCPhononSpeechPrivate::bWorldDrainInProgress || !GetWorld() || GetWorld()->bIsTearingDown) { return false; }
     for (const FString* Path : { &PythonPath, &ScriptPath, &ModelDirectory, &VoiceManifestPath })
     {
         if (Path->IsEmpty() || Path->Contains(TEXT("\"")) || Path->Contains(TEXT("\n")) || Path->Contains(TEXT("\r"))) { return false; }
@@ -615,7 +707,7 @@ bool UDCPhononSpeech::Initialize(const FString& PythonPath, const FString& Scrip
         if (UDCPhononSpeech* Self = Weak.Get()) { Self->Delivered(Id, bSuccess, Duration); }
     };
     const auto State = Worker.ToSharedRef();
-    if (!DCPhononSpeechPrivate::StartWorker(State, [Weak]
+    if (!DCPhononSpeechPrivate::StartWorker(State, GetWorld(), [Weak]
     {
         if (UDCPhononSpeech* Self = Weak.Get()) { Self->Shutdown(); }
     }))
@@ -669,7 +761,8 @@ bool UDCPhononSpeech::Speak(const FString& Speaker, const FString& Text, UACEAud
     FName Provider, TFunction<void(bool, double)> Sent)
 {
     check(IsInGameThread());
-    if (DCPhononSpeechPrivate::bExitAdmissionClosed || !IsReady() || IsBusy() || LastConsumer.Get() != nullptr || !IsValid(Consumer) || !Sent || Text.TrimStartAndEnd().IsEmpty() || Text.Len() > 240 ||
+    if (DCPhononSpeechPrivate::bExitAdmissionClosed || DCPhononSpeechPrivate::bWorldDrainInProgress ||
+        !IsReady() || IsBusy() || LastConsumer.Get() != nullptr || !IsValid(Consumer) || !Sent || Text.TrimStartAndEnd().IsEmpty() || Text.Len() > 240 ||
         (Speaker != TEXT("Rex") && Speaker != TEXT("Duncan") && Speaker != TEXT("Ruby")) ||
         Provider.IsNone() || Provider == FName("Default") || NextId == MAX_int32) { return false; }
     ActiveId = ++NextId;

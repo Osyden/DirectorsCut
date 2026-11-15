@@ -9,9 +9,11 @@ namespace DCPhononSpeechPrivate { struct FWorker; }
 /** Opt-in local Phonon PCM producer. One instance owns one persistent process.
  * The caller must exclude all legacy ACE WAV sends until IsBusy() becomes false.
  * Sent reports native input/drain completion, not the end of audible playback.
- * Actor teardown is asynchronous; a global engine-pre-exit barrier drains owned
- * workers and GT cleanup before ACE/module teardown. A stuck native call can
- * delay application exit because the installed SDK has no safe hard abort.
+ * Actor teardown is an asynchronous fallback. World-begin-teardown drains that
+ * world's workers/GT cleanup before GC; engine-pre-exit drains remaining workers
+ * before ACE/module teardown. Reentrant world teardown inside a GT task fails
+ * explicitly if cleanup is outstanding. A stuck native call can delay teardown
+ * because the installed SDK has no safe hard abort.
  */
 UCLASS()
 class DIRECTORSCUT_API UDCPhononSpeech : public UActorComponent
