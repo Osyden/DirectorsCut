@@ -80,12 +80,12 @@ void ADCDialogueReviewGameMode::BeginPlay()
     Order(TEXT("heldout_damage_report"),TEXT("Duncan, give me a damage report."),TEXT("Duncan"),A::Report,S::None,D::None);
     Order(TEXT("heldout_nonorder"),TEXT("I used to sail these waters as a child."),TEXT(""),A::None,S::None,D::None);
 
-    auto Acknowledge = [this](const TCHAR* Crew,const TCHAR* OrderText,const TCHAR* Doing,const TCHAR* Forbidden)
+    auto Acknowledge = [this](const TCHAR* Crew,const TCHAR* OrderText,const TCHAR* ActionDescription,const TCHAR* Forbidden)
     {
         FReviewCase& Case=Cases.AddDefaulted_GetRef();
         Case.Label=FString(TEXT("ack_"))+Crew; Case.bAcknowledgement=true; Case.ForbiddenDirection=Forbidden;
         Case.System=DCDialoguePrompts::AcknowledgementSystem(Voice->PersonaFor(Crew));
-        Case.User=FString::Printf(TEXT("Captain's order: \"%s\"\nWhat you are doing: %s\nSituation: open sea in sunshine; hull at 100 percent"),OrderText,Doing);
+        Case.User=FString::Printf(TEXT("Captain's order: \"%s\"\nWhat you are doing: %s\nSituation: open sea in sunshine; hull at 100 percent"),OrderText,ActionDescription);
     };
     Acknowledge(TEXT("Rex"),TEXT("Rex, hard to starboard"),TEXT("Hard to starboard, aye!"),TEXT("port"));
     Acknowledge(TEXT("Duncan"),TEXT("Duncan, man the port guns"),TEXT("Port guns manned and ready."),TEXT("starboard"));
