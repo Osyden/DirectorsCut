@@ -28,7 +28,10 @@ public:
 	UPROPERTY(EditAnywhere) float AmbienceVolume = 0.55f;
 	UPROPERTY(EditAnywhere) float BellVolume = 1.f;
 	/** Quiet stereo score; also follows MasterVolume and crew speech ducking. */
-	UPROPERTY(EditAnywhere) float MusicVolume = .25f;
+	UPROPERTY(EditAnywhere) float MusicVolume = .32f;
+	float GetSpeechDuck() const { return SpeechDuck; }
+	/** A restrained cannonball water contact, without thunder or hull-crash layers. */
+	void CannonSplash(const FVector& Where);
 	/** Extra wind, 0 to 1, set each frame by whatever is roaring near the ship (a waterspout, the creature's end). */
 	float SpoutRoar = 0.f;
 	/** A heavy report: thunder and a crash of water together (a burning stone coming down, the plume going up). */

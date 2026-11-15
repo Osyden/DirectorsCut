@@ -510,16 +510,16 @@ void ADCAudio::Tick(float DeltaSeconds)
 		if (Phase == EDCPhase::Slide || Phase == EDCPhase::Hell || Phase == EDCPhase::Maelstrom) { PlayReal(TEXT("braam"), 0.7f); }
 	}
 
-	// The kraken announces itself as it rises, again when it is up, and at the end.
+	// One arrival call. Repeated scheduled growl/breath layers were competing
+	// with the score and making the fight sound like a looping splash effect.
 	MaelstromTime = Phase == EDCPhase::Maelstrom ? MaelstromTime + DeltaSeconds : 0.f;
 	if (MaelstromTime <= 0.f) { RoarsPlayed = 0; }
-	static const float RoarTimes[] = { 27.f, 62.f, 110.f, 148.f };
+	static const float RoarTimes[] = { 16.f };
 	if (RoarsPlayed < UE_ARRAY_COUNT(RoarTimes) && MaelstromTime > RoarTimes[RoarsPlayed])
 	{
 		++RoarsPlayed;
-		if (KrakenRoar.Num()) { PlayOneShot(KrakenRoar, 1.3f); }
-		PlayReal(TEXT("kraken_breath"), 1.f, 0.7f);
-		Director->Trauma = FMath::Min(1.f, Director->Trauma + 0.5f);
+		if (KrakenRoar.Num()) { PlayOneShot(KrakenRoar, .75f); }
+		Director->Trauma = FMath::Min(1.f, Director->Trauma + .25f);
 	}
 	// It screams when an arm is shot away.
 	if (!Kraken.IsValid())
@@ -560,6 +560,13 @@ void ADCAudio::Tick(float DeltaSeconds)
 			OneShots.RemoveAtSwap(i);
 		}
 	}
+}
+
+void ADCAudio::CannonSplash(const FVector& Where)
+{
+	const FVector Listener = Director ? Director->DeckToWorld(FVector::ZeroVector) : FVector::ZeroVector;
+	const float DistanceGain = FMath::Clamp(1.f - FVector::Dist(Where, Listener) / 60000.f, .15f, 1.f);
+	PlayReal(TEXT("water_impact"), .38f * DistanceGain, FMath::FRandRange(.95f, 1.08f));
 }
 
 void ADCAudio::Boom(float Volume)

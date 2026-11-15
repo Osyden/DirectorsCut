@@ -318,9 +318,10 @@ void ADCBossCombat::UpdateAttack(float DT,const FTransform& Arena)
     }
     if(PoseVisible && Now>Attack.LastSpray+.4f)
     {
-        Stage->EmitWaterContact(PoseBase,Age<4.f?1.2f:.45f);
+        const bool FirstContact=Attack.LastSpray<Attack.Start;
+        Stage->EmitWaterContact(PoseBase,Age<4.f?1.2f:.45f,true,FirstContact);
         if(Attack.Kind==DCBossTimeline::EAttack::Obstacle && Age<4.f)
-            Stage->EmitWaterContact(Arena.TransformPosition(Attack.Anchor),1.f);
+            Stage->EmitWaterContact(Arena.TransformPosition(Attack.Anchor),1.f,true,false);
         Attack.LastSpray=Now;
     }
 }
