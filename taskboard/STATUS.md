@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 15 Nov Codex: cuts/deep erosion rejected; complete escarpment reference reproduced
+
+- Two connected-body cell-release versions still look like quarry pockets. A deeper existing-solver erosion test changes terrain by over 50 m but creates grid-like spines and isolated support pedestals. All remain offline/rejected; source supports and geometry checks are separately recorded. [Actual images and diagnosis](CRATER-ESCARPMENT-WORKFLOW-15NOV.md).
+- Installed Fastscapelib 0.3.0 in an isolated Saved folder and reproduced its pinned official escarpment model unchanged, with independently identical output arrays. Native-scale clay shows coherent branching drainage/retreat but coarse 100 m facets. This is a method proof, not a crater asset; next generate a fresh physically sized sector before support/material/falls integration. No runtime, sky, water, boss or gameplay changes.
+
 ## 15 Nov Codex: larger cliff exposure rejected; assembly cause identified
 
 - Generated one physical 160 x 96 m original-3D exposure and joined it into the measured 500 m sector. Final geometry checks pass after removing two verified hidden cavity shells, but actual close/context/1.5 km renders still show a rubble patch within soft terrain. [Actual images, diagnosis and next experiment](CRATER-REGIONAL-CLIFF-15NOV.md).
