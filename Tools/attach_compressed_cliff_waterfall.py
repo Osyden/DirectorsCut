@@ -121,69 +121,73 @@ def main():
     # analysis frame may differ; apply only this documented rigid transform.
     origin=water['frame_origin_world_m'];B=np.stack([water['basis_u_world'],water['basis_v_world'],water['basis_z_world']],axis=1)
     if not np.allclose(B.T@B,np.eye(3),atol=1e-10) or not np.isclose(np.linalg.det(B),1):raise ValueError('Invalid physical analysis frame')
-    if not ring:
+    if not ring and a.hero_source_index is None:
         for k in ('frame_origin_world_m','basis_u_world','basis_v_world','basis_z_world'):
             if not np.array_equal(cliff[k],water[k]):raise ValueError('Measured water and cliff frames differ')
     q=(cliff['vertices_m']-origin)@B;t=cliff['triangles'];wq=(water['vertices_m']-origin)@B
     rock=Surface(q,t);sea=Surface(wq,water['triangles'])
-    if ring:
-        template=load(meta['compressed_path']);template_q=(template['vertices_m']-origin)@B
-        target=template_q[a.template_source_index]
-        tag=cliff['compressed_chart_uvz_m'];valid=np.isfinite(tag).all(axis=1)&(cliff['pilot_weight']>.95)
-        d=np.sum((tag-target)**2,axis=1);d[~valid]=np.inf
-        a.source_index=int(np.argmin(d)) if a.source_index is None else a.source_index
-        # Reconstruct the conservative measured-water edge in this analysis
-        # frame. This uses actual water triangles, not template shoreline tags.
-        contact=[];contact_height=[]
-        for u in template['contact_uv_m'][:,0]:
-            found=[v for v in np.arange(-50,201,2) if sea.hit((u,v)) is not None]
-            if not found:continue
-            low=max(found);high=low+2
-            for _ in range(18):
-                mid=(low+high)*.5
-                if sea.hit((u,mid)) is not None:low=mid
-                else:high=mid
-            h=sea.hit((u,low));contact.append((u,low));contact_height.append(h[0][2])
-        contact=np.asarray(contact);contact_height=np.asarray(contact_height)
-        active=(q[:,0]>contact[0,0]-5)&(q[:,0]<contact[-1,0]+5)&(q[:,1]>-30)&(q[:,1]<400)
-        graph_triangles=t[np.all(active[t],axis=1)]
-    else:
-        contact=cliff['contact_uv_m'];contact_height=cliff['contact_water_height_m'];graph_triangles=t
-    ids,upstream=steepest_path(q,graph_triangles,contact,a.source_index)
-    raw=q[ids];distance=np.r_[0,np.cumsum(np.linalg.norm(np.diff(raw,axis=0),axis=1))]
-    stations=np.arange(0,distance[-1],.4)
-    path=np.stack([np.interp(stations,distance,raw[:,j]) for j in range(3)],axis=1)
-    # Try a bounded terminal jet. Its launch speed is authored explicitly; do
-    # not invent a lip, lift a submerged end, or clip a jet through the cliff.
+    # Explicit hero sources fit directly to actual triangles, without the
+    # discarded RingPilot template tags or its old lower-ravine search.
     jet=None
-    launch_candidates=range(45,len(path)-2) if a.exposed_jet else range(len(path)-2,4,-1)
-    for i in launch_candidates:
-        expected=np.interp(path[i,0],contact[:,0],contact_height)
-        lo,hi=(18,45) if a.exposed_jet else (4,12)
-        if not lo<path[i,2]-expected<hi:continue
-        for horizontal in ((6.,10.,14.,18.,24.) if a.exposed_jet else (6.,10.,14.)):
-            start=path[i].copy();start[2]+=.18
-            vel=np.array((0.,-horizontal,-4.))
-            samples=[];valid=True;hit=None
-            for time in np.arange(0,5,.015):
-                pt=start+vel*time+np.array((0,0,-4.905*time*time))
-                rockhit=rock.hit(pt[:2]);waterhit=sea.hit(pt[:2])
-                if waterhit is not None and pt[2]<=waterhit[0][2]:hit=(time,pt,waterhit);break
-                if rockhit is not None and pt[2]<rockhit[0][2]+.035:valid=False;break
-                samples.append(pt)
-            if valid and hit is not None:
-                low=hit[0]-.015;high=hit[0]
-                for _ in range(25):
-                    mid=(low+high)/2;pt=start+vel*mid+np.array((0,0,-4.905*mid*mid));wh=sea.hit(pt[:2])
-                    if wh is not None and pt[2]<=wh[0][2]:high=mid
-                    else:low=mid
-                tm=high;end=start+vel*tm+np.array((0,0,-4.905*tm*tm))
-                jet=dict(launch_index=i,initial_velocity_chart_m_s=vel.tolist(),duration_s=tm,
-                         gravity_m_s2=9.81,drop_m=float(start[2]-end[2]))
-                path=np.vstack((path[:i],np.asarray(samples),end));break
-        if jet is not None:break
+    if a.hero_source_index is None:
+        if ring:
+            template=load(meta['compressed_path']);template_q=(template['vertices_m']-origin)@B
+            target=template_q[a.template_source_index]
+            tag=cliff['compressed_chart_uvz_m'];valid=np.isfinite(tag).all(axis=1)&(cliff['pilot_weight']>.95)
+            d=np.sum((tag-target)**2,axis=1);d[~valid]=np.inf
+            a.source_index=int(np.argmin(d)) if a.source_index is None else a.source_index
+            # Reconstruct the conservative measured-water edge in this analysis
+            # frame. This uses actual water triangles, not template shoreline tags.
+            contact=[];contact_height=[]
+            for u in template['contact_uv_m'][:,0]:
+                found=[v for v in np.arange(-50,201,2) if sea.hit((u,v)) is not None]
+                if not found:continue
+                low=max(found);high=low+2
+                for _ in range(18):
+                    mid=(low+high)*.5
+                    if sea.hit((u,mid)) is not None:low=mid
+                    else:high=mid
+                h=sea.hit((u,low));contact.append((u,low));contact_height.append(h[0][2])
+            contact=np.asarray(contact);contact_height=np.asarray(contact_height)
+            active=(q[:,0]>contact[0,0]-5)&(q[:,0]<contact[-1,0]+5)&(q[:,1]>-30)&(q[:,1]<400)
+            graph_triangles=t[np.all(active[t],axis=1)]
+        else:
+            contact=cliff['contact_uv_m'];contact_height=cliff['contact_water_height_m'];graph_triangles=t
+        ids,upstream=steepest_path(q,graph_triangles,contact,a.source_index)
+        raw=q[ids];distance=np.r_[0,np.cumsum(np.linalg.norm(np.diff(raw,axis=0),axis=1))]
+        stations=np.arange(0,distance[-1],.4)
+        path=np.stack([np.interp(stations,distance,raw[:,j]) for j in range(3)],axis=1)
+        # Try a bounded terminal jet. Its launch speed is authored explicitly; do
+        # not invent a lip, lift a submerged end, or clip a jet through the cliff.
+        jet=None
+        launch_candidates=range(45,len(path)-2) if a.exposed_jet else range(len(path)-2,4,-1)
+        for i in launch_candidates:
+            expected=np.interp(path[i,0],contact[:,0],contact_height)
+            lo,hi=(18,45) if a.exposed_jet else (4,12)
+            if not lo<path[i,2]-expected<hi:continue
+            for horizontal in ((6.,10.,14.,18.,24.) if a.exposed_jet else (6.,10.,14.)):
+                start=path[i].copy();start[2]+=.18
+                vel=np.array((0.,-horizontal,-4.))
+                samples=[];valid=True;hit=None
+                for time in np.arange(0,5,.015):
+                    pt=start+vel*time+np.array((0,0,-4.905*time*time))
+                    rockhit=rock.hit(pt[:2]);waterhit=sea.hit(pt[:2])
+                    if waterhit is not None and pt[2]<=waterhit[0][2]:hit=(time,pt,waterhit);break
+                    if rockhit is not None and pt[2]<rockhit[0][2]+.035:valid=False;break
+                    samples.append(pt)
+                if valid and hit is not None:
+                    low=hit[0]-.015;high=hit[0]
+                    for _ in range(25):
+                        mid=(low+high)/2;pt=start+vel*mid+np.array((0,0,-4.905*mid*mid));wh=sea.hit(pt[:2])
+                        if wh is not None and pt[2]<=wh[0][2]:high=mid
+                        else:low=mid
+                    tm=high;end=start+vel*tm+np.array((0,0,-4.905*tm*tm))
+                    jet=dict(launch_index=i,initial_velocity_chart_m_s=vel.tolist(),duration_s=tm,
+                             gravity_m_s2=9.81,drop_m=float(start[2]-end[2]))
+                    path=np.vstack((path[:i],np.asarray(samples),end));break
+            if jet is not None:break
     if a.hero_source_index is not None:
-        if not ring or not 8<=a.hero_speed<=20:raise ValueError('Hero source requires actual ring and8–20m/s horizontal momentum')
+        if not 0<=a.hero_source_index<len(q) or not 8<=a.hero_speed<=20:raise ValueError('Hero source requires an actual mesh vertex and8–20m/s horizontal momentum')
         source=q[a.hero_source_index];world=cliff['vertices_m'][a.hero_source_index]
         direction=np.array((-world[0],-world[1],0));direction/=np.linalg.norm(direction);direction=direction@B
         vel=direction*a.hero_speed;vel[2]=-1.
@@ -210,7 +214,7 @@ def main():
             if wh is not None and pt[2]<=wh[0][2]:high=tm
             else:low=tm
         end=start+vel*high+np.array((0,0,-4.905*high*high))
-        if not 100<start[2]-end[2]<180:raise ValueError('Hero physical drop is outside100–180m')
+        if not 100<start[2]-end[2]<220:raise ValueError('Hero physical drop is outside100–220m')
         path=np.vstack((feeder,samples,end));ids=np.array([a.hero_source_index]);upstream=0.
         jet=dict(launch_index=len(feeder),initial_velocity_chart_m_s=vel.tolist(),duration_s=high,gravity_m_s2=9.81,
                  drop_m=float(start[2]-end[2]),minimum_centre_clearance_m=minimum_clearance,
@@ -239,7 +243,7 @@ def main():
                     if ww is not None and pp[2]<=ww[0][2]:high=tm
                     else:low=tm
                 end_time=high;break
-            if rh is not None and pt[2]<rh[0][2]+.01:raise ValueError('A separately supported jet strand intersects rock')
+            if rh is not None and pt[2]<rh[0][2]+.01:raise ValueError(f'A supported jet strand intersects rock: across={f:.3f}, time={time:.3f}s, depth={rh[0][2]-pt[2]:.3f}m')
         if end_time is None:raise ValueError('A jet strand misses finite receiving water')
         jet_starts.append(start);jet_times.append(end_time)
     jet['cross_track_duration_s']=jet_times;jet['launch_width_m']=jet_width

@@ -17,8 +17,8 @@ def main():
     p.add_argument('--outlet',type=Path,action='append',required=True)
     p.add_argument('--output',type=Path,required=True)
     a=p.parse_args(sys.argv[sys.argv.index('--')+1:])
-    if len(a.outlet)!=3 or a.output.exists() or 'saved' not in [s.lower() for s in a.output.resolve().parts]:
-        p.error('Use exactly three measured outlets and a new Saved output')
+    if not 2<=len(a.outlet)<=3 or a.output.exists() or 'saved' not in [s.lower() for s in a.output.resolve().parts]:
+        p.error('Use two or three measured outlets and a new Saved output')
     reports=[json.loads((d/'attachment.json').read_text()) for d in a.outlet]
     profiles=[json.loads((d/'waterfall_profile.json').read_text()) for d in a.outlet]
     for r in reports[1:]:
@@ -46,16 +46,16 @@ def main():
     if not 20<span<40:raise ValueError(f'Actual crest span {span:.2f}m outside bounded20–40m')
     profile=copy.deepcopy(profiles[0]);profile['ballistic_outlets']=profiles
     profile['source_half_width_cm']=span*50
-    profile['trajectory_model']='three_separately_measured_ballistic_outlets_in_shared_frame'
+    profile['trajectory_model']='separately_measured_ballistic_outlets_in_shared_frame'
     profile['profile_sha1']=hashlib.sha1(json.dumps({k:v for k,v in profile.items()if k!='profile_sha1'},sort_keys=True).encode()).hexdigest()
     report=copy.deepcopy(reports[0]);report['profile_sha1']=profile['profile_sha1'];report['crest_span_m']=span
-    report['outlets']=[dict(bundle=str(folder.resolve()),canonical_source_vertex=r['source_vertex_index'],
+    report['outlets']=[dict(bundle=str(folder.resolve()),source_vertex_index=r['source_vertex_index'],source_index_space='actual input mesh',
         width_m=max(r['width_range_m']),free_drop_m=r['terminal_jet']['drop_m'],
         source_arena_m=r['source_arena_m'],foot_arena_m=r['foot_arena_m'],jet=r['terminal_jet'])for folder,r in zip(a.outlet,reports)]
     report['drop_m']=float(core['vertices_m'][:,2].max()-foam['vertices_m'][:,2].min())
     report['width_range_m']=[min(min(r['width_range_m'])for r in reports),max(max(r['width_range_m'])for r in reports)]
     report['core_triangles']=len(core['triangles']);report['foam_triangles']=len(foam['triangles'])
-    report['limitations']='Three separately authored outlets; no connecting upstream river or hydrological supply solved. Static measured water; no runtime hull guarantee.'
+    report['limitations']='Separately authored outlets; no connecting upstream river or hydrological supply solved. Static measured water; no runtime hull guarantee.'
     a.output.mkdir(parents=True)
     for name,data in (('core',core),('receiving_foam',foam)):np.savez_compressed(a.output/(name+'.npz'),**data)
     merged={}
