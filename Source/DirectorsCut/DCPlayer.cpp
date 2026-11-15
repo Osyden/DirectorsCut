@@ -1,4 +1,5 @@
 #include "DCPlayer.h"
+#include "DCWheelVisual.h"
 #include "DCCrew.h"
 #include "DCTreadmill.h"
 #include "DCGunnery.h"
@@ -380,7 +381,7 @@ void ADCPlayerCharacter::TickHelm(APlayerController* PC, float DeltaSeconds)
 	if (ADCTreadmill* Treadmill = ADCTreadmill::Get(this)) { Treadmill->SetPlayerSteer(Steer); }
 	if (USceneComponent* Wheel = HelmWheel.Get())
 	{
-		WheelAngle = FMath::FInterpTo(WheelAngle, Steer * 65.f, DeltaSeconds, 5.f);
+		WheelAngle = FMath::FInterpTo(WheelAngle, DCWheelVisual::Degrees(Steer), DeltaSeconds, 5.f);
 		const FQuat Turn(WheelAxisInParent, FMath::DegreesToRadians(WheelAngle));
 		// Compensate the component origin so the hub stays fixed to the ship.
 		Wheel->SetRelativeLocationAndRotation(

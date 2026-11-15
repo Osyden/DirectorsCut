@@ -1,4 +1,7 @@
 #include "DCGunnery.h"
+#include "DCShotWater.h"
+#include "DCOcean.h"
+#include "DCAudio.h"
 #include "DCTreadmill.h"
 #include "DCMaelstrom.h"
 #include "DCRideDirector.h"
@@ -12,6 +15,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystem.h"
+#include "Particles/ParticleSystemComponent.h"
 #include "ProceduralMeshComponent.h"
 #include "Components/PointLightComponent.h"
 #include "Camera/PlayerCameraManager.h"
@@ -20,6 +24,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "EngineUtils.h"
 #include "UObject/ConstructorHelpers.h"
+#include "UObject/UnrealType.h"
 
 namespace
 {
@@ -206,11 +211,104 @@ void ADCGunnery::Init(AActor* Ship, float InSeaLevelZ)
 	// Effects that ship with the vessel asset; optional.
 	MuzzleEffectClass = LoadClass<AActor>(nullptr, TEXT("/Game/Brigantine/BP/Cannon/BP_EffectExplosionStartCannon.BP_EffectExplosionStartCannon_C"));
 	ImpactEffectClass = LoadClass<AActor>(nullptr, TEXT("/Game/Brigantine/BP/Cannon/BP_EffectExplosionEnd.BP_EffectExplosionEnd_C"));
-	WaterImpact = LoadObject<UParticleSystem>(nullptr, TEXT("/Game/ParagonRampage/FX/Particles/Abilities/RipNToss/FX/P_Rampage_Rock_HitWorld_WaterImpact.P_Rampage_Rock_HitWorld_WaterImpact"));
+	// This already-cooked local-space water burst avoids runtime Cascade/SubUV duplication.
+	WaterImpact = LoadObject<UParticleSystem>(nullptr, TEXT("/Game/DC/FX/P_PillarWaterContact.P_PillarWaterContact"));
+	WaterLibrary = FindObject<UClass>(nullptr, TEXT("/Script/DynamicRealWater.DRW_BlueprintLibrary"));
+	WaterSurfaceFunction = WaterLibrary ? WaterLibrary->FindFunctionByName(TEXT("GetWaterSurfaceAtLocation")) : nullptr;
 	StoneImpact = LoadObject<UParticleSystem>(nullptr, TEXT("/Game/ParagonRampage/FX/Particles/Abilities/RipNToss/FX/P_Rampage_Rock_HitWorld.P_Rampage_Rock_HitWorld"));
 	CreatureImpact = LoadObject<UParticleSystem>(nullptr, TEXT("/Game/ParagonRampage/FX/Particles/Abilities/RipNToss/FX/P_Rampage_Rock_HitCharacter.P_Rampage_Rock_HitCharacter"));
 	UE_LOG(LogDC, Log, TEXT("Gunnery effects: muzzle=%s, water=%s, stone=%s, creature=%s"),
 		*GetNameSafe(MuzzleEffectClass.Get()), *GetNameSafe(WaterImpact.Get()), *GetNameSafe(StoneImpact.Get()), *GetNameSafe(CreatureImpact.Get()));
+}
+
+ADCGunnery::FWaterPlane ADCGunnery::QueryShotWater(FShot& Shot)
+{
+	FWaterPlane Plane;
+	Plane.Point = FVector(Shot.Pos.X, Shot.Pos.Y, SeaLevelZ);
+	if (!WaterLibrary || !WaterSurfaceFunction || Shot.WaterChannel == INDEX_NONE) { return Plane; }
+	const double Now = GetWorld()->GetTimeSeconds();
+	const FVector QueryPosition = DCOcean::WaveSamplePosition(this, Shot.Pos);
+	Shot.WaterHistory.Add({QueryPosition, Now});
+	if (Shot.WaterHistory.Num() > 16) { Shot.WaterHistory.RemoveAt(0); }
+	UFunction* Function = WaterSurfaceFunction;
+	uint8* Params = static_cast<uint8*>(FMemory_Alloca(FMath::Max<int32>(Function->ParmsSize, 1)));
+	FMemory::Memzero(Params, Function->ParmsSize);
+	FStructProperty* Sample = nullptr;
+	for (TFieldIterator<FProperty> It(Function); It && It->HasAnyPropertyFlags(CPF_Parm); ++It)
+	{
+		It->InitializeValue_InContainer(Params);
+		if (auto* O = CastField<FObjectProperty>(*It)) { O->SetObjectPropertyValue_InContainer(Params, this); }
+		else if (auto* I = CastField<FIntProperty>(*It)) { I->SetPropertyValue_InContainer(Params, Shot.WaterChannel); }
+		else if (auto* S = CastField<FStructProperty>(*It))
+		{
+			if (S->Struct == TBaseStructure<FVector>::Get()) { *S->ContainerPtrToValuePtr<FVector>(Params) = QueryPosition; }
+			else { Sample = S; }
+		}
+	}
+	WaterLibrary->GetDefaultObject()->ProcessEvent(Function, Params);
+	if (Sample)
+	{
+		const void* Data = Sample->ContainerPtrToValuePtr<void>(Params);
+		const auto* Valid = FindFProperty<FBoolProperty>(Sample->Struct, TEXT("bValid"));
+		const auto* Height = FindFProperty<FFloatProperty>(Sample->Struct, TEXT("Height"));
+		const auto* AgeProperty = FindFProperty<FFloatProperty>(Sample->Struct, TEXT("Age"));
+		const auto* NormalProperty = FindFProperty<FStructProperty>(Sample->Struct, TEXT("Normal"));
+		const auto* VelocityProperty = FindFProperty<FStructProperty>(Sample->Struct, TEXT("Velocity"));
+		const float Age = AgeProperty ? AgeProperty->GetPropertyValue_InContainer(Data) : 0.f;
+		if (Valid && Height && NormalProperty && Valid->GetPropertyValue_InContainer(Data)
+			&& DCShotWater::FreshCapture(Now, Age, Shot.WaterHistory[0].Time))
+		{
+			// Ocean answers trail the GPU. Use their capture-time query location,
+			// not today's moving cannonball, as the origin of the sampled tangent plane.
+			FVector CapturedPosition = Shot.WaterHistory[0].Position;
+			for (int32 Index=1; Index<Shot.WaterHistory.Num(); ++Index)
+			{
+				const FWaterHistory& Before=Shot.WaterHistory[Index-1];
+				const FWaterHistory& After=Shot.WaterHistory[Index];
+				const double Alpha=FMath::Clamp((Now-Age-Before.Time)/FMath::Max(After.Time-Before.Time,.00001),0.,1.);
+				CapturedPosition=FMath::Lerp(Before.Position,After.Position,Alpha);
+				if (After.Time>=Now-Age) { break; }
+			}
+			Plane.Normal = *NormalProperty->ContainerPtrToValuePtr<FVector>(Data);
+			const FVector Delta = QueryPosition - CapturedPosition;
+			const FVector Velocity = VelocityProperty ? *VelocityProperty->ContainerPtrToValuePtr<FVector>(Data) : FVector::ZeroVector;
+			Plane.Point.Z = DCShotWater::ProjectHeight(Height->GetPropertyValue_InContainer(Data),
+				Plane.Normal.X,Plane.Normal.Y,Plane.Normal.Z,Delta.X,Delta.Y,Velocity.Z,Age);
+			Plane.bSampled = !Plane.Point.ContainsNaN() && !Plane.Normal.ContainsNaN();
+		}
+	}
+	for (TFieldIterator<FProperty> It(Function); It && It->HasAnyPropertyFlags(CPF_Parm); ++It) { It->DestroyValue_InContainer(Params); }
+	if (!Plane.bSampled) { Plane.Point.Z = SeaLevelZ; Plane.Normal = FVector::UpVector; }
+	return Plane;
+}
+
+void ADCGunnery::WaterContact(const FVector& Position, bool bSampled)
+{
+	// Water misses never use the stone explosion or the ship-impact thunder path.
+	if (auto* Audio = Cast<ADCAudio>(UGameplayStatics::GetActorOfClass(GetWorld(), ADCAudio::StaticClass()))) { Audio->CannonSplash(Position); }
+	if (WaterImpact)
+	{
+		if (WaterBursts.Num() >= 32)
+		{
+			if (auto* Old = WaterBursts[0].Effect.Get()) { Old->DestroyComponent(); }
+			WaterBursts.RemoveAt(0);
+		}
+		auto* Effect = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), WaterImpact, Position + FVector(0,0,35), FRotator::ZeroRotator, FVector(1.1f));
+		if (Effect) { WaterBursts.Add({Effect, 0.f}); }
+		else { Splashes.Add({Position, 0.f}); }
+	}
+	else { Splashes.Add({Position, 0.f}); }
+	if (FParse::Param(FCommandLine::Get(), TEXT("DCGunLog")))
+	{
+		UE_LOG(LogDC, Log, TEXT("WATER_IMPACT position=%s sampled=%d effect=%s bursts=%d"), *Position.ToCompactString(), bSampled, *GetNameSafe(WaterImpact.Get()), WaterBursts.Num());
+	}
+}
+
+void ADCGunnery::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	for (const FWaterBurst& Burst:WaterBursts) { if (auto* Effect=Burst.Effect.Get()) { Effect->DestroyComponent(); } }
+	WaterBursts.Reset();
+	Super::EndPlay(EndPlayReason);
 }
 
 void ADCGunnery::TickMuzzleFlashes(float DeltaSeconds)
@@ -448,8 +546,26 @@ bool ADCGunnery::FireBroadside(EDCSide Side, const FVector& Target, int32 MaxGun
 void ADCGunnery::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	for (int32 Index=WaterBursts.Num()-1; Index>=0; --Index)
+	{
+		FWaterBurst& Burst=WaterBursts[Index]; Burst.Age+=DeltaSeconds;
+		auto* Effect=Burst.Effect.Get();
+		if (!Effect) { WaterBursts.RemoveAtSwap(Index); continue; }
+		if (Burst.Age>=.12f && Effect->IsActive()) { Effect->DeactivateSystem(); }
+		if (Burst.Age>=1.6f) { Effect->DestroyComponent(); WaterBursts.RemoveAtSwap(Index); }
+	}
 #if !UE_BUILD_SHIPPING
 	if (FParse::Param(FCommandLine::Get(), TEXT("DCCannonVerify"))) { TickVerification(); }
+	if (FParse::Param(FCommandLine::Get(), TEXT("DCWaterImpactReview")) && WaterReviewStage<4
+		&& GetWorld()->GetTimeSeconds()>=3.f+4.f*WaterReviewStage)
+	{
+		const EDCSide Side=WaterReviewStage==3?EDCSide::Port:EDCSide::Starboard;
+		const float Range=WaterReviewStage==1?12000.f:5000.f;
+		const FVector Target(0,Side==EDCSide::Port?-Range:Range,SeaLevelZ+(WaterReviewStage==2?3000.f:0.f));
+		const bool Fired=FireGun(GetPlayerGun(Side),Target,true);
+		UE_LOG(LogDC,Log,TEXT("WATER_REVIEW shot=%d fired=%d target=%s"),WaterReviewStage,Fired,*Target.ToCompactString());
+		++WaterReviewStage;
+	}
 #endif
 
 	for (FGun& Gun : Guns) { Gun.Reload = FMath::Max(0.f, Gun.Reload - DeltaSeconds); }
@@ -481,7 +597,17 @@ void ADCGunnery::Tick(float DeltaSeconds)
 		FShot S;
 		S.Pos = Muzzle;
 		S.Vel = Delta / FlightTime + FVector(0.f, 0.f, 0.5f * Gravity * FlightTime);
-		S.Life = FlightTime + 0.8f;
+		// A sky shot must be allowed to fall back into the sea instead of vanishing
+		// just past its aim point. All gun/reload/ballistic constants stay unchanged.
+		float LandingZ=SeaLevelZ;
+		if (const auto* Arena=ADCMaelstrom::Get(this); Arena && Arena->IsActive()) { LandingZ=Arena->SampleSurfaceWorld(P.Target); }
+		S.Life = static_cast<float>(DCShotWater::Lifetime(Muzzle.Z,LandingZ,S.Vel.Z,Gravity,FlightTime));
+		// A finite pool, independent of array order (RemoveAtSwap must not swap probes).
+		for (int32 Channel=0; Channel<64; ++Channel)
+		{
+			if (!Shots.ContainsByPredicate([Channel](const FShot& Existing){ return Existing.WaterChannel==Channel; }))
+			{ S.WaterChannel=Channel; break; }
+		}
 		S.PlayerSide = P.PlayerSide;
 		Shots.Add(S);
 		MuzzleFlashes.Add({Muzzle, S.Vel.GetSafeNormal(), 0.f, FMath::FRand()});
@@ -503,6 +629,14 @@ void ADCGunnery::Tick(float DeltaSeconds)
 	for (int32 i = Shots.Num() - 1; i >= 0; --i)
 	{
 		FShot& S = Shots[i];
+		const FWaterPlane Water = Maelstrom ? FWaterPlane{} : QueryShotWater(S);
+		auto SurfaceAt = [&](double X,double Y)
+		{
+			const FVector Position(X,Y,0);
+			if (Maelstrom) { return double(Maelstrom->SampleSurfaceWorld(Position)); }
+			const double Height = Water.Point.Z - (Water.Normal.X*(X-Water.Point.X)+Water.Normal.Y*(Y-Water.Point.Y))/FMath::Max(Water.Normal.Z,.25);
+			return Height+DCOcean::RenderedHeightOffset(this,Position);
+		};
 		bool bHitTarget = false;
 		bool bCreatureHit = false;
 		FVector ImpactNormal = FVector::UpVector;
@@ -523,16 +657,14 @@ void ADCGunnery::Tick(float DeltaSeconds)
 			if (Maelstrom)
 			{
 				FVector WaterPoint;
-				bSplash = IntersectMaelstromSurface(Maelstrom, Previous, S.Pos, WaterPoint);
-				if (bSplash) { S.Pos = WaterPoint; }
+				bSplash=IntersectMaelstromSurface(Maelstrom,Previous,S.Pos,WaterPoint);
+				if (bSplash) { S.Pos=WaterPoint; }
 			}
 			else
 			{
-				bSplash = S.Pos.Z <= SeaLevelZ && S.Vel.Z < 0.f;
-				if (bSplash && Previous.Z > SeaLevelZ)
-				{
-					S.Pos = FMath::Lerp(Previous, S.Pos, (Previous.Z - SeaLevelZ) / (Previous.Z - S.Pos.Z));
-				}
+				double WaterFraction=0;
+				bSplash=DCShotWater::FirstEntry(Previous.X,Previous.Y,Previous.Z,S.Pos.X,S.Pos.Y,S.Pos.Z,SurfaceAt,WaterFraction);
+				if (bSplash) { S.Pos=FMath::Lerp(Previous,S.Pos,WaterFraction); }
 			}
 			FHitResult Hit;
 			bool bGeometry = GetWorld()->LineTraceSingleByChannel(Hit, Previous, S.Pos, ECC_Visibility, Query);
@@ -558,7 +690,7 @@ void ADCGunnery::Tick(float DeltaSeconds)
 				bCreatureHit = true;
 				bSplash = false;
 			}
-			const float SurfaceZ = Maelstrom ? Maelstrom->SampleSurfaceWorld(S.Pos) : SeaLevelZ;
+			const double SurfaceZ = Maelstrom?Maelstrom->SampleSurfaceWorld(S.Pos):SurfaceAt(S.Pos.X,S.Pos.Y);
 			if (bGeometry && S.Pos.Z > SurfaceZ + 10.f) { bSplash = false; }
 		}
 		S.Life -= DeltaSeconds;
@@ -574,14 +706,14 @@ void ADCGunnery::Tick(float DeltaSeconds)
 			}
 			static const bool bGunLog = FParse::Param(FCommandLine::Get(), TEXT("DCGunLog"));
 			if (bGunLog) { UE_LOG(LogDC, Log, TEXT("Shot ended at %s: hit %d splash %d life %.2f"), *S.Pos.ToCompactString(), bHitTarget, bSplash, S.Life); }
-			UParticleSystem* Effect = bHitTarget ? (bCreatureHit ? CreatureImpact.Get() : StoneImpact.Get()) : (bSplash ? WaterImpact.Get() : nullptr);
+			if (bSplash && !bHitTarget) { WaterContact(S.Pos, Maelstrom || Water.bSampled); }
+			UParticleSystem* Effect = bHitTarget ? (bCreatureHit ? CreatureImpact.Get() : StoneImpact.Get()) : nullptr;
 			if (Effect)
 			{
 				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), Effect, S.Pos,
 					bHitTarget ? FRotationMatrix::MakeFromZ(ImpactNormal).Rotator() : FRotator::ZeroRotator,
 					FVector(bHitTarget ? 0.55f : 0.7f));
 			}
-			else if (bSplash && !bHitTarget) { Splashes.Add({S.Pos, 0.f}); }
 			else if (ImpactEffectClass && bHitTarget)
 			{
 				if (AActor* Fx = GetWorld()->SpawnActor<AActor>(ImpactEffectClass, S.Pos, FRotator::ZeroRotator, Params))

@@ -20,6 +20,7 @@ class ADCGunnery : public AActor
 public:
 	ADCGunnery();
 	virtual void Tick(float DeltaSeconds) override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	static ADCGunnery* Get(const UObject* WorldContext);
 
@@ -52,7 +53,20 @@ public:
 
 protected:
 	struct FPendingShot { int32 Gun; FVector Target; EDCSide PlayerSide; };
-	struct FShot { FVector Pos; FVector Vel; float Life; EDCSide PlayerSide; };
+	struct FWaterHistory { FVector Position; double Time; };
+	struct FShot
+	{
+		FVector Pos; FVector Vel; float Life; EDCSide PlayerSide;
+		int32 WaterChannel = INDEX_NONE;
+		TArray<FWaterHistory> WaterHistory;
+	};
+	struct FWaterPlane { FVector Point; FVector Normal = FVector::UpVector; bool bSampled = false; };
+	FWaterPlane QueryShotWater(FShot& Shot);
+	void WaterContact(const FVector& Position, bool bSampled);
+	struct FWaterBurst { TWeakObjectPtr<class UParticleSystemComponent> Effect; float Age = 0.f; };
+	TArray<FWaterBurst> WaterBursts;
+	UPROPERTY() TObjectPtr<UClass> WaterLibrary;
+	UPROPERTY() TObjectPtr<UFunction> WaterSurfaceFunction;
 
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UInstancedStaticMeshComponent> Balls;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UInstancedStaticMeshComponent> Trails;
@@ -90,6 +104,7 @@ protected:
 	float SeaLevelZ = 0.f;
 #if !UE_BUILD_SHIPPING
 	void TickVerification();
+	int32 WaterReviewStage = 0;
 	int32 VerificationStage = 0;
 	bool bVerificationFailed = false;
 	TWeakObjectPtr<AActor> VerificationTarget;
