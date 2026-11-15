@@ -51,7 +51,8 @@ def source_info(seed):
     provenance = metadata.get("provenance", {})
     kind = metadata.get("source_kind", provenance.get("source_kind", "measured_uppermost_xy"))
     clean = kind in ("clean_macro_landform", "blender_ridged_macro_landform", "massif_macro_landform")
-    reference = provenance.get("geometry_reference") or provenance.get("source_head", "unspecified")[:8]
+    reference = (provenance.get("source_head") or provenance.get("boundary_source_head") or provenance.get("geometry_reference")
+                 or provenance.get("boundary_source_sha256") or provenance.get("input_sha256") or "unspecified")[:8]
     if clean:
         reference=f"boundary {reference}; seed {metadata.get('settings', {}).get('seed', metadata.get('seed', 'unspecified'))}"
     return dict(kind=kind, clean=clean, reference=reference,

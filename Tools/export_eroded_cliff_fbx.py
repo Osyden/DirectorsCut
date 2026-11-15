@@ -71,6 +71,7 @@ def main():
     attribute=mesh.color_attributes.new(name="ErosionMasks",type="FLOAT_COLOR",domain="CORNER")
     attribute.data.foreach_set("color",colors[corners].ravel())
     mesh.color_attributes.active_color=attribute
+    expected_corner_normals=np.array([normal.vector[:] for normal in mesh.corner_normals],dtype=float) if args.roundtrip else None
     obj.select_set(True);bpy.context.view_layer.objects.active=obj
     output.parent.mkdir(parents=True,exist_ok=True)
     settings=dict(use_selection=True,object_types={"MESH"},axis_forward="-Y",axis_up="Z",
@@ -120,11 +121,32 @@ def main():
         actual_order=np.lexsort(tuple(np.round(actual_xyz[:,axis],4) for axis in (2,1,0)))
         corner_error=float(np.max(np.abs(expected_xyz[expected_order]-actual_xyz[actual_order])))
         color_error=float(np.max(np.abs(actual_color[actual_order]-colors[corners][expected_order])))
+        # A position can have several split normals. Match the exact triangle
+        # plus its corner, not just position or a histogram of normal values.
+        source_xy={tuple(np.round(v[:2],3)):i for i,v in enumerate(vertices)}
+        imported_to_source=np.array([source_xy[tuple(np.round(v[:2],3))] for v in xyz])
+        actual_source_corners=imported_to_source[imported_corners]
+        source_keys=np.column_stack((np.repeat(np.sort(faces,axis=1),3,axis=0),corners))
+        actual_keys=np.column_stack((np.repeat(np.sort(actual_source_corners.reshape(-1,3),axis=1),3,axis=0),actual_source_corners))
+        source_normal_order=np.lexsort(tuple(source_keys[:,i] for i in (3,2,1,0)))
+        actual_normal_order=np.lexsort(tuple(actual_keys[:,i] for i in (3,2,1,0)))
+        if not np.array_equal(source_keys[source_normal_order],actual_keys[actual_normal_order]):
+            raise RuntimeError("FBX changed triangle-corner identity for normal verification")
+        normal_matrix=check.matrix_world.inverted().transposed().to_3x3()
+        actual_normals=np.array([(normal_matrix@normal.vector).normalized()[:] for normal in check.data.corner_normals])
+        normal_error=float(np.max(np.abs(actual_normals[actual_normal_order]-expected_corner_normals[source_normal_order])))
+        n0=actual_normals[actual_normal_order];n1=expected_corner_normals[source_normal_order]
+        cosine=np.sum(n0*n1,axis=1)/(np.linalg.norm(n0,axis=1)*np.linalg.norm(n1,axis=1))
+        normal_angle_error=float(np.degrees(np.arccos(np.clip(cosine,-1,1))).max())
         report["blender_roundtrip"]={"bounds_max_error_m":bounds_error,"vertices":len(check.data.vertices),
                                      "triangles":len(check.data.polygons),"color_max_error":color_error,
-                                     "corner_position_max_error_m":corner_error}
-        if bounds_error>.001 or corner_error>.001 or color_error>1.e-5 or len(check.data.polygons)!=len(faces):
-            raise RuntimeError("FBX roundtrip changed dimensions, masks or triangle count")
+                                     "corner_position_max_error_m":corner_error,"corner_normal_max_error":normal_error,
+                                     "corner_normal_max_angle_degrees":normal_angle_error,
+                                     "normal_tolerance_degrees":.1,"imported_custom_normals":check.data.has_custom_normals}
+        # Blender encodes imported custom split normals; allow sub-tenth-degree
+        # storage quantization while still rejecting lost smooth/sharp splits.
+        if bounds_error>.001 or corner_error>.001 or color_error>1.e-5 or normal_angle_error>.1 or len(check.data.polygons)!=len(faces):
+            raise RuntimeError("FBX roundtrip changed dimensions, masks, corner normals or triangle count: "+json.dumps(report["blender_roundtrip"]))
     output.with_suffix(".json").write_text(json.dumps(report,indent=2)+"\n",encoding="utf-8")
     print(json.dumps(report,indent=2))
 
