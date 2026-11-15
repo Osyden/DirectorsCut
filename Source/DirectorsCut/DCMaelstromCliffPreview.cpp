@@ -14,6 +14,7 @@
 #include "Misc/Parse.h"
 #include "Misc/Paths.h"
 #include "Misc/FileHelper.h"
+#include "Misc/SecureHash.h"
 
 namespace
 {
@@ -43,8 +44,8 @@ void ADCMaelstrom::BuildCliffPreview()
         UE_LOG(LogTemp,Warning,TEXT("DC_CLIFF_PREVIEW requires DCSceneReview and excludes DCFallCamera/DCProceduralFalls"));
         return;
     }
-    // This close authoring view deliberately isolates one tile. The normal
-    // cliff/contact/temple system remains unchanged until all share a mesh.
+    // Preview an imported sector or complete ring without replacing gameplay
+    // contacts. Landmarks and optional falls follow the imported source.
     TSharedPtr<FJsonObject> Audit,Import;
     const FString Saved=FPaths::ProjectSavedDir();
     if(!ReadPreviewJson(Saved/TEXT("CliffPreviewSourceAudit.json"),Audit)
@@ -114,6 +115,55 @@ void ADCMaelstrom::BuildCliffPreview()
             &&Supports->TryGetStringField(TEXT("source_fbx_sha256"),SupportHash)&&SupportHash==SourceHash
             &&Supports->TryGetArrayField(TEXT("actors"),Actors))
         {
+            // Exact authoring grid, tied to this imported FBX. Ruin colonnades
+            // and rubble vary between runs, so check their CURRENT footprints
+            // instead of accepting a nearby stale bounding box.
+            TArray<FVector3f> Surface;
+            int32 Rows=0,Sectors=0;
+            const TSharedPtr<FJsonObject>* Grid=nullptr;
+            if(Supports->TryGetObjectField(TEXT("surface_grid"),Grid))
+            {
+                FString Digest; int32 Count=0; TArray<uint8> Bytes;
+                if((*Grid)->TryGetNumberField(TEXT("rows"),Rows)&&Rows>0&&Rows<=512
+                    &&(*Grid)->TryGetNumberField(TEXT("sectors"),Sectors)&&Sectors>0&&Sectors<=4096
+                    &&(*Grid)->TryGetNumberField(TEXT("vertex_count"),Count)&&Count==(Rows+1)*(Sectors+1)
+                    &&(*Grid)->TryGetStringField(TEXT("md5"),Digest)
+                    &&FFileHelper::LoadFileToArray(Bytes,*(Saved/TEXT("CliffPreviewSurface.bin")))
+                    &&Bytes.Num()==Count*3*sizeof(float)&&FMD5::HashBytes(Bytes.GetData(),Bytes.Num())==Digest)
+                {
+                    static_assert(sizeof(FVector3f)==3*sizeof(float));
+                    Surface.SetNumUninitialized(Count);
+                    FMemory::Memcpy(Surface.GetData(),Bytes.GetData(),Bytes.Num());
+                    for(const FVector3f& P:Surface) { if(P.ContainsNaN()) { Surface.Reset(); break; } }
+                }
+            }
+            const auto GroundAt=[&](const FVector2D& P)
+            {
+                double Ground=-DBL_MAX;
+                if(Surface.IsEmpty()) { return Ground; }
+                double A=FMath::Atan2(P.Y,P.X); if(A<0.) { A+=UE_TWO_PI; }
+                const int32 CentreSide=FMath::Min(FMath::FloorToInt(A/UE_TWO_PI*Sectors),Sectors-1);
+                const auto Triangle=[&](int32 IA,int32 IB,int32 IC)
+                {
+                    const FVector A3(Surface[IA]),B3(Surface[IB]),C3(Surface[IC]);
+                    const FVector2D AB(B3-A3),AC(C3-A3),AP=P-FVector2D(A3);
+                    const double D=AB.X*AC.Y-AB.Y*AC.X;
+                    if(FMath::Abs(D)<.0001) { return; }
+                    const double U=(AP.X*AC.Y-AP.Y*AC.X)/D,V=(AB.X*AP.Y-AB.Y*AP.X)/D;
+                    if(U>=-.000001&&V>=-.000001&&U+V<=1.000001)
+                    { Ground=FMath::Max(Ground,A3.Z+U*(B3.Z-A3.Z)+V*(C3.Z-A3.Z)); }
+                };
+                for(int32 Delta=-1;Delta<=1;++Delta)
+                {
+                    const int32 Side=(CentreSide+Delta+Sectors)%Sectors;
+                    for(int32 Row=0;Row<Rows;++Row)
+                    {
+                        const int32 B=Row*(Sectors+1)+Side,D=B+Sectors+1;
+                        Triangle(B,D,B+1); Triangle(B+1,D,D+1);
+                    }
+                }
+                return Ground;
+            };
             for(const TSharedPtr<FJsonValue>& Value:*Actors)
             {
                 const TSharedPtr<FJsonObject>* A=nullptr;
@@ -138,9 +188,43 @@ void ADCMaelstrom::BuildCliffPreview()
                         LandmarkPose.TransformPosition(FVector(Bounds.GetCenter().X,Bounds.GetCenter().Y,Bounds.Min.Z)));
                     const FVector LocalTop=GetArenaTransform().InverseTransformPosition(
                         LandmarkPose.TransformPosition(FVector(Bounds.GetCenter().X,Bounds.GetCenter().Y,Bounds.Max.Z)));
+                    if(!Surface.IsEmpty())
+                    {
+                        if(!Landmark->GetRootComponent()||Landmark->GetRootComponent()->GetAttachParent()!=Arena) { continue; }
+                        double Low=DBL_MAX,High=-DBL_MAX; bool Covered=true;
+                        // Nine footprint samples match production placement's
+                        // granularity. This is not an exhaustive volume test.
+                        for(int32 FootX=-1;FootX<=1;++FootX) for(int32 FootY=-1;FootY<=1;++FootY)
+                        {
+                            const FVector Corner=Bounds.GetCenter()+FVector(FootX*Bounds.GetExtent().X,FootY*Bounds.GetExtent().Y,0.);
+                            const FVector P=GetArenaTransform().InverseTransformPosition(LandmarkPose.TransformPosition(Corner));
+                            const double FootZ=GroundAt(FVector2D(P));
+                            Covered&=FootZ>-DBL_MAX;
+                            Low=FMath::Min(Low,FootZ); High=FMath::Max(High,FootZ);
+                        }
+                        const double Offset=Low-100.-LocalBottom.Z;
+                        if(!Covered||FMath::Abs(Offset)>10000.||High-Low>1500.) { continue; }
+                        CliffPreviewLandmarkOrigins.Add(Landmark,Landmark->GetRootComponent()->GetRelativeLocation());
+                        CliffPreviewLandmarkOffsets.Add(Landmark,FVector(0.,0.,Offset));
+                        CliffPreviewSupportedLandmarks.Add(Landmark);
+                        UE_LOG(LogTemp,Display,TEXT("DC_CLIFF_PREVIEW current footprint=%s vertical_move_m=%.3f ground_range_m=%.3f samples=9"),*Id,Offset*.01,(High-Low)*.01);
+                        continue;
+                    }
                     const double DX=LocalMid.X*.01-(*Centre)[0]->AsNumber(),DY=LocalMid.Y*.01-(*Centre)[1]->AsNumber();
                     if(FMath::Abs(DX)>.03||FMath::Abs(DY)>.03||FMath::Abs(LocalBottom.Z*.01-Bottom)>.03)
-                    { UE_LOG(LogTemp,Warning,TEXT("DC_CLIFF_PREVIEW support identity/placement mismatch %s"),*Id); continue; }
+                    { UE_LOG(LogTemp,Warning,TEXT("DC_CLIFF_PREVIEW support identity/placement mismatch %s delta_m=(%.5f,%.5f,%.5f)"),*Id,DX,DY,LocalBottom.Z*.01-Bottom); continue; }
+                    const TArray<TSharedPtr<FJsonValue>>* OffsetValues=nullptr;
+                    FVector Offset=FVector::ZeroVector;
+                    if((*A)->TryGetArrayField(TEXT("offset_arena_m"),OffsetValues))
+                    {
+                        if(!PreviewVector(*OffsetValues,Offset)||Offset.Size()>100.) { continue; }
+                        if(!Landmark->GetRootComponent()||Landmark->GetRootComponent()->GetAttachParent()!=Arena) { continue; }
+                        if(!Offset.IsNearlyZero())
+                        {
+                            CliffPreviewLandmarkOrigins.Add(Landmark,Landmark->GetRootComponent()->GetRelativeLocation());
+                            CliffPreviewLandmarkOffsets.Add(Landmark,Offset*100.);
+                        }
+                    }
                     CliffPreviewSupportedLandmarks.Add(Landmark);
                     UE_LOG(LogTemp,Display,TEXT("DC_CLIFF_PREVIEW supported landmark=%s bottom_m=%.3f top_m=%.3f"),*Id,Bottom,LocalTop.Z*.01);
                 }
@@ -156,6 +240,7 @@ void ADCMaelstrom::UpdateCliffPreview()
     if(!CliffPreviewMesh) { return; }
     if(!bActive||Elapsed<0.f) { ClearCliffPreview(); return; }
     CliffPreviewMesh->SetVisibility(true);
+    UpdateCliffPreviewFalls();
     if(CliffPreviewHidden.IsEmpty())
     {
         const auto Remember=[this](USceneComponent* Mesh)
@@ -171,7 +256,19 @@ void ADCMaelstrom::UpdateCliffPreview()
     for(UInstancedStaticMeshComponent* Mesh:CliffRocks) { if(Mesh) { Mesh->SetVisibility(false); } }
     for(UInstancedStaticMeshComponent* Mesh:CliffShadowRocks) { if(Mesh) { Mesh->SetVisibility(false); } }
     for(AActor* Landmark:Landmarks)
-    { if(Landmark) { Landmark->SetActorHiddenInGame(!CliffPreviewSupportedLandmarks.Contains(Landmark)); } }
+    {
+        if(!Landmark) { continue; }
+        Landmark->SetActorHiddenInGame(!CliffPreviewSupportedLandmarks.Contains(Landmark));
+        if(const FVector* Offset=CliffPreviewLandmarkOffsets.Find(Landmark))
+        {
+            if(const FVector* Origin=CliffPreviewLandmarkOrigins.Find(Landmark))
+            { Landmark->SetActorRelativeLocation(*Origin+*Offset); }
+        }
+    }
+    // A complete candidate ring needs to be judged from the playable ship,
+    // including its changing rim silhouette during descent. The close tile
+    // camera remains the default for individual authoring patches.
+    if(FParse::Param(FCommandLine::Get(),TEXT("DCCliffPreviewPlayerView"))) { return; }
     APlayerController* PC=GetWorld()->GetFirstPlayerController();
     if(!CliffPreviewCamera.IsValid())
     {
@@ -182,7 +279,7 @@ void ADCMaelstrom::UpdateCliffPreview()
             Camera->GetCameraComponent()->SetFieldOfView(60.f);
             Camera->GetCameraComponent()->bConstrainAspectRatio=false;
             if(PC) { CliffPreviewPreviousTarget=PC->GetViewTarget(); PC->SetViewTarget(Camera); }
-            UE_LOG(LogTemp,Display,TEXT("DC_CLIFF_PREVIEW camera active; isolated authoring surface, no waterfall/temple integration"));
+        UE_LOG(LogTemp,Display,TEXT("DC_CLIFF_PREVIEW camera active; imported authoring surface, gameplay contacts unchanged"));
         }
     }
     if(ACameraActor* Camera=CliffPreviewCamera.Get())
@@ -194,7 +291,19 @@ void ADCMaelstrom::UpdateCliffPreview()
             if(const UStaticMesh* Mesh=CliffPreviewMesh->GetStaticMesh())
             { LocalTarget=Mesh->GetBoundingBox().GetCenter(); }
         }
+        FVector TargetMetres;
+        if(FParse::Value(FCommandLine::Get(),TEXT("DCCliffPreviewTargetX="),TargetMetres.X)
+            &&FParse::Value(FCommandLine::Get(),TEXT("DCCliffPreviewTargetY="),TargetMetres.Y)
+            &&FParse::Value(FCommandLine::Get(),TEXT("DCCliffPreviewTargetZ="),TargetMetres.Z)
+            &&!TargetMetres.ContainsNaN())
+        { LocalTarget=TargetMetres*100.; }
         FVector LocalEye=LocalTarget+FVector(9000,47500,6000);
+        float AzimuthDeg=0.f;
+        if(FParse::Value(FCommandLine::Get(),TEXT("DCCliffPreviewAzimuth="),AzimuthDeg)&&FMath::IsFinite(AzimuthDeg))
+        {
+            const float A=FMath::DegreesToRadians(AzimuthDeg);
+            LocalEye=LocalTarget+FVector(FMath::Cos(A)*48000.,FMath::Sin(A)*48000.,6000.);
+        }
         // Opt-in metric distance check, using the same target, angle and FOV.
         // The default authoring camera remains unchanged for matched reviews.
         float ReviewDistanceM=0.f;
@@ -212,6 +321,9 @@ void ADCMaelstrom::UpdateCliffPreview()
 void ADCMaelstrom::ClearCliffPreview()
 {
     if(CliffPreviewMesh) { CliffPreviewMesh->SetVisibility(false); }
+    ClearCliffPreviewFalls();
+    for(const auto& Entry:CliffPreviewLandmarkOrigins)
+    { if(AActor* Landmark=Entry.Key.Get()) { Landmark->SetActorRelativeLocation(Entry.Value); } }
     for(const FCliffPreviewHidden& Saved:CliffPreviewHidden)
     {
         if(USceneComponent* Mesh=Saved.Component.Get())

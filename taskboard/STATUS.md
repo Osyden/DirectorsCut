@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 15 Nov Codex: full-ring cliff pilot in native review; still below visual target
+
+- The500m eroded-cliff pilot is joined to the full3.2km crater in an opt-in preview. Actual player/sector views, source-mesh verification and seek/ending restoration ran. Normal gameplay terrain and the separate chat's sky/cloud work remain unchanged.
+- Current-frame ruin support now handles randomized assemblies; all50 groups are grounded in the latest preview, including three raised foundations. The rock still reads as folded clay, and both bedding treatments were rejected. A connected fractured buttress and a150m falling-water outlet are active next steps, not completed polish.
+- [Actual screenshots, working artifacts, ownership and next implementation](CRATER-ESCARPMENT-WORKFLOW-15NOV.md). Boss remains deferred. No main merge or package is implied by this checkpoint.
+
 ## 15 Nov Codex: natural parent terrain and shading diagnosis; crater cut next
 
 - Wider terrain tied to the modern coast still failed as smooth mounds. A separate historical-datum/uniform-uplift model now produces useful branching valleys and interlocking ridges at native scale. Portable CLI replay matches all 40 numeric arrays exactly. [Actual images, limits and next crater-cut stage](CRATER-ESCARPMENT-WORKFLOW-15NOV.md).

@@ -66,6 +66,16 @@ private:
 	struct FCliffPreviewHidden { TWeakObjectPtr<USceneComponent> Component; bool bVisible=false; };
 	TArray<FCliffPreviewHidden> CliffPreviewHidden;
 	TSet<TWeakObjectPtr<AActor>> CliffPreviewSupportedLandmarks;
+	TMap<TWeakObjectPtr<AActor>,FVector> CliffPreviewLandmarkOrigins;
+	TMap<TWeakObjectPtr<AActor>,FVector> CliffPreviewLandmarkOffsets;
+	void UpdateCliffPreviewFalls();
+	void ClearCliffPreviewFalls();
+	UPROPERTY() TObjectPtr<class UStaticMeshComponent> CliffPreviewFallCore;
+	struct FCliffPreviewVolume { TWeakObjectPtr<class AHeterogeneousVolume> Actor; int32 Frames=1; float FPS=12.f; };
+	TArray<FCliffPreviewVolume> CliffPreviewVolumes;
+	bool bCliffPreviewFallsTried=false;
+	float CliffPreviewPreviousTraceDistance=-1.f;
+	float CliffPreviewAppliedTraceDistance=-1.f;
 	void UpdateTerrainShadows();
 	float NextTerrainShadowUpdate=-1.f;
 	void BuildBasin();

@@ -157,20 +157,40 @@ def infer_axes(source_positions, actual_positions):
 def audit_geometry(source, actual_positions, actual_triangles):
     permutation, signs = infer_axes(source["positions_m"], actual_positions)
     expected = [apply_axis(p, permutation, signs) for p in source["positions_m"]]
+    # Blender stores authored metres as float32 before FBX/UE converts to
+    # float32 centimetres. At a 2km ring coordinate those roundings can exceed
+    # the small-tile0.02cm bound. Keep a coordinate-derived sub-millimetre bound;
+    # triangle connectivity and unique nearest identity are still mandatory.
+    position_tolerance_cm=max(.02,max(abs(v) for p in expected for v in p)*2.**-22)
+    if position_tolerance_cm>.1:
+        raise RuntimeError("Authoring frame exceeds the supported sub-millimetre float32 tolerance")
     lookup = {}
     for i, point in enumerate(expected):
         lookup.setdefault(key_cm(point), []).append(i)
     actual_to_source = []
     residual = 0.
     first_actual = {}
-    for point in actual_positions:
+    # Original SourceModel commonly preserves vertex order. Prove that route
+    # with BOTH positions and complete connectivity before spatial matching;
+    # a periodic ring has nearly coincident seam vertices whose distinct IDs
+    # must survive even when float32 makes nearest-position choices ambiguous.
+    ordered=(len(actual_positions)==len(expected)
+        and all(max(abs(a-b) for a,b in zip(p,q))<=position_tolerance_cm
+            for p,q in zip(actual_positions,expected))
+        and Counter(tuple(sorted(t)) for t in actual_triangles)==Counter(tuple(sorted(t)) for t in source['triangles']))
+    for actual_index,point in enumerate(actual_positions):
+        if ordered:
+            actual_to_source.append(actual_index)
+            first_actual[actual_index]=point
+            residual=max(residual,max(abs(a-b) for a,b in zip(point,expected[actual_index])))
+            continue
         base = key_cm(point)
         candidates = []
         for offset in itertools.product((-1, 0, 1), repeat=3):
             key = tuple(base[i]+offset[i] for i in range(3))
             for index in lookup.get(key, ()):
                 delta = [a-b for a, b in zip(point, expected[index])]
-                if max(abs(value) for value in delta) <= .02:
+                if max(abs(value) for value in delta) <= position_tolerance_cm:
                     candidates.append((sum(value*value for value in delta), index))
         candidates.sort()
         if not candidates:
@@ -181,7 +201,7 @@ def audit_geometry(source, actual_positions, actual_triangles):
         actual_to_source.append(source_index)
         first_actual.setdefault(source_index, point)
         residual = max(residual, max(abs(a-b) for a, b in zip(point, expected[source_index])))
-    if residual > .02 or len(first_actual) != len(expected):
+    if residual > position_tolerance_cm or len(first_actual) != len(expected):
         raise RuntimeError("Source geometry coverage/residual failed: " + str((len(first_actual), residual)))
     expected_faces = Counter(tuple(sorted(tri)) for tri in source["triangles"])
     actual_faces = Counter(tuple(sorted(actual_to_source[i] for i in tri)) for tri in actual_triangles)
@@ -202,7 +222,9 @@ def audit_geometry(source, actual_positions, actual_triangles):
     imported_basis = [[sum(basis[k][r]*matrix[c][k] for k in range(3)) for r in range(3)] for c in range(3)]
     return actual_to_source, {"source_vertices": len(expected), "actual_vertices": len(actual_positions),
         "triangles": len(actual_triangles), "position_max_error_cm": residual,
-        "identity_method": "Unique nearest original XYZ within unchanged0.02cm residual; bucket collisions retain all candidates",
+        "position_tolerance_cm": position_tolerance_cm,
+        "identity_method": ("Original vertex order, all positions and complete triangle connectivity verified" if ordered else
+            "Unique nearest original XYZ within coordinate-derived float32 round-trip bound; bucket collisions retain all candidates"),
         "source_metres_to_imported_cm": {"scale": 100, "axis_matrix": matrix},
         "anchors": [{"source_vertex": i, "author_m": positions[i], "import_cm": first_actual[i]} for i in anchor_ids],
         "arena_reconstruction": {"origin_cm": [100*v for v in meta["local_origin_arena_m"]],
