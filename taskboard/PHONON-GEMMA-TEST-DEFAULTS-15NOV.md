@@ -6,6 +6,18 @@ The user explicitly requested these as the **defaults for the next build**, supe
 
 Evidence is under main `Saved/PhononGemma/`.
 
+### Phrase-pause correction, 22:05
+
+The user requested smoother speech after the initial acceptance. Follow-up `5475213` (main `394f9c9`, `FifthBuild11.log`) gives Phonon each complete, validated, bounded reply as one utterance. Streaming text still undergoes the existing validation; progressive PCM delivery, Audio2Face buffering and all native cancellation/lifetime code are unchanged. This supplies full phrasing context and removes per-clause session/prebuffer resets. The small text lookahead is appropriate for the observed approximately 0.3-second Gemma replies; a slower model would incur its full text-generation wait before speech.
+
+- `Saved/PhononNatural/conversation.json` and `.log`: **8/8 pass**, each exactly one speech/face session, all eight with positive samples and playback beginning before native audio sending finishes. Three crew, history, scene reset and no command execution remain covered. Gemma was launched by this editor run rather than reusing an existing model server.
+- Warm question-to-playback observations: **2.100–2.233 seconds**, first cold Audio2Face line **4.400 seconds**. This is playback state timing, not microphone/STT or measured acoustic onset. Phonon's first-TTS admission is now observed directly instead of only watching Piper's WAV queue.
+- `session-comparison.json` compares playback event logs: **22 sessions became eight**, and **14 internal session gaps of 1.566–1.966 seconds (median 1.933 seconds) became zero**. Natural pauses inside synthesized audio remain; this is not a claim of zero acoustic silence.
+- One exactly matching Duncan reply used three sessions before and one afterward. Question-to-completion fell from **13.666 to 9.566 seconds**. Other generated replies differ, so the report does not present them as a controlled speed or voice-quality benchmark.
+- Normal world cleanup drained in 26 ms; application exit had zero workers. Engine, owned Gemma and Phonon processes were gone, with port8791 clear, before returning the lane to root at 22:05. Source is frozen for the next package and trailer capture.
+
+The older 22-chunk figures and phrase-gap limitation below describe the retained pre-correction baseline. Packaged cold launch and human listening remain with the build/playtest flow; local native tests do not establish long-session or second-machine reliability.
+
 - `Automation2/index.json`: all eight dialogue tests pass (seven success, one success with expected warnings). Initial chunker failures were real: Unreal's `FString::StartsWith` rejects empty prefixes. Commit `b277048` fixes the three initial-prefix checks without weakening tests.
 - `commands3.json`: **27/27 pass**, selected Gemma filename confirmed. The 24 command cases took 246–394 ms; three production-persona acknowledgements took 79–146 ms. This run used a resident model. Initial failed runs remain retained as evidence; these are not cold-start or cross-model benchmark figures.
 - `smoke.log`: three authored Phonon lines completed actual Audio2Face playback. Rex/Duncan/Ruby respectively returned 115/98/91 animation samples and 91,999/78,399/72,799 audio samples. Normal exit drained the native worker in 16 ms.
