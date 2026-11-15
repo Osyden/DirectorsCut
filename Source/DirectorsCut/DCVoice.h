@@ -27,6 +27,7 @@ class ADCVoice : public AActor
 {
 	GENERATED_BODY()
 	friend class ADCDialogueReviewGameMode;
+	friend class UDCACEIntegrationReview;
 
 public:
 	ADCVoice();

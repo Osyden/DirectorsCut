@@ -23,9 +23,18 @@ foreach ($selected in $backends) {
     $proc = Start-Process -FilePath $Executable -ArgumentList $quoted -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
     Write-Output "Dialogue $selected probe PID=$($proc.Id); report=$report"
     if (!$proc.WaitForExit(180000)) {
-        # Bound only this launched process and its direct game/sidecar children.
-        $children = @(Get-CimInstance Win32_Process | Where-Object { $_.ParentProcessId -eq $proc.Id })
-        foreach ($child in $children) { Stop-Process -Id $child.ProcessId -Force -ErrorAction SilentlyContinue }
+        # Include the packaged launcher -> game -> sidecar chain, never unrelated jobs.
+        $snapshot = @(Get-CimInstance Win32_Process)
+        $owned = [Collections.Generic.List[int]]::new()
+        $owned.Add($proc.Id)
+        for ($index = 0; $index -lt $owned.Count; $index++) {
+            foreach ($child in $snapshot | Where-Object { $_.ParentProcessId -eq $owned[$index] }) {
+                if (!$owned.Contains([int]$child.ProcessId)) { $owned.Add([int]$child.ProcessId) }
+            }
+        }
+        for ($index = $owned.Count - 1; $index -gt 0; $index--) {
+            Stop-Process -Id $owned[$index] -Force -ErrorAction SilentlyContinue
+        }
         Stop-Process -InputObject $proc -Force -ErrorAction SilentlyContinue
         throw "Dialogue $selected probe timed out; inspect $out"
     }

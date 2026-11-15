@@ -19,7 +19,9 @@ The current official NVIDIA plugin is distributed for UE 5.7. `Tools/ACE/setup_l
 
 The stock plugin's RTX and GPU tiers hand Unreal's D3D device/queue to CUDA. The local patch forces its explicit CUDA tier with `ACEDeviceType_None` and null graphics pointers. Official SDK source confirms this retains GPU layer offload; runtime GPU evidence is still required. The old `useCIGforAI=0` flag alone does not configure this new plugin.
 
-The adapter serializes requests, bounds queued work, validates structured intents, suppresses expired/previous-scene replies and preserves authored hazard calls. SDK chat inference has no hard cancellation or configurable per-request output-token cap. Application timeouts return the existing authored/parser fallback while the active native work finishes; live model/chat memory is not freed on a timeout. The SDK caps generation at 1,024 tokens or remaining context. The plugin patch retains async objects through garbage collection and waits for native workers before module teardown.
+The adapter serializes requests, bounds queued work, validates structured intents, suppresses expired/previous-scene replies and preserves authored hazard calls. SDK chat inference has no hard cancellation or configurable per-request output-token cap. Application timeouts return the existing authored/parser fallback while the active native work finishes; live model/chat memory is not freed on a timeout. The SDK caps generation at 1,024 tokens or remaining context.
+
+The plugin patch clears the previous response and propagates native failure, preventing a failed request from replaying an older command. A process-wide gate prevents overlapping inference against the shared model after level travel. Active task/data lifetime extends beyond the originating GameInstance until both native workers finish; response UObject creation and callbacks run on the game thread. Module teardown waits for workers and completion before releasing SDK resources. These changes require native restart/shutdown verification, not just compilation.
 
 ## Reproducible checks
 
