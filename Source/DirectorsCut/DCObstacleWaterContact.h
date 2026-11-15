@@ -12,6 +12,7 @@ class UDCObstacleWaterContact : public UActorComponent
 public:
     UDCObstacleWaterContact();
     static void Attach(AActor* Pillars);
+    void ImpactAt(const FVector& Contact,float Strength);
     virtual void TickComponent(float DeltaSeconds,ELevelTick TickType,FActorComponentTickFunction* ThisTickFunction) override;
 private:
     void Build();

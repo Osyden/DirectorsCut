@@ -148,6 +148,19 @@ float UDCObstacleWaterContact::SurfaceAt(const FVector& Position,int32 Channel)
     return Height+ChannelOffset;
 }
 
+void UDCObstacleWaterContact::ImpactAt(const FVector& Contact,float Strength)
+{
+    AActor* Owner=GetOwner();
+    if (!Owner || Owner->IsHidden() || !Splash) { return; }
+    FVector At=Contact;
+    At.Z=SurfaceAt(Contact,SampleChannel+7)+20.f;
+    const float Scale=FMath::Clamp(.6f+Strength*.35f,.65f,1.f);
+    // Reuse the already cooked local-space system; it follows the fixed stone
+    // past the ship instead of leaving a stationary sheet on the deck.
+    auto* P=UGameplayStatics::SpawnEmitterAttached(Splash,Owner->GetRootComponent(),NAME_None,At,FRotator::ZeroRotator,FVector(Scale),EAttachLocation::KeepWorldPosition,true);
+    if(P) { P->SetCastShadow(false); Pulses.Add(P); }
+}
+
 void UDCObstacleWaterContact::TickComponent(float DT,ELevelTick TickType,FActorComponentTickFunction* TickFunction)
 {
     Super::TickComponent(DT,TickType,TickFunction);

@@ -130,7 +130,7 @@ void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
 	float ObstacleEvery = 0.f, HostileEvery = 0.f, SceneryEvery = 0.f;
 	switch (Phase)
 	{
-	case EDCPhase::Fog: ObstacleEvery = DCCityObstacleLayout::Interval; HostileEvery = bGhostShips ? 16.f : 0.f; SceneryEvery = 15.f; break;
+	case EDCPhase::Fog: ObstacleEvery = CityObstacleSerial < DCCityObstacleLayout::Count ? DCCityObstacleLayout::Interval : 0.f; HostileEvery = bGhostShips ? 16.f : 0.f; SceneryEvery = 15.f; break;
 	case EDCPhase::Hell: ObstacleEvery = 3.5f; HostileEvery = 9.f; SceneryEvery = 5.f; break;
 	default: break; // the kraken owns the maelstrom
 	}
@@ -143,20 +143,18 @@ void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
 	// Obstacles: in the lane, must be steered around.
 	if (ObstacleEvery > 0.f && (ObstacleTimer -= DeltaSeconds) <= 0.f)
 	{
-		ObstacleTimer = ObstacleEvery * (bHell?FMath::FRandRange(.7f,1.3f):FMath::FRandRange(.9f,1.1f));
+		ObstacleTimer = ObstacleEvery * (bHell?FMath::FRandRange(.7f,1.3f):1.f);
 		// A readable alternating route, fixed in sea space. Do not repeatedly
 		// seed tight clusters on whichever lane the player is trying to escape to.
-		const float Side=DCCityObstacleLayout::Side(CityObstacleSerial++);
+		const int32 Serial=CityObstacleSerial++;
 		const float SeaY=bHell ? LaneOffset+FMath::FRandRange(-2500.f,2500.f)
-			: Side*FMath::FRandRange(DCCityObstacleLayout::MinimumSide,DCCityObstacleLayout::MaximumSide);
+			: DCCityObstacleLayout::Lane(Serial);
 		const FVector Base(SpawnDistance,SeaY,SeaZ-(bHell?0.f:DCCityObstacleLayout::Submergence));
-		const bool bPillarReview=FParse::Param(FCommandLine::Get(),TEXT("DCPillarReview"));
-		if (bHell || (!bPillarReview && FMath::FRand() < 0.6f))
+		if (bHell)
 		{
 			const float Radius = FMath::FRandRange(350.f, 750.f);
-			AActor* Rock = (!bHell && DCRuins::Available()) ? DCRuins::SpawnCrag(World, Radius, FMath::FRandRange(1500.f, 3200.f)) : DCHazards::SpawnRock(World, Radius, FMath::FRandRange(1500.f, 4200.f), bHell, Stone);
-			if (bHell) { DCHazards::SetGlow(Rock, Ember); }
-			else if(Rock) { Rock->Tags.Add(TEXT("DCCityObstacle")); }
+			AActor* Rock = DCHazards::SpawnRock(World, Radius, FMath::FRandRange(1500.f, 4200.f), true, Stone);
+			DCHazards::SetGlow(Rock, Ember);
 			Register(Rock, Base, Radius, false, 1.f, FMath::FRandRange(0.f, 360.f), true);
 		}
 		else
@@ -165,6 +163,7 @@ void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
 			AActor* Columns=DCRuins::Available()?DCRuins::SpawnBrokenColumns(World,1000.f*Scale):DCHazards::SpawnRuin(World,Scale,Stone);
 			if(Columns) { Columns->Tags.Add(TEXT("DCCityObstacle")); Columns->Tags.Add(TEXT("DCPillarObstacle")); }
 			Register(Columns,Base,1000.f*Scale,false,1.f,FMath::FRandRange(-25.f,25.f),true);
+            UE_LOG(LogDC,Display,TEXT("CITY_WATER_RUIN serial=%d seaY=%.0f clearLane=%.0f at=%.1f"),Serial,SeaY,DCCityObstacleLayout::PassingLane(Serial),Director->RideTime);
 		}
 	}
 
@@ -422,11 +421,11 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 		// hung in the air over lower water: a great flat slab seen from the deck. Owner, 13 Nov.)
 		// Gameplay rocks and columns are seabed anchors, never wave followers.
 		// Only their contact wash samples the instantaneous water surface.
-		if (Actor->ActorHasTag(TEXT("DCRuinArchitecture")) || Actor->ActorHasTag(TEXT("DCCityBank")))
+		if (Actor->ActorHasTag(TEXT("DCRuinArchitecture")) || Actor->ActorHasTag(TEXT("DCCityBank")) || Actor->ActorHasTag(TEXT("DCCityObstacle")))
 		{
 			// Fixed seabed/masonry datum. Only subtract the ship's frame height;
 			// lifting a wide plinth at its centre made its inboard edge float.
-			Local.Z -= Director->SeaRise(LaneOffset);
+			Local.Z = DCCityObstacleLayout::AnchoredZ(Local.Z,Director->SeaRise(LaneOffset));
 		}
 		else if (Director->TroughRise > 0.f && !Actor->ActorHasTag(TEXT("DCCityObstacle")))
 		{
@@ -487,19 +486,27 @@ void ADCTreadmill::Tick(float DeltaSeconds)
 			}
 		}
 
-		// Only visible city hazards still ahead can earn an "ahead" call. A late
-		// helm change must not announce a rock already astern or sinking in the tube.
-		if (Now == EDCPhase::Fog && !bLeavingAtlantis && !Actor->IsHidden() && !Actor->IsActorBeingDestroyed()
-			&& !Obj.bHostile && Obj.bSolid && !Obj.bCalled && Local.X > 0.f && Local.X < 13000.f
-			&& FMath::Abs(Local.Y) < ShipHalfWidth + Obj.Radius + 150.f)
-		{
-			Obj.bCalled = true;
-			if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
-			{
-				Crew->Report(FMath::Abs(Local.Y) < 250.f ? TEXT("Rocks dead ahead!") : (Local.Y > 0.f ? TEXT("Rocks ahead, off the starboard bow!") : TEXT("Rocks ahead, off the port bow!")));
-				UE_LOG(LogDC,Log,TEXT("LOOKOUT_WARNING actor=%s ahead=%.0f side=%.0f ride=%.2f"),*Actor->GetName(),Local.X,Local.Y,Director->RideTime);
-			}
-		}
+        // Warn with the same useful lead as navigation. A queued line cannot
+        // outlive its exact visible obstacle or a helm change that clears it.
+        if (Now == EDCPhase::Fog && !bLeavingAtlantis && !Actor->IsHidden() && !Actor->IsActorBeingDestroyed()
+            && !Obj.bHostile && Obj.bSolid && !Obj.bCalled && Local.X > 0.f && Local.X < 17000.f
+            && FMath::Abs(Local.Y) < ShipHalfWidth + Obj.Radius + 150.f)
+        {
+            if (UDCCrewSubsystem* Crew=GetWorld()->GetSubsystem<UDCCrewSubsystem>())
+            {
+                const auto Relevant=[Owner=TWeakObjectPtr<ADCTreadmill>(this),Stone=TWeakObjectPtr<AActor>(Actor)]()
+                {
+                    if (!Owner.IsValid() || !Stone.IsValid() || Stone->IsHidden() || !Owner->Director
+                        || Owner->Director->GetPhase()!=EDCPhase::Fog) { return false; }
+                    const FDCWorldObject* Current=Owner->Objects.FindByPredicate([Stone](const FDCWorldObject& O){return O.Actor==Stone;});
+                    return Current && Current->Base.X>0.f && Current->Base.X<17000.f
+                        && FMath::Abs(Current->Base.Y-Owner->LaneOffset)<Owner->ShipHalfWidth+Current->Radius+150.f;
+                };
+                Obj.bCalled=Crew->Report(Actor->ActorHasTag(TEXT("DCPillarObstacle"))
+                    ? TEXT("Broken pillars ahead! Mind the gap!") : TEXT("Rocks ahead! Mind the gap!"),true,Relevant);
+                if (Obj.bCalled) { UE_LOG(LogDC,Log,TEXT("LOOKOUT_WARNING actor=%s ahead=%.0f side=%.0f ride=%.2f"),*Actor->GetName(),Local.X,Local.Y,Director->RideTime); }
+            }
+        }
 
 
 		// Scenery is big and seen from far off, so it is kept until it is well astern.
@@ -1210,12 +1217,21 @@ void ADCTreadmill::TickStrikes(float DeltaSeconds)
 	if (LaneVelocity * Away < 0.f) { LaneVelocity = Away * 90.f; }
 	if (CurrentDrift * Away < 0.f) { CurrentDrift = 0.f; }
 
-	if (StrikeCooldown <= 0.f)
+    FDCWorldObject* CityStone = ContactActor && ContactActor->ActorHasTag(TEXT("DCCityObstacle"))
+        ? Objects.FindByPredicate([ContactActor](const FDCWorldObject& O){return O.Actor.Get()==ContactActor;}) : nullptr;
+    const bool bImpactAllowed = CityStone ? DCCityObstacleLayout::CanImpact(CityStone->bHullImpacted,StrikeCooldown) : StrikeCooldown<=0.f;
+	if (bImpactAllowed)
 	{
 		// The first blow is the heavy one; while she grinds along the stone, lighter ones follow.
-		const float Strength = FMath::Clamp(Closing / 1200.f, 0.2f, 1.1f) * (bFirst ? 1.f : 0.12f);
+		const float Strength = FMath::Clamp(Closing / 1200.f, CityStone ? .55f : .2f, 1.1f) * ((bFirst || CityStone) ? 1.f : 0.12f);
 		StrikeCooldown = bFirst ? 1.4f : 2.5f;
-		Director->StrikeHull(Where, Strength, !bFirst);
+		Director->StrikeHull(Where, Strength, !bFirst && !CityStone);
+        if (CityStone)
+        {
+            CityStone->bHullImpacted=true;
+            if (auto* Wash=ContactActor->FindComponentByClass<UDCObstacleWaterContact>()) { Wash->ImpactAt(Where,Strength); }
+            UE_LOG(LogDC,Display,TEXT("CITY_WATER_IMPACT actor=%s strength=%.2f push=%.0f lane=%.0f at=%.2f"),*ContactActor->GetName(),Strength,Away,LaneOffset,Director->RideTime);
+        }
 		UE_LOG(LogDC, Log, TEXT("Hull struck stone at %s (in %.0f cm, closing %.0f cm/s, strength %.2f) at ride time %.1f"), *Where.ToCompactString(), Deepest, Closing, Strength, Director->RideTime);
 		if (StrikeCallCooldown <= 0.f)
 		{

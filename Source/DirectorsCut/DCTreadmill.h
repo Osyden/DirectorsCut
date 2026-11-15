@@ -33,6 +33,8 @@ struct FDCWorldObject
 	bool bSolid = true;
 	/** Scenery only: its stone can be found by the hull's feelers at the moment (switched on while it is near the ship). */
 	bool bFeelable = false;
+	/** A small water ruin gives one impact, then only physical separation. */
+	bool bHullImpacted = false;
 	/** Scenery only: how far its stone reaches from its centre (cm), measured when it was laid out. */
 	float Reach = 0.f;
 	/** Kept out of sight because the cloud tunnel has not yet passed it. */
