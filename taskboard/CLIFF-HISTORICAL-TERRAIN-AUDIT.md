@@ -39,3 +39,13 @@ I inspected the review worker's `UniformHistoricalAWhole/WHOLE PARENT 500x1100m 
 The whole view now has connected branching ravines and unequal interlocking spurs. It is substantially more terrain-like than the smooth authored mounds in ParentA/B. The close wall still has conspicuous planar/grid-aligned facet and shading steps, sharp sawtooth edges and repeated dark cuts. This needs deliberate cliff extraction/detail work after selecting the parent landform; it is not a finished rock surface.
 
 The result supports further terrain-method evaluation, not native promotion. Current coast/route and supported temple composition must be designed and independently checked against any adapted result. Detailed audit evidence remains in the worker's ignored `Saved/WeatheredAudit/fastscape_uniform_historical_a.json`.
+
+## Portable CLI: exact replay verified
+
+The author promoted this precise benchmark into `Tools/generate_fastscape_historical_terrain.py`, with explicit `--input`, `--dependencies` and `--output` paths. The original Saved layout is no longer required. Its single replay is retained at `Flow-Seams/Saved/FastscapeNaturalBenchmark/PortableReplay`; generator SHA256 `5da7027f8767fd71d759cfba12abc6dc8ff8865dd4cb485f8702d42807bd2de8`.
+
+Independent comparison confirms **all 40 numeric arrays** across terrain and the four parent/crop baseline/candidate files are bitwise identical to UniformHistoricalA, including shape and dtype. Settings, checkpoint numeric values, final metrics and diffusion ledger are also exact. Only provenance/timing metadata differs. This does not revise the model, improve its art, establish convergence or alter its dimensions.
+
+The output bundles the exact domain template, CLI, four project helper modules under their import names and external GPL attribution/license. Their bytes match the referenced sources. Running the archived CLI's `--help` from a different working directory succeeds and resolves its imports; no second model run was performed by the auditor. Explicit flags for current coastline, route, temple and seam preservation, runtime integration, visual acceptance and convergence all remain false. The limitations and measured geometric incompatibilities above still apply.
+
+Detailed replay evidence: audit worker `Saved/WeatheredAudit/fastscape_historical_portable_replay.json`. The portable foundation is reproducible; it is not a native game-scene approval.
