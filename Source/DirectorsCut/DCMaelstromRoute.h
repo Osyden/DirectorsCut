@@ -81,11 +81,16 @@ namespace DCMaelstromRoute
         return FMath::Clamp(GradeDegrees,-34.f,4.f)*FMath::SmoothStep(-8.f,-2.f,Seconds);
     }
 
+    // The waterfall foot throws a standing wave above the flat basin. Start
+    // the deck wash here, then carry it through the subsequent flat-water touch.
+    constexpr float LandingWavefrontClearance=850.f;
+    constexpr float LandingWashSeconds=3.f;
+
     inline float LandingHeave(float Age)
     {
         // One downward compression and a smaller rebound, fully settled at 3s.
         if(Age<0.f || Age>=3.f) { return 0.f; }
-        return -90.f*FMath::Sin(Age*9.f)*FMath::Exp(-Age*2.2f)
+        return -160.f*FMath::Sin(Age*9.f)*FMath::Exp(-Age*2.2f)
             *(1.f-FMath::SmoothStep(2.f,3.f,Age));
     }
 

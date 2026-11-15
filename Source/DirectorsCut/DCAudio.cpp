@@ -350,7 +350,7 @@ void ADCAudio::TickMusic(float DeltaSeconds)
 		if (Phase.Phase == EDCPhase::Slide)
 		{
 			MusicDescentStartTime = Phase.StartTime;
-			MusicTransitionTime = FMath::Max(0.f, Phase.StartTime - 18.f);
+			MusicTransitionTime = FMath::Max(0.f, Phase.StartTime - 16.f);
 		}
 		if (Phase.Phase == EDCPhase::Maelstrom) { MusicDescentEndTime = Phase.StartTime; }
 	}
@@ -368,15 +368,15 @@ void ADCAudio::TickMusic(float DeltaSeconds)
 	}
 	LastMusicRideTime = bMenu ? -1.f : Time;
 	// Four-second crossfade; the first track keeps its authored ending while
-	// the second starts18 seconds before entry, per the latest timing request.
+	// the second starts16 seconds before entry, per the latest timing request.
 	const float Blend = FMath::Clamp((Time - MusicTransitionTime) / 4.f, 0.f, 1.f);
 	const float EndGain = 1.f - FMath::SmoothStep(Director->GetRideLength() - 10.f, Director->GetRideLength(), Time);
-	// Let the score carry the water tunnel and descent (+3.5dB), easing back
+	// Let the score carry the water tunnel and descent (+6.4dB), easing back
 	// into combat. During speech retain the previous quiet mix exactly.
 	const float Descent = FMath::SmoothStep(MusicDescentStartTime - 4.f, MusicDescentStartTime + 2.f, Time)
 		* (1.f - FMath::SmoothStep(MusicDescentEndTime, MusicDescentEndTime + 6.f, Time));
 	const float SpeechClear = FMath::Clamp((SpeechDuck - .25f) / .75f, 0.f, 1.f);
-	const float DescentGain = FMath::Lerp(1.f, 1.5f, Descent * SpeechClear);
+	const float DescentGain = FMath::Lerp(1.f, 2.1f, Descent * SpeechClear);
 	const float Gain = FMath::Max(0.f, MusicVolume * MasterVolume) * SpeechDuck * EndGain * DescentGain;
 	UAudioComponent* Components[] = {FogMusic.Get(), CalderaMusic.Get()};
 	const float Envelopes[] = {FMath::Clamp(Time / 1.5f, 0.f, 1.f) * (1.f - Blend), Blend};
@@ -559,10 +559,8 @@ void ADCAudio::Tick(float DeltaSeconds)
 	}
 	for (int32 i = OneShots.Num() - 1; i >= 0; --i)
 	{
-		if (OneShots[i].bStorm)
-		{
-			if (UAudioComponent* C = OneShots[i].Component.Get()) { C->SetVolumeMultiplier(OneShots[i].BaseVolume * SpeechDuck * StormGain); }
-		}
+		if (UAudioComponent* C = OneShots[i].Component.Get())
+		{ C->SetVolumeMultiplier(OneShots[i].BaseVolume * SpeechDuck * (OneShots[i].bStorm ? StormGain : 1.f)); }
 		if (Now > OneShots[i].EndTime)
 		{
 			if (UAudioComponent* C = OneShots[i].Component.Get())
@@ -581,6 +579,24 @@ void ADCAudio::CannonSplash(const FVector& Where)
 	const FVector Listener = Director ? Director->DeckToWorld(FVector::ZeroVector) : FVector::ZeroVector;
 	const float DistanceGain = FMath::Clamp(1.f - FVector::Dist(Where, Listener) / 60000.f, .15f, 1.f);
 	PlayReal(TEXT("water_impact"), .38f * DistanceGain, FMath::FRandRange(.95f, 1.08f));
+}
+
+void ADCAudio::LandingImpact()
+{
+	// One close water crash and timber compression, never a storm/thunder loop.
+	// Track the recording so later crew speech ducks the remaining water tail.
+	if (USoundBase* Sound=FindReal(TEXT("water_impact")))
+	{
+		constexpr float Pitch=.78f;
+		if (UAudioComponent* C=UGameplayStatics::SpawnSound2D(this,Sound,1.55f*MasterVolume*SpeechDuck,Pitch))
+		{
+			FOneShot O; O.Component=C; O.BaseVolume=1.55f*MasterVolume;
+			O.EndTime=FPlatformTime::Seconds()+Sound->GetDuration()/Pitch+.5;
+			OneShots.Add(O);
+		}
+	}
+	if (Impacts.Num()) { PlayOneShot(Impacts[FMath::RandRange(0,Impacts.Num()-1)],.9f); }
+	UE_LOG(LogDC,Log,TEXT("LANDING_AUDIO waterGain=%.3f timberGain=%.3f speechDuck=%.3f"),1.55f*MasterVolume,.9f*MasterVolume,SpeechDuck);
 }
 
 void ADCAudio::Boom(float Volume)

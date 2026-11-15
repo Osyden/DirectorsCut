@@ -8,7 +8,7 @@ from probe_maelstrom_geometry import SHIM, block
 root = Path(__file__).resolve().parents[1]
 source = (root / "Source/DirectorsCut/DCMaelstrom.cpp").read_text(encoding="utf-8")
 route = (root / "Source/DirectorsCut/DCMaelstromRoute.h").read_text(encoding="utf-8")
-code = SHIM + block(route, "namespace DCMaelstromRoute")
+code = SHIM.replace("struct FMath {", "struct FMath { static int CeilToInt(float V){ return int(std::ceil(V)); }") + block(route, "namespace DCMaelstromRoute")
 code += block(source, "float ADCMaelstrom::HeightAt")
 code += r'''
 int main() {
@@ -57,9 +57,28 @@ int main() {
         check(input==0.f||offset*input>5000.f,"full steering authority restored after inlet");
         std::printf("guard fps%d helm%.0f unsupported%d landing%.2f worstDrop%.1fcm offset%.0fcm\n",fps,input,unsupported,landing,worstDrop,offset);
     }
+
+    for(int fps:{30,60,120})for(float input:{-1.f,0.f,1.f}) {
+        float helm=0,offset=0,velocity=0,pitch=0,waveTime=-1,flatTime=-1;
+        int contacts=0; bool played=false;
+        for(float t=-30.f;t<50.f;t+=1.f/fps) {
+            const float dt=1.f/fps;
+            AdvanceSteering(input,dt,FMath::SmoothStep(-4.f,12.f,t),helm,offset,velocity,InletOutwardLimit(t,m.Radius));
+            const auto p=Point(t,m.Radius,offset),a=Point(t+.1f,m.Radius,offset),b=Point(t-.1f,m.Radius,offset);
+            const float slope=FMath::RadiansToDegrees(FMath::Atan2(m.HeightAt(a)-m.HeightAt(b),FMath::Max(1.,(a-b).Size())));
+            pitch=FMath::FInterpTo(pitch,DeckPitch(slope,t),dt,5.f);
+            const float clearance=BowLakeClearance(m.HeightAt(p),pitch,2200.f);
+            if(t>0 && !played && clearance<=LandingWavefrontClearance) { played=true;waveTime=t;++contacts; }
+            if(t>0 && flatTime<0 && clearance<=25.f) { flatTime=t; }
+        }
+        check(contacts==1,"one wavefront impact per held steering route");
+        check(flatTime-waveTime>=1.4f && flatTime-waveTime<=2.6f,"earlier wavefront still close to physical lake contact");
+        check(flatTime<waveTime+LandingWashSeconds,"deck wash continues through flat-water bow contact");
+        std::printf("landing fps%d helm%.0f wavefront%.2f flatBow%.2f earlier%.2f contacts%d\n",fps,input,waveTime,flatTime,flatTime-waveTime,contacts);
+    }
     check(LandingHeave(.15f)<-50.f&&LandingHeave(.5f)>0.f,"compression then rebound");
     check(LandingHeave(-1.f)==0.f&&LandingHeave(3.f)==0.f&&LandingHeave(20.f)==0.f,"settled heave");
-    for(float t=0;t<3.f;t+=.01f)check(std::abs(LandingHeave(t))<=90.f,"bounded landing heave");
+    for(float t=0;t<3.f;t+=.01f)check(std::abs(LandingHeave(t))<=160.f,"bounded landing heave");
     std::printf("CALDERA_MOTION_CPU checks=%d failed=%d\n",checks,failures);
     return failures?1:0;
 }

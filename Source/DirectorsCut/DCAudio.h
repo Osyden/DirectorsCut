@@ -32,6 +32,8 @@ public:
 	float GetSpeechDuck() const { return SpeechDuck; }
 	/** A restrained cannonball water contact, without thunder or hull-crash layers. */
 	void CannonSplash(const FVector& Where);
+	/** One heavy landing wave and timber compression; remaining tail follows speech duck. */
+	void LandingImpact();
 	/** Extra wind, 0 to 1, set each frame by whatever is roaring near the ship (a waterspout, the creature's end). */
 	float SpoutRoar = 0.f;
 	/** A heavy report: thunder and a crash of water together (a burning stone coming down, the plume going up). */
@@ -74,7 +76,7 @@ protected:
 	void TickMusic(float DeltaSeconds);
 	UPROPERTY() TObjectPtr<UAudioComponent> FogMusic;
 	UPROPERTY() TObjectPtr<UAudioComponent> CalderaMusic;
-	float MusicTransitionTime = 222.f;
+	float MusicTransitionTime = 224.f;
 	float MusicDescentStartTime = 240.f;
 	float MusicDescentEndTime = 290.f;
 	float LastMusicRideTime = -1.f;

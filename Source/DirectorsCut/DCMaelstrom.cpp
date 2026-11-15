@@ -1,4 +1,6 @@
 #include "DCMaelstrom.h"
+#include "Particles/ParticleSystem.h"
+#include "Particles/ParticleSystemComponent.h"
 #include "DCCliffGenerator.h"
 #include "DCMaelstromRoute.h"
 #include "DCMaelstromTunnel.h"
@@ -124,6 +126,7 @@ ADCMaelstrom* ADCMaelstrom::Get(const UObject* Context)
 void ADCMaelstrom::BeginPlay()
 {
 	Super::BeginPlay();
+	LandingSplash=LoadObject<UParticleSystem>(nullptr,TEXT("/Game/DC/FX/P_PillarWaterContact.P_PillarWaterContact"));
 	ContactSound=LoadObject<USoundBase>(nullptr,TEXT("/Game/Sonniss/water_impact.water_impact"),nullptr,LOAD_NoWarn|LOAD_Quiet);
 	if (UMaterialInterface* SprayMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Maelstrom/M_ContactSpray.M_ContactSpray"))) { ContactMesh->SetMaterial(0, SprayMat); }
 	Director = ADCRideDirector::Get(this);
@@ -855,11 +858,51 @@ void ADCMaelstrom::EmitWaterContact(const FVector& Position, float Strength, boo
 	}
 }
 
+void ADCMaelstrom::EmitLandingWash(float Progress, int32 Count, bool bWaterBurst)
+{
+	const FTransform Frame=GetArenaTransform(), Deck=Director->DeckTransform;
+	const float Along=FMath::Lerp(2600.f,-1800.f,FMath::Clamp(Progress,0.f,1.f));
+	// Real spray crosses each rail towards the deck, and runs aft with the
+	// basin's motion. It does not radiate away outside the hull like a wake.
+	for (int32 I=0;I<Count && ContactParticles.Num()<900;++I)
+	{
+		const float Side=I%2 ? 1.f : -1.f;
+		const FVector Start=Deck.TransformPosition(FVector(Along+FMath::FRandRange(-450.f,450.f),Side*FMath::FRandRange(500.f,750.f),Director->SeaLevelZ+300.f));
+		const FVector Velocity=Deck.TransformVectorNoScale(FVector(FMath::FRandRange(-1200.f,-400.f),-Side*FMath::FRandRange(700.f,1300.f),FMath::FRandRange(950.f,1800.f)));
+		ContactParticles.Add({Frame.InverseTransformPosition(Start),Frame.InverseTransformVectorNoScale(Velocity),0.f,FMath::FRandRange(1.2f,2.1f),FMath::FRandRange(90.f,190.f)});
+	}
+	// Authored whitewater droplets give the wash a sharp water core beneath the
+	// softer mist cards; reuse the already-cooked effect, never mutate it.
+	if (bWaterBurst && LandingSplash)
+	{
+		for (int32 Side : {-1,1})
+		{
+			if (LandingBursts.Num()>=8) { if(auto* Old=LandingBursts[0].Effect.Get()) { Old->DestroyComponent(); } LandingBursts.RemoveAt(0); }
+			const FVector At=Deck.TransformPosition(FVector(Along,Side*520.f,Director->SeaLevelZ+350.f));
+			if (auto* Effect=UGameplayStatics::SpawnEmitterAtLocation(GetWorld(),LandingSplash,At,Deck.Rotator(),FVector(2.6f)))
+			{ Effect->SetCastShadow(false); LandingBursts.Add({Effect,0.f}); }
+		}
+	}
+}
+
 void ADCMaelstrom::UpdateContacts(float DeltaSeconds)
 {
+	for (int32 I=LandingBursts.Num()-1;I>=0;--I)
+	{
+		FLandingBurst& Burst=LandingBursts[I]; Burst.Age+=DeltaSeconds;
+		auto* Effect=Burst.Effect.Get();
+		if(!Effect) { LandingBursts.RemoveAtSwap(I); continue; }
+		if(Burst.Age>=.20f && Effect->IsActive()) { Effect->DeactivateSystem(); }
+		if(!bActive || Burst.Age>=2.2f) { Effect->DestroyComponent(); LandingBursts.RemoveAtSwap(I); }
+	}
 	if (!bActive || Elapsed < 0.f)
 	{
 		ContactParticles.Reset(); ContactMesh->ClearAllMeshSections(); NextWakeAt = 0.f; return;
+	}
+	if (LakeLandingAt>=0.f && Elapsed>=NextLandingWashAt && Elapsed-LakeLandingAt<DCMaelstromRoute::LandingWashSeconds)
+	{
+		EmitLandingWash((Elapsed-LakeLandingAt)/DCMaelstromRoute::LandingWashSeconds,36,++LandingWashPulse%5==0);
+		NextLandingWashAt=Elapsed+.15f;
 	}
 	const float DT = FMath::Min(DeltaSeconds * Director->TimeScale, .1f);
 	const FTransform Frame = GetArenaTransform();
@@ -918,7 +961,8 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
     static const bool bReviewSteer = FParse::Value(FCommandLine::Get(),TEXT("DCMaelstromSteer="),ReviewSteer);
     if (bReviewSteer) { Input=FMath::Clamp(ReviewSteer,-1.f,1.f); }
     const bool Reset = PreviousTime<0.f || Director->RideTime<PreviousTime || Director->RideTime-PreviousTime>1.f;
-    if (Reset) { RouteOffset=0.f; RouteVelocity=0.f; HelmTurn=0.f; ContactParticles.Reset(); NextWakeAt=0.f; NextContactSoundAt=-100.f; LakeLandingAt=-1.f; }
+    if (Reset) { RouteOffset=0.f; RouteVelocity=0.f; HelmTurn=0.f; ContactParticles.Reset(); NextWakeAt=0.f; NextContactSoundAt=-100.f; LakeLandingAt=-1.f; NextLandingWashAt=-1.f; LandingWashPulse=0;
+        for(auto& Burst:LandingBursts) { if(auto* Effect=Burst.Effect.Get()) { Effect->DestroyComponent(); } } LandingBursts.Reset(); }
     const float DT = FMath::Min(DeltaSeconds*Director->TimeScale,.1f);
     const float Riding = FMath::SmoothStep(-4.f,12.f,Elapsed);
     // Carried helm response brakes near the actual route limits.
@@ -951,30 +995,27 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
     const FVector Ship(0.f,0.f,Director->SeaLevelZ);
     const float Heave=FMath::Sin(Director->RideTime*.85f)*25.f;
     Arena->SetWorldLocationAndRotation(Ship-Pose.RotateVector(FVector(P.X,P.Y,HeightAt(P)))+FVector(0,0,Heave),Pose);
-    // A seek initializes the landing state without replaying an impact. During
-    // travel the pitched bow touching the lake triggers it once, rather than
-    // waiting several seconds for the centre of the hull to finish descending.
+    // A seek initializes state without replaying an impact. The waterfall's
+    // standing wave reaches the descending bow before the flat lake does;
+    // start one event here and carry its wash through that later contact.
     const float BowReach=Treadmill ? Treadmill->ShipHalfLength : 2500.f;
     const float BowClearance=DCMaelstromRoute::BowLakeClearance(HeightAt(P,false),DeckPitch,BowReach);
-    const bool AtLake=BowClearance<=25.f;
+    const bool AtLake=BowClearance<=DCMaelstromRoute::LandingWavefrontClearance;
     if(Reset) { bLakeLandingPlayed=AtLake; }
     if(!Reset && !bLakeLandingPlayed && AtLake && Elapsed>0.f)
     {
         bLakeLandingPlayed=true;
         LakeLandingAt=Elapsed;
-        Director->PendingJolt+=FVector(8.f,65.f,-3.f);
-        Director->Trauma=FMath::Min(1.f,Director->Trauma+.8f);
-        // Start at the bow, in view from the helm; the rest of the impact runs
-        // down both rails. All spray belongs to this one landing event.
+        NextLandingWashAt=Elapsed+.15f;
+        LandingWashPulse=0;
+        Director->PendingJolt+=FVector(16.f,110.f,-5.f);
+        Director->Trauma=1.f;
+        // The initial front is loud once; follow-through only emits visual water.
+        EmitLandingWash(0.f,300,true);
         for(int32 Side : {-1,1})
-        { EmitWaterContact(FVector(3100.f,Side*1000.f,Director->SeaLevelZ),4.2f,true,false); }
-        for(int32 Side : {-1,1})
-        {
-            for(float Along : {-1600.f,400.f,2300.f})
-            { EmitWaterContact(FVector(Along,Side*1100.f,Director->SeaLevelZ),3.f,true,false); }
-        }
-        if(ADCAudio* Audio=Cast<ADCAudio>(UGameplayStatics::GetActorOfClass(this,ADCAudio::StaticClass()))) { Audio->Boom(1.f); }
-        UE_LOG(LogDC,Log,TEXT("MAEL_LANDING elapsed=%.2f routeHeight=%.1f bowClearance=%.1f bowReach=%.1f deckPitch=%.1f offset=%.1f pitchImpulse=65 spray=%d heave=90 damage=0"),Elapsed,HeightAt(P,false),BowClearance,BowReach,DeckPitch,RouteOffset,ContactParticles.Num());
+        { EmitWaterContact(FVector(3000.f,Side*850.f,Director->SeaLevelZ),4.8f,true,false); }
+        if(ADCAudio* Audio=Cast<ADCAudio>(UGameplayStatics::GetActorOfClass(this,ADCAudio::StaticClass()))) { Audio->LandingImpact(); }
+        UE_LOG(LogDC,Log,TEXT("MAEL_LANDING elapsed=%.2f routeHeight=%.1f bowClearance=%.1f wavefront=850 bowReach=%.1f deckPitch=%.1f offset=%.1f pitchImpulse=110 spray=%d heave=160 washSeconds=3 waterBursts=%d waterAsset=%s damage=0"),Elapsed,HeightAt(P,false),BowClearance,BowReach,DeckPitch,RouteOffset,ContactParticles.Num(),LandingBursts.Num(),*GetNameSafe(LandingSplash.Get()));
     }
     if(Elapsed>NextRouteLog && FParse::Param(FCommandLine::Get(),TEXT("DCMaelstromRouteLog")))
     {
@@ -1805,6 +1846,8 @@ void ADCMaelstrom::RestoreAtmosphere()
 
 void ADCMaelstrom::EndPlay(const EEndPlayReason::Type Reason)
 {
+	for(auto& Burst:LandingBursts) { if(auto* Effect=Burst.Effect.Get()) { Effect->DestroyComponent(); } }
+	LandingBursts.Reset();
 	ClearInletMist();
 	ResetExitTransition();
 	ClearCliffPreview();

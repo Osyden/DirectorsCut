@@ -1,0 +1,15 @@
+# Earlier landing wave, deck wash and tunnel score - 15 Nov
+
+Owner: voice_audio, `codex/landing-impact-polish`, based on main `83f7992`. Root approved DCAudio, DCMaelstrom and narrow route landing helpers. No DCGame, director, boss, encounter or helm/route geometry edits.
+
+The second music cue starts at224 seconds (Slide start minus16), two seconds later than222. The four-second crossfade is unchanged. Tunnel/descent multiplier rises1.5 to2.1: default full-descent gain0.4368, normal0.208, full speech duck0.052. Menu, restart, seek offsets and ending fade remain.
+
+The landing begins at the waterfall foot's standing wavefront, when the pitched bow is within850cm of the flat basin. This is deliberately an earlier wave encounter, **not a claim that the bow has already reached flat lake water**. Existing one-event/reset gating remains. CPU replay at60fps gives neutral onset23.30s after breach (ride293.30), flat-water bow touch25.63s; held port18.05/19.68, held starboard25.20/26.83. Every30/60/120fps case has one impact,1.62-2.37s before flat-water contact, and the three-second wash continues through that contact.
+
+Water now crosses inward over the rails and follows bow to stern for three seconds. Initial300 directed spray cards and two surface fronts are followed by36 cards per0.15s pulse. The already-cooked P_PillarWaterContact adds distinct whitewater/droplet bursts above the deck at the bow and progressing aft, alongside the softer spray material. No new material generation is required. Contact cards remain capped900; authored bursts cap8, stop emission after0.20s and are destroyed by2.2s, on seek/reset, inactivity or actor teardown.
+
+Pitch impulse rises65 to110 (existing ship rotation clamp remains9 degrees), nominal compression/rebound amplitude90 to160cm, trauma1. One dedicated water/timber sound plays; visual follow-through adds no repeated sound or damage. Recorded water gain1.55 times master and timber0.9 times master replace generic Boom/thunder. The tracked water tail ducks when subsequent crew speech starts; all tracked one-shots now follow current speech duck instead of only their starting level.
+
+Validation: Tools/probe_caldera_motion.py passes26,781 checks: inlet support, physical pitch, nine held-steering/frame-rate landing cases, bounded160cm heave and settling after3s. The standalone shim now supplies production route CeilToInt. Source checks confirm224 start,0.4368/0.052 gains, one landing audio dispatch, zero added damage, caps and teardown. git diff --check passes. No Unreal build, editor, renderer or GPU task was run.
+
+Native acceptance remains with root: continuous neutral ride291.5-296 from helm; verify actual visible whitewater over deck, one earlier water/timber crash, strong readable buck/rebound, no repeated damage/audio and clear crew speech. Include MUSIC_START/MUSIC_MIX, MAEL_LANDING (wavefront=850, waterAsset, waterBursts), LANDING_AUDIO and route logs. A seek past the wave should stay silent with no retroactive wash. Human playtest retains GPU priority.

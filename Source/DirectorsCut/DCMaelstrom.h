@@ -161,6 +161,12 @@ private:
 	float NextBreakerSpray=0.f;
 	struct FContactParticle { FVector Position, Velocity; float Age, Life, Size; };
 	TArray<FContactParticle> ContactParticles;
+	void EmitLandingWash(float Progress, int32 Count, bool bWaterBurst);
+	UPROPERTY() TObjectPtr<class UParticleSystem> LandingSplash;
+	struct FLandingBurst { TWeakObjectPtr<class UParticleSystemComponent> Effect; float Age; };
+	TArray<FLandingBurst> LandingBursts;
+	float NextLandingWashAt=-1.f;
+	int32 LandingWashPulse=0;
 	float NextWakeAt = 0.f;
 	UPROPERTY() TObjectPtr<class USoundBase> ContactSound;
 	float NextContactSoundAt = -100.f;
