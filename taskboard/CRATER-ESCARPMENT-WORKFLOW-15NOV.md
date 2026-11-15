@@ -1,6 +1,31 @@
-# Escarpment workflow: rejected cuts and erosion, verified upstream reference
+# Escarpment workflow: physical adaptation tested, primary landform still rejected
 
-Branch: `codex/maelstrom-saturday`, following `235a0fa`. **The game scene is unchanged.** The connected-cell and deeper-erosion trials fail their actual visual reviews. A complete upstream escarpment model now reproduces correctly and provides a better starting point for coherent drainage and cliff retreat, but has not been adapted to our arena.
+Branch: `codex/maelstrom-saturday`. **The game scene is unchanged.** The verified upstream method now has two fresh, physically sized adaptations to the measured crater coast. Both fail actual visual review. Their boundary and numerical checks pass separately; neither is a finished cliff or ready for integration.
+
+## Latest physical adaptation, 15 November 03:53 pass
+
+`Tools/generate_fastscape_crater_sector.py` builds a fresh 500 x 504 m sampling domain at 2 m spacing in the exact source frame. Its triangulated land spans 500 x 492 m with about 208 m vertical range. It uses the measured coast and external seams, without reusing the old interior, shrinking the 20 km reference or exaggerating height. All 992 external edges and 5,664 fixed physical samples remain exact. Invalid padding cannot feed the drainage; 251 actual coastal outlets are the only flow base levels. See [implementation and reproduction](FASTSCAPE-PHYSICAL-SECTOR-15NOV.md), [independent audit](CLIFF-FASTSCAPE-ADAPTATION-AUDIT.md) and [actual visual review](FASTSCAPE-CRATER-PHYSICAL-REVIEW.md).
+
+The original grid-only ADI smoothing moved constrained points and coupled excluded padding into land. It was rejected before export. A uses stream-power incision alone. B retains precisely the same initial landform and incision settings, adding stable valid-edge diffusion with explicit material exchange at fixed boundaries. Independent balance, no-new-extrema, padding isolation and boundary checks pass. These establish numerical behavior, not art approval or calibrated geology.
+
+- **A fails as vertical drapery.** A narrow, roughly uniform rise and nearly flat contributing plateau produce many parallel full-height grooves. Drainage on top does not form convincing unequal cliff masses. [Actual wall](review/cliff-fastscape-15nov/physical-a-wall.png), [oblique](review/cliff-fastscape-15nov/physical-a-oblique.png).
+- **B fails as a smooth dam.** Lateral transport removes most grooves without adding the missing mass hierarchy. The flat lid and deep fitted recess at the left remain. It tests the transport hypothesis and disproves its sufficiency; another diffusion-strength sweep is not the next step. [Actual wall](review/cliff-fastscape-15nov/physical-b-wall.png), [oblique](review/cliff-fastscape-15nov/physical-b-oblique.png).
+
+Root and independent workers inspected these matched CPU renders. Mean-water context is the measured static analytic surface in the same source frame, without animated waves. Primary wall/oblique views fail, so distant/native promotion was unwarranted. B's locked close camera becomes nearly featureless/occluded by the changed surface and is not independent proof of detail quality.
+
+Existing temple actors were untouched. Their islands were not frozen into the new simulation, and the proposals do **not** support their old foundations: some are buried about 12-14 m, others lose tens of metres of ground beneath them. A coast/seam pass does not certify foundations. Any eventual support or placement revision must be explicit and retain the irregular city composition.
+
+## Next construction: parent terrain before cliff extraction
+
+Build one physically sized wider hinterland with unequal divides, branching valleys and coastal outlets before selecting its exposed cliff. The official [Mountain model](https://fastscapelib.readthedocs.io/en/latest/examples/mountain_py.html) offers uplift opposed by channel/hillslope erosion as a process reference. Do not rescale its 75 x 50 km demonstration or repeat a long reference-verification exercise. Define metres, elevations and contributing extent first. Preserve the actual coast and ship route, but judge the complete parent form before imposing old arbitrary tile seams. Terrain beyond the measured crop is authored proposal data; it cannot certify neighbouring scene support. Generate matching sector seams from an accepted parent field later.
+
+Favor low irregular upper plateaus and deep side ravines for this arena, so temples and columns remain clear against the clouds. Their supported placement follows the accepted surface; no floating or frozen pedestal islands. Accept near and opposite-rim views before extending around the crater.
+
+Then extract steep faces into detailed three-dimensional rock geometry. [SideFX's Project Pegasus workflow](https://www.sidefx.com/tutorials/project-pegasus-cliff-generation/) follows terrain creation with cliff extraction, subdivision/displacement and tiled Nanite imports. This is a production reference, not a claim that Houdini is installed. Channel erosion alone does not generate joint planes, stratified ledges, undercuts or mineral detail.
+
+[Terrain material layers](https://www.sidefx.com/docs/houdini/heightfields/texturelayers.html) can blend physically scaled stone with slope, curvature and drainage masks, using triplanar projection on steep faces. Use a sediment layer only if the selected solver actually computes one; this SPL/diffusion test does not. Existing slate material can support a later proof, but texture detail cannot rescue these primary shapes. No purchase is needed to continue the landform work.
+
+No new runtime build, normal-game replacement, cloud/light/water/boss edit, main merge or packaged release occurred. The following sections retain the preceding rejected trials and upstream reproduction.
 
 ## Actual rejected geometry
 
@@ -37,7 +62,7 @@ Valid CPU clay images show connected branching ravines, interlocking spurs and e
 - [Actual native-scale upstream plan](review/cliff-continuous-15nov/upstream-plan.png)
 - [Actual native-scale 7 km detail](review/cliff-continuous-15nov/upstream-detail.png)
 
-## Next implementation
+## Previous implementation plan, now exercised above
 
 Use the verified model as an offline authoring component for one fresh, physically sized 500 m escarpment experiment with the actual coastal datum and a finer grid. Recalculate the terrain at those dimensions; do not shrink the 20 km reference mesh, stretch its channels around the crater, or feed the same rejected soft wall through another blind strength sweep. Set the broad cliff rise and drainage boundary conditions before erosion. Inspect the resulting complete landform before adding fractures or materials.
 

@@ -182,9 +182,9 @@ def main():
     initial, raw, fixed, kinds, correction, settings = fresh_field(source, measured, args.seed)
     cell = float(source['cell_size_m'])
     started = time.perf_counter()
-    # Exact differential check on this actual domain before trusting ADI across
-    # irregular padding: change only invalid elevations by1000m. Physical land
-    # must remain identical. This checks the chosen boundary arrangement.
+    # Check routing and optional masked diffusion on this actual domain: change
+    # only invalid elevations by 1000 m. Physical land must remain identical.
+    # The unsafe grid-only ADI implementation is never used here.
     probe = solve(fs, initial, valid, fixed, outlets, cell, 3, args.dt_years, args.diffusivity)
     shifted = solve(fs, initial, valid, fixed, outlets, cell, 3, args.dt_years, args.diffusivity, 1000.)
     padding_error = float(np.max(np.abs(probe[0][valid]-shifted[0][valid])))

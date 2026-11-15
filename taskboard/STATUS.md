@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 15 Nov Codex: physical escarpment adaptation tested; neither shape accepted
+
+- Built fresh 500 m terrain at 2 m spacing with the real coast/frame and exact outer boundaries. The API's default smoothing violated interior constraints; replaced it with checked valid-edge diffusion for a matched second trial. [Implementation, actual A/B images and next construction](CRATER-ESCARPMENT-WORKFLOW-15NOV.md).
+- Actual clay rejects both: incision alone creates parallel drapes; added slope transport smooths them into a dam. Next construct connected parent ridges/catchments before extracting detailed cliffs, instead of tuning a narrow step and flat lid. Old temple foundations are explicitly unsupported by these offline proposals; live actors remain unchanged. No native import, runtime/build, water/sky/boss change or main merge.
+
 ## 15 Nov Codex: cuts/deep erosion rejected; complete escarpment reference reproduced
 
 - Two connected-body cell-release versions still look like quarry pockets. A deeper existing-solver erosion test changes terrain by over 50 m but creates grid-like spines and isolated support pedestals. All remain offline/rejected; source supports and geometry checks are separately recorded. [Actual images and diagnosis](CRATER-ESCARPMENT-WORKFLOW-15NOV.md).
