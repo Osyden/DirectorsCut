@@ -66,6 +66,12 @@ Viewed `Fitted-Waterfall/Saved/WeatheredReview/RadialShearClose/close_oblique_fr
 The increased relief is visible, but the large face still reads as soft terrain
 with irregular dents rather than convincing fractured rock. The mapping proof
 is valid; visual acceptance and expansion around the crater are not approved.
+Root also rejected this crop. Deformation and import infrastructure are no
+longer the blocking issue; further generic noise, amplitude or density trials
+are not justified. The next shape work needs authored geological broken-face
+structure and a convincing hierarchy of planes, followed by material-scale
+detail. This crop's discrete evidence is not transferable proof for an
+arbitrary full sector or the rest of the crater.
 No Unreal, GPU, runtime or material edits were made by this audit worker.
 
 ## Reproduction
