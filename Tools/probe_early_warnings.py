@@ -35,6 +35,8 @@ int main(){
  Check(!ProjectileRelevant(true,true,2.4f,2.4f),"impact expires incoming projectile warning");
  Check(!ProjectileRelevant(false,true,1.f,2.4f),"phase exit expires projectile warning");
  Check(!ProjectileRelevant(true,false,1.f,2.4f),"hidden missing projectile cannot announce");
+ Check(!ThreatRelevant(EKind::Defeat,true,true,false,false,true,4,6.f),"old permanent statue defeat cannot retry indefinitely");
+ Check(ThreatRelevant(EKind::Defeat,true,true,false,false,true,4,5.9f),"recent statue defeat may retry within its event deadline");
  bool Announced=false;int Attempts=0;
  for(bool Accepted:{false,false,true}){if(!Announced){++Attempts;Announced=Accepted;}}
  Check(Announced&&Attempts==3,"rate-limit rejection leaves warning retryable until accepted");

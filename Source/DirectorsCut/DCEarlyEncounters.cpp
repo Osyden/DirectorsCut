@@ -411,7 +411,7 @@ bool ADCEarlyEncounters::IsThreatReportRelevant(TWeakObjectPtr<AActor> Body, flo
         // as occlusion; a cached route-side label alone is insufficient.
         const bool CanShoot = T.bCanShoot && Delta.Z < Delta.Size2D() * .55f && Guns->HasClearShot(Gun,T.Target.Get());
         return DCEarlyWarningPolicy::ThreatRelevant(Kind, Director->GetPhase()==EDCPhase::Fog,
-            !Body->IsHidden(), T.Target.IsValid(), CanShoot, T.bStatue, T.Stage);
+            !Body->IsHidden(), T.Target.IsValid(), CanShoot, T.bStatue, T.Stage, T.Clock);
     }
     return false;
 }
