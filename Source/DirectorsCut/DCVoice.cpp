@@ -10,6 +10,7 @@
 #include "DCTypes.h"
 #include "DCCrew.h"
 #include "DCRideDirector.h"
+#include "DCGame.h"
 #include "AudioCaptureCore.h"
 #include "Components/AudioComponent.h"
 #include "Sound/SoundWaveProcedural.h"
@@ -111,6 +112,62 @@ ADCVoice* ADCVoice::Get(const UObject* WorldContext)
 FString ADCVoice::SidecarDir() const
 {
 	return FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Sidecars"));
+}
+
+bool ADCVoice::IsMenuOpen() const
+{
+	const auto* Game = GetWorld() ? GetWorld()->GetAuthGameMode<ADCGameMode>() : nullptr;
+	return Game && Game->IsAwaitingStart();
+}
+
+bool ADCVoice::IsSpeaking() const
+{
+	return (ActiveCurves && bACEStarted && !bACEEnded) || !Playing.IsEmpty();
+}
+
+float ADCVoice::GetSpeechRemainingSeconds() const
+{
+	return float(FMath::Max(0.0, SpeechVisibleUntil - FPlatformTime::Seconds()));
+}
+
+void ADCVoice::ShowSpeech(const FString& Speaker, const FString& Text, double Duration)
+{
+	SpeakingSpeaker = Speaker;
+	SpeakingText = Text;
+	SpeechVisibleUntil = FPlatformTime::Seconds() + FMath::Max(3.0, Duration + .7);
+}
+
+void ADCVoice::ResetPendingSpeech()
+{
+	++SpeechEpoch;
+	SpeechQueue.Empty();
+	ClearACE();
+	for (FPendingTTS& Pending : PendingTTS)
+	{
+		if (FPlatformProcess::IsProcRunning(Pending.Proc)) { FPlatformProcess::TerminateProc(Pending.Proc, true); }
+		FPlatformProcess::CloseProc(Pending.Proc);
+	}
+	PendingTTS.Empty();
+	for (FPlaying& Voice : Playing) { if (Voice.Component.IsValid()) { Voice.Component->Stop(); Voice.Component->DestroyComponent(); } }
+	Playing.Empty(); LiveWaves.Empty();
+	SpeakingSpeaker.Empty(); SpeakingText.Empty(); SpeechVisibleUntil = 0;
+	if (GetWorld())
+	{
+		if (auto* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>()) { Crew->RecentLines.Empty(); }
+	}
+}
+
+void ADCVoice::SynchronizeScene()
+{
+	const auto* Director = ADCRideDirector::Get(this);
+	if (!Director) { return; }
+	const int32 Key = int32(Director->GetPhase()) * 2 + (Director->GetPhase() == EDCPhase::Fog && Director->RideTime >= 76.f ? 1 : 0);
+	if ((SceneKey != INDEX_NONE && Key != SceneKey) || (LastRideTime >= 0.f && Director->RideTime < LastRideTime - .1f))
+	{
+		ResetPendingSpeech();
+		UE_LOG(LogDC, Log, TEXT("Voice: cleared previous-scene dialogue at ride %.1f"), Director->RideTime);
+	}
+	SceneKey = Key; LastRideTime = Director->RideTime;
 }
 
 void ADCVoice::BeginPlay()
@@ -261,6 +318,7 @@ void ADCVoice::LaunchSidecars()
 void ADCVoice::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	SynchronizeScene();
 
 	if (!bLLMReady || !bSTTReady)
 	{
@@ -272,6 +330,7 @@ void ADCVoice::Tick(float DeltaSeconds)
 		}
 	}
 
+	if (IsMenuOpen()) { return; }
 	// Push-to-talk.
 	if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
 	{
@@ -290,13 +349,22 @@ void ADCVoice::Tick(float DeltaSeconds)
 		{
 			if (bTimedOut && !bDone) { FPlatformProcess::TerminateProc(P.Proc, true); }
 			FPlatformProcess::CloseProc(P.Proc);
-			if (bDone)
+			if (P.Epoch == SpeechEpoch)
 			{
+				ActiveText = P.Text;
 				TArray<uint8> Pcm; int32 Rate = 0, Channels = 0;
-				if (ReadWav(P.WavPath, Pcm, Rate, Channels) &&
-					!TryACE(P.Speaker, P.WavPath, double(Pcm.Num()) / (2.0 * Rate * Channels))) { PlayWav(P.Speaker, P.WavPath); }
+				if (bDone && ReadWav(P.WavPath, Pcm, Rate, Channels) && Pcm.Num() > 0 && Rate > 0 && Channels > 0)
+				{
+					if (!TryACE(P.Speaker, P.WavPath, double(Pcm.Num()) / (2.0 * Rate * Channels))) { PlayWav(P.Speaker, P.WavPath); }
+				}
+				else
+				{
+					// Keep the current line readable even if Piper fails. This does not
+					// mark speech active, so the ambience is not ducked for silent text.
+					ShowSpeech(P.Speaker, P.Text, FMath::Clamp(P.Text.Len() * .055, 4.0, 9.0));
+					UE_LOG(LogDC, Warning, TEXT("Voice: synthesis failed or timed out for %s; displaying subtitle"), *P.Speaker);
+				}
 			}
-			else { UE_LOG(LogDC, Warning, TEXT("Voice: synthesis timed out for %s"), *P.Speaker); }
 			PendingTTS.RemoveAt(i);
 		}
 	}
@@ -518,7 +586,18 @@ FString ADCVoice::PersonaFor(const FString& Speaker) const
 
 void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const FString& Context)
 {
-	if (bEnding || bSmokeTest) { return; }
+	SynchronizeScene();
+	if (bEnding || bSmokeTest || IsMenuOpen()) { return; }
+	// Hazard calls must describe what is happening now, without an asynchronous
+	// paraphrase inventing directions or retaining the previous encounter.
+	if (Context.IsEmpty())
+	{
+		const auto* D = ADCRideDirector::Get(this);
+		if (D && D->GetPhase() >= EDCPhase::Slide &&
+			(Fallback.Contains(TEXT("giant")) || Fallback.Contains(TEXT("Rocks")) || Fallback.Contains(TEXT("stone")) || Fallback.Contains(TEXT("Ghost ship")))) { return; }
+		FinishLine(Speaker, Fallback, true);
+		return;
+	}
 	if (!bUseLLM || !bLLMReady)
 	{
 		FinishLine(Speaker, Fallback);
@@ -532,10 +611,10 @@ void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const 
 		{
 		case EDCPhase::OpenSea: if (D->RideTime < 26.f) { Situation = TEXT("open sea in sunshine, a fair wind, a pale bank of cloud low on the horizon ahead"); } break;
 		case EDCPhase::Fog: Situation = D->RideTime < 76.f ? TEXT("sailing through a tunnel of rolling storm cloud, dark, rain, lightning inside the cloud walls, a pale light at the far end") : TEXT("mist among the vast ruins of a drowned city, temples and statues looming, rocks and fallen columns in the water, stone giants wading in from the banks to hurl burning rock"); break;
-		case EDCPhase::Slide: Situation = TEXT("the sea is dropping away beneath the ship"); break;
+		case EDCPhase::Slide: Situation = TEXT("inside a water tunnel descending toward a caldera, no stone giants or city obstacles here"); break;
 		case EDCPhase::Hell: Situation = TEXT("a burning channel of fire and demons"); break;
 		case EDCPhase::Breach: Situation = TEXT("the ship bursts out into a vast storm"); break;
-		case EDCPhase::Maelstrom: Situation = TEXT("a giant whirlpool crater, something colossal unseen beneath it, its arms reaching for the ship, waterspouts and burning stones coming at her"); break;
+		case EDCPhase::Maelstrom: Situation = TEXT("a vast caldera lake, an enormous Kraken attacking with tentacle obstacles, tentacle slams and fireballs from its mouth"); break;
 		case EDCPhase::Ending: Situation = TEXT("the storm is behind us: calm open sea in low golden sunlight, the ship battered but afloat, the crew relieved"); break;
 		default: break;
 		}
@@ -581,16 +660,19 @@ void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const 
 
 	TWeakObjectPtr<ADCVoice> Weak(this);
 	const double Sent = FPlatformTime::Seconds();
+	const int32 Epoch = SpeechEpoch;
 	auto Req = FHttpModule::Get().CreateRequest();
 	Req->SetURL(FString::Printf(TEXT("http://127.0.0.1:%d/v1/chat/completions"), LLMPort));
 	Req->SetVerb(TEXT("POST"));
 	Req->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
 	Req->SetContentAsString(BodyStr);
 	Req->SetTimeout(LLMTimeout);
-	Req->OnProcessRequestComplete().BindLambda([Weak, Speaker, Fallback, Sent](FHttpRequestPtr, FHttpResponsePtr Resp, bool bOk)
+	Req->OnProcessRequestComplete().BindLambda([Weak, Speaker, Fallback, Sent, Epoch](FHttpRequestPtr, FHttpResponsePtr Resp, bool bOk)
 	{
 		ADCVoice* V = Weak.Get();
 		if (!V || V->bEnding) { return; }
+		V->SynchronizeScene();
+		if (Epoch != V->SpeechEpoch || V->IsMenuOpen() || FPlatformTime::Seconds() - Sent > 12.0) { return; }
 		FString Line;
 		if (bOk && Resp.IsValid() && Resp->GetResponseCode() == 200)
 		{
@@ -629,27 +711,37 @@ void ADCVoice::CrewReply(const FString& Speaker, const FString& Fallback, const 
 	Req->ProcessRequest();
 }
 
-void ADCVoice::FinishLine(const FString& Speaker, const FString& Text)
+void ADCVoice::FinishLine(const FString& Speaker, const FString& Text, bool bReport)
 {
 	if (bEnding) { return; }
 	if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
 	{
 		Crew->Say(Speaker, Text);
 	}
-	Speak(Speaker, Text);
+	Speak(Speaker, Text, bReport);
 }
 
-void ADCVoice::Speak(const FString& Speaker, const FString& Text)
+void ADCVoice::Speak(const FString& Speaker, const FString& Text, bool bReport)
 {
-	if (!bTTSReady || bEnding || Text.TrimStartAndEnd().IsEmpty()) { return; }
-	// Bound a burst of orders; old acknowledgements must not delay fresh warnings indefinitely.
-	if (SpeechQueue.Num() >= 8) { SpeechQueue.RemoveAt(0); }
-	SpeechQueue.Add({ Speaker, Text.Left(240), FPlatformTime::Seconds() });
+	SynchronizeScene();
+	if (bEnding || IsMenuOpen() || Text.TrimStartAndEnd().IsEmpty()) { return; }
+	if (!bTTSReady) { ShowSpeech(Speaker, Text, 4); return; }
+	const FQueuedLine Line { Speaker, Text.Left(240), FPlatformTime::Seconds(), bReport };
+	if (bReport)
+	{
+		SpeechQueue.RemoveAll([](const FQueuedLine& Queued) { return Queued.bReport; });
+		SpeechQueue.Insert(Line, 0);
+	}
+	else
+	{
+		if (SpeechQueue.Num() >= 3 && !bSmokeTest) { SpeechQueue.RemoveAt(SpeechQueue.Num() - 1); }
+		SpeechQueue.Add(Line);
+	}
 }
 
 void ADCVoice::StartNextLine()
 {
-	while (!SpeechQueue.IsEmpty() && FPlatformTime::Seconds() - SpeechQueue[0].QueuedAt > 40)
+	while (!SpeechQueue.IsEmpty() && !bSmokeTest && FPlatformTime::Seconds() - SpeechQueue[0].QueuedAt > (SpeechQueue[0].bReport ? 6.0 : 12.0))
 	{
 		UE_LOG(LogDC, Log, TEXT("Voice: expired stale queued line for %s"), *SpeechQueue[0].Speaker);
 		SpeechQueue.RemoveAt(0);
@@ -668,12 +760,12 @@ void ADCVoice::StartNextLine()
 
 	const FString Piper = Dir / TEXT("bin/piper/piper/piper.exe");
 	const FString Model = Dir / TEXT("models/voices") / VoiceFor(Speaker);
-	if (!FPaths::FileExists(Model)) { UE_LOG(LogDC, Warning, TEXT("Voice: missing model for %s: %s"), *Speaker, *Model); return; }
+	if (!FPaths::FileExists(Model)) { UE_LOG(LogDC, Warning, TEXT("Voice: missing model for %s: %s"), *Speaker, *Model); ShowSpeech(Speaker, Text, FMath::Clamp(Text.Len() * .055, 4.0, 9.0)); return; }
 	const float Pace = Speaker == TEXT("Duncan") ? MarlowLengthScale : Speaker == TEXT("Ruby") ? OdessaLengthScale : FinchLengthScale;
 	const FString Cmd = FString::Printf(TEXT("--model \"%s\" --output_file \"%s\" --speaker %d --length_scale %.3f --noise_scale 0.5 --noise_w %.3f --sentence_silence 0.12 --quiet"),
 		*Model, *WavPath, Speaker == TEXT("Rex") ? FinchSpeakerId : 0, FMath::Clamp(Pace, .75f, 1.3f), Speaker == TEXT("Ruby") ? .333f : .65f);
 	void* ReadPipe = nullptr; void* WritePipe = nullptr;
-	if (!FPlatformProcess::CreatePipe(ReadPipe, WritePipe, true)) { return; }
+	if (!FPlatformProcess::CreatePipe(ReadPipe, WritePipe, true)) { ShowSpeech(Speaker, Text, FMath::Clamp(Text.Len() * .055, 4.0, 9.0)); return; }
 
 	FPendingTTS P;
 	P.Proc = FPlatformProcess::CreateProc(*Piper, *Cmd, false, true, true, nullptr, 0, nullptr, nullptr, ReadPipe);
@@ -682,9 +774,12 @@ void ADCVoice::StartNextLine()
 	if (!P.Proc.IsValid())
 	{
 		UE_LOG(LogDC, Warning, TEXT("Voice: could not start piper"));
+		ShowSpeech(Speaker, Text, FMath::Clamp(Text.Len() * .055, 4.0, 9.0));
 		return;
 	}
 	P.Speaker = Speaker;
+	P.Text = Text;
+	P.Epoch = SpeechEpoch;
 	P.WavPath = WavPath;
 	P.StartTime = FPlatformTime::Seconds();
 	PendingTTS.Add(MoveTemp(P));
@@ -710,6 +805,13 @@ bool ADCVoice::TryACE(const FString& Speaker, const FString& Path, double Durati
 	ActiveCurves = Avatar->FindComponentByClass<UACEAudioCurveSourceComponent>();
 	if (!ActiveCurves) { return false; }
 	ActiveSpeaker = Speaker; ActiveWav = Path;
+	ActiveDuration = Duration;
+	ActiveCurves->Volume = 1.6f;
+	ActiveCurves->Priority = 100.f;
+	// Keep critical orders readable/audible at either station rather than losing
+	// one crew member behind the player or to weather attenuation.
+	ActiveCurves->bOverrideAttenuation = false;
+	ActiveCurves->AttenuationSettings = nullptr;
 	// Short crew replies are buffered while GPU inference runs. Starting with only
 	// 100 ms queued produced gaps under the fog scene's graphics load.
 	ActiveCurves->BufferLengthInSeconds = 60.f;
@@ -729,6 +831,7 @@ bool ADCVoice::TryACE(const FString& Speaker, const FString& Path, double Durati
 void ADCVoice::ACEStarted()
 {
 	bACEStarted = true;
+	ShowSpeech(ActiveSpeaker, ActiveText, ActiveDuration);
 	UE_LOG(LogDC, Log, TEXT("Voice: ACE speaking %s"), *ActiveSpeaker);
 }
 void ADCVoice::ACEEnded()
@@ -776,22 +879,13 @@ void ADCVoice::PlayWav(const FString& Speaker, const FString& Path)
 	Wave->NumChannels = Channels;
 	Wave->Duration = INDEFINITELY_LOOPING_DURATION;
 	Wave->SoundGroup = SOUNDGROUP_Voice;
+	Wave->Priority = 100.f;
 	Wave->bLooping = false;
 	Wave->QueueAudio(Pcm.GetData(), Pcm.Num());
 	LiveWaves.Add(Wave);
 
-	// Speak from the crew member's position so the voice has a place on deck.
-	USceneComponent* AttachTo = nullptr;
-	if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
-	{
-		for (ADCCrewMember* M : Crew->GetCrew())
-		{
-			if (M && M->CrewName == Speaker) { AttachTo = M->GetRootComponent(); break; }
-		}
-	}
-	UAudioComponent* Comp = AttachTo
-		? UGameplayStatics::SpawnSoundAttached(Wave, AttachTo, NAME_None, FVector::ZeroVector, EAttachLocation::KeepRelativeOffset, false, 1.6f)
-		: UGameplayStatics::SpawnSound2D(this, Wave, 1.6f);
+	// Keep spoken warnings centred and intelligible from every ship station.
+	UAudioComponent* Comp = UGameplayStatics::SpawnSound2D(this, Wave, 1.6f);
 	if (Comp)
 	{
 		if (bSmokeTest && !bUseACE) { SmokeCompleted.Add(Speaker); }
@@ -799,6 +893,7 @@ void ADCVoice::PlayWav(const FString& Speaker, const FString& Path)
 		P.Component = Comp;
 		P.EndTime = FPlatformTime::Seconds() + static_cast<double>(Pcm.Num()) / (2.0 * Channels * Rate) + 0.3;
 		Playing.Add(P);
+		ShowSpeech(Speaker, ActiveText, double(Pcm.Num()) / (2.0 * Channels * Rate));
 		UE_LOG(LogDC, Log, TEXT("Voice: %s speaking (%.1fs of audio)"), *Speaker, static_cast<double>(Pcm.Num()) / (2.0 * Channels * Rate));
 	}
 }

@@ -1,5 +1,7 @@
 # Combined main candidate — 15 November
 
+The subsequent [human playtest feedback pass](PLAYTEST-FIXES-15NOV.md) builds on this integration. Its handoff records the replacement candidate and current validation; the evidence below describes the earlier 14:27 baseline.
+
 User authorized consolidating and pushing caldera, Kraken, ACE/crew and individual cannons into one main for final testing. Integration branch: `codex/final-main-integration`.
 
 Source inputs: main `194a239` (crew portraits, purchased cast, ACE safeguards, individual guns, early gameplay and deck fire); caldera `a0d8e6f`; boss `2fef3c5`. The old `codex/ace-comparison` branch is already represented by newer main integration commits and must not be merged over them.

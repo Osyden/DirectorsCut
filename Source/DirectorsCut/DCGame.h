@@ -22,6 +22,9 @@ public:
 
 protected:
 	void DrawCrewPanel();
+	void DrawSpeechBubble();
+	FString LastBubbleLine;
+	double BubbleUntil = 0;
 	void DrawCrewDutyIcon(EDCStationType Duty, float X, float Y, float Size, const FLinearColor& Color, bool bMirror = false);
 	UPROPERTY() TArray<TObjectPtr<class UTexture2D>> CrewPortraits;
 	bool bCrewPortraitsLoaded = false;
@@ -44,6 +47,9 @@ public:
 	ADCGameMode();
 	virtual void StartPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	bool IsAwaitingStart() const { return bAwaitingStart; }
+	void StartVoyage();
 
 	/** Blueprint class of the ship. Not edited by us; spawned as-is at the origin. */
 	UPROPERTY(Config, EditAnywhere) FSoftClassPath ShipClass;
@@ -58,6 +64,14 @@ public:
 	UPROPERTY(Config, EditAnywhere) bool bEnableFrameGeneration = false;
 
 protected:
+	void ShowMainMenu();
+	void TickMainMenu(float DeltaSeconds);
+	bool bAwaitingStart = false;
+	bool bMenuPaused = false;
+	bool bMenuCaptured = false;
+	float MenuAge = 0.f;
+	TSharedPtr<class SWidget> MainMenuWidget;
+	UPROPERTY() TObjectPtr<class ACameraActor> MenuCamera;
 	FVector DeckAt(float X, float Y, float TopZ) const;
 	FVector ShipPart(const TCHAR* Name, const FVector& Fallback) const;
 

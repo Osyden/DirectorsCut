@@ -202,11 +202,13 @@ void ADCLeviathan::UpdateBody(float Elapsed,const FTransform& Arena)
     const float Radius=Stage?Stage->Radius:160000.f;
     // Swim around the inner lake on an authored orbit, independent of the helm offset.
     // Bound the reference footprint before the authored animation is applied.
-    const FVector2D Local=DCMaelstromRoute::Point(Elapsed,Radius,-18000.f);
+    const FVector2D Local=DCMaelstromRoute::Point(Elapsed,Radius,-21500.f);
     FVector Anchor=Arena.TransformPosition(FVector(Local.X,Local.Y,-40000.f));
     const float Water=Stage?Stage->SampleSurfaceWorld(Anchor):ShipPosition.Z;
     const float Horizontal=FVector2D(MeshBoundsExtent.X,MeshBoundsExtent.Y).Size();
-    const float Scale=FMath::Min(4500.f/FMath::Max(1.f,static_cast<float>(MeshBoundsExtent.Z)*2.f),4500.f/FMath::Max(1.f,Horizontal));
+    // Twice the former silhouette, with a wider fixed berth so the hull stays
+    // clear at full inward helm. Mouth height remains independently reachable.
+    const float Scale=FMath::Min(9000.f/FMath::Max(1.f,static_cast<float>(MeshBoundsExtent.Z)*2.f),9000.f/FMath::Max(1.f,Horizontal));
     int32 Pose=0; float PoseTime=Elapsed-36.f;
     for(const auto& Event:DCBossTimeline::Events)
     {
@@ -243,7 +245,7 @@ void ADCLeviathan::UpdateBody(float Elapsed,const FTransform& Arena)
     Position.Z=Water-(MeshBoundsCenter.Z+MeshBoundsExtent.Z*.3f)*Scale;
     Body->SetWorldLocationAndRotation(Position,Facing); Body->SetWorldScale3D(FVector(Scale));
     // Put the actual mouth above the lake and within a flat broadside arc; never target the crater floor.
-    Body->AddWorldOffset(FVector(0,0,Water+650.f-GetMouthPosition().Z-(1.f-Rise+Sink)*7000.f));
+    Body->AddWorldOffset(FVector(0,0,Water+650.f-GetMouthPosition().Z-(1.f-Rise+Sink)*14000.f));
     Body->SetVisibility(Elapsed>=36.f && Sink<1.f,true); Body->SetHiddenInGame(Elapsed<36.f || Sink>=1.f,true);
     for(int32 I=0;I<2;++I)
     {

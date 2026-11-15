@@ -1,4 +1,5 @@
 #include "DCRideDirector.h"
+#include "DCMaelstrom.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/DirectionalLightComponent.h"
 #include "Components/SkyLightComponent.h"
@@ -402,7 +403,7 @@ void ADCRideDirector::Tick(float DeltaSeconds)
 			case EDCPhase::Slide: Crew->Report(TEXT("The sea is falling away beneath us! Hold on!"), true); break;
 			case EDCPhase::Hell: Crew->Report(TEXT("The water is burning! We are in hell itself!"), true); break;
 			case EDCPhase::Breach: Crew->Report(TEXT("Light ahead! We are breaking through!"), true); break;
-			case EDCPhase::Maelstrom: Crew->Report(TEXT("Whirlpool! And something huge moving in it!"), true); break;
+			case EDCPhase::Maelstrom: Crew->Report(TEXT("We're in the caldera! Kraken ahead!"), true); break;
 			case EDCPhase::Ending: WhiteOut = 1.f; Crew->Report(TEXT("Clear water, Captain. We made it through."), true); break;
 			default: break;
 			}
@@ -461,7 +462,9 @@ void ADCRideDirector::ApplyEnv(float DeltaSeconds)
 	}
 	Sun->SetIntensity(Env.SunIntensity);
 	Sun->SetLightColor(Env.SunColor);
-	Sun->SetRelativeRotation(FRotator(Env.SunPitch, Env.SunYaw, 0.f));
+	const ADCMaelstrom* SkyStage=ADCMaelstrom::Get(this);
+	const float ArenaSkyYaw=SkyStage && SkyStage->IsActive()?SkyStage->GetSkyYawOffset():0.f;
+	Sun->SetRelativeRotation(FRotator(Env.SunPitch, Env.SunYaw+ArenaSkyYaw, 0.f));
 	// God rays and cloud shadows scale with how much sun there is.
 	Sun->SetBloomScale(0.22f * FMath::Clamp(Env.SunIntensity / 8.f, 0.f, 1.f));
 
@@ -916,6 +919,9 @@ void ADCRideDirector::SetupUDS()
 	}
 	// Off: at these resolutions the drops on the lens read as dirt on the picture, not as rain.
 	SkyFlag(UDSWeather, TEXT("Enable Screen Droplets"), false);
+	// DCAudio supplies and ducks our wind/rain/thunder. Do not stack the weather
+	// pack's second full-volume mix on top of crew dialogue.
+	SkyFlag(UDSWeather, TEXT("Enable Weather Sound Effects"), false);
 	// In fog a flash already fills the air with light; the pack's extra bloom on top of it whites the picture out.
 	SkyNum(UDSWeather, TEXT("Lightning Flash Light Bloom Intensity"), 0.0);   // (it was 0.5: it laid a sepia border round the picture on every flash)
 	// At the pack's own strength a flash turned the near stone and the deck pure white for half a second.
@@ -986,6 +992,7 @@ void ADCRideDirector::TickUDS()
 	if (FStructProperty* Target = FindFProperty<FStructProperty>(UDSSky->GetClass(), TEXT("Sun Target")))
 	{
 		float TestYaw = Env.SunYaw, TestPitch = Env.SunPitch; FParse::Value(FCommandLine::Get(), TEXT("DCSunYaw="), TestYaw); FParse::Value(FCommandLine::Get(), TEXT("DCSunPitch="), TestPitch);   // test hooks
+		if(const ADCMaelstrom* Stage=ADCMaelstrom::Get(this); Stage && Stage->IsActive()) { TestYaw+=Stage->GetSkyYawOffset(); }
 		const FVector ToSun = -FRotator(TestPitch, TestYaw, 0.f).Vector();
 		*Target->ContainerPtrToValuePtr<FVector>(UDSSky.Get()) = ToSun * 1000000.0;
 	}

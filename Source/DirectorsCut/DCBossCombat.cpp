@@ -90,8 +90,8 @@ bool ADCBossCombat::CanReach(const FVector& P) const
     const FVector Gun(0,Side*650.f,Director->SeaLevelZ+800.f);
     const FVector D=P-Gun;
     const float Dist=FVector2D(D.X,D.Y).Size();
-    // Five degrees spare inside the captain's yaw/elevation limits and 10m spare in range.
-    if(Dist<3000.f || Dist>17000.f || FMath::Abs(D.X)>FMath::Abs(D.Y)*1.54f || D.Z>Dist*.176327f || D.Z<-Dist*.36f) return false;
+    // Five degrees spare inside the captain's yaw/elevation limits and 5m spare in range.
+    if(Dist<3000.f || Dist>20500.f || FMath::Abs(D.X)>FMath::Abs(D.Y)*1.54f || D.Z>Dist*.176327f || D.Z<-Dist*.36f) return false;
     for(int I=1;I<=16;++I)
     {
         const FVector Q=FMath::Lerp(Gun,P,I/16.f);

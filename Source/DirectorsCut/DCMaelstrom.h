@@ -30,6 +30,8 @@ public:
 	float GetRouteOffset() const { return RouteOffset; }
 	void EmitWaterContact(const FVector& Position, float Strength = 1.f, bool ProjectToSurface = true);
 	FTransform GetArenaTransform() const;
+	/** Yaw shared by distant sky and sun while the stationary ship follows the arena. */
+	float GetSkyYawOffset() const;
 	float SampleSurfaceWorld(const FVector& Position) const;
 	float GetRimRadius(float Angle) const;
 	float GetRimDrop(float Angle) const;
@@ -283,6 +285,7 @@ private:
 	float SlideStart = 240.f;
 	float EndingStart = 450.f;
 	float PreviousTime = -1.f;
+	bool bLakeLandingPlayed = false;
 	float ShipRadius = 0.f;
 	float HelmTurn = 0.f;
 	float RouteOffset = 0.f;

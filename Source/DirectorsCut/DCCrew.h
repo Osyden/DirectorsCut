@@ -51,6 +51,8 @@ public:
 
 	void Init(const FString& InName, const FLinearColor& Color);
 	void AssignStation(int32 StationIndex);
+	/** Release a player-claimed post and move clear of its first-person view now. */
+	void VacateStation(const FVector& StationLocation);
 	void SetHelmOrder(EDCAction Action);
 	void SetHoldFire(bool bHold) { bHoldFire = bHold; }
 	bool IsHoldingFire() const { return bHoldFire; }
@@ -121,6 +123,7 @@ protected:
 	TArray<FDCStation> Stations;
 	FString CurrentOrderText;
 	double LastReportTime = -100.0;
+	EDCPhase LastReportPhase = EDCPhase::OpenSea;
 	int32 NextReporter = 0;
 	UPROPERTY() TArray<TObjectPtr<ADCCrewMember>> Crew;
 };

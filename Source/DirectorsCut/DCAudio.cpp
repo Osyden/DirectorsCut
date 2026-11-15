@@ -3,6 +3,7 @@
 #include "DCTypes.h"
 #include "DCTroubles.h"
 #include "DCCrew.h"
+#include "DCVoice.h"
 #include "DCKraken.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Animation/AnimationAsset.h"
@@ -319,11 +320,26 @@ void ADCAudio::BeginPlay()
 
 void ADCAudio::OnLightning()
 {
+	if (Director && Director->GetPhase() >= EDCPhase::Breach) { return; }
 	// Sound arrives after the light: near strikes almost at once, far ones seconds later.
 	PendingThunder.Add(FPlatformTime::Seconds() + FMath::FRandRange(0.15f, 2.2f));
 }
 
-void ADCAudio::PlayOneShot(const TArray<uint8>& Pcm, float Volume)
+float ADCAudio::GetStormGain() const
+{
+	if (!Director) { return 1.f; }
+	for (const FDCPhaseDef& Phase : Director->Phases)
+	{
+		if (Phase.Phase != EDCPhase::Breach) { continue; }
+		// Follow the authored route (including the optional hell detour), not a
+		// fixed timestamp. The tunnel storm is gone seven seconds into the exit.
+		const float Exit = FMath::Clamp((Director->RideTime - Phase.StartTime) / 7.f, 0.f, 1.f);
+		return 1.f - Exit * Exit * (3.f - 2.f * Exit);
+	}
+	return 1.f;
+}
+
+void ADCAudio::PlayOneShot(const TArray<uint8>& Pcm, float Volume, bool bStorm)
 {
 	USoundWaveProcedural* Wave = NewObject<USoundWaveProcedural>(this);
 	Wave->SetSampleRate(Rate);
@@ -332,11 +348,13 @@ void ADCAudio::PlayOneShot(const TArray<uint8>& Pcm, float Volume)
 	Wave->SoundGroup = SOUNDGROUP_Effects;
 	Wave->QueueAudio(Pcm.GetData(), Pcm.Num());
 	Waves.Add(Wave);
-	if (UAudioComponent* C = UGameplayStatics::SpawnSound2D(this, Wave, Volume * MasterVolume, FMath::FRandRange(0.85f, 1.1f)))
+	if (UAudioComponent* C = UGameplayStatics::SpawnSound2D(this, Wave, Volume * MasterVolume * SpeechDuck, FMath::FRandRange(0.85f, 1.1f)))
 	{
 		FOneShot O;
 		O.Component = C;
 		O.EndTime = FPlatformTime::Seconds() + static_cast<double>(Pcm.Num()) / (2.0 * Rate) + 0.5;
+		O.BaseVolume = Volume * MasterVolume;
+		O.bStorm = bStorm;
 		OneShots.Add(O);
 	}
 }
@@ -346,7 +364,7 @@ void ADCAudio::SetLayer(FLayer& Layer, float Target, float DeltaSeconds)
 	Layer.Volume = FMath::FInterpTo(Layer.Volume, Target, DeltaSeconds, 1.2f);
 	if (UAudioComponent* C = Layer.Component.Get())
 	{
-		C->SetVolumeMultiplier(FMath::Max(0.001f, Layer.Volume * MasterVolume));
+		C->SetVolumeMultiplier(FMath::Max(0.001f, Layer.Volume * MasterVolume * AmbienceVolume * SpeechDuck));
 	}
 }
 
@@ -355,6 +373,16 @@ void ADCAudio::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	if (!Director) { return; }
 	const FDCEnvState& Env = Director->GetEnv();
+	const ADCVoice* Voice = ADCVoice::Get(this);
+	const float VoiceTarget = Voice && Voice->IsSpeaking() ? .25f : 1.f;
+	SpeechDuck = FMath::FInterpTo(SpeechDuck, VoiceTarget, DeltaSeconds, VoiceTarget < SpeechDuck ? 12.f : 2.f);
+	const float StormGain = GetStormGain();
+	if (Director->GetPhase() >= EDCPhase::Breach) { PendingThunder.Empty(); }
+	if (StormGain <= 0.f && !bStormSilenced)
+	{
+		UE_LOG(LogDC, Log, TEXT("STORM_AUDIO_OFF ride=%.2f wind/rain/rumble/drone/thunder muted; sea and impacts retained"), Director->RideTime);
+	}
+	bStormSilenced = StormGain <= 0.f;
 
 	const float Storm = FMath::Clamp(Env.WaveHeight / 320.f, 0.f, 1.2f);
 	TickBell(DeltaSeconds);
@@ -362,8 +390,8 @@ void ADCAudio::Tick(float DeltaSeconds)
 	// Each bed prefers a recording when one has been imported (Content/Sonniss) and falls back to the
 	// synthesised layer otherwise, so the project still makes sound on a machine without the recordings.
 	const float WindTarget = FMath::Clamp(0.12f + Storm * 0.55f + Env.Tube * 0.5f + Env.FogDensity * 1.2f + SpoutRoar * 0.7f, 0.f, 1.4f) * (BellDuck > 0.f ? 0.55f : 1.f);
-	const float SeaTarget = FMath::Clamp(0.35f + Storm * 0.6f + Env.Tube * 0.4f, 0.f, 1.2f);
-	const float Rough = FMath::Clamp((Storm - 0.3f) / 0.5f, 0.f, 1.f);
+	const float SeaTarget = FMath::Lerp(.35f, FMath::Clamp(0.35f + Storm * 0.6f + Env.Tube * 0.4f, 0.f, 1.2f), StormGain);
+	const float Rough = FMath::Clamp((Storm - 0.3f) / 0.5f, 0.f, 1.f) * StormGain;
 	const ADCTroubles* Troubles = ADCTroubles::Get(this);
 	const float FireTarget = Troubles ? FMath::Min(Troubles->NumFires() * 0.4f, 0.9f) : 0.f;
 
@@ -379,6 +407,19 @@ void ADCAudio::Tick(float DeltaSeconds)
 	SetLayer(Rumble, FMath::Clamp(FMath::Min(Env.SeaGlow.R, 1.f) * 0.9f + Env.Whirl * 0.5f + Env.Tube * 0.35f, 0.f, 1.f), DeltaSeconds);
 	SetLayer(Drone, FMath::Clamp(0.1f + Env.FogDensity * 1.5f + Env.Whirl * 0.3f + FMath::Min(Env.SeaGlow.R, 1.f) * 0.2f, 0.f, 0.38f), DeltaSeconds);
 	SetLayer(Crackle, bRealFire ? 0.f : FireTarget, DeltaSeconds);
+	// Apply the exit envelope after bed interpolation, so even the minimum
+	// keep-alive volume reaches true silence. Calm water and deck fires continue.
+	for (FLayer* Layer : { &Wind, &Rain, &Rumble, &Drone })
+	{
+		if (UAudioComponent* C = Layer->Component.Get()) { C->SetVolumeMultiplier(FMath::Max(.001f, Layer->Volume * MasterVolume * AmbienceVolume * SpeechDuck) * StormGain); }
+	}
+	for (const FName Name : { FName(TEXT("wind_storm")), FName(TEXT("rain_storm")), FName(TEXT("sea_rough")) })
+	{
+		if (FRealBed* Bed = RealBeds.Find(Name))
+		{
+			if (UAudioComponent* C = Bed->Component.Get()) { C->SetVolumeMultiplier(FMath::Max(.001f, Bed->Volume * MasterVolume * AmbienceVolume * SpeechDuck) * StormGain); }
+		}
+	}
 
 	// A horn swell marks each turn for the worse.
 	const EDCPhase Phase = Director->GetPhase();
@@ -417,12 +458,16 @@ void ADCAudio::Tick(float DeltaSeconds)
 		{
 			PendingThunder.RemoveAtSwap(i);
 			// Mostly the synthesised cracks (short, varied); now and then the long recorded roll.
-			if (FMath::FRand() < 0.3f && PlayReal(TEXT("thunder_real"), FMath::FRandRange(0.7f, 1.f), FMath::FRandRange(0.9f, 1.05f))) { continue; }
-			if (Thunder.Num()) { PlayOneShot(Thunder[FMath::RandRange(0, Thunder.Num() - 1)], FMath::FRandRange(0.6f, 1.2f)); }
+			if (FMath::FRand() < 0.3f && PlayReal(TEXT("thunder_real"), FMath::FRandRange(0.7f, 1.f), FMath::FRandRange(0.9f, 1.05f), true)) { continue; }
+			if (Thunder.Num()) { PlayOneShot(Thunder[FMath::RandRange(0, Thunder.Num() - 1)], FMath::FRandRange(0.6f, 1.2f), true); }
 		}
 	}
 	for (int32 i = OneShots.Num() - 1; i >= 0; --i)
 	{
+		if (OneShots[i].bStorm)
+		{
+			if (UAudioComponent* C = OneShots[i].Component.Get()) { C->SetVolumeMultiplier(OneShots[i].BaseVolume * SpeechDuck * StormGain); }
+		}
 		if (Now > OneShots[i].EndTime)
 		{
 			if (UAudioComponent* C = OneShots[i].Component.Get())
@@ -475,41 +520,29 @@ void ADCAudio::DumpWav(const TCHAR* Name, const TArray<uint8>& Pcm) const
 
 void ADCAudio::TickBell(float DeltaSeconds)
 {
-	// The ship's bell begins to ring by itself as the weather turns: one lone strike, a long silence,
-	// then slow irregular tolling that quickens at the worst of it. Each strike is its own event so
-	// the pattern never loops, and it stays slower than an alarm.
+	// Three warning strikes on entering the storm front, then silence for the voyage.
 	const EDCPhase Phase = Director->GetPhase();
-	const bool bHaunted = Phase != EDCPhase::OpenSea && Phase != EDCPhase::Ending;
 	BellDuck = FMath::Max(0.f, BellDuck - DeltaSeconds);
-	if (!bHaunted)
+	if (Phase == EDCPhase::OpenSea)
 	{
 		BellStrikes = 0;
-		NextBellIn = 6.f;
+		NextBellIn = .6f;
 		return;
 	}
+	if (Phase != EDCPhase::Fog || BellStrikes >= 3 || Director->RideTime >= 76.f) { return; }
 	NextBellIn -= DeltaSeconds;
 	if (NextBellIn > 0.f || !BellSound) { return; }
 
-	const bool bPeak = Phase == EDCPhase::Slide || Phase == EDCPhase::Breach || Phase == EDCPhase::Maelstrom;
 	++BellStrikes;
-	if (BellStrikes == 1) { NextBellIn = FMath::FRandRange(15.f, 25.f); }
-	else { NextBellIn = bPeak ? FMath::FRandRange(4.f, 8.f) : FMath::FRandRange(8.f, 14.f); }
+	NextBellIn = 2.3f;
 
-	// Early strikes are quiet; later ones vary a little in strength. Pitched down for weight.
-	const float Volume = (BellStrikes <= 2 ? 0.6f : FMath::FRandRange(0.8f, 1.05f)) * MasterVolume * BellVolume;
+	const float Volume = .6f * MasterVolume * BellVolume * SpeechDuck;
 	const float Pitch = FMath::FRandRange(0.8f, 0.87f);
 	const FVector Where = BellMesh.IsValid() ? BellMesh->Bounds.Origin : FVector(-446.f, 0.f, 812.f);
 	UGameplayStatics::SpawnSoundAtLocation(this, BellSound, Where, FRotator::ZeroRotator, Volume, Pitch);
 	if (BellMesh.IsValid() && BellAnim) { BellMesh->PlayAnimation(BellAnim, false); }
 	BellDuck = 1.6f; // pull the wind back so the strike reads
-
-	if (BellStrikes == 2)
-	{
-		if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
-		{
-			Crew->Report(TEXT("The bell, Captain. Nobody is ringing it."), true);
-		}
-	}
+	UE_LOG(LogDC, Log, TEXT("STORM_BELL strike=%d ride=%.2f"), BellStrikes, Director->RideTime);
 }
 
 USoundBase* ADCAudio::FindReal(FName Name)
@@ -532,14 +565,27 @@ bool ADCAudio::SetReal(FName Name, float Target, float DeltaSeconds)
 		if (UAudioComponent* C = Bed.Component.Get()) { C->SetVolumeMultiplier(0.001f); }
 	}
 	Bed.Volume = FMath::FInterpTo(Bed.Volume, Target, DeltaSeconds, 1.2f);
-	if (UAudioComponent* C = Bed.Component.Get()) { C->SetVolumeMultiplier(FMath::Max(0.001f, Bed.Volume * MasterVolume)); }
+	if (UAudioComponent* C = Bed.Component.Get()) { C->SetVolumeMultiplier(FMath::Max(0.001f, Bed.Volume * MasterVolume * AmbienceVolume * SpeechDuck)); }
 	return true;
 }
 
-bool ADCAudio::PlayReal(FName Name, float Volume, float Pitch)
+bool ADCAudio::PlayReal(FName Name, float Volume, float Pitch, bool bStorm)
 {
 	USoundBase* Sound = FindReal(Name);
 	if (!Sound) { return false; }
-	UGameplayStatics::PlaySound2D(this, Sound, Volume * MasterVolume, Pitch);
+	if (bStorm)
+	{
+		if (UAudioComponent* C = UGameplayStatics::SpawnSound2D(this, Sound, Volume * MasterVolume * SpeechDuck * GetStormGain(), Pitch))
+		{
+			FOneShot O;
+			O.Component = C;
+			O.EndTime = FPlatformTime::Seconds() + Sound->GetDuration() / FMath::Max(.01f, Pitch) + .5;
+			O.BaseVolume = Volume * MasterVolume;
+			O.bStorm = true;
+			OneShots.Add(O);
+		}
+		return true;
+	}
+	UGameplayStatics::PlaySound2D(this, Sound, Volume * MasterVolume * SpeechDuck, Pitch);
 	return true;
 }

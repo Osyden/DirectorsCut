@@ -24,7 +24,8 @@ public:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
 
-	UPROPERTY(EditAnywhere) float MasterVolume = 0.8f;
+	UPROPERTY(EditAnywhere) float MasterVolume = 0.65f;
+	UPROPERTY(EditAnywhere) float AmbienceVolume = 0.55f;
 	UPROPERTY(EditAnywhere) float BellVolume = 1.f;
 	/** Extra wind, 0 to 1, set each frame by whatever is roaring near the ship (a waterspout, the creature's end). */
 	float SpoutRoar = 0.f;
@@ -42,11 +43,15 @@ protected:
 	{
 		TWeakObjectPtr<UAudioComponent> Component;
 		double EndTime = 0.0;
+		float BaseVolume = 1.f;
+		bool bStorm = false;
 	};
 
 	void StartLayer(FLayer& Layer, TArray<float>&& Samples);
-	void PlayOneShot(const TArray<uint8>& Pcm, float Volume);
+	void PlayOneShot(const TArray<uint8>& Pcm, float Volume, bool bStorm = false);
 	void OnLightning();
+	float GetStormGain() const;
+	bool bStormSilenced = false;
 	void SetLayer(FLayer& Layer, float Target, float DeltaSeconds);
 
 	static const int32 Rate = 24000;
@@ -66,7 +71,7 @@ protected:
 	struct FRealBed { TWeakObjectPtr<UAudioComponent> Component; float Volume = 0.f; };
 	class USoundBase* FindReal(FName Name);
 	bool SetReal(FName Name, float Target, float DeltaSeconds);
-	bool PlayReal(FName Name, float Volume, float Pitch = 1.f);
+	bool PlayReal(FName Name, float Volume, float Pitch = 1.f, bool bStorm = false);
 	UPROPERTY() TMap<FName, TObjectPtr<class USoundBase>> RealSounds;
 	TMap<FName, FRealBed> RealBeds;
 	TWeakObjectPtr<class ADCKraken> Kraken;
@@ -75,8 +80,9 @@ protected:
 	UPROPERTY() TObjectPtr<class USoundBase> BellSound;
 	UPROPERTY() TObjectPtr<class UAnimationAsset> BellAnim;
 	TWeakObjectPtr<class USkeletalMeshComponent> BellMesh;
-	float NextBellIn = 6.f;
+	float NextBellIn = .6f;
 	float BellDuck = 0.f;
+	float SpeechDuck = 1.f;
 	int32 BellStrikes = 0;
 	void DumpWav(const TCHAR* Name, const TArray<uint8>& Pcm) const;
 	TArray<TArray<uint8>> Thunder;

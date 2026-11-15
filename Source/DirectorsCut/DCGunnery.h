@@ -57,6 +57,12 @@ protected:
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UInstancedStaticMeshComponent> Balls;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UInstancedStaticMeshComponent> Trails;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UInstancedStaticMeshComponent> Spray;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<class UProceduralMeshComponent> MuzzleFlames;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<class UProceduralMeshComponent> MuzzleSmoke;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<class UPointLightComponent> MuzzleLight;
+	struct FMuzzleFlash { FVector Position; FVector Direction; float Age; float Seed; };
+	TArray<FMuzzleFlash> MuzzleFlashes;
+	void TickMuzzleFlashes(float DeltaSeconds);
 	UPROPERTY() TObjectPtr<UClass> MuzzleEffectClass;
 	UPROPERTY() TObjectPtr<UClass> ImpactEffectClass;
 	UPROPERTY() TObjectPtr<class UParticleSystem> WaterImpact;

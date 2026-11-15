@@ -2,6 +2,7 @@
 #include "DCCrew.h"
 #include "DCTreadmill.h"
 #include "DCGunnery.h"
+#include "DCGame.h"
 #include "DCRideDirector.h"
 #include "DCTroubles.h"
 #include "Camera/CameraComponent.h"
@@ -43,6 +44,7 @@ void ADCPlayerCharacter::Tick(float DeltaSeconds)
 
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (!PC) { return; }
+	if (const ADCGameMode* Game = GetWorld()->GetAuthGameMode<ADCGameMode>(); Game && Game->IsAwaitingStart()) { return; }
 	TickRag(DeltaSeconds);
 
 	if (bTyping) { return; }
@@ -232,12 +234,22 @@ void ADCPlayerCharacter::EnterStation(APlayerController* PC, int32 Index)
 
 	// Whoever was here steps aside.
 	CancelSwat();
+	S->bPlayerOperated = true;
 	if (ADCCrewMember* Old = S->Operator.Get())
 	{
-		Old->AssignStation(INDEX_NONE);
+		Old->VacateStation(S->Location);
 		Crew->Reply(Old->CrewName, TEXT("She's yours, Captain."));
 	}
-	S->bPlayerOperated = true;
+	if (S->Type == EDCStationType::Helm)
+	{
+		// Also clear a hand already released by an order while still physically
+		// standing at the wheel, without interrupting other active crew duties.
+		for (ADCCrewMember* Member : Crew->GetCrew())
+		{
+			if (Member && Member->StationIndex == INDEX_NONE && FVector::DistSquared2D(Member->DeckPos,S->Location)<FMath::Square(200.f))
+			{ Member->VacateStation(S->Location); }
+		}
+	}
 	ActiveStation = Index;
 	ActiveType = S->Type;
 	ActiveSide = S->Side;
@@ -405,6 +417,10 @@ void ADCPlayerCharacter::TickCannons(APlayerController* PC)
 	FRotator AimRotation = GunCamera->GetActorRotation();
 	AimRotation.Yaw = SideYaw + FMath::Clamp(FMath::FindDeltaAngleDegrees(SideYaw, AimRotation.Yaw) + DX * LookSensitivity * 10.f, -62.f, 62.f);
 	AimRotation.Pitch = FMath::Clamp(AimRotation.Pitch + DY * LookSensitivity * 10.f, -62.f, 30.f);
+#if !UE_BUILD_SHIPPING
+	float ReviewPitch;
+	if (FParse::Value(FCommandLine::Get(), TEXT("DCCannonReviewPitch="), ReviewPitch)) { AimRotation.Pitch=FMath::Clamp(ReviewPitch,-62.f,30.f); }
+#endif
 	if (UDCCrewSubsystem* Crew = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
 	{
 		if (const FDCStation* Station = Crew->GetStation(ActiveStation))
@@ -517,6 +533,7 @@ void ADCPlayerCharacter::TickMeta(APlayerController* PC)
 	ADCRideDirector* Director = ADCRideDirector::Get(this);
 	if (Director && Director->GetPhase() == EDCPhase::Ending && PC->WasInputKeyJustPressed(EKeys::R))
 	{
+		UGameplayStatics::ClearSoundMixModifiers(this);
 		UGameplayStatics::OpenLevel(this, FName(*UGameplayStatics::GetCurrentLevelName(this)));
 	}
 	if (PC->WasInputKeyJustPressed(EKeys::Escape))

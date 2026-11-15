@@ -3,6 +3,7 @@
 #include "DCMaelstrom.h"
 #include "DCRideDirector.h"
 #include "DCCrew.h"
+#include "DCPlayer.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/PrimitiveComponent.h"
@@ -11,6 +12,11 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystem.h"
+#include "ProceduralMeshComponent.h"
+#include "Components/PointLightComponent.h"
+#include "Camera/PlayerCameraManager.h"
+#include "GameFramework/PlayerController.h"
+#include "GameFramework/Pawn.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "EngineUtils.h"
 #include "UObject/ConstructorHelpers.h"
@@ -105,6 +111,23 @@ ADCGunnery::ADCGunnery()
 	Spray->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Spray->SetCastShadow(false);
 	if (Sphere.Succeeded()) { Spray->SetStaticMesh(Sphere.Object); }
+	MuzzleFlames = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("MuzzleFlames"));
+	MuzzleSmoke = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("MuzzleSmoke"));
+	for (UProceduralMeshComponent* Mesh : {MuzzleFlames.Get(), MuzzleSmoke.Get()})
+	{
+		Mesh->SetupAttachment(Balls);
+		Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Mesh->SetCastShadow(false);
+		Mesh->bReceivesDecals = false;
+		Mesh->SetCanEverAffectNavigation(false);
+	}
+	MuzzleLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("MuzzleLight"));
+	MuzzleLight->SetupAttachment(Balls);
+	MuzzleLight->SetLightColor(FLinearColor(1.f,.32f,.055f));
+	MuzzleLight->SetIntensity(0.f);
+	MuzzleLight->SetAttenuationRadius(500.f);
+	MuzzleLight->SetCastShadows(false);
+	MuzzleLight->SetVolumetricScatteringIntensity(.05f);
 }
 
 ADCGunnery* ADCGunnery::Get(const UObject* WorldContext)
@@ -120,6 +143,8 @@ void ADCGunnery::Init(AActor* Ship, float InSeaLevelZ)
 {
 	SeaLevelZ = InSeaLevelZ;
 	GunShip = Ship;
+	MuzzleFlames->SetMaterial(0, LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_DeckFire.M_DeckFire")));
+	MuzzleSmoke->SetMaterial(0, LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_DeckSmoke.M_DeckSmoke")));
 	if (UMaterialInterface* Base = Trails->GetMaterial(0))
 	{
 		UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(Base, Trails);
@@ -188,11 +213,83 @@ void ADCGunnery::Init(AActor* Ship, float InSeaLevelZ)
 		*GetNameSafe(MuzzleEffectClass.Get()), *GetNameSafe(WaterImpact.Get()), *GetNameSafe(StoneImpact.Get()), *GetNameSafe(CreatureImpact.Get()));
 }
 
+void ADCGunnery::TickMuzzleFlashes(float DeltaSeconds)
+{
+	struct FCard { FVector Center, Across, Along; float Width, Length; FColor Color; };
+	TArray<FCard> FireCards, SmokeCards;
+	const APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	const FVector Eye = PC && PC->PlayerCameraManager ? PC->PlayerCameraManager->GetCameraLocation() : FVector(0,0,1000);
+	float Brightest = 0.f;
+	for (int32 I=MuzzleFlashes.Num()-1; I>=0; --I)
+	{
+		FMuzzleFlash& Flash = MuzzleFlashes[I];
+		Flash.Age += DeltaSeconds;
+		if (Flash.Age >= 1.4f) { MuzzleFlashes.RemoveAtSwap(I); continue; }
+		const float Heat = FMath::Clamp(1.f-Flash.Age/.28f,0.f,1.f);
+		const FVector Axis = Flash.Direction;
+		FVector Across = FVector::CrossProduct(Axis, Eye-Flash.Position).GetSafeNormal();
+		if (Across.IsNearlyZero()) { Across = FVector::CrossProduct(Axis,FVector::UpVector).GetSafeNormal(); }
+		const FVector Other = FVector::CrossProduct(Axis,Across).GetSafeNormal();
+		const uint8 Seed = uint8(Flash.Seed*255.f);
+		if (Heat > 0.f)
+		{
+			const float Length = 200.f + 220.f*FMath::Sin(FMath::Clamp(Flash.Age/.28f,0.f,1.f)*UE_PI);
+			const FVector Center = Flash.Position+Axis*(30.f+Length*.5f);
+			FireCards.Add({Center,Across,Axis,110.f+90.f*(1.f-Heat),Length,FColor(Seed,180,0,uint8(Heat*255.f))});
+			FireCards.Add({Center,Other,Axis,90.f+75.f*(1.f-Heat),Length*.9f,FColor(Seed,110,0,uint8(Heat*230.f))});
+			// Face-on ignition remains visible from the player's barrel sightline;
+			// the two lengthwise tongues alone become edge-on in that view.
+			const FVector ToEye=(Eye-Flash.Position).GetSafeNormal();
+			FVector FaceRight=FVector::CrossProduct(FVector::UpVector,ToEye).GetSafeNormal();
+			if (FaceRight.IsNearlyZero()) { FaceRight=FVector::RightVector; }
+			FireCards.Add({Flash.Position+Axis*70.f,FaceRight,FVector::CrossProduct(ToEye,FaceRight).GetSafeNormal(),150.f,180.f,FColor(Seed,150,0,uint8(Heat*255.f))});
+			if (Heat > Brightest) { Brightest=Heat; MuzzleLight->SetWorldLocation(Flash.Position+Axis*80.f); }
+		}
+		for (int32 Puff=0; Puff<5; ++Puff)
+		{
+			const float Age=Flash.Age-Puff*.035f;
+			if (Age<=0.f) { continue; }
+			const float Fade=FMath::Clamp(1.f-Age/1.25f,0.f,1.f);
+			const FVector Center=Flash.Position+Axis*(80.f+Puff*45.f+Age*280.f)+FVector(-Age*100.f,0,Age*75.f)+Across*FMath::Sin(Puff*2.4f+Flash.Seed)*Age*60.f;
+			const FVector ToEye=(Eye-Center).GetSafeNormal();
+			FVector Right=FVector::CrossProduct(FVector::UpVector,ToEye).GetSafeNormal();
+			if (Right.IsNearlyZero()) { Right=FVector::RightVector; }
+			const FVector Up=FVector::CrossProduct(ToEye,Right).GetSafeNormal();
+			const float Size=130.f+Age*240.f+Puff*15.f;
+			SmokeCards.Add({Center,Right,Up,Size,Size,FColor(Seed,uint8(Puff*43),80,uint8(Fade*255.f))});
+		}
+	}
+	MuzzleLight->SetIntensity(10000.f*Brightest*Brightest);
+	auto Draw=[&Eye](UProceduralMeshComponent* Mesh,TArray<FCard>& Cards)
+	{
+		if (Cards.IsEmpty()) { Mesh->ClearAllMeshSections(); return; }
+		Cards.Sort([&Eye](const FCard& A,const FCard& B) { return FVector::DistSquared(A.Center,Eye)>FVector::DistSquared(B.Center,Eye); });
+		TArray<FVector> Vertices,Normals;
+		TArray<FVector2D> UV;
+		TArray<FColor> Colors;
+		TArray<int32> Indices;
+		for (const FCard& Card:Cards)
+		{
+			const int32 Base=Vertices.Num();
+			for(int32 Corner=0;Corner<4;++Corner)
+			{
+				const FVector2D Tex(Corner&1,Corner>>1);
+				Vertices.Add(Card.Center+Card.Across*((Tex.X-.5)*Card.Width)+Card.Along*((Tex.Y-.5)*Card.Length));
+				Normals.Add(FVector::CrossProduct(Card.Across,Card.Along)); UV.Add(Tex); Colors.Add(Card.Color);
+			}
+			Indices.Append({Base,Base+1,Base+2,Base+2,Base+1,Base+3});
+		}
+		const FProcMeshSection* Section=Mesh->GetProcMeshSection(0);
+		if(Section && Section->ProcVertexBuffer.Num()==Vertices.Num()) { Mesh->UpdateMeshSection(0,Vertices,Normals,UV,Colors,TArray<FProcMeshTangent>()); }
+		else { Mesh->CreateMeshSection(0,Vertices,Indices,Normals,UV,Colors,TArray<FProcMeshTangent>(),false); }
+	};
+	Draw(MuzzleFlames,FireCards); Draw(MuzzleSmoke,SmokeCards);
+}
+
 bool ADCGunnery::ResolveAim(EDCSide Side, const FVector& Origin, const FVector& Direction, FVector& OutTarget) const
 {
-	constexpr float MinRange = 650.f;
-	constexpr float MaxRange = 20000.f;
-	const float Sign = Side == EDCSide::Port ? -1.f : 1.f;
+	constexpr float MaxRange = 21000.f;
+	if (GetPlayerGun(Side) == INDEX_NONE || Origin.ContainsNaN() || Direction.ContainsNaN() || Direction.IsNearlyZero()) { return false; }
 	float Distance = MaxRange;
 	bool bSurface = false;
 	const ADCMaelstrom* Maelstrom = ADCMaelstrom::Get(this);
@@ -211,6 +308,7 @@ bool ADCGunnery::ResolveAim(EDCSide Side, const FVector& Origin, const FVector& 
 
 	FCollisionQueryParams Query(SCENE_QUERY_STAT(DCGunAim), false, this);
 	if (GunShip.IsValid()) { Query.AddIgnoredActor(GunShip.Get()); }
+	if (const APlayerController* PC = GetWorld()->GetFirstPlayerController()) { Query.AddIgnoredActor(PC->GetPawn()); }
 	IgnoreInactiveWater(GetWorld(), Query);
 	FHitResult Hit;
 	if (GetWorld()->LineTraceSingleByChannel(Hit, Origin, Origin + Direction * Distance, ECC_Visibility, Query))
@@ -244,7 +342,10 @@ bool ADCGunnery::ResolveAim(EDCSide Side, const FVector& Origin, const FVector& 
 		Distance = FVector::Distance(Origin, OutTarget);
 		bSurface = true;
 	}
-	return bSurface && Distance >= MinRange && Sign * OutTarget.Y >= 1000.f && CanAimGun(GetPlayerGun(Side), OutTarget);
+	// Aiming into empty sky is still a valid trigger. Retain hit/water solutions,
+	// otherwise solve the same ballistic flight toward a far point on the sightline.
+	if (!bSurface) { OutTarget = Origin + Direction.GetSafeNormal() * MaxRange; }
+	return !OutTarget.ContainsNaN();
 }
 
 FString ADCGunnery::GetPlayerImpactLabel(EDCSide Side) const
@@ -322,7 +423,9 @@ bool ADCGunnery::FindCrewTarget(int32 Gun, FVector& OutTarget, bool bLeadTarget)
 }
 bool ADCGunnery::FireGun(int32 Gun, const FVector& Target, bool bPlayer)
 {
-	if (!IsGunReady(Gun) || !CanAimGun(Gun, Target) || bPlayer != Guns[Gun].bPlayer) { return false; }
+	// The player's camera already constrains traverse. Crew additionally need a
+	// valid battery arc; that AI targeting filter must not disable a player shot.
+	if (!IsGunReady(Gun) || Target.ContainsNaN() || bPlayer != Guns[Gun].bPlayer || (!bPlayer && !CanAimGun(Gun, Target))) { return false; }
 	Guns[Gun].Reload = ReloadTime;
 	const FVector Muzzle = GetMuzzle(Gun);
 	Pending.Add({ Gun, Target, bPlayer ? Guns[Gun].Side : EDCSide::None });
@@ -381,6 +484,7 @@ void ADCGunnery::Tick(float DeltaSeconds)
 		S.Life = FlightTime + 0.8f;
 		S.PlayerSide = P.PlayerSide;
 		Shots.Add(S);
+		MuzzleFlashes.Add({Muzzle, S.Vel.GetSafeNormal(), 0.f, FMath::FRand()});
 
 		if (MuzzleEffectClass)
 		{
@@ -391,6 +495,7 @@ void ADCGunnery::Tick(float DeltaSeconds)
 		}
 		Pending.RemoveAtSwap(i);
 	}
+	TickMuzzleFlashes(DeltaSeconds);
 
 	ADCTreadmill* Treadmill = ADCTreadmill::Get(this);
 	const ADCMaelstrom* Maelstrom = ADCMaelstrom::Get(this);
@@ -540,6 +645,22 @@ void ADCGunnery::TickVerification()
 			bVerificationFailed |= !bPassed;
 		};
 		Check(Marlow != INDEX_NONE && Odessa != INDEX_NONE && Marlow != Odessa, TEXT("two crew have distinct guns on one side"));
+		const int32 HelmIndex = Crew->FindStation(EDCStationType::Helm, EDCSide::None);
+		FDCStation* Helm = Crew->GetStation(HelmIndex);
+		ADCCrewMember* Helmsman = Crew->GetCrew().Num() ? Crew->GetCrew()[0].Get() : nullptr;
+		ADCPlayerCharacter* Captain = Cast<ADCPlayerCharacter>(GetWorld()->GetFirstPlayerController()->GetPawn());
+		if (Helm && Helmsman && Captain)
+		{
+			Helm->bPlayerOperated = false;
+			Helmsman->AssignStation(HelmIndex);
+			Helmsman->DeckPos = Helm->Location+FVector(0,0,90);
+			Captain->DebugTakeStation(EDCStationType::Helm,EDCSide::None);
+			Check(Helm->bPlayerOperated && !Helm->Operator.IsValid() && Helmsman->StationIndex==INDEX_NONE,
+				TEXT("player helm takeover releases the crew assignment"));
+			Check(FVector::DistSquared2D(Helmsman->DeckPos,Helm->Location)>FMath::Square(250.f),
+				TEXT("helmsman physically clears the wheel camera"));
+		}
+		else { Check(false,TEXT("helm takeover scenario has its real player and crew")); }
 		Crew->ExecuteOrder(TEXT("Duncan, repair the rigging"));
 		Crew->ExecuteOrder(TEXT("Duncan, man the starboard guns"));
 		Check(Crew->FindCrewGun(EDCSide::Starboard, TEXT("Duncan")) == Marlow, TEXT("gun reservation survives repair duty"));
@@ -547,7 +668,11 @@ void ADCGunnery::TickVerification()
 		const FDCStation* O = Crew->GetStation(Odessa);
 		Check(M && O && M->GunIndex != GetPlayerGun(EDCSide::Starboard) && O->GunIndex != GetPlayerGun(EDCSide::Starboard), TEXT("crew never take the player gun"));
 		const int32 Before = Pending.Num();
-		Check(FireGun(GetPlayerGun(EDCSide::Port), FVector(0.f, -8000.f, SeaLevelZ), true), TEXT("player port gun fires"));
+		FVector SkyTarget, NearWaterTarget;
+		const FVector GunEye = GetMuzzle(GetPlayerGun(EDCSide::Port))+FVector(0.f,80.f,250.f);
+		Check(ResolveAim(EDCSide::Port,GunEye,FRotator(30.f,-90.f,0.f).Vector(),SkyTarget), TEXT("empty sky remains a valid cannon aim"));
+		Check(ResolveAim(EDCSide::Port,GunEye,FRotator(-62.f,-90.f,0.f).Vector(),NearWaterTarget), TEXT("near water remains a valid cannon aim"));
+		Check(FireGun(GetPlayerGun(EDCSide::Port), SkyTarget, true), TEXT("player port gun fires into empty sky"));
 		Check(FireGun(GetPlayerGun(EDCSide::Starboard), FVector(0.f, 8000.f, SeaLevelZ), true), TEXT("player starboard gun fires independently"));
 		Check(Pending.Num() == Before + 2, TEXT("one ball queued per trigger"));
 		Check(!FireGun(GetPlayerGun(EDCSide::Starboard), FVector(0.f, 8000.f, SeaLevelZ), true), TEXT("same gun cannot bypass reload"));

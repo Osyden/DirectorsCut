@@ -225,6 +225,21 @@ void ADCCrewMember::SetHelmOrder(EDCAction Action)
 	HelmOrderTimeLeft = (Action == EDCAction::Steady) ? 0.f : 4.f;
 }
 
+void ADCCrewMember::VacateStation(const FVector& StationLocation)
+{
+	AssignStation(INDEX_NONE);
+	// Stand aft and to port: the normal wheel view and the starboard clear-view
+	// camera both stay free. Assignment alone left the idle body at the wheel.
+	DeckPos = StationLocation + FVector(-250.f,-230.f,90.f);
+	DeckRot = FRotator::ZeroRotator;
+	SetWalking(false);
+	const ADCRideDirector* Director = ADCRideDirector::Get(this);
+	const FTransform Deck = Director ? Director->DeckTransform : FTransform::Identity;
+	SetActorLocationAndRotation(Deck.TransformPosition(DeckPos), Deck.GetRotation());
+	LastPlaced = GetActorLocation();
+	UE_LOG(LogDC, Log, TEXT("Crew cleared player station: %s deck=%s"), *CrewName, *DeckPos.ToCompactString());
+}
+
 void ADCCrewMember::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
@@ -253,9 +268,15 @@ void ADCCrewMember::TickCrew(float DeltaSeconds)
 
 	UDCCrewSubsystem* Sub = GetWorld()->GetSubsystem<UDCCrewSubsystem>();
 	FDCStation* Station = Sub ? Sub->GetStation(StationIndex) : nullptr;
+	if (Station && Station->bPlayerOperated)
+	{
+		VacateStation(Station->Location);
+		return;
+	}
 	if (!Station)
 	{
 		State = EDCCrewState::Idle;
+		SetWalking(false);
 		return;
 	}
 
@@ -601,6 +622,11 @@ void UDCCrewSubsystem::Report(const FString& Text, bool bUrgent)
 {
 	if (!Crew.Num()) { return; }
 	const double Now = GetWorld()->GetTimeSeconds();
+	if (const ADCRideDirector* Director = ADCRideDirector::Get(this); Director && Director->GetPhase() != LastReportPhase)
+	{
+		LastReportPhase = Director->GetPhase();
+		LastReportTime = -100.0; // The preceding scene cannot suppress the new phase's call.
+	}
 	if (Now - LastReportTime < (bUrgent ? 1.5 : 7.0)) { return; }
 	LastReportTime = Now;
 

@@ -322,6 +322,7 @@ void ADCMaelstromAtmosphere::UpdateSkyVolume()
 		StageCloud->SetShadowViewSampleCountScale(3.f);
 		StageCloud->SetSkyLightCloudBottomOcclusion(0.5f);
 		SkyCloudMID->SetScalarParameterValue(TEXT("RimHeight"), RimKm);
+		SkyCloudMID->SetScalarParameterValue(TEXT("ArenaYaw"), Stage ? FMath::DegreesToRadians(Stage->GetSkyYawOffset()) : 0.f);
 		if (const ADCRideDirector* Director = ADCRideDirector::Get(this))
 		{ SkyCloudMID->SetScalarParameterValue(TEXT("Clock"), Director->RideTime); }
 		if (UDirectionalLightComponent* Sun = FindSun())

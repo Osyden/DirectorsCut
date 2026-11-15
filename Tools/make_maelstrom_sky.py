@@ -31,6 +31,10 @@ code = r'''
 #define NZ(q) saturate((Texture3DSampleLevel(Shape,ShapeSampler,(q),0).r-0.835)/0.125)
 float3 p=P*0.00001;
 float3 worldKm=p;
+// The ship is stationary: inverse arena yaw makes the distant cloud field
+// turn with the rim. Keep the sun aperture in world space with the real light.
+float cy=cos(ArenaYaw),sy=sin(ArenaYaw);
+p.xy=float2(cy*p.x+sy*p.y,-sy*p.x+cy*p.y);
 p.z-=RimHeight;
 if(Debug>0.5) return Density;
 if(p.z<0.55 || p.z>5.05) return 0;
@@ -87,6 +91,7 @@ shape = expr(unreal.MaterialExpressionTextureObject)
 shape.set_editor_property('texture', unreal.load_asset('/Engine/EngineSky/VolumetricClouds/T_VolumeNoiseShape128'))
 shape.set_editor_property('sampler_type', unreal.MaterialSamplerType.SAMPLERTYPE_MASKS)
 nodes = {'P':expr(unreal.MaterialExpressionWorldPosition), 'T':scalar('Clock',300), 'RimHeight':scalar('RimHeight',0), 'Shape':shape,
+         'ArenaYaw':scalar('ArenaYaw',0),
          'Density':scalar('Density',0.035), 'Debug':scalar('Debug',0), 'Erosion':scalar('Erosion',0.28), 'Opening':scalar('Opening',0.23),
          'ToSun':vector('ToSun',(0.4,-0.85,0.4,1))}
 inputs=[]

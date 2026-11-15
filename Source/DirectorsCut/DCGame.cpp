@@ -76,6 +76,7 @@ void ADCHUD::DrawHUD()
 {
 	Super::DrawHUD();
 	if (!Canvas) { return; }
+	if (const ADCGameMode* Game = GetWorld()->GetAuthGameMode<ADCGameMode>(); Game && Game->IsAwaitingStart()) { return; }
 	// -DCNoHUD: clean pictures for the store page and the dev log.
 	static const bool bNoHUD = FParse::Param(FCommandLine::Get(), TEXT("DCNoHUD"));
 	if (bNoHUD) { return; }
@@ -101,7 +102,7 @@ void ADCHUD::DrawHUD()
 	};
 	const FLinearColor Gold(1.f, 0.85f, 0.5f), White(1.f, 1.f, 1.f), Dim(0.75f, 0.8f, 0.85f);
 
-	// Top left: hull bar and where we are. Top right: score.
+	// Hull condition and current location.
 	if (D)
 	{
 		const float X = 40.f * S, Y = 32.f * S, BW = 260.f * S, BH = 12.f * S;
@@ -113,10 +114,6 @@ void ADCHUD::DrawHUD()
 		Label(FString::Printf(TEXT("HULL  %d%%"), FMath::RoundToInt(D->ShipHealth)), X, Y + BH + 6.f * S, 1.1f, White, Font);
 		Label(FString(DCPhaseName(D->GetPhase())).ToUpper(), X + BW + 26.f * S, Y - 8.f * S, 1.5f, Gold, Font);
 
-		const FString Score = FString::Printf(TEXT("SCORE  %d"), D->Score);
-		float TW = 0.f, TH = 0.f;
-		CrispSize(Score, TW, TH, Font, 1.4f * S);
-		Label(Score, W - TW - 40.f * S, Y - 6.f * S, 1.4f, White, Font);
 	}
 
 	// Alerts.
@@ -150,42 +147,13 @@ void ADCHUD::DrawHUD()
 			40.f * S, AlertY, 1.f, Dim, Font);
 	}
 
-	// Bottom right: how to give orders, and which parts of the voice loop are up.
-	{
-		FString Help = TEXT("V  talk     Enter  type     1-6  quick orders     E  take a station     T  ship view     F5  DLSS mode     F6  frame generation");
-		if (ADCVoice* V = ADCVoice::Get(this))
-		{
-			if (!V->IsSTTReady()) { Help = TEXT("Enter  type     1-6  quick orders     E  take a station     (voice starting...)"); }
-			if (V->IsListening())
-			{
-				Centered(TEXT("LISTENING..."), H - 150.f * S, 2.f, FLinearColor(1.f, 0.35f, 0.25f), Font);
-			}
-		}
-		float TW = 0.f, TH = 0.f;
-		CrispSize(Help, TW, TH, Font, 1.f * S);
-		Label(Help, W - TW - 40.f * S, H - 34.f * S, 1.f, Dim, Font);
-	}
+	if (ADCVoice* Voice=ADCVoice::Get(this); Voice && Voice->IsListening())
+    { Centered(TEXT("LISTENING..."), H*.58f, 1.5f, Gold, Font); }
 
 	// Subtitles, bottom left, on a dark plate.
 	DrawCrewPanel();
 
-	if (UDCCrewSubsystem* Sub = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
-	{
-		const int32 Num = FMath::Min(4, Sub->RecentLines.Num());
-		const float LineH = 28.f * S;
-		float Y = H - 70.f * S - Num * LineH;
-		for (int32 i = Sub->RecentLines.Num() - Num; i < Sub->RecentLines.Num(); ++i)
-		{
-			const FString& Line = Sub->RecentLines[i];
-			float TW = 0.f, TH = 0.f;
-			CrispSize(Line, TW, TH, Font, 1.3f * S);
-			DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.45f), 34.f * S, Y - 2.f * S, TW + 16.f * S, LineH - 2.f * S);
-			// The newest line is brightest.
-			const float A = i == Sub->RecentLines.Num() - 1 ? 1.f : 0.7f;
-			Label(Line, 42.f * S, Y, 1.3f, Line.StartsWith(TEXT("Captain")) ? FLinearColor(1.f, 0.85f, 0.4f, A) : FLinearColor(1.f, 1.f, 1.f, A), Font);
-			Y += LineH;
-		}
-	}
+	DrawSpeechBubble();
 
 	// Station names are drawn in screen space so weather and lighting cannot wash them out.
 	if (ADCPlayerCharacter* Captain = Cast<ADCPlayerCharacter>(GetOwningPawn()))
@@ -239,13 +207,13 @@ void ADCHUD::DrawHUD()
 
 			FString State = Side == EDCSide::Port ? TEXT("PORT CANNON") : TEXT("STARBOARD CANNON");
 			if (!bReady) { State += FString::Printf(TEXT("   RELOADING %.1fs"), Guns->GetReloadSeconds(Side)); }
-			else { State += bInRange ? TEXT("   READY") : TEXT("   AIM AT WATER OR A TARGET"); }
+			else { State += TEXT("   READY"); }
 
-			DrawRect(FLinearColor(0.015f, 0.02f, 0.025f, 0.85f), X - 230.f * S, H * 0.68f, 460.f * S, 52.f * S);
-			Centered(State, H * 0.68f + 8.f * S, 1.f, Sight, Font);
+			DrawRect(FLinearColor(0.015f, 0.02f, 0.025f, 0.85f), X - 230.f * S, H * 0.61f, 460.f * S, 52.f * S);
+			Centered(State, H * 0.61f + 8.f * S, 1.f, Sight, Font);
 			const float Bar = 1.f - Guns->GetReloadFraction(Side);
-			DrawRect(FLinearColor(0.15f, 0.17f, 0.19f), X - 95.f * S, H * 0.68f + 36.f * S, 190.f * S, 4.f * S);
-			DrawRect(Sight, X - 95.f * S, H * 0.68f + 36.f * S, 190.f * S * Bar, 4.f * S);
+			DrawRect(FLinearColor(0.15f, 0.17f, 0.19f), X - 95.f * S, H * 0.61f + 36.f * S, 190.f * S, 4.f * S);
+			DrawRect(Sight, X - 95.f * S, H * 0.61f + 36.f * S, 190.f * S * Bar, 4.f * S);
 
 			const FString Impact = Guns->GetPlayerImpactLabel(Side);
 			if (!Impact.IsEmpty()) { Centered(Impact, Y + 29.f * S, 1.2f, Impact == TEXT("HIT") ? Gold : White, Font); }
@@ -257,34 +225,21 @@ void ADCHUD::DrawHUD()
 		}
 		if (!Captain->IsTypingOrder() && !Captain->GetPrompt().IsEmpty())
 		{
-			Centered(Captain->GetPrompt(), H * (Side == EDCSide::None ? 0.74f : 0.77f), 1.25f, Gold, Font);
+			Centered(Captain->GetPrompt(), H * 0.94f, 1.25f, Gold, Font);
 		}
 	}
 
-	// Title card at the start, score card at the end.
+	// Outcome at the end; instructions live in the main menu.
 	if (D)
 	{
-		if (D->RideTime < 16.f && !FParse::Param(FCommandLine::Get(), TEXT("DCSkipIntro")))
-		{
-			const float A = FMath::Clamp((16.f - D->RideTime) / 3.f, 0.f, 1.f);
-			const FLinearColor G(Gold.R, Gold.G, Gold.B, A), Wh(1.f, 1.f, 1.f, A);
-			DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.62f * A), W * 0.12f, H * 0.17f, W * 0.76f, 300.f * S);
-			Centered(TEXT("DIRECTOR'S CUT"), H * 0.17f + 22.f * S, 4.f, G, Big);
-			Centered(TEXT("You are the captain. You cannot do it all yourself. Give the orders."), H * 0.17f + 118.f * S, 1.6f, Wh, Font);
-			Centered(TEXT("Hold V and speak   or press Enter and type   or use keys 1 to 6"), H * 0.17f + 162.f * S, 1.4f, Wh, Font);
-			Centered(TEXT("\"Rex, hard to starboard\"    \"Port battery, fire\"    \"Ruby, put out the fire\"    \"Repair the rigging\""), H * 0.17f + 202.f * S, 1.2f, Wh, Font);
-			Centered(TEXT("WASD  move     Shift  sprint     Space  jump     E  take a marked station"), H * 0.17f + 240.f * S, 1.2f, Wh, Font);
-		}
 		if (D->GetPhase() == EDCPhase::Ending)
 		{
 			const float A = FMath::Clamp((D->RideTime - D->GetRideLength() + 14.f) / 3.f, 0.f, 1.f);
 			const FLinearColor G(Gold.R, Gold.G, Gold.B, A), Wh(1.f, 1.f, 1.f, A);
-			int32 Orders = 0;
-			if (UDCCrewSubsystem* Sub = GetWorld()->GetSubsystem<UDCCrewSubsystem>()) { Orders = Sub->OrdersGiven; }
 			const int32 Hull = FMath::RoundToInt(D->ShipHealth);
 			DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.62f * A), W * 0.2f, H * 0.2f, W * 0.6f, 220.f * S);
 			Centered(Hull > 60 ? TEXT("SHE CAME THROUGH") : (Hull > 20 ? TEXT("BATTERED, BUT AFLOAT") : TEXT("BARELY AFLOAT")), H * 0.2f + 22.f * S, 3.5f, G, Big);
-			Centered(FString::Printf(TEXT("Hull %d%%     Damage taken %d     Arms broken %d     Score %d     Orders %d"), Hull, FMath::RoundToInt(D->DamageTaken), D->ArmsBroken, D->Score, Orders), H * 0.2f + 112.f * S, 1.6f, Wh, Font);
+			Centered(FString::Printf(TEXT("Hull %d%%     Damage taken %d     Limbs severed %d"), Hull, FMath::RoundToInt(D->DamageTaken), D->ArmsBroken), H * 0.2f + 112.f * S, 1.6f, Wh, Font);
 			Centered(TEXT("R  sail again          Esc  quit"), H * 0.2f + 160.f * S, 1.4f, Wh, Font);
 		}
 	}
@@ -297,6 +252,7 @@ ADCGameMode::ADCGameMode()
 	DefaultPawnClass = ADCPlayerCharacter::StaticClass();
 	HUDClass = ADCHUD::StaticClass();
 	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bTickEvenWhenPaused = true;
 	ShipClass = FSoftClassPath(TEXT("/Game/Brigantine/BP/BP_Brigantine.BP_Brigantine_C"));
 }
 
@@ -328,6 +284,9 @@ FVector ADCGameMode::ShipPart(const TCHAR* Name, const FVector& Fallback) const
 
 void ADCGameMode::StartPlay()
 {
+    const TCHAR* MenuCommandLine = FCommandLine::Get();
+    const bool Review = FParse::Param(MenuCommandLine,TEXT("unattended")) || FParse::Param(MenuCommandLine,TEXT("DCSkipIntro")) || FParse::Param(MenuCommandLine,TEXT("DCNoMenu")) || FCString::Strifind(MenuCommandLine,TEXT("DCStartAt=")) || FCString::Strifind(MenuCommandLine,TEXT("DCMaelstromStart="));
+    bAwaitingStart = FParse::Param(MenuCommandLine,TEXT("DCShowMenu")) || !Review;
 	UWorld* World = GetWorld();
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -640,11 +599,13 @@ void ADCGameMode::StartPlay()
 			}
 		}
 	}
+	if (bAwaitingStart) { ShowMainMenu(); }
 }
 
 void ADCGameMode::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	if (bAwaitingStart) { TickMainMenu(DeltaSeconds); return; }
 	// Frame rate in real time, whatever the test time dilation.
 	SmoothedFps = FMath::Lerp(SmoothedFps, 1.f / FMath::Max(FApp::GetDeltaTime(), 0.0001), 0.05f);
 	// Test hook: -DCHitch logs every frame longer than 25 ms, and -DCCrewLog logs where each hand's
@@ -677,6 +638,7 @@ void ADCGameMode::Tick(float DeltaSeconds)
 	{
 		bRestartTested = true;
 		UE_LOG(LogDC, Log, TEXT("Restart test: reloading the level"));
+		UGameplayStatics::ClearSoundMixModifiers(this);
 		UGameplayStatics::OpenLevel(this, FName(*UGameplayStatics::GetCurrentLevelName(this)));
 		return;
 	}

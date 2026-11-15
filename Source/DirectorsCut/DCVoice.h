@@ -34,10 +34,16 @@ public:
 
 	static ADCVoice* Get(const UObject* WorldContext);
 
-	/** Crew reply. Uses the LLM to rephrase Fallback in character if it is up, then speaks and subtitles it. */
+	/** Reports (empty Context) use exact authored wording; order acknowledgements can use the LLM. */
 	void CrewReply(const FString& Speaker, const FString& Fallback, const FString& Context);
 	/** Speak a finished line (no LLM). */
-	void Speak(const FString& Speaker, const FString& Text);
+	void Speak(const FString& Speaker, const FString& Text, bool bReport = false);
+	/** Drop dialogue belonging to the previous scene/menu without restarting sidecars. */
+	void ResetPendingSpeech();
+	bool IsSpeaking() const;
+	const FString& GetSpeakingSpeaker() const { return SpeakingSpeaker; }
+	const FString& GetSpeakingText() const { return SpeakingText; }
+	float GetSpeechRemainingSeconds() const;
 	/** Asks the language model to make sense of an order the keyword grammar could not, then carries it out. */
 	void ResolveOrder(const FString& Text);
 	/** Transcribe a wav file from disk as if it had been spoken. For unattended tests. */
@@ -79,7 +85,10 @@ protected:
 	void SendToWhisper(const TArray<float>& Mono, int32 SampleRate);
 	void OnHeard(const FString& Text);
 
-	void FinishLine(const FString& Speaker, const FString& Text);
+	void FinishLine(const FString& Speaker, const FString& Text, bool bReport = false);
+	void SynchronizeScene();
+	bool IsMenuOpen() const;
+	void ShowSpeech(const FString& Speaker, const FString& Text, double Duration);
 	void PlayWav(const FString& Speaker, const FString& Path);
 	void StartNextLine();
 	bool TryACE(const FString& Speaker, const FString& Path, double Duration);
@@ -87,11 +96,15 @@ protected:
 	UFUNCTION() void ACEStarted();
 	UFUNCTION() void ACEEnded();
 	UFUNCTION() void ACESent(bool bSuccess);
-	struct FQueuedLine { FString Speaker; FString Text; double QueuedAt; };
+	struct FQueuedLine { FString Speaker; FString Text; double QueuedAt; bool bReport = false; };
 	TArray<FQueuedLine> SpeechQueue;
 	UPROPERTY() TObjectPtr<UACEAudioCurveSourceComponent> ActiveCurves;
 	UPROPERTY() TObjectPtr<UAsyncActionAnimateCharacter> ActiveACERequest;
 	FString ActiveSpeaker, ActiveWav;
+	FString ActiveText, SpeakingSpeaker, SpeakingText;
+	double ActiveDuration = 0, SpeechVisibleUntil = 0;
+	int32 SpeechEpoch = 0, SceneKey = INDEX_NONE;
+	float LastRideTime = -1.f;
 	double ACEDeadline = 0;
 	bool bACEStarted = false;
 	bool bACESent = false;
@@ -109,8 +122,10 @@ protected:
 	{
 		FProcHandle Proc;
 		FString Speaker;
+		FString Text;
 		FString WavPath;
 		double StartTime = 0.0;
+		int32 Epoch = 0;
 	};
 	TArray<FPendingTTS> PendingTTS;
 

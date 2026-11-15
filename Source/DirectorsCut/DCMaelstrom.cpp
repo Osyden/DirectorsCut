@@ -1,6 +1,7 @@
 #include "DCMaelstrom.h"
 #include "DCCliffGenerator.h"
 #include "DCMaelstromRoute.h"
+#include "DCMaelstromTunnel.h"
 #include "DCRideDirector.h"
 #include "DCRuins.h"
 #include "DCKraken.h"
@@ -383,7 +384,9 @@ void ADCMaelstrom::BuildCataract()
     for(int32 Row=0;Row<=Rows;++Row)
     {
         const float F=static_cast<float>(Row)/Rows;
-        const float R=Radius*FMath::Lerp(1.08f,.52f,F);
+        // Stop at the supported rim. The old 128m upstream apron exposed its
+        // underside above the waterfall when looking back during the descent.
+        const float R=Radius*FMath::Lerp(1.f,.52f,F);
         const float Q=FMath::SmoothStep(.58f,.985f,R/Radius);
         const float A=UE_PI-.40f*(1.f-Q);
         const FVector2D D(FMath::Cos(A),FMath::Sin(A));
@@ -429,20 +432,23 @@ void ADCMaelstrom::BuildTunnel()
 	TArray<int32> Triangles;
 	constexpr int32 LengthSteps = 100, Around = 128;
 	TArray<FProcMeshTangent> Tangents;
-	constexpr float TubeRadius = 9000.f;
+	constexpr float TubeRadius = DCMaelstromTunnel::Radius;
 	for (int32 X = 0; X <= LengthSteps; ++X)
 	{
 		const float Along = -200000.f*FMath::Pow(1.f-X/static_cast<float>(LengthSteps),1.5f);
 		for (int32 Y = 0; Y <= Around; ++Y)
 		{
 			const float A = Y * UE_TWO_PI / Around;
+			// The moving mesh must share the smooth trough used by surface queries.
+			// Radial noise at the bottom previously lifted the water through the deck.
 			const float Ripple = 650.f*FMath::Sin(A*5.f+Along*.00025f) + 350.f*FMath::Sin(A*11.f-Along*.00055f)
 				+220.f*FMath::PerlinNoise2D(FVector2D(Along/2200.f,A*5.f));
 			const float Mouth=FMath::SmoothStep(-24000.f,0.f,Along);
-			const float R = TubeRadius + Ripple + Mouth*1200.f*(.65f+.35f*FMath::Sin(A*3.f+.7f));
+			const float R = DCMaelstromTunnel::ShapedRadius(A,Ripple,Mouth);
 			// Unequal receding lip: the daylight reveal must not expose a flat
 			// circular cut through an otherwise cylindrical tube.
-			const float Lip=Mouth*(2600.f*FMath::Sin(A*3.f+.4f)+1200.f*FMath::Sin(A*7.f-1.2f));
+			// Recede into the tunnel, never project a floating lip over the falls.
+			const float Lip=DCMaelstromTunnel::Lip(A,Mouth);
 			Verts.Add(FVector(Along+Lip, FMath::Sin(A) * R, TubeRadius - FMath::Cos(A) * R));
 			Normals.Add(FVector(0.f, -FMath::Sin(A), FMath::Cos(A)));
 			Tangents.Add(FProcMeshTangent(FVector::ForwardVector, false));
@@ -630,6 +636,14 @@ void ADCMaelstrom::BuildLandmarks()
     }
 }
 FTransform ADCMaelstrom::GetArenaTransform() const { return Arena->GetComponentTransform(); }
+
+float ADCMaelstrom::GetSkyYawOffset() const
+{
+	if (!bActive || Elapsed < -1.f) { return 0.f; }
+	const FVector2D EntryForward=DCMaelstromRoute::Tangent(-1.f,Radius);
+	const float EntryBearing=-FMath::RadiansToDegrees(FMath::Atan2(EntryForward.Y,EntryForward.X));
+	return FMath::FindDeltaAngleDegrees(EntryBearing,Arena->GetComponentRotation().Yaw);
+}
 
 float ADCMaelstrom::SampleSurfaceWorld(const FVector& Position) const
 {
@@ -933,6 +947,23 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
     const FVector Ship(0.f,0.f,Director->SeaLevelZ);
     const float Heave=FMath::Sin(Director->RideTime*.85f)*25.f;
     Arena->SetWorldLocationAndRotation(Ship-Pose.RotateVector(FVector(P.X,P.Y,HeightAt(P)))+FVector(0,0,Heave),Pose);
+    // A seek initializes the landing state without replaying an impact. During
+    // travel the actual steered route reaching lake level triggers it once.
+    const bool AtLake=HeightAt(P,false)<=-39975.f;
+    if(Reset) { bLakeLandingPlayed=AtLake; }
+    if(!Reset && !bLakeLandingPlayed && AtLake && Elapsed>0.f)
+    {
+        bLakeLandingPlayed=true;
+        Director->PendingJolt+=FVector(8.f,65.f,-3.f);
+        Director->Trauma=FMath::Min(1.f,Director->Trauma+.8f);
+        for(int32 Side : {-1,1})
+        {
+            for(float Along : {-1600.f,400.f,2300.f})
+            { EmitWaterContact(FVector(Along,Side*1100.f,Director->SeaLevelZ),3.f); }
+        }
+        if(ADCAudio* Audio=Cast<ADCAudio>(UGameplayStatics::GetActorOfClass(this,ADCAudio::StaticClass()))) { Audio->Boom(1.f); }
+        UE_LOG(LogDC,Log,TEXT("MAEL_LANDING elapsed=%.2f routeHeight=%.1f offset=%.1f pitchImpulse=65 damage=0"),Elapsed,HeightAt(P,false),RouteOffset);
+    }
     if(Elapsed>NextRouteLog && FParse::Param(FCommandLine::Get(),TEXT("DCMaelstromRouteLog")))
     {
         NextRouteLog=Elapsed+5.f;
@@ -944,7 +975,9 @@ void ADCMaelstrom::UpdateStage(float DeltaSeconds)
 	const float WidthScale = FMath::Lerp(30000.f / 9000.f, 1.f, Entry);
 	Tunnel->SetRelativeScale3D(FVector(LengthScale, WidthScale, WidthScale));
 	Tunnel->SetRelativeLocation(FVector(ExitX, 0.f, Director->SeaLevelZ));
-	Tunnel->SetVisibility(Elapsed < 10.f);
+	// Once the stern clears, retire the separate approach tube before its
+	// world-space underside can hang across the rising arena's waterfall rim.
+	Tunnel->SetVisibility(ExitX > -3500.f);
 	UpdateThroat(ExitX);
 	Basin->SetVisibility(Elapsed >= -7.f);
 	Cataract->SetVisibility(Elapsed >= -7.f);
