@@ -119,15 +119,6 @@ void ADCAudio::BeginPlay()
 	bMusicReview = FParse::Param(FCommandLine::Get(), TEXT("DCMusicReview"));
 	if (Director)
 	{
-		for (const FDCPhaseDef& Phase : Director->Phases)
-		{
-			if (Phase.Phase == EDCPhase::Slide)
-			{
-				MusicDescentStartTime = Phase.StartTime;
-				MusicTransitionTime = FMath::Max(0.f, Phase.StartTime - 18.f);
-			}
-			if (Phase.Phase == EDCPhase::Maelstrom) { MusicDescentEndTime = Phase.StartTime; }
-		}
 		Director->OnLightning.AddUObject(this, &ADCAudio::OnLightning);
 		Director->OnShipHit.AddUObject(this, &ADCAudio::OnShipHit);
 		Director->OnHullStrike.AddUObject(this, &ADCAudio::OnHullStrike);
@@ -351,6 +342,18 @@ void ADCAudio::OnLightning()
 
 void ADCAudio::TickMusic(float DeltaSeconds)
 {
+	// BeginPlay order is not guaranteed: the director removes the optional hell
+	// leg during its own BeginPlay. Read the finalized route during world ticks
+	// so the descent boost ends at the actual caldera arrival, not the old440s.
+	for (const FDCPhaseDef& Phase : Director->Phases)
+	{
+		if (Phase.Phase == EDCPhase::Slide)
+		{
+			MusicDescentStartTime = Phase.StartTime;
+			MusicTransitionTime = FMath::Max(0.f, Phase.StartTime - 18.f);
+		}
+		if (Phase.Phase == EDCPhase::Maelstrom) { MusicDescentEndTime = Phase.StartTime; }
+	}
 	const ADCGameMode* Game = GetWorld()->GetAuthGameMode<ADCGameMode>();
 	const bool bMenu = Game && Game->IsAwaitingStart();
 	const float Time = Director->RideTime;
