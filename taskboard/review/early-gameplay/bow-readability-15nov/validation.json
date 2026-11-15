@@ -1,0 +1,79 @@
+{
+  "baseline_commit": "7015f7a",
+  "change": "Smaller droplets with denser soft aeration and a higher ballistic crest; reduced droplet specular brightness",
+  "editor_build_seconds": 5.09,
+  "game_build_seconds": 13.96,
+  "runtime_mode": "UnrealEditor -game, offscreen, 1280x720; sought-in then normal-speed effect captures",
+  "packaged_execution": false,
+  "matching_runtime_source_config_project_paths": 80,
+  "cases": [
+    {
+      "case": "before-bowdetail",
+      "max_observed_particles": 537.0,
+      "max_observed_pulses": 4.0,
+      "minimum_emit_depth_cm": -33.0,
+      "port_pulses": 11,
+      "starboard_pulses": 12,
+      "fatal_assertion_blueprint_material_failure_matches": 0,
+      "normal_exit_marker_count": 1
+    },
+    {
+      "case": "trial1-bowdetail",
+      "max_observed_particles": 752.0,
+      "max_observed_pulses": 4.0,
+      "minimum_emit_depth_cm": -32.0,
+      "port_pulses": 11,
+      "starboard_pulses": 12,
+      "fatal_assertion_blueprint_material_failure_matches": 0,
+      "normal_exit_marker_count": 1
+    },
+    {
+      "case": "trial2-bowdetail",
+      "max_observed_particles": 1514.0,
+      "max_observed_pulses": 4.0,
+      "minimum_emit_depth_cm": -32.0,
+      "port_pulses": 11,
+      "starboard_pulses": 11,
+      "fatal_assertion_blueprint_material_failure_matches": 0,
+      "normal_exit_marker_count": 1
+    },
+    {
+      "case": "final-bowlookdown",
+      "max_observed_particles": 1429.0,
+      "max_observed_pulses": 4.0,
+      "minimum_emit_depth_cm": -33.0,
+      "port_pulses": 15,
+      "starboard_pulses": 15,
+      "fatal_assertion_blueprint_material_failure_matches": 0,
+      "normal_exit_marker_count": 1
+    },
+    {
+      "case": "trial2-bowstormclose",
+      "max_observed_particles": 860.0,
+      "max_observed_pulses": 2.0,
+      "minimum_emit_depth_cm": -32.0,
+      "port_pulses": 11,
+      "starboard_pulses": 11,
+      "fatal_assertion_blueprint_material_failure_matches": 0,
+      "normal_exit_marker_count": 1
+    },
+    {
+      "case": "final-bowtransition",
+      "max_observed_particles": 963.0,
+      "max_observed_pulses": 4.0,
+      "minimum_emit_depth_cm": -31.0,
+      "port_pulses": 5,
+      "starboard_pulses": 5,
+      "fatal_assertion_blueprint_material_failure_matches": 0,
+      "normal_exit_marker_count": 1
+    }
+  ],
+  "phase_cleanup": "Zero observed pulses and particles from 241.0s through 247.0s; last emission at 239.6s",
+  "limitations": [
+    "Before and after follow the same capture script, not identical particle randomness or frame timing",
+    "No performance A/B benchmark; screenshot capture and particle audits stall frames",
+    "Wide-view continuous hull foam rim is unchanged; spray remains subtle from deck",
+    "Seek-in weather is unsuitable for judging the complete storm approach",
+    "Previously accepted c6708cc package is unchanged; recook this and the rag hitch fix together"
+  ]
+}

@@ -1,7 +1,7 @@
 # Uses a separately built runtime project; never saves or changes content assets.
 param(
     [Parameter(Mandatory=$true)][string]$ProjectPath,
-    [ValidateSet('rag','cannons','encounters','statue','city','fogband','crew','default','exit','navigation','bow','bowclose','bowstorm','bowstormclose','bowdeck','bowrough','bowroughclose','bowparticles','bowdetail','bowroughdeck','bowtransition','manual')][string]$Case = 'encounters',
+    [ValidateSet('rag','cannons','encounters','statue','city','fogband','crew','default','exit','navigation','bow','bowclose','bowstorm','bowstormclose','bowdeck','bowrough','bowroughclose','bowparticles','bowdetail','bowroughdeck','bowlookdown','bowtransition','manual')][string]$Case = 'encounters',
     [string]$EngineRoot = 'E:\Utilities\UE_5.8',
     [string]$OutputPath = ''
 )
@@ -34,12 +34,13 @@ $options = switch ($Case) {
     'bowparticles' { '-DCStartAt=90 -DCRunThrough -DCAutoShots=95,98,101,104 -DCShotCam=2500,-1400,850,-18,132 -DCBowLog -DCBowParticleAudit' }
     'bowdetail' { '-DCStartAt=90 -DCRunThrough -DCTenths -DCAutoShots=98.6,98.8,99,99.2,100.5,101 -DCShotCam=1700,-600,550,-10,132 -DCBowLog -DCBowParticleAudit' }
     'bowroughdeck' { '-DCStartAt=90 -DCRunThrough -DCAutoShots=95,98,101,104 -DCShotCam=1000,-350,1000,-8,0 -DCBowLog' }
+    'bowlookdown' { '-DCStartAt=90 -DCRunThrough -DCAutoShots=95,98,101,104 -DCShotCam=650,-450,900,-42,-35 -DCBowLog' }
     'bowtransition' { '-DCStartAt=235 -DCRunThrough -DCShipView -DCOrbit=145,5 -DCAutoShots=239,241,243,246 -DCBowLog' }
     'manual' { '-DCStartAt=90 -DCRunThrough -DCStation=helm -DCHelmSequence -DCAutoShots=94,98,102,106 -DCLaneLog -DCCurrentLog' }
 }
 $log = Join-Path $output 'runtime.log'
 $started = Get-Date
-$arguments = '"' + $project + '" /Game/DC/Maps/L_Ride -game -RenderOffscreen -Unattended -NoSound -NoSplash -Windowed -ResX=1280 -ResY=720 ' + $options + ' -AbsLog="' + $log + '"'
+$arguments = '"' + $project + '" /Game/DC/Maps/L_Ride -game -RenderOffscreen -Unattended -NoSound -DCNoVoice -NoSplash -Windowed -ResX=1280 -ResY=720 ' + $options + ' -AbsLog="' + $log + '"'
 $run = Start-Process -FilePath (Join-Path $EngineRoot 'Engine\Binaries\Win64\UnrealEditor.exe') -ArgumentList $arguments -WindowStyle Hidden -PassThru
 Write-Output "Review $Case started as process $($run.Id); log: $log"
 if (!$run.WaitForExit(420000)) {

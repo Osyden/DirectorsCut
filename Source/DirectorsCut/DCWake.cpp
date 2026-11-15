@@ -72,8 +72,8 @@ namespace
 			UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(Base, System);
 			if (!bMist)
 			{
-				Material->SetScalarParameterValue(TEXT("Spec Brightness"), .9f);
-				Material->SetScalarParameterValue(TEXT("Mask Opacity"), .32f);
+				Material->SetScalarParameterValue(TEXT("Spec Brightness"), .3f);
+				Material->SetScalarParameterValue(TEXT("Mask Opacity"), .28f);
 			}
 			UParticleSpriteEmitter* Emitter = NewObject<UParticleSpriteEmitter>(System);
 			Emitter->SetEmitterName(bMist ? TEXT("BowAeratedSpray") : TEXT("BowDroplets"));
@@ -88,37 +88,39 @@ namespace
 			BowConstant(LOD->SpawnModule, LOD->SpawnModule->RateScale, 1.f);
 			BowConstant(LOD->SpawnModule, LOD->SpawnModule->BurstScale, 1.f);
 			FParticleBurst Burst;
-			Burst.Count = bMist ? 30 : 140; Burst.CountLow = -1; Burst.Time = 0.f;
+			Burst.Count = bMist ? 70 : 360; Burst.CountLow = -1; Burst.Time = 0.f;
 			LOD->SpawnModule->BurstList = {Burst};
 
 			UParticleModuleLifetime* Life = NewObject<UParticleModuleLifetime>(System);
 			UDistributionFloatUniform* Lifetime = NewObject<UDistributionFloatUniform>(Life);
-			Lifetime->Min = bMist ? .38f : .55f; Lifetime->Max = bMist ? .65f : .95f;
+			Lifetime->Min = bMist ? .45f : .55f; Lifetime->Max = bMist ? .8f : 1.05f;
 			BowDistribution(Life->Lifetime, Lifetime);
 			LOD->Modules.Add(Life);
 			UParticleModuleLocation* Location = NewObject<UParticleModuleLocation>(System);
-			BowVector(Location, Location->StartLocation, FVector(-25,-35,0), FVector(25,35,20));
+			BowVector(Location, Location->StartLocation, FVector(-40,-60,0), FVector(40,60,25));
 			LOD->Modules.Add(Location);
 			UParticleModuleVelocity* Velocity = NewObject<UParticleModuleVelocity>(System);
 			Velocity->bApplyOwnerScale = false;
-			BowVector(Velocity, Velocity->StartVelocity, FVector(-140,-160,280), FVector(140,160,560));
+			// The fine ballistic crest rises above the darker hull wash. Softer,
+			// slower aeration fills its base without a reflective splash sheet.
+			BowVector(Velocity, Velocity->StartVelocity, FVector(-180,-210,bMist ? 320 : 450), FVector(180,210,bMist ? 650 : 950));
 			BowConstant(Velocity, Velocity->StartVelocityRadial, 0.f);
 			LOD->Modules.Add(Velocity);
 			UParticleModuleAcceleration* Gravity = NewObject<UParticleModuleAcceleration>(System);
 			Gravity->bAlwaysInWorldSpace = true; Gravity->bApplyOwnerScale = false;
 			UDistributionVectorConstant* Down = NewObject<UDistributionVectorConstant>(Gravity);
-			Down->Constant = FVector(0,0,-680);
+			Down->Constant = FVector(0,0,-980);
 			BowDistribution(Gravity->Acceleration, Down);
 			LOD->Modules.Add(Gravity);
 			UParticleModuleSize* Size = NewObject<UParticleModuleSize>(System);
-			BowVector(Size, Size->StartSize, bMist ? FVector(40) : FVector(2), bMist ? FVector(80) : FVector(6));
+			BowVector(Size, Size->StartSize, bMist ? FVector(45) : FVector(1.25f), bMist ? FVector(110) : FVector(3.5f));
 			LOD->Modules.Add(Size);
 			UParticleModuleColorOverLife* Color = NewObject<UParticleModuleColorOverLife>(System);
 			UDistributionVectorConstant* Tint = NewObject<UDistributionVectorConstant>(Color);
-			Tint->Constant = FVector(.62,.7,.76);
+			Tint->Constant = FVector(.74,.82,.88);
 			BowDistribution(Color->ColorOverLife, Tint);
 			UDistributionFloatConstantCurve* Fade = NewObject<UDistributionFloatConstantCurve>(Color);
-			const float Opacity = bMist ? .15f : .55f;
+			const float Opacity = bMist ? .38f : .5f;
 			Fade->ConstantCurve.AddPoint(0.f, 0.f);
 			Fade->ConstantCurve.AddPoint(.1f, Opacity);
 			Fade->ConstantCurve.AddPoint(.5f, Opacity * .7f);
