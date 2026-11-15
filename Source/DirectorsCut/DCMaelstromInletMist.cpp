@@ -5,6 +5,28 @@
 #include "Misc/FileHelper.h"
 #include "Serialization/JsonSerializer.h"
 
+namespace
+{
+// Unequal overlapping impact lobes follow the river's actual lower surface.
+// Small time-based drift softens the silhouette without crossing the nominal
+// radius928m orbit or accumulating offsets during seeks. Outer steering can
+// enter this bank; the full steering envelope extends to radius1038m.
+FVector CalderaImpactMist(int32 I,float Time,float& RadiusM,float& Density)
+{
+    static const float Radii[]={46.f,43.f,45.f,48.f,43.f,47.f,46.f,44.f,42.f};
+    static const float Centres[]={996.f,1008.f,989.f,1007.f,993.f,1018.f,1000.f,990.f,1008.f};
+    static const float Heights[]={2.f,4.f,8.f,2.f,4.f,6.f,3.f,7.f,1.f};
+    static const float Strengths[]={.85f,1.10f,.95f,1.20f,.90f,1.10f,1.f,.80f,.90f};
+    I=FMath::Clamp(I,0,8); RadiusM=Radii[I]; Density=Strengths[I];
+    const float R=Centres[I]+2.f*FMath::Sin(Time*.12f+I*2.31f);
+    const float Across=(I-4)*45.f+5.f*FMath::Sin(I*1.71f);
+    const float Q=FMath::SmoothStep(.58f,.985f,R/1600.f);
+    const float A=UE_PI-.40f*(1.f-Q)+Across/R;
+    return FVector(FMath::Cos(A)*R,FMath::Sin(A)*R,
+        -400.f+400.f*Q+Heights[I]+1.8f*FMath::Sin(Time*.18f+I*1.73f));
+}
+}
+
 void ADCMaelstrom::UpdateInletMist()
 {
     if(!IsCalderaLake()||!bActive||Elapsed<-7.f) { ClearInletMist(); return; }
@@ -30,7 +52,7 @@ void ADCMaelstrom::UpdateInletMist()
             Fog->SetRelativeScale3D(FVector(RadiusM*100.f/ULocalFogVolumeComponent::GetBaseVolumeSize()));
             Fog->RadialFogExtinction=0.f;
             Fog->HeightFogExtinction=Density;
-            Fog->HeightFogFalloff=Tag==ShoreTag?1100.f:(Tag==FootTag?200.f:420.f);
+            Fog->HeightFogFalloff=Tag==ShoreTag?1100.f:(Tag==FootTag?350.f:420.f);
             Fog->FogAlbedo=FLinearColor(.56f,.63f,.68f);
             Fog->FogEmissive=FLinearColor::Black; Fog->FogPhaseG=.20f;
             Fog->ComponentTags.Add(Tag); Fog->RegisterComponent(); InletMistVolumes.Add(Fog);
@@ -85,20 +107,18 @@ void ADCMaelstrom::UpdateInletMist()
         }
         // Dense, connected impact fog conceals the artificial river/lake join.
         // Keep its horizontal footprint at the foot, not across the whole lake.
-        for(int32 I=-4;I<=4;++I)
+        for(int32 I=0;I<9;++I)
         {
             // Keep the inner fog boundary outside the radius928m battle lane;
             // the ship must clear the impact cloud as soon as it levels out.
-            const float R=995.f+SprayRandom.FRandRange(-7.f,7.f);
-            const float Across=I*45.f+SprayRandom.FRandRange(-6.f,6.f);
-            const float Q=FMath::SmoothStep(.58f,.985f,R/1600.f);
-            const float A=UE_PI-.40f*(1.f-Q)+Across/R;
-            Add(FVector(FMath::Cos(A)*R,FMath::Sin(A)*R,-383.f),
-                48.f,FootTag,1.25f,FVector::UpVector);
+            float RadiusM,Density;
+            const FVector P=CalderaImpactMist(I,Elapsed,RadiusM,Density);
+            Add(P,RadiusM,FootTag,1.25f*Density,FVector::UpVector);
         }
-        UE_LOG(LogTemp,Display,TEXT("DC_CALDERA_MIST shoreline=128 radius=40m river_spray=110 radius=37-43m impact_fog=9 radius=48m slope_aligned=1 billboards=0"));
+        UE_LOG(LogTemp,Display,TEXT("DC_CALDERA_MIST shoreline=128 radius=40m river_spray=110 radius=37-43m impact_fog=9 radius=42-48m slope_aligned=1 billboards=0"));
     }
     const float Gather=FMath::SmoothStep(26.f,42.f,Elapsed);
+    int32 FootIndex=0;
     for(ULocalFogVolumeComponent* Fog:InletMistVolumes)
     {
         if(!Fog) { continue; }
@@ -109,8 +129,10 @@ void ADCMaelstrom::UpdateInletMist()
         }
         if(Fog->ComponentHasTag(FootTag))
         {
-            Fog->SetHeightFogExtinction(1.25f+.75f*Gather);
-            Fog->SetRadialFogExtinction(.12f+.22f*Gather);
+            float RadiusM,Density;
+            Fog->SetRelativeLocation(CalderaImpactMist(FootIndex++,Elapsed,RadiusM,Density)*100.f);
+            Fog->SetHeightFogExtinction((1.25f+.75f*Gather)*Density);
+            Fog->SetRadialFogExtinction((.025f+.075f*Gather)*Density);
         }
         Fog->SetVisibility(true);
     }

@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 15 Nov 13:23 Codex: lower river curtain reduced, varied foam and impact fog
+
+The lower inlet now narrows within its existing bed, removing the large suspended side-curtain in the native overview. Added slowly varying foam supply and softened the impact fog with unequal, gently drifting volumes. The hidden river/lake overlap stays submerged even beneath the hull-flatten effect. Terrain, lake size, route and sky are unchanged. A raised-bank trial produced a rock fin and conflicted with the full steering envelope, so it was rejected and the previous verified terrain restored.
+
+Editor/Game builds, water import, actual restored-mesh audit and chart probe pass. Final offscreen player captures verify clear views, ending fog, open-sea restoration and backward-seek fade cleanup. This is a local checkpoint, not a cooked release or completed art: sculpted banks, contrasting brown rock accents and remaining fine edge transitions need work. [Current source identities, evidence and critique](CALDERA-LAKE-15NOV.md). Engine jobs are finished; no standing engine slot lock. Separate boss work remains unmerged. The30-minute visual scheduler stays active.
+
 ## 15 Nov 12:33 Codex: integrated river banks, local spray and dense impact fog
 
 The caldera inlet now uses connected, source-fractured cliff banks, physical rock mapping and foam transported along its actual curved river chart. Removed the giant mist cards. Shore haze is confined to40m from surveyed waterline points; shallow slope-aligned spray follows the river. The owner requested dense fog at the waterfall bottom: nine overlapping impact volumes now obscure the lower slope while staying outside the nominal radius928m battle lane. A player-view regression initially hid the arena; moving that bank uphill cleared it at ride321 and340.

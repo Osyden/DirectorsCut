@@ -4,6 +4,12 @@
 
 ## Current assembly
 
+**13:22 visual iteration:** the lower river now narrows from 440 m to 320 m inside its existing supported bed. This removes the large suspended blue side-curtain in the diagnostic frame without raising terrain into the full steering envelope. Half-width in metres is `160 + 25*SmoothStep(1040,1105,R) + 35*SmoothStep(1113,1130,R)`. An actual-triangle probe at 810 lower-edge samples reduced maximum water/bed separation from 32.64 m to 4.33 m, with no missing support. The remaining normal bed depth is not proof of a perfect seam from every angle.
+
+The flat terminal overlap sinks 10 m instead of 1.5 m. A cataract-only hull-flatten gate is zero below `.56R` and full above `.58R`, so an inward-steered ship cannot lift that hidden extension back onto the lake. Displacement and both normal paths share the gate. The lake, terrain, centreline and steering route are unchanged.
+
+Ramp foam now has slow, broad supply variation over 48-370 m scales while its fine detail still advects downhill at 30 m/s. The impact bank uses nine unequal 42-48 m volumes with independent height/density, deterministic small drift, softer radial extinction and a steeper height falloff. Dense-core radial support is conservatively 942-1067 m: clear of the nominal 928 m orbit, **not** the full 818-1038 m steering envelope. Outer steering can enter the fog; thin river/shore spray also crosses the nominal orbit locally. No additional fog volumes or larger budget were introduced.
+
 The user requested a large caldera lake with ordinary waves, one foaming downhill inlet, fitted rocky banks and shallow local mist. Lake mean height is **-400 m**; nominal crater radius is **1,600 m**. The 440 m wide inlet uses `angle=pi-.40*(1-smoothstep(.58,.985,R/Radius))`, reaching lake height at radius 928 m from height 0 near radius 1,576 m.
 
 The ship descends over encounter seconds **-8 to 32**, then stays on radius 928 m. Angular speed eases in during seconds 24-32 and settles at `.009 rad/s` (**8.35 m/s**); a 33.4 m tangential lead avoids stopping at the join. The route and lake height are unchanged by this bank revision. There is no further spiral descent or final throat; boss balance remains unfinished.
@@ -16,7 +22,7 @@ The water mesh and bed use matching polar cross-sections. The shader reconstruct
 
 Lower cliffs and banks now use physically scaled owned rock through **`cliff_physical_material.py`**, applied after a clean upper-atlas graph rebuild by `import_cliff_geology.py`. Helper v2 cools the warm rock palette and combines measured scan-depth normals with restrained 8-30 m joint/facet normals. The upper unique geology remains above the 0-45 m arena-height blend. This avoids stretching a narrow retained UV strip down the tall cliff extension; shading does not alter source geometry or vendor pixels.
 
-There are **128 shoreline volumes with 40 m radius**, centred at Z=-399 m over actual final-surface intersections with Z=-400 m, **110 staggered river spray volumes with 37-43 m radius**, and **nine connected impact-fog volumes with 48 m radius** across the foot. The denser foot fog follows the user's request to obscure the waterfall bottom. Spray local Z aligns with the water surface normal to avoid horizontal fog bands; the former giant cards are removed. This is 247 scene volumes, or 251 including four ending-fog volumes, within the stage-scoped budget of 256. Budget changes use `SetWithCurrentPriority` and restore without priority escalation. Ending fog covers ride seconds **440-457**, with seek-safe fade reset and suppression of the old white exposure flash. Perimeter falls remain disabled.
+There are **128 shoreline volumes with 40 m radius**, centred at Z=-399 m over actual final-surface intersections with Z=-400 m, **110 staggered river spray volumes with 37-43 m radius**, and **nine connected impact-fog volumes with 42-48 m radius** across the foot. The denser foot fog follows the user's request to obscure the waterfall bottom. Spray local Z aligns with the water surface normal to avoid horizontal fog bands; the former giant cards are removed. This is 247 scene volumes, or 251 including four ending-fog volumes, within the stage-scoped budget of 256. Budget changes use `SetWithCurrentPriority` and restore without priority escalation. Ending fog covers ride seconds **440-457**, with seek-safe fade reset and suppression of the old white exposure flash. Perimeter falls remain disabled.
 
 ## Frozen source and export
 
@@ -93,3 +99,23 @@ The existing `directorscut-crater-visual-iterations` heartbeat was updated and r
 - [Restored open sea](review/caldera-local-mist-15nov/restored-sea.png): normal-game ride458. Backward seek to275 also cleared the ending fade.
 
 These are unedited native1600x900 screenshots. Both final review processes exited successfully; no new water/cliff material compile failures or fatal errors. No claim of full gameplay balance, long-run performance or final art acceptance.
+
+## Rejected lower-bank contact trial
+
+`LowerBankContact` source SHA-256 `fdc192102f40c5a4b6f9f0576d0e8989ee49c372cd5462ef9f5ca246235fe054` is rejected. Raising narrow side strips replaced the exposed blue water triangle with a projecting rock fin. It also intrudes into the full steering orbit: radius 928+110=1038 m crosses the 185-235 m across-river strip around encounter second 50. The original lower-bank clearance clamp protects that envelope; passing central-river and water-edge contact checks did not establish full-route safety.
+
+Root restored `IntegratedBanksFractured`, re-audited the actual imported mesh, regenerated supports and reinstalled its runtime marker. Its source identities remain those documented above. The accepted fix tapers the water ribbon within the existing terrain instead of raising rock into the steering corridor. `fill_caldera_lower_bank_contact.py` remains an untracked experimental helper; do not replay or install that trial.
+
+## Latest verification and critique
+
+`BuildCalderaFlowEditor.log` and `BuildCalderaFlowGame.log` pass. The water-only import passes; the 39,961-point CPU chart probe retains zero lake/foot wave-phase difference. `CalderaFlowTaper` renders the actual narrowed inlet at native1600x900 without water/cliff material compilation failures. Its frame replaces the large projecting blue curtain with a much smaller edge. This is a targeted improvement, not final visual acceptance.
+
+`CalderaFlowFinalShip` verifies clear player views at315/335, dense ending fog at448, open sea at458 and fade cleanup after seeking backward to275. Steering input+1 reached offsets30-33 m during these short captures; it is **not** a native full110 m steering sweep. No new fatal/material compilation errors. The inlet-foot diagnostic camera is external and must not be mistaken for the player camera. No long-run performance or newly packaged-build certification.
+
+The broad river remains too regular, the banks still look sculpted, and the yellow-brown scan accents do not belong to the surrounding stone palette. Impact fog is less uniform but still has visible lobes. Next priorities are a scoped material override for those accents and further contact/foam breakup without changing the accepted lake, sky or boss route. Do not restart a cliff reconstruction or install the rejected lower-bank trial.
+
+- [Latest actual inlet overview](review/caldera-flow-15nov/inlet.png)
+- [Final player-view steering check](review/caldera-flow-15nov/ship.png)
+- [Restored open sea after ending fog](review/caldera-flow-15nov/sea.png)
+
+The boss visible in this checkout is the old implementation; the separate boss branch is not integrated here. This remains a local Unreal game checkpoint, not a newly cooked release. All engine jobs are serial and offscreen; this pass leaves no standing engine ownership lock.

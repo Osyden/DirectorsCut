@@ -387,17 +387,24 @@ void ADCMaelstrom::BuildCataract()
         const float Q=FMath::SmoothStep(.58f,.985f,R/Radius);
         const float A=UE_PI-.40f*(1.f-Q);
         const FVector2D D(FMath::Cos(A),FMath::Sin(A));
+        // The lower rock shoulders retreat to preserve the full steering orbit.
+        // Follow the supported channel instead of extending a suspended sheet
+        // across that clearance. Centreline and all route positions stay fixed.
+        const float RM=R*.01f;
+        const float HalfWidth=100.f*(160.f+25.f*FMath::SmoothStep(1040.f,1105.f,RM)
+            +35.f*FMath::SmoothStep(1113.f,1130.f,RM));
         for(int32 Side=0;Side<=Sides;++Side)
         {
-            const float Across=FMath::Lerp(-22000.f,22000.f,static_cast<float>(Side)/Sides);
+            const float Across=FMath::Lerp(-HalfWidth,HalfWidth,static_cast<float>(Side)/Sides);
             // Use the same polar corridor as the excavated bed and route.
             const float SideAngle=A+Across/R;
             const FVector2D P(FMath::Cos(SideAngle)*R,FMath::Sin(SideAngle)*R);
             const float ActualQ=FMath::SmoothStep(.58f,.985f,static_cast<float>(P.Size())/Radius);
-            // Sink the terminal overlap below the lake; both surfaces share
-            // the same wave material and coordinates, with no exposed join.
+            // Both surfaces share a wave field, but their tessellations differ.
+            // Hide the terminal overlap below the combined bounded crest error
+            // so its denser triangles cannot reappear as a floating blue sheet.
             const float Z=FMath::Lerp(-40000.f,0.f,ActualQ)
-                -(1.f-FMath::SmoothStep(.56f,.58f,static_cast<float>(P.Size())/Radius))*150.f;
+                -(1.f-FMath::SmoothStep(.56f,.58f,static_cast<float>(P.Size())/Radius))*1000.f;
             V.Add(FVector(P,Z)); UV.Add(P/10000.f);
             const float T=FMath::Clamp((static_cast<float>(P.Size())/Radius-.58f)/.405f,0.f,1.f);
             const float Slope=40000.f*6.f*T*(1.f-T)/(.405f*Radius);
@@ -411,7 +418,7 @@ void ADCMaelstrom::BuildCataract()
     }
     UKismetProceduralMeshLibrary::CalculateTangentsForMesh(V,I,UV,N,Tangents);
     Cataract->CreateMeshSection(0,V,I,N,UV,C,Tangents,false);
-    UE_LOG(LogDC,Log,TEXT("CALDERA lake_level=-400m inlet_width=440m flat_lake=1 spiral_banks=0"));
+    UE_LOG(LogDC,Log,TEXT("CALDERA lake_level=-400m inlet_width=320-440m flat_lake=1 spiral_banks=0"));
 }
 
 void ADCMaelstrom::BuildTunnel()

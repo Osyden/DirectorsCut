@@ -305,6 +305,13 @@ sea_level = scalar(water, "SeaLevel", 230.0)
 calm_caldera=scalar(water,"CalmCaldera",0.0)
 cataract_flow=scalar(water,"CataractFlow",0.0)
 base_inputs = {"UV": uv, "VC": vc, "P": position, "T": time, "Center": center, "Flow": flow, "Tunnel": tunnel_flow, "Handedness":flow_handedness,"RadiusM":basin_radius,"Calm":calm_caldera,"Cataract":cataract_flow}
+# Keep the buried terminal ribbon down when an inward-steered ship passes it.
+# Only the cataract fades hull protection: zero below .56R, full above .58R.
+protected_hull_flatten=custom(water,r"""
+float gate=smoothstep(.56,.58,length(UV*100.0)/max(RadiusM,1.0));
+float inlet=saturate(Calm)*saturate(Cataract)*(1-saturate(Tunnel));
+return Hull*lerp(1.0,gate,inlet);
+""",FLOAT,{"UV":uv,"RadiusM":basin_radius,"Calm":calm_caldera,"Cataract":cataract_flow,"Tunnel":tunnel_flow,"Hull":hull_flatten})
 
 # Runtime bridge replaces these array references with the live grid's private
 # render targets and copies its MPC values. No paid shader implementation is
@@ -449,10 +456,20 @@ if(lake>.5) {
     float bank=smoothstep(150.0,210.0,abs(riverAcross));
     float foot=1-smoothstep(.62,.73,riverR/RadiusM);
     float churn=max(bank,foot*.85);
-    float threshold=lerp(.65,.54,churn);
+    // Broad, slowly renewing supply creates unequal river tongues and clear
+    // reaches. It changes occupied foam area, not every fleck's opacity. Fine
+    // foam still travels at30m/s; this nonperiodic source varies at1.8m/s.
+    float2 supplyST=float2(riverAcross,riverAlong+1.8*T);
+    float supplyBend=(wn.noise(supplyST/float2(110.,250.)+47.1)-.5)*42.;
+    float2 sourceST=supplyST+float2(supplyBend,0.);
+    float sourceField=.68*wn.noise(sourceST/float2(48.,210.)+17.3)
+                     +.32*wn.noise(sourceST/float2(96.,370.)+63.7);
+    float sourceAA=clamp(fwidth(sourceField)*.75,.015,.10);
+    float renewal=smoothstep(.34-sourceAA,.64+sourceAA,sourceField);
+    float threshold=lerp(.84,lerp(.55,.44,churn),renewal);
     float aa=clamp(fwidth(streak)*.55,.015,.12);
     float fingers=smoothstep(threshold-aa,threshold+aa,streak);
-    float supply=smoothstep(.015,.22,cataract);
+    float supply=smoothstep(.015,.22,cataract)*smoothstep(.03,.22,renewal);
     // The measured ocean-foam map supplies open pores within each clump,
     // sampled in the same moving chart. Preserve its mean area when filtered.
     float laceAA=clamp(fwidth(RiverLace)*.5,.015,.08);
@@ -780,17 +797,24 @@ float weight=saturate(Flatten)*(1.0-t*t*(3.0-2.0*t));
 float derivative=-saturate(Flatten)*6.0*t*(1.0-t)/2300.0;
 float2 slope=-baseNormal.xy/max(baseNormal.z,0.02);
 float2 shelfSlope=(1.0-weight)*slope+(Level-P.z)*derivative*(P.xy*float2(0.25,4.0)/radius);
+// Product rule for the spatial inlet gate; the ordinary scalar path is zero.
+float2 px=ddx(P.xy),py=ddy(P.xy);
+float det=px.x*py.y-px.y*py.x;
+float2 gateGradient=abs(det)>1.e-8
+    ? float2(py.y*ddx(Flatten)-px.y*ddy(Flatten),px.x*ddy(Flatten)-py.x*ddx(Flatten))/det
+    : float2(0,0);
+shelfSlope+=(Level-P.z)*(1.0-t*t*(3.0-2.0*t))*gateGradient;
 float3 shelfNormal=normalize(float3(-shelfSlope,1.0));
 // The detailed ripple is a small perturbation; preserve it around the changed base normal.
 return normalize(shelfNormal+(detail-baseNormal));
 """
-final_normal=custom(water,flatten_normal_code,FLOAT3,{"VN":vertex_normal,"DetailWS":detail_world,"P":position,"Flatten":hull_flatten,"Level":sea_level},700)
+final_normal=custom(water,flatten_normal_code,FLOAT3,{"VN":vertex_normal,"DetailWS":detail_world,"P":position,"Flatten":protected_hull_flatten,"Level":sea_level},700)
 if fft_surface:
     # The simulation's XY derivatives are world aligned, not the bowl's rotating
     # UV tangent frame. Rotate its flat-water normal from world-up to the actual
     # curved/shelf normal; never treat its xyz as an already-curved world normal.
     shelf_base_code=flatten_normal_code.replace("float3 detail=normalize(DetailWS);", "float3 detail=baseNormal;").replace("return normalize(shelfNormal+(detail-baseNormal));", "return shelfNormal;")
-    shelf_base=custom(water,shelf_base_code,FLOAT3,{"VN":vertex_normal,"P":position,"Flatten":hull_flatten,"Level":sea_level},1450)
+    shelf_base=custom(water,shelf_base_code,FLOAT3,{"VN":vertex_normal,"P":position,"Flatten":protected_hull_flatten,"Level":sea_level},1450)
     final_normal=custom(water,WAVE_BLEND+r"""
 float weight=waveBlend.fft(length(P-Cam),Enabled,Count);
 float lake=saturate(Calm)*(1-saturate(Tunnel));
@@ -821,7 +845,7 @@ float3 waveNormal=normalize(lerp(VN,float3(0,0,1),flatten));
 float resolved=1-smoothstep(120000.0,350000.0,length(P-Cam));
 float3 wave=waveNormal*h*lerp(min(max(Amp,0),650.0),85.0,lake)*nearHull*resolved;
 """
-wpo_inputs=dict(base_inputs,VN=vertex_normal,VT=vertex_tangent,Amp=wave_height,Flatten=hull_flatten,Level=sea_level,Cam=camera)
+wpo_inputs=dict(base_inputs,VN=vertex_normal,VT=vertex_tangent,Amp=wave_height,Flatten=protected_hull_flatten,Level=sea_level,Cam=camera)
 if fft_displacement:
     wpo_inputs.update(Live=fft_displacement,Enabled=use_live_fft,Count=live_count)
     wpo_code+=r"""
