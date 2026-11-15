@@ -52,6 +52,7 @@ struct FCapture
             if (Mode != TEXT("combat") && Mode != TEXT("bosscombat") && Mode != TEXT("deck"))
             {
                 Camera = World->SpawnActor<ACameraActor>();
+                if (!Camera.IsValid()) { Done=true; FApp::SetUseFixedTimeStep(false); FPlatformMisc::RequestExit(false); return; }
                 Camera->GetCameraComponent()->bConstrainAspectRatio = false;
                 PC->SetViewTarget(Camera.Get());
             }
@@ -110,6 +111,7 @@ struct FCapture
     }
 };
 static FCapture Capture;
+static FDelegateHandle TickHandle, CleanupHandle;
 static FDelegateHandle RegisterCapture()
 {
     if (!FParse::Value(FCommandLine::Get(),TEXT("DCTrailer="),Capture.Mode)) return FDelegateHandle();
@@ -117,5 +119,21 @@ static FDelegateHandle RegisterCapture()
 }
 // Packaged monolithic binaries initialize C++ globals before the command line exists.
 // Defer flag inspection until engine startup; the world delegate remains absent in normal play.
-static FDelegateHandle InitHandle=FCoreDelegates::OnFEngineLoopInitComplete.AddStatic(+[](){ RegisterCapture(); });
+static FDelegateHandle InitHandle=FCoreDelegates::OnFEngineLoopInitComplete.AddStatic(+[]()
+{
+    TickHandle=RegisterCapture();
+    if (!TickHandle.IsValid()) return;
+    CleanupHandle=FWorldDelegates::OnWorldCleanup.AddStatic(+[](UWorld* W,bool,bool)
+    {
+        if (Capture.BoundWorld.Get()!=W) return;
+        Capture.Done=true; FApp::SetUseFixedTimeStep(false);
+        if (!Capture.Folder.IsEmpty()) FFileHelper::SaveStringToFile(Capture.Times,*(Capture.Folder/TEXT("frames.csv")));
+    });
+    FCoreDelegates::OnPreExit.AddStatic(+[]()
+    {
+        FWorldDelegates::OnWorldPostActorTick.Remove(TickHandle);
+        FWorldDelegates::OnWorldCleanup.Remove(CleanupHandle);
+        if (Capture.Started) FApp::SetUseFixedTimeStep(false);
+    });
+});
 }
