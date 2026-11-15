@@ -222,7 +222,7 @@ void ADCTroubles::UpdateRiggingMarker()
 	bool bReadable=false;
 	if (auto* PC=GetWorld()->GetFirstPlayerController(); PC && PC->PlayerCameraManager)
 	{
-		const auto* Cam=PC->PlayerCameraManager;
+		const auto* Cam=PC->PlayerCameraManager.Get();
 		const FVector Camera=Cam->GetCameraLocation();
 		RiggingLabel->SetWorldRotation((Camera-RiggingLabel->GetComponentLocation()).Rotation());
 		Distance=FVector::Dist(Camera,Deck.TransformPosition(Station))/100.f;

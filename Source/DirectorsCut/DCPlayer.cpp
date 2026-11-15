@@ -474,7 +474,7 @@ void ADCPlayerCharacter::OpenOrderBox(APlayerController* PC)
 
 	TWeakObjectPtr<ADCPlayerCharacter> Weak(this);
 	SAssignNew(OrderBox, SEditableTextBox)
-		.HintText(FText::FromString(TEXT("Type an order for the crew, then press Enter")))
+		.HintText(FText::FromString(TEXT("Give an order or chat with Rex, Duncan or Ruby, then press Enter")))
 		.Font(FCoreStyle::GetDefaultFontStyle("Regular", 18))
 		.OnTextCommitted_Lambda([Weak](const FText& Text, ETextCommit::Type Type)
 		{
