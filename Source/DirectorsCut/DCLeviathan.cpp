@@ -1,6 +1,8 @@
 #include "DCLeviathan.h"
 #include "DCBossCombat.h"
 #include "DCBossTimeline.h"
+#include "DCAuthoredTentacle.h"
+#include "DCTentacleCurve.h"
 #include "Animation/AnimSequence.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
@@ -64,6 +66,8 @@ void ADCLeviathan::BeginPlay()
 		MeshBoundsCenter = Mesh->GetBounds().Origin;
 		MeshBoundsExtent = Mesh->GetBounds().BoxExtent;
 	}
+    bProceduralArmReview=!Kraken || FParse::Param(FCommandLine::Get(),TEXT("DCProceduralBossArms"));
+    if(!bProceduralArmReview) { AuthoredArm=UDCAuthoredTentacle::Create(this,Body->GetSkeletalMeshAsset()); }
     const TCHAR* ClawClips[]={TEXT("Idle"),TEXT("Intimidate"),TEXT("Attack"),TEXT("HitReact"),TEXT("Defeated")};
     const TCHAR* KrakenClips[]={TEXT("idle"),TEXT("smashAttackForward"),TEXT("smashAttack"),TEXT("getHit"),TEXT("death")};
     for(int32 I=0;I<5;++I)
@@ -107,6 +111,7 @@ void ADCLeviathan::BeginPlay()
 void ADCLeviathan::ResetEncounter()
 {
     PainAudio->Stop(); Arms->ClearAllMeshSections();
+    if(AuthoredArm) AuthoredArm->SetVisibility(false);
     for(FArm& Arm:ArmState) Arm=FArm();
     ArmsBroken=0; DefeatedAt=-1.f; bAnnounced=false; LastElapsed=-1.f;
     CurrentPose=INDEX_NONE; LastHitAt=-100.f; NextBodyContact=-100.f;
@@ -149,11 +154,33 @@ void ADCLeviathan::UpdateEncounter(float Elapsed, const FTransform& Arena, float
     const bool Appendage=Combat && Combat->GetAppendagePose(Base,Bend,Joint,Tip) && Elapsed<FinaleAt;
     if(Appendage)
     {
-        BuildArm(0,Base,Bend,Joint,Tip,Elapsed);
+        if(bProceduralArmReview) { BuildArm(0,Base,Bend,Joint,Tip,Elapsed); }
+        else if(AuthoredArm)
+        {
+            AuthoredArm->Pose(Base,Bend,Joint,Tip,Body->GetComponentScale().GetMax());
+            ArmState[0].bHasWaterContact=false;
+            if(auto* WaterStage=ADCMaelstrom::Get(this))
+            {
+                FVector PreviousPoint=Base;
+                float PreviousDepth=Base.Z-WaterStage->SampleSurfaceWorld(Base);
+                for(int32 I=1;I<=48;++I)
+                {
+                    const FVector Point=DCTentacleCurve::Point(I/48.f,Base,Bend,Joint,Tip);
+                    const float DepthHere=Point.Z-WaterStage->SampleSurfaceWorld(Point);
+                    if(PreviousDepth<0 && DepthHere>=0)
+                    {
+                        ArmState[0].WaterContact=FMath::Lerp(PreviousPoint,Point,-PreviousDepth/FMath::Max(.01f,DepthHere-PreviousDepth));
+                        ArmState[0].bHasWaterContact=true; break;
+                    }
+                    PreviousPoint=Point; PreviousDepth=DepthHere;
+                }
+            }
+        }
         if(auto* Stage=ADCMaelstrom::Get(this); Stage && ArmState[0].bHasWaterContact && Elapsed>=ArmState[0].NextSprayAt)
         { Stage->EmitWaterContact(ArmState[0].WaterContact,.8f); ArmState[0].NextSprayAt=Elapsed+.35f; }
     }
-    Arms->SetMeshSectionVisible(0,Appendage);
+    Arms->SetMeshSectionVisible(0,Appendage && bProceduralArmReview);
+    if(AuthoredArm) AuthoredArm->SetVisibility(Appendage);
     ArmsBroken=Combat?int(Combat->IsLimbSevered(0))+int(Combat->IsLimbSevered(1)):0;
 	// The end comes on the clock, so the music can be cut to it. What the guns did is in the score.
 	if (JustDefeated)

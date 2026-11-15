@@ -68,6 +68,7 @@ $required = @(
     'DC/Materials/M_StormComposite.uasset',
     'DC/Materials/M_CombatCue.uasset',
     'DC/Materials/M_BossWeakPoint.uasset',
+    'DC/Materials/M_BossLimbHidden.uasset',
     'DC/FX/P_PillarWaterContact.uasset',
     'Brigantine/BP/BP_Brigantine.uasset',
     'Brigantine/SFX/Cue/Bell_cue.uasset',

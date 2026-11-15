@@ -77,6 +77,8 @@ private:
     FVector PoseBase,PoseBend,PoseJoint,PoseTip;
     bool PoseVisible=false,Severed[2]={false,false};
     float Now=-1,Previous=-1,Deadline=160,RideOrigin=270,DamageBaseline=0,HitAt=-100;
+    FVector HitMarkerPosition=FVector::ZeroVector;
+    FString HitMarkerText;
     int32 AppliedScore=0;
     bool Running=false,Finished=false;
 };

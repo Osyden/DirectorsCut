@@ -50,6 +50,8 @@ private:
 
 	UPROPERTY(VisibleAnywhere) TObjectPtr<USkeletalMeshComponent> Body;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Arms;
+	UPROPERTY() TObjectPtr<class UDCAuthoredTentacle> AuthoredArm;
+	bool bProceduralArmReview=false;
 	UPROPERTY() TObjectPtr<UAudioComponent> PainAudio;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> ArmMaterial;
 	UPROPERTY() TObjectPtr<ADCBossCombat> Combat;
