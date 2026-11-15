@@ -7,6 +7,7 @@ param(
     [ValidateRange(50,4000)][float]$Distance = 665,
     [ValidatePattern('^[a-zA-Z0-9_-]+$')][string]$ReviewName = 'ContinuousCliff',
     [string]$Shots = '300,250,451',
+    [string]$RenderCommands = '',
     [ValidateRange(640,7680)][int]$Width = 1600,
     [ValidateRange(360,4320)][int]$Height = 900
 )
@@ -40,4 +41,4 @@ if ($PlayerView -or $DeckView) {
 # bound to the current source mesh. The demo is a cliff-material/shape review.
 & (Join-Path $PSScriptRoot 'review_maelstrom_sky.ps1') -EnvironmentOnly -Native -Clean -Wait `
     -ReviewName $ReviewName -Shots $Shots -Width $Width -Height $Height `
-    -Station $Station -ExtraArgs $reviewArgs
+    -Station $Station -ExtraArgs $reviewArgs -RenderCommands $RenderCommands

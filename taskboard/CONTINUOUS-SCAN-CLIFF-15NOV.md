@@ -2,6 +2,8 @@
 
 Owner: Codex, `codex/maelstrom-saturday`. Local authoring demo; normal gameplay terrain is not replaced yet.
 
+**Surface update:** the active material now uses [unique geology maps and measured stone detail](CLIFF-SURFACE-15NOV.md). The screenshots and scan-colour description below record the earlier baseline; the geometry remains the same.
+
 The stacked Nordic scans were rejected because they made rows of shelves. The replacement is a connected, roughly 497 m cliff sector within the existing crater, using measured scan relief and matching colour, roughness and normal maps. The original scan files remain intact. Owned sources and all derived textures/meshes stay in ignored `Content/LocalScans`, `Content/DC/Maelstrom/GeneratedCliffPreview` and `Saved` directories.
 
 **Delivery status: runnable prototype, not visual approval or a finished arena.** The final actual frames still read as an overly uniform escarpment with synthetic joints. Do not merge this as a finished replacement for the playable scene.

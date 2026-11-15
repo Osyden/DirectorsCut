@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 15 Nov 10:23 Codex: unique cliff surface maps and measured stone detail
+
+Replaced the repeated scan colour with separate unique detailed-sector and full-ring geology maps. Added interrupted bedding, geometry-guided weathering, varied wet/dry roughness, and native-scale scan normal detail without the scan's colour motifs. Fixed context V mapping and capped layered normal slopes after actual close frames revealed excessive scratches. Geometry and crater scale are unchanged. [Actual screenshots, source inputs and reproduction](CLIFF-SURFACE-15NOV.md).
+
+This is installed in the local continuous-cliff review, not a finished arena or normal-game terrain rollout. The broad sculpted cavities and smoother neighbouring landforms remain visible; the material pass does not solve them. Existing water/VFX edits stay outside this checkpoint. Sky, boss, early game and voice are unchanged; old scheduler remains paused.
+
 ## 15 Nov 09:04 Codex: continuous scan-cliff prototype delivered; visual target still unmet
 
 Current local demo uses connected 497m geometry, a unique 4K scan-derived atlas and irregular planar fracture relief; stacked scans, repeated waffle displacement and blank crest material are removed. Actual [wide frame](review/continuous-scan-15nov/cliff-wide.png) and [deck frame](review/continuous-scan-15nov/cliff-deck.png) still show overly uniform cliff massing and artificial joints. This is not accepted AAA art and does not replace normal gameplay terrain. [Source identities, critique, validation and launch commands](CONTINUOUS-SCAN-CLIFF-15NOV.md).
