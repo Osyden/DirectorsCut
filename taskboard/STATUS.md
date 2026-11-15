@@ -2,6 +2,11 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 15 Nov Codex: full-height cliff trials rejected; installed stone material proof
+
+- Diagnosed soft curtains: the old smooth fit created most of the cliff drop. New full-height structural seeds preserve all constraints but still look like engineered walls in actual near/far clay; both rejected, no terrain import. [Diagnosis, actual captures and next representation](CRATER-STRUCTURE-AND-ROCK-15NOV.md).
+- Added separate measured mean-water context to avoid misreading the submerged toe, plus optional installed slate texture sampling for the isolated preview. Corrected obvious texture repetition; native shader and seek/exit checks pass. Material remains an intermediate proof, with diagnostic masks and no final-quality/performance claim. No normal arena, sky/light, water, boss or early-game changes.
+
 ## 15 Nov Codex: repaired cliff exposure, actual native and full-sector context
 
 - Removed artificial anchor fins and corrected exposure-boundary skirts. The original 3D rock surface now imports and renders in an isolated Nanite preview; Editor/Game builds, source import fidelity, five focused tests and seek/exit restoration pass. [Actual captures and remaining work](CRATER-CLIFF-CONTEXT-15NOV.md).

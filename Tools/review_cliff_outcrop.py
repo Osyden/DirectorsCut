@@ -170,7 +170,7 @@ def surface_views(baseline, candidate, close_center=None):
     }
 
 
-def render_pair(baseline, candidate, output, cameras, samples, mode, angle):
+def render_pair(baseline, candidate, output, cameras, samples, mode, angle, context_water=None):
     import bpy
     from mathutils import Vector
     scene = reset_scene(1440, 960, samples)
@@ -184,6 +184,18 @@ def render_pair(baseline, candidate, output, cameras, samples, mode, angle):
     scene.collection.objects.link(sun)
     sun.data.energy, sun.data.angle = 2., .08
     sun.rotation_euler = Vector((.7, .45, -.6)).to_track_quat("-Z", "Y").to_euler()
+    if context_water is not None:
+        water_mesh = bpy.data.meshes.new('Measured mean receiving water; no waves')
+        water_mesh.from_pydata(context_water['chart'].tolist(), [], context_water['triangles'].tolist())
+        water_mesh.update()
+        water_object = bpy.data.objects.new(water_mesh.name, water_mesh)
+        scene.collection.objects.link(water_object)
+        water_material = bpy.data.materials.new('Diagnostic mean water; no animated shading')
+        water_material.use_nodes = True
+        water_shader = water_material.node_tree.nodes.get('Principled BSDF')
+        water_shader.inputs['Base Color'].default_value = (.035, .09, .12, 1)
+        water_shader.inputs['Roughness'].default_value = .6
+        water_mesh.materials.append(water_material)
     objects, normal_reports = {}, {}
     for stage, data in (("baseline", baseline), ("fractured", candidate)):
         mesh = bpy.data.meshes.new(stage)
@@ -224,7 +236,8 @@ def render_pair(baseline, candidate, output, cameras, samples, mode, angle):
                          (f"Range {view['horizontal_range_m']:.0f}m | 35mm / 36mm sensor | bar100m, posts10m" if perspective else
                           f"Physical bounds {dims[0]:.1f} x {dims[1]:.1f} x {dims[2]:.1f} m | identical camera and raking light"),
                          f"Source {data['sha256'][:10]} | normals {mode}"+(f" {angle:g}deg" if mode=="angle" else "")+
-                         " | renderer adds no displacement or geometry smoothing")
+                         (" | measured mean water, no waves" if context_water is not None else
+                          " | renderer adds no displacement or geometry smoothing"))
             scene.render.filepath = str(output/f"{name}_{stage}.png")
             bpy.ops.render.render(write_still=True)
             for child in list(camera.children):
@@ -249,6 +262,7 @@ def main():
     parser.add_argument("--close-center", type=float, nargs=3, metavar=("X", "Y", "Z"), help="Close focus in the shared source chart, metres")
     parser.add_argument("--views", nargs="+", help="Render selected named cameras only")
     parser.add_argument("--audit-only", action="store_true")
+    parser.add_argument("--context-water", type=Path, help="Optional original-frame measured mean-water mesh; context only, no terrain edits")
     args = parser.parse_args(sys.argv[sys.argv.index("--")+1:] if "--" in sys.argv else None)
     output = args.output.resolve()
     if "saved" not in [p.lower() for p in output.parts]:
@@ -256,12 +270,20 @@ def main():
     if not 1 <= args.samples <= 128 or not 0 < args.normal_angle_deg < 180:
         parser.error("Invalid samples or normal angle")
     baseline, candidate = load_mesh(args.baseline), load_mesh(args.candidate)
+    context_water = load_mesh(args.context_water) if args.context_water else None
+    if context_water is not None:
+        if not np.array_equal(baseline['origin'], context_water['origin']) or not np.array_equal(baseline['basis'], context_water['basis']):
+            raise RuntimeError('Measured water context must use the exact terrain frame')
     if not np.allclose(baseline["origin"], candidate["origin"], atol=1.e-8) or not np.allclose(baseline["basis"], candidate["basis"], atol=1.e-8):
         raise RuntimeError("Baseline/candidate frames differ")
     output.mkdir(parents=True, exist_ok=True)
     report = {"schema": "directorscut.cliff_outcrop_review.v1", "source": {},
               "frame_origin_world_m": baseline["origin"].tolist(), "chart_basis_columns": baseline["basis"].tolist(),
               "geometry_operation": "Rigid translation/rotation only; no XY projection or repair", "runtime_integrated": False}
+    if context_water is not None:
+        report['context_water'] = dict(path=context_water['path'], sha256=context_water['sha256'],
+                                      metadata=context_water['metadata'],
+                                      limitation='Separate measured analytic mean-water surface; no animated waves or terrain edits')
     for stage, data in (("baseline", baseline), ("fractured", candidate)):
         data["surface_mode"] = args.open_surface
         report["source"][stage] = {"path": data["path"], "sha256": data["sha256"], "metadata": data["metadata"], "audit": topology_audit(data, args.open_surface)}
@@ -280,7 +302,7 @@ def main():
     # Invalid candidates may be rendered diagnostically, but never silently
     # repaired or certified. Their exact defects stay visible in the report.
     if not args.audit_only:
-        report["normals"] = render_pair(baseline, candidate, output, cameras, args.samples, args.normal_mode, args.normal_angle_deg)
+        report["normals"] = render_pair(baseline, candidate, output, cameras, args.samples, args.normal_mode, args.normal_angle_deg, context_water)
         report["render"] = {"engine": "Cycles", "device": "CPU", "threads": 8, "samples": args.samples, "normal_mode": args.normal_mode}
     (output/"review.json").write_text(json.dumps(report, indent=2)+"\n", encoding="utf-8")
     print(json.dumps({"output": str(output), "audit_passed": report["audit_passed"],

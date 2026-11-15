@@ -10,7 +10,10 @@ Vertex linear R=normalized log cumulative flow, G=gross deposition, B=erosion.
 These historical transport masks guide an art-directed wetness/deposit response;
 they do not establish current water saturation or physically correct geology.
 
-This version is original procedural stone: no cliff atlas or copied pixels.
+Default is original procedural stone: no cliff atlas or copied pixels.
+DC_CLIFF_STONE=slate uses installed Paragon tileable albedo/normal by reference,
+at an authored4m tile size. Vendor pixels never enter the repository. Roughness
+remains authored: no unverified packed-map channels are used.
 Large fracture volume belongs to the mesh. Detail is shallow centimetre/metre
 surface relief with derivative filtering; no displaced vertices or fake blocks.
 """
@@ -140,11 +143,48 @@ float3 gradient=float3(0,x.x*s.x,x.y)*w.x+float3(y.x*s.y,0,y.y)*w.y+float3(z.x*s
 return float4(gradient,dot(float3(x.z,y.z,z.z),w));
 """
 
+# Three offset samples share a triangular lattice. Albedo and normal use the
+# same offsets/weights; no UV rotation that would desynchronise normal axes.
+# Gradients come from the continuous physical UV, not hashed sample offsets.
+STONE_TILE = r"""
+struct StoneTile {
+ float2 offset(float2 p) {
+  return frac(sin(float2(dot(p,float2(127.1,311.7)),dot(p,float2(269.5,183.3))))*43758.5453);
+ }
+ float4 sampleMap(Texture2D tex,SamplerState samp,float2 uv) {
+  float2 g=float2(uv.x+uv.y*.57735027,uv.y*1.15470054)*.65;
+  float2 cell=floor(g),f=frac(g),a=cell,b,c;float3 w;
+  if(f.x+f.y<1) { b=cell+float2(1,0);c=cell+float2(0,1);w=float3(1-f.x-f.y,f.x,f.y); }
+  else { a=cell+1;b=cell+float2(0,1);c=cell+float2(1,0);w=float3(f.x+f.y-1,1-f.x,1-f.y); }
+  w=pow(max(w,0),3);w/=max(w.x+w.y+w.z,.00001);
+  float2 dx=ddx(uv),dy=ddy(uv);
+  return tex.SampleGrad(samp,uv+offset(a),dx,dy)*w.x
+        +tex.SampleGrad(samp,uv+offset(b),dx,dy)*w.y
+        +tex.SampleGrad(samp,uv+offset(c),dx,dy)*w.z;
+ }
+};StoneTile tile;
+"""
+
 
 def create_material():
     assign = os.environ.get("DC_CLIFF_PREVIEW_ASSIGN", "0")
     if assign not in ("0", "1"):
         raise RuntimeError("DC_CLIFF_PREVIEW_ASSIGN must be 0 or 1")
+    preset = os.environ.get('DC_CLIFF_STONE', 'procedural')
+    if preset not in ('procedural', 'slate'):
+        raise RuntimeError('DC_CLIFF_STONE must be procedural or slate')
+    texture_assets = {}
+    if preset == 'slate':
+        for suffix in ('D', 'N'):
+            path = '/Game/ParagonRampage/Characters/Global/MaterialLayers/Rock/T_SlateTextureTile_000_'+suffix
+            asset = unreal.load_asset(path)
+            if not isinstance(asset, unreal.Texture2D):
+                raise RuntimeError('Missing installed tileable slate texture: '+path)
+            if bool(asset.get_editor_property('srgb')) != (suffix == 'D'):
+                raise RuntimeError('Unexpected slate colour-space setting: '+path)
+            if suffix == 'N' and asset.get_editor_property('compression_settings') != unreal.TextureCompressionSettings.TC_NORMALMAP:
+                raise RuntimeError('Slate normal map requires native normal compression')
+            texture_assets[suffix] = asset
     material = unreal.load_asset(MATERIAL_PATH)
     if material is None:
         material = unreal.AssetToolsHelpers.get_asset_tools().create_asset("M_CliffRock", ROOT, unreal.Material, unreal.MaterialFactoryNew())
@@ -219,6 +259,26 @@ stone=lerp(stone,float3(.265,.260,.250),Weather.z*.38);
 stone*=lerp(.97,1.03,Detail.w)*lerp(1,.94,Fractures.w);
 return stone*lerp(1,.62,Weather.y);
 """, types.CMOT_FLOAT3, {"Weather":weather,"Detail":detail,"Fractures":fractures})
+    if preset == 'slate':
+        texture_nodes = {}
+        for suffix, asset in texture_assets.items():
+            texture = node(unreal.MaterialExpressionTextureObjectParameter)
+            texture.set_editor_property('parameter_name', 'SlateTexture'+suffix)
+            texture.set_editor_property('texture', asset)
+            texture.set_editor_property('sampler_type', unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL if suffix == 'N' else unreal.MaterialSamplerType.SAMPLERTYPE_COLOR)
+            texture_nodes[suffix] = texture
+        tile_size = parameter('SlateTileMetres', 4.)
+        color = custom(STONE_TILE + r"""
+float3 p=P*.01/max(TileMetres,.1),n=normalize(N);
+float3 w=pow(abs(n),4);w/=max(w.x+w.y+w.z,.001);
+float3 s=float3(n.x<0?-1:1,n.y<0?-1:1,n.z<0?-1:1);
+float3 x=tile.sampleMap(Albedo,AlbedoSampler,float2(p.y*s.x,p.z)).rgb;
+float3 y=tile.sampleMap(Albedo,AlbedoSampler,float2(-p.x*s.y,p.z)).rgb;
+float3 z=tile.sampleMap(Albedo,AlbedoSampler,float2(p.x*s.z,p.y)).rgb;
+float3 stone=x*w.x+y*w.y+z*w.z;
+stone=lerp(stone,float3(.265,.260,.250),Weather.z*.25);
+return stone*lerp(1,.62,Weather.y);
+""", types.CMOT_FLOAT3, {'P':position,'N':normal,'Albedo':texture_nodes['D'],'TileMetres':tile_size,'Weather':weather})
     output(color, unreal.MaterialProperty.MP_BASE_COLOR)
     local_normal = custom(r"""
 float3 n=normalize(N);
@@ -226,6 +286,22 @@ float3 gradient=(Detail.xyz+Fractures.xyz)*max(DetailStrength,0);
 gradient-=n*dot(gradient,n);
 return normalize(n-gradient);
 """, types.CMOT_FLOAT3, {"N":normal,"Detail":detail,"Fractures":fractures,"DetailStrength":parameter("DetailStrength", 1.0)})
+    if preset == 'slate':
+        local_normal = custom(STONE_TILE + r"""
+float3 p=P*.01/max(TileMetres,.1),n=normalize(N);
+float3 w=pow(abs(n),4);w/=max(w.x+w.y+w.z,.001);
+float3 s=float3(n.x<0?-1:1,n.y<0?-1:1,n.z<0?-1:1);
+float3 x=UnpackNormalMap(tile.sampleMap(NormalTex,NormalTexSampler,float2(p.y*s.x,p.z))).xyz;
+float3 y=UnpackNormalMap(tile.sampleMap(NormalTex,NormalTexSampler,float2(-p.x*s.y,p.z))).xyz;
+float3 z=UnpackNormalMap(tile.sampleMap(NormalTex,NormalTexSampler,float2(p.x*s.z,p.y))).xyz;
+// Convert each tangent normal into a local slope, blend, then project to the
+// true geometric tangent plane. Flat source normals preserve arbitrary N.
+float3 perturb=(float3(0,x.x*s.x,x.y)/max(x.z,.2))*w.x
+              +(float3(-y.x*s.y,0,y.y)/max(y.z,.2))*w.y
+              +(float3(z.x*s.z,z.y,0)/max(z.z,.2))*w.z;
+perturb-=n*dot(n,perturb);
+return normalize(n+perturb*max(Strength,0));
+""", types.CMOT_FLOAT3, {'P':position,'N':normal,'NormalTex':texture_nodes['N'],'TileMetres':tile_size,'Strength':parameter('SlateNormalStrength', .7)})
     world_normal = node(unreal.MaterialExpressionTransform)
     world_normal.set_editor_property("transform_source_type", unreal.MaterialVectorCoordTransformSource.TRANSFORMSOURCE_LOCAL)
     world_normal.set_editor_property("transform_type", unreal.MaterialVectorCoordTransform.TRANSFORM_WORLD)
@@ -236,7 +312,7 @@ return normalize(n-gradient);
     output(roughness, unreal.MaterialProperty.MP_ROUGHNESS)
     output(constant(.35), unreal.MaterialProperty.MP_SPECULAR)
     output(constant(0), unreal.MaterialProperty.MP_METALLIC)
-    output(custom("return lerp(1,.95,Fractures.w);", types.CMOT_FLOAT1, {"Fractures":fractures}), unreal.MaterialProperty.MP_AMBIENT_OCCLUSION)
+    output(constant(1.) if preset=='slate' else custom("return lerp(1,.95,Fractures.w);", types.CMOT_FLOAT1, {"Fractures":fractures}), unreal.MaterialProperty.MP_AMBIENT_OCCLUSION)
     M.recompile_material(material)
     if not unreal.EditorAssetLibrary.save_loaded_asset(material, only_if_is_dirty=False):
         raise RuntimeError("Could not save isolated cliff material")
@@ -252,12 +328,18 @@ return normalize(n-gradient);
         mesh.set_material(0, material)
         if not unreal.EditorAssetLibrary.save_loaded_asset(mesh):
             raise RuntimeError("Could not save preview mesh material assignment")
-    report = dict(material=MATERIAL_PATH, assigned_preview_mesh=assign=="1", vendor_textures_used=False,
+    report = dict(material=MATERIAL_PATH, assigned_preview_mesh=assign=="1", vendor_textures_used=preset=='slate',
+                  preset=preset, texture_references={key:asset.get_path_name() for key,asset in texture_assets.items()},
+                  texture_tile_metres=4. if preset=='slate' else None,
+                  texture_scale_note='Authored physical tile size, not a claimed scan measurement',
+                  roughness_source='Authored response; packed vendor mask channels not used',
                   units="Local UE centimetres converted to metres; unit actor scale required",
                   vertex_contract="linear R normalized log-flow; G gross-deposition; B gross-erosion",
-                  relief_bands_m=[.75,.18,.045], relief_heights_m=[.012,.002,.00055],
-                  fracture_length_m=[.9,2.3], fracture_width_m=[.036,.086], fracture_depth_m=[.003,.009],
-                  normal_fully_filtered_above_metres_per_pixel=.38, cracks_filtered_above_metres_per_pixel=.0645,
+                  relief_bands_m=[.75,.18,.045] if preset=='procedural' else [], relief_heights_m=[.012,.002,.00055] if preset=='procedural' else [],
+                  fracture_length_m=[.9,2.3] if preset=='procedural' else [], fracture_width_m=[.036,.086] if preset=='procedural' else [], fracture_depth_m=[.003,.009] if preset=='procedural' else [],
+                  normal_fully_filtered_above_metres_per_pixel=.38 if preset=='procedural' else None, cracks_filtered_above_metres_per_pixel=.0645 if preset=='procedural' else None,
+                  slate_normal_strength=.7 if preset=='slate' else None,
+                  slate_sampling='Three-offset triangular blend per local triplanar projection; same albedo/normal offsets, explicit continuous UV mip gradients' if preset=='slate' else None,
                   roughness_bounds=[.53,.94], emissive=False, displacement=False,
                   runtime_integrated=False, actual_shader_compile_and_visual_review_pending=True)
     destination = Path(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_saved_dir())) / "CliffRockMaterialPreview.json"

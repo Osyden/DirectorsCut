@@ -67,6 +67,8 @@ Pass B entry/descent/exit captures completed and cleared both prototype volume a
 
 ## Next scheduled passes
 
+Current continuation: [15 Nov full-height structure and rock material](CRATER-STRUCTURE-AND-ROCK-15NOV.md). A/B directly authored heightfield plane/wedge trials preserve all constraints but are visually rejected; do not promote or keep tuning them. Preserve the full-height physical envelope and measured continuous shoreline coordinate, then build connected 3D bedrock masses with finite joint exposures. The bottom fringe is largely submerged and now has measured water-context diagnostics. Optional slate sampling has native proof but is not a geometry or final-quality fix.
+
 Latest checkpoint: [15 Nov cliff boundary, native import and full-sector context](CRATER-CLIFF-CONTEXT-15NOV.md). The corrected local outcrop passes its bounded geometry/native gate but the complete context fails coherent geology. Prioritize connected sector-scale escarpments and shared rock layers/fractures/drainage, retaining actual shore and supported ruins. Do not repeat the patch around the crater, restart noise-only surface trials or expand audit tooling. Keep water/falls integration behind the accepted final surface.
 
 1. Use the pass-4 geology/spray handoff, not the older C defect list. Giant geometric shelves and the 22 m masonry normal/AO field are now removed. The remaining cliff reads too smooth: inspect actual installed cliff texture sets for tiling suitability, then improve localized real fractured faces and narrow wet runoff without reinstating uniform cell patterns. Preserve the corrected inlet, shore, far-rim scale and temple skyline. Do not hide defects under more fog.

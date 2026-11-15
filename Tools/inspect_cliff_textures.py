@@ -4,14 +4,23 @@ This reads assets; it does not modify them or copy licensed pixels into Git.
 Run with UnrealEditor-Cmd -run=pythonscript -script=<this file> -nullrhi.
 """
 import json
+import os
 from pathlib import Path
 import unreal
 
-destination = Path(unreal.Paths.project_saved_dir()) / 'CliffTextureReview'
+selection = os.environ.get('DC_CLIFF_TEXTURE_SET', 'ruins')
+if selection not in ('ruins', 'paragon_rock'):
+    raise RuntimeError('Choose ruins or paragon_rock for DC_CLIFF_TEXTURE_SET')
+destination = Path(unreal.Paths.project_saved_dir()) / ('CliffTextureReview' if selection == 'ruins' else 'CliffTextureReviewParagon')
 destination.mkdir(parents=True, exist_ok=True)
 sources = [f'/Game/AncientRuins/Textures/Bake/Cliffs/T_Cliff_{i:02d}_{channel}'
            for i in range(1, 4) for channel in ('D', 'N')]
 sources += [f'/Game/AncientRuins/Textures/Tile/T_Ground_02_{channel}' for channel in ('D', 'N')]
+if selection == 'paragon_rock':
+    root = '/Game/ParagonRampage/Characters/Global/MaterialLayers/Rock'
+    sources = [f'{root}/T_{name}TextureTile_000_{channel}'
+               for name in ('Rock', 'Slate') for channel in ('D', 'N')]
+    sources += [f'{root}/T_RockTextureTile_000_M']
 records = []
 for asset_path in sources:
     asset = unreal.load_asset(asset_path)
