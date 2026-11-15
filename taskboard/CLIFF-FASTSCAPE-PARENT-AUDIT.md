@@ -37,3 +37,19 @@ I inspected the actual `ParentAWhole/WHOLE PARENT 500x1100m oblique_fractured.pn
 Existing foundations are explicitly unsupported. Sampled terrain under Actors 33 and 34 is 63.5-96.1 m and 82.9-95.3 m below their old support levels. Actor 36 loses 17.6-31.8 m; Actor 48 ranges from 12.4 m below to 0.5 m above. Full footing coverage has not been certified. Old temple actors remain unchanged in the game.
 
 Full numeric evidence is retained in the audit worker's ignored `Saved/WeatheredAudit/fastscape_parent_a.json`. No material, cloud, water, boss, gameplay or shipped scene change is implied.
+
+## Single authorized ParentB revision
+
+ParentB is a coherent two-change process proposal, **not an isolated causal comparison**. It keeps the initial field, authored domain, frame, coast, divide polylines and diffusion coefficient identical, but evolves for 400 x 200 years with one-eighth uplift rate and replaces MFD1.1 routing with SingleFlow/MST. No third parameter sweep was run.
+
+Artifacts: `Flow-Seams/Saved/FastscapeParent/ParentB`. Parent SHA256 `d885c8135999ed1a3437c9542143d1abaa45b7ab8a26163131eac4eff1b76941`; crop SHA256 `bb9dcb6c7e9715911088df32ae630e17bbb8f9392d4c372e676c0fe69ca3d940`. The bundled source hash matches its metadata. Independent comparison confirms the complete initial/raw fields, domain, masks, measured coastal targets and frame match A bitwise, and integrated uplift is identical at every node.
+
+All 2,000 coast-touching original triangles remain exact. Parent/crop retain their clean open-manifold topology and exact physical spacing. The released old seams still differ: 678 outer edges change, with boundary vertex shifts from -153.22 to +2.61 m. There is no rescale to conceal the lower terrain: maximum height decreases from 38.07 to 27.17 m and median free-node height is 9.90 m below A.
+
+Recomputed final SFD routing matches the saved drainage array exactly. Every one of 127,334 valid nodes reaches an actual coastal base level; no receiver enters invalid padding. Outlet drainage totals 509,336 m², matching the valid land area. However, the largest outlet receives 507,640 m² (99.67%), versus about 60% in A. This proves routing connectivity, not a diverse or visually useful set of coastal catchments.
+
+The 31,899,663.19 m³ integrated uplift stays unchanged. Stream-power removal increases to 9,082,284.10 m³, with -147,028.00 m³ fixed-reservoir exchange and 22,670,351.09 m³ net active gain. The independent combined ledger closes within 3.2e-9 m³; the per-node identity within 5.7e-12 m. Existing temple grounds are still unsupported, with Actor 33/34 deficits reaching 117.72/101.53 m.
+
+I viewed actual `ParentBWhole/WHOLE PARENT 500x1100m oblique_fractured.png` and `ParentBCrop/wall_fractured.png`. **B is also rejected for native promotion.** The same two smooth mound silhouettes persist. More concentrated flow creates parallel stepped grooves and one dominant collecting trough, without convincing branching escarpment masses. Stronger process response is measurable, but the primary cliff form is still wrong. Numerical correctness does not override that visual result.
+
+Final evidence is `Saved/WeatheredAudit/fastscape_parent_b.json`. No Unreal or game integration followed this audit.
