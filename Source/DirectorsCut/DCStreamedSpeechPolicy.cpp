@@ -84,7 +84,9 @@ TArray<FString> DCStreamedSpeechPolicy::FChunker::Push(const FString& Cumulative
     using namespace DCStreamedSpeechPolicyPrivate;
     TArray<FString> Chunks;
     if (bRejected || bFinished) { return Chunks; }
-    if (!CumulativeText.StartsWith(PreviousRaw, ESearchCase::CaseSensitive))
+    // FString::StartsWith returns false for an empty prefix. Empty state is
+    // valid before the first token and before any speech has been committed.
+    if (!PreviousRaw.IsEmpty() && !CumulativeText.StartsWith(PreviousRaw, ESearchCase::CaseSensitive))
     {
         bRejected = true;
         return Chunks;
@@ -98,7 +100,7 @@ TArray<FString> DCStreamedSpeechPolicy::FChunker::Push(const FString& Cumulative
         bFinished = true;
         const FString Clean = DCConversationPolicy::CleanReply(CumulativeText);
         if (Clean.IsEmpty() || HasRoleLabel(Clean) || (!bDeferred && HasRoleLabel(CumulativeText)) || !HasCompleteUnicode(Clean) ||
-            !Clean.StartsWith(EmittedText, ESearchCase::CaseSensitive) ||
+            (!EmittedText.IsEmpty() && !Clean.StartsWith(EmittedText, ESearchCase::CaseSensitive)) ||
             (!EmittedText.IsEmpty() && Clean.Len() > EmittedText.Len() && !FChar::IsWhitespace(Clean[EmittedText.Len()])))
         {
             bRejected = true;
@@ -123,7 +125,7 @@ TArray<FString> DCStreamedSpeechPolicy::FChunker::Push(const FString& Cumulative
     {
         Normalized += TEXT(" ");
     }
-    if (!Normalized.StartsWith(EmittedText, ESearchCase::CaseSensitive))
+    if (!EmittedText.IsEmpty() && !Normalized.StartsWith(EmittedText, ESearchCase::CaseSensitive))
     {
         bRejected = true;
         return Chunks;
