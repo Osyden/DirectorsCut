@@ -23,6 +23,8 @@
 
 namespace
 {
+constexpr float MaelstromSunBalanceStrength = 0.45f;
+
 struct FMaelstromSunLook
 {
 	FLinearColor Color;
@@ -37,16 +39,18 @@ FMaelstromSunLook GetMaelstromSunLook()
 	if (!FParse::Param(FCommandLine::Get(), TEXT("DCMaelSunGroundBalance"))) { return Look; }
 	// Fixed art-direction control for the existing 18-degree sun, based on settled
 	// CliffH2Three diagnostics. Partial inverse transmission; no live feedback loop.
+	// CliffH2Balanced showed that 0.85 over-cooled atmospheric/sky illumination.
+	// Keep a warmer residual and bound the accompanying blue-energy increase.
 	const FLinearColor Transmission(0.694727f, 0.511457f, 0.268807f);
 	const FLinearColor TemperatureRGB(1.044155f, 0.983268f, 1.035693f); // observed 6500 K
 	const FLinearColor Tint(
-		FMath::Clamp(FMath::Pow(Transmission.B / Transmission.R, 0.85f), 0.4f, 1.f),
-		FMath::Clamp(FMath::Pow(Transmission.B / Transmission.G, 0.85f), 0.4f, 1.f), 1.f);
+		FMath::Clamp(FMath::Pow(Transmission.B / Transmission.R, MaelstromSunBalanceStrength), 0.65f, 1.f),
+		FMath::Clamp(FMath::Pow(Transmission.B / Transmission.G, MaelstromSunBalanceStrength), 0.65f, 1.f), 1.f);
 	const FLinearColor Before = Look.Color * TemperatureRGB * Transmission;
 	Look.Color *= Tint; // all channels remain <= 1, avoiding light-colour clipping
 	const FLinearColor After = Look.Color * TemperatureRGB * Transmission;
 	auto Luminance = [](FLinearColor C) { return 0.2126f * C.R + 0.7152f * C.G + 0.0722f * C.B; };
-	Look.LuxScale = FMath::Clamp(Luminance(Before) / FMath::Max(Luminance(After), 0.001f), 1.f, 2.f);
+	Look.LuxScale = FMath::Clamp(Luminance(Before) / FMath::Max(Luminance(After), 0.001f), 1.f, 1.4f);
 	return Look;
 }
 }
@@ -199,7 +203,7 @@ void ADCMaelstromAtmosphere::CaptureSky()
 	if (bNeutralSun) { UE_LOG(LogDC, Log, TEXT("MAEL_SKY neutral UDS sun base colour selected")); }
 	if (SunLook.LuxScale > 1.f)
 	{
-		UE_LOG(LogDC, Log, TEXT("MAEL_SKY ground-balance art preset colour=%s luxScale=%.4f strength=0.85"), *SunLook.Color.ToString(), SunLook.LuxScale);
+		UE_LOG(LogDC, Log, TEXT("MAEL_SKY ground-balance art preset colour=%s luxScale=%.4f strength=%.2f"), *SunLook.Color.ToString(), SunLook.LuxScale, MaelstromSunBalanceStrength);
 		if (const ADCRideDirector* Director = ADCRideDirector::Get(this))
 		{ SetSkyNumber(TEXT("Sun Light Intensity"), (Director->GetEnv().SunIntensity * 0.75f + 2.f) * SunGroundBalanceLuxScale); }
 	}
