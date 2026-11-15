@@ -9,6 +9,9 @@ class ADCRideDirector;
 class UStaticMesh;
 class UMaterialInterface;
 
+/** Owner validates the window and observes effective (health-capped) cannon damage. */
+DECLARE_DELEGATE_RetVal_OneParam(float, FDCExternalDamage, float);
+
 /** One thing in the moving world: an obstacle in the lane, or a hostile off to one side. */
 struct FDCWorldObject
 {
@@ -18,6 +21,7 @@ struct FDCWorldObject
 	float Radius = 300.f;
 	bool bHostile = false;
 	float Health = 1.f;
+	FDCExternalDamage OnDamage;
 	/** Moved by its owner (e.g. a kraken arm), not by the treadmill. */
 	bool bExternal = false;
 	/** The batteries take this one before a nearer hostile (a creature swimming in to board). */
@@ -77,11 +81,11 @@ public:
 	int32 FindHostile(EDCSide Side, float MaxRange) const;
 	FVector GetObjectLocation(int32 Index) const;
 	/** Returns true if the hostile was destroyed. */
-	bool DamageObject(int32 Index, float Damage);
+	bool DamageObject(int32 Index, float Damage, float* EffectiveDamage = nullptr);
 	/** Damage hostiles near a world position. bDirect uses a tighter radius and stops at the first hit. Returns hits. */
 	int32 DamageNear(const FVector& WorldPos, float Radius, float Damage, bool bDirect);
 	/** Register a hostile that something else moves. The treadmill destroys the actor when its health runs out. */
-	void AddExternalHostile(AActor* Actor, float Radius, float Health, bool bUrgent = false);
+	void AddExternalHostile(AActor* Actor, float Radius, float Health, bool bUrgent = false, FDCExternalDamage OnDamage = FDCExternalDamage());
 	int32 NumObjects() const { return Objects.Num(); }
 	AActor* GetHostileActor(int32 Index) const
 	{

@@ -1,4 +1,5 @@
 #include "DCTreadmill.h"
+#include "DCBossFireball.h"
 #include "Components/LocalFogVolumeComponent.h"
 #include "DCFogBank.h"
 #include "DCFogCardFader.h"
@@ -512,10 +513,17 @@ FVector ADCTreadmill::GetObjectLocation(int32 Index) const
 	return FVector::ZeroVector;
 }
 
-bool ADCTreadmill::DamageObject(int32 Index, float Damage)
+bool ADCTreadmill::DamageObject(int32 Index, float Damage, float* EffectiveDamage)
 {
+	if (EffectiveDamage) { *EffectiveDamage = 0.f; }
 	if (!Objects.IsValidIndex(Index)) { return false; }
 	FDCWorldObject& Obj = Objects[Index];
+	if (!Obj.Actor.IsValid()) { return false; }
+	Damage = FMath::Clamp(Damage, 0.f, FMath::Max(0.f, Obj.Health));
+	const bool bOwnerScores = Obj.OnDamage.IsBound();
+	if (bOwnerScores) { Damage = FMath::Clamp(Obj.OnDamage.Execute(Damage), 0.f, Damage); }
+	if (Damage <= 0.f) { return false; }
+	if (EffectiveDamage) { *EffectiveDamage = Damage; }
 	Obj.Health -= Damage;
 	if (Obj.Health <= 0.f)
 	{
@@ -530,7 +538,7 @@ bool ADCTreadmill::DamageObject(int32 Index, float Damage)
 			}
 		}
 		Objects.RemoveAtSwap(Index);
-		if (Director) { Director->Score += 100; }
+		if (Director && !bOwnerScores) { Director->Score += 100; }
 		return true;
 	}
 	return false;
@@ -554,15 +562,15 @@ int32 ADCTreadmill::DamageNear(const FVector& WorldPos, float Radius, float Dama
 		const float Reach = Radius + Obj.Radius * (bDirect ? 0.6f : 1.f);
 		if (FVector::DistSquared(Actor->GetActorLocation(), WorldPos) < Reach * Reach)
 		{
-			DamageObject(i, Damage);
-			++Hits;
-			if (bDirect) { break; }
+			float Applied = 0.f;
+			DamageObject(i, Damage, &Applied);
+			if (Applied > 0.f) { ++Hits; if (bDirect) { break; } }
 		}
 	}
 	return Hits;
 }
 
-void ADCTreadmill::AddExternalHostile(AActor* Actor, float Radius, float Health, bool bUrgent)
+void ADCTreadmill::AddExternalHostile(AActor* Actor, float Radius, float Health, bool bUrgent, FDCExternalDamage OnDamage)
 {
 	FDCWorldObject& Obj = Objects.AddDefaulted_GetRef();
 	Obj.Actor = Actor;
@@ -572,6 +580,7 @@ void ADCTreadmill::AddExternalHostile(AActor* Actor, float Radius, float Health,
 	Obj.bExternal = true;
 	Obj.bUrgent = bUrgent;
 	Obj.Health = Health;
+	Obj.OnDamage = MoveTemp(OnDamage);
 }
 
 float ADCTreadmill::FindClearLane(float Lookahead) const
@@ -877,34 +886,7 @@ void ADCTreadmill::TickGiants(float DeltaSeconds)
 				F.From = A->GetActorLocation() + FVector(0.f, 0.f, 330.f * Scale);
 				// At the deck, somewhere along her length.
 				F.To = FVector(FMath::FRandRange(-1300.f, 1400.f), FMath::FRandRange(-200.f, 200.f), Director->SeaLevelZ + 620.f);
-				FActorSpawnParameters Params;
-				Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-				if (AStaticMeshActor* B = World->SpawnActor<AStaticMeshActor>(F.From, FRotator::ZeroRotator, Params))
-				{
-					UStaticMeshComponent* M = B->GetStaticMeshComponent();
-					M->SetMobility(EComponentMobility::Movable);
-					UStaticMesh* Held = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/ParagonRampage/FX/Meshes/Debris/SM_Rock_To_Hold.SM_Rock_To_Hold"), nullptr, LOAD_NoWarn | LOAD_Quiet);
-					M->SetStaticMesh(Held ? Held : LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere")));
-					M->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-					M->SetCastShadow(false);
-					if (UMaterialInterface* Glow = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_Glow.M_Glow")))
-					{
-						UMaterialInstanceDynamic* Hot = UMaterialInstanceDynamic::Create(Glow, B);
-						Hot->SetVectorParameterValue(TEXT("Color"), FLinearColor(11.f, 2.6f, 0.3f));
-						for (int32 Slot = 0; Slot < M->GetNumMaterials(); ++Slot) { M->SetMaterial(Slot, Hot); }
-					}
-					const float Through = FMath::Max(M->GetStaticMesh() ? M->GetStaticMesh()->GetBoundingBox().GetSize().GetMax() : 100.f, 1.f);
-					B->SetActorScale3D(FVector(260.f / Through));
-					UPointLightComponent* Light = NewObject<UPointLightComponent>(B);
-					Light->SetMobility(EComponentMobility::Movable);
-					Light->SetupAttachment(M);
-					Light->SetIntensity(120000.f);
-					Light->SetAttenuationRadius(4500.f);
-					Light->SetLightColor(FLinearColor(1.f, 0.45f, 0.12f));
-					Light->SetCastShadows(false);
-					Light->RegisterComponent();
-					F.Actor = B;
-				}
+				F.Actor = DCBossFireball::Spawn(World,this,F.From);
 				Fireballs.Add(F);
 				if (Crew) { Crew->Report(TEXT("Fire incoming!"), true); }
 			}
@@ -945,18 +927,10 @@ void ADCTreadmill::TickGiants(float DeltaSeconds)
 		FFireball& F = Fireballs[i];
 		F.Age += DeltaSeconds;
 		const float U = FMath::Clamp(F.Age / 3.f, 0.f, 1.f);
-		const FVector Where = FMath::Lerp(F.From, F.To, U) + FVector(0.f, 0.f, 4.f * 4500.f * U * (1.f - U));
+		const FVector Where = DCBossFireball::Position(F.From,F.To,F.Age);
 		if (AActor* B = F.Actor.Get()) { B->SetActorLocation(Where); B->SetActorRotation(FRotator(F.Age * 260.f, F.Age * 170.f, 0.f)); }
 		if (U < 1.f) { continue; }
-		Director->DamageShip(2.f);
-		ADCTroubles* Troubles = ADCTroubles::Get(this);
-		if (Troubles && Troubles->DeckPoints.Num() && Troubles->NumFires() < Troubles->MaxFires)
-		{
-			FVector Best = Troubles->DeckPoints[0];
-			for (const FVector& P : Troubles->DeckPoints) { if (FVector::DistSquared2D(P, F.To) < FVector::DistSquared2D(Best, F.To)) { Best = P; } }
-			Troubles->StartFire(Best);
-		}
-		if (ADCAudio* Sound = Cast<ADCAudio>(UGameplayStatics::GetActorOfClass(World, ADCAudio::StaticClass()))) { Sound->Boom(0.7f); }
+		DCBossFireball::Impact(World,Director,F.To);
 		UE_LOG(LogDC, Log, TEXT("Giant fire struck the deck at %.1f s"), T);
 		if (AActor* B = F.Actor.Get()) { B->Destroy(); }
 		Fireballs.RemoveAt(i);

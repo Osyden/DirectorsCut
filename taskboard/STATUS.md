@@ -27,6 +27,17 @@ The caldera inlet now uses connected, source-fractured cliff banks, physical roc
 Editor/Game builds, imported geometry/mask audit, installed support data and39,961-sample flow-chart probe pass. Native captures verify current material compilation, clear battle-lane visibility and seek/ending restoration. [Current source identities, replay, screenshots and critique](CALDERA-LAKE-15NOV.md). Local launcher: `Play Caldera.cmd`. This has not been cooked into a fresh release build or merged to main. Preserve newer main crew UI/names/voice and the separate pending VFX material edits.
 
 The separate **Caldera boss fight** chat is active in `Boss-Caldera`. Visual work stays here; boss gameplay stays there. The existing visual-iteration heartbeat is active every30minutes with its obsolete spiral instructions replaced. Next priorities are less uniform impact-fog edges, more natural broad bank forms/scan accents and less repetitive ramp foam. This is an improved checkpoint, not final reference-quality art.
+## 15 Nov 13:45 Codex: Kraken polish built and native outcomes verified
+
+The owner's polish pass is implemented in isolated `codex/boss-caldera-15nov`. Kraken is now the default, with torso-based placement/facing, submerged lower body and persistent cuts on two actual tentacles. Improved obstacle emergence, slam windup/downswing/recoil, warm patterned appendages, embedded joint bands, mouth light, impact cues and a readable warning bar. Fixed skipped mouth attacks from incorrect body anchoring and made moving obstacle hits accommodate cannon flight time.
+
+Current Editor build and 4,951 CPU checks pass. The final native firing replay interrupts all six attacks using real cannon projectiles: 20 damage, 2 severed limbs, no ship damage, score 1000, ending at encounter 160. Separate failure replay verifies fireball impact, damage and deck fires; normal-speed passive replay verifies obstacle/slam damage once each. Firing/final-mouth outcome checks use 2x global dilation and automated aim, so manual timing/audio remain hands-on checks. [Exact evidence, limitations and local launcher](BOSS-CALDERA-15NOV.md). No main/scene merge or packaged release; crew and environment source ownership are preserved.
+
+## 15 Nov Codex: revised three-attack boss source; Kraken audition pending
+
+Pushed source checkpoint `66aadbe` on isolated `codex/boss-caldera-15nov` replaces the superseded spout/add prototype with committed tentacle obstacles, interruptible permanent-limb slams, and cannon-gated mouth charges using the fog giant's fireball helper. Fixed finale and cumulative performance scoring remain. The revised CPU replay passes 4,951 checks; current source still needs a fresh Unreal build and the requested Kraken animation/cut audition. The earlier native pass belongs to the superseded prototype, not this change. [Exact source scope, dependencies, checks and next native window](BOSS-CALDERA-15NOV.md).
+
+No main/scene source edits or merge; crew UI/voice and parent environment remain owned elsewhere. Plugin build outputs are isolated after a shared-binary lock was found. A five-minute engine window has been requested; no new boss native job is running.
 
 ## 15 Nov 11:45 Codex: simplified caldera lake, supported inlet and fog exit
 
