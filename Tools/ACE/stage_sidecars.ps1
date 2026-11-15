@@ -152,17 +152,17 @@ if ($selectedVoices.Count) {
 }
 $notices = Join-Path $game 'ThirdPartyNotices'
 New-Item -ItemType Directory -Force -Path $notices | Out-Null
-if ($ttsBackend -eq 'Piper') { Copy-Item -LiteralPath (Join-Path $project 'Docs/ThirdPartyVoices') -Destination $notices -Recurse }
+if ($ttsBackend -eq 'Piper') { Copy-Item -LiteralPath (Join-Path $project 'Docs/ThirdPartyVoices') -Destination $notices -Recurse -Force }
 if (Test-Path -LiteralPath (Join-Path $project 'Docs/ThirdPartyACELLM')) {
-    Copy-Item -LiteralPath (Join-Path $project 'Docs/ThirdPartyACELLM') -Destination $notices -Recurse
+    Copy-Item -LiteralPath (Join-Path $project 'Docs/ThirdPartyACELLM') -Destination $notices -Recurse -Force
 }
 if ($selectedModel -eq 'gemma-4-E4B-it-Q4_K_M.gguf') {
-    Copy-Item -LiteralPath (Join-Path $project 'Docs/ThirdPartyGemma') -Destination $notices -Recurse
+    Copy-Item -LiteralPath (Join-Path $project 'Docs/ThirdPartyGemma') -Destination $notices -Recurse -Force
 }
 foreach ($plugin in @('NV_ACE_Reference','NvAudio2FaceMarkRegressive')) {
     $destination = Join-Path $notices $plugin
     New-Item -ItemType Directory -Force -Path $destination | Out-Null
-    Get-ChildItem -LiteralPath (Join-Path $project "Plugins/$plugin") -File | Where-Object { $_.Name -match 'licen[cs]e' } | Copy-Item -Destination $destination
+    Get-ChildItem -LiteralPath (Join-Path $project "Plugins/$plugin") -File | Where-Object { $_.Name -match 'licen[cs]e' } | Copy-Item -Destination $destination -Force
 }
 & (Join-Path $PSScriptRoot 'prune_unused_gpt_model.ps1') -GameRoot $game
 # Leave an explicit inventory so acceptance can detect accidentally bundled alternatives.
