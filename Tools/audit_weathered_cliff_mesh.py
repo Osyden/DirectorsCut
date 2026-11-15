@@ -97,7 +97,7 @@ def contact_probes(faces, baseline_faces, source, normals):
     return report
 
 
-def audit(candidate_path, source_path):
+def audit(candidate_path, source_path, allow_projected_reversal=False, allow_crop_boundary_motion=False):
     data, source = load(candidate_path), load(source_path)
     p = np.asarray(data['vertices_m'], np.float64)
     base = np.asarray(data['baseline_vertices_m'], np.float64)
@@ -190,7 +190,8 @@ def audit(candidate_path, source_path):
     normal = cross/np.maximum(area2[:,None], 1.e-30)
     require(np.all(area2 > 1.e-10), 'degenerate original triangles')
     xy_ratio = cross[:,2]/old_cross[:,2]
-    require(np.isfinite(xy_ratio).all() and np.all(xy_ratio>0), 'weathered mapping violates its positive projected triangle contract')
+    if not allow_projected_reversal:
+        require(np.isfinite(xy_ratio).all() and np.all(xy_ratio>0), 'weathered mapping violates its positive projected triangle contract')
     directed = np.concatenate((t[:,[0,1]],t[:,[1,2]],t[:,[2,0]]))
     edge, inverse, counts = np.unique(np.sort(directed,axis=1),axis=0,return_inverse=True,return_counts=True)
     winding = np.bincount(inverse,weights=np.where(directed[:,0] < directed[:,1],1,-1))
@@ -198,7 +199,8 @@ def audit(candidate_path, source_path):
     require(np.all(winding[counts == 2] == 0), 'inconsistent shared-edge winding')
     require(len(np.unique(np.sort(t,axis=1),axis=0)) == len(t), 'duplicate triangles')
     boundary = np.unique(edge[counts == 1])
-    require(np.array_equal(p[boundary],base[boundary]), 'an original open boundary moved')
+    if not allow_crop_boundary_motion:
+        require(np.array_equal(p[boundary],base[boundary]), 'an original open boundary moved')
     lengths = np.linalg.norm(p[edge[:,0]]-p[edge[:,1]],axis=1)
     old_lengths = np.linalg.norm(base[edge[:,0]]-base[edge[:,1]],axis=1)
     cos = np.sum(cross*old_cross,axis=1)/np.maximum(area2*old_area2,1.e-30)
@@ -215,6 +217,9 @@ def audit(candidate_path, source_path):
                   normal_reversals_over90_deg=int((cos < 0).sum()),downward_triangles=int((normal[:,2]<0).sum()),
                   nearvertical_triangles=int((np.abs(normal[:,2])<.25).sum()),
                   projected_xy_area_ratio_min=float(xy_ratio.min()),
+                  projected_nonpositive_triangle_count=int((xy_ratio<=0).sum()),
+                  crop_boundary_motion_max_m=float(distance[boundary].max()) if len(boundary) else 0.,
+                  explicit_audit_allowances=dict(projected_reversal=allow_projected_reversal,crop_boundary_motion=allow_crop_boundary_motion),
                   stored_displacement_direction=direction_report,
                   failures=failures,passed=not failures,
                   limitations='No exhaustive self-intersection test or visual approval. Normal reversals are diagnostics, not automatically invalid. Temple support outside this tile remains unproved.')
@@ -234,8 +239,10 @@ def main():
     parser.add_argument('--mesh', type=Path, required=True)
     parser.add_argument('--source', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--allow-projected-reversal',action='store_true',help='Only for a mapping whose real3D overhangs are intentional; does not relax triangle or winding checks')
+    parser.add_argument('--allow-crop-boundary-motion',action='store_true',help='Review crop cuts may move; actual constrained source points must still be exact')
     args = parser.parse_args()
-    report = audit(args.mesh,args.source)
+    report = audit(args.mesh,args.source,args.allow_projected_reversal,args.allow_crop_boundary_motion)
     args.output.parent.mkdir(parents=True,exist_ok=True)
     args.output.write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')
     print(json.dumps({key:report[key] for key in ('passed','vertices','triangles','fixed_vertices','source_position_error_max_m','mask_error_max_rgba','normal_reversals_over90_deg','projected_xy_area_ratio_min','failures')},indent=2))

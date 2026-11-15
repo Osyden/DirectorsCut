@@ -43,11 +43,11 @@ class AuditChecks(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
-    def run_audit(self):
+    def run_audit(self,allow_projected_reversal=False,allow_crop_boundary_motion=False):
         source,mesh = self.folder/'source.npz',self.folder/'mesh.npz'
         np.savez(source,**self.source)
         np.savez(mesh,**self.mesh)
-        return audit(mesh,source)
+        return audit(mesh,source,allow_projected_reversal,allow_crop_boundary_motion)
 
     def test_valid_original_mesh(self):
         self.assertTrue(self.run_audit()['passed'])
@@ -55,6 +55,10 @@ class AuditChecks(unittest.TestCase):
     def test_fixed_guard_motion_detected(self):
         self.mesh['vertices_m'][0,2] += .03
         self.assertIn('fixed guard vertices changed',self.run_audit()['failures'])
+
+    def test_crop_and_overhang_allowances_do_not_relax_source_guard(self):
+        self.mesh['vertices_m'][0,0] += .2
+        self.assertIn('fixed guard vertices changed',self.run_audit(True,True)['failures'])
 
     def test_baseline_provenance_drift_detected(self):
         self.mesh['baseline_vertices_m'][12,0] += .1
