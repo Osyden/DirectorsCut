@@ -43,6 +43,17 @@ def smoothstep(lo, hi, x):
     t = np.clip((x - lo) / (hi - lo), 0.0, 1.0)
     return t * t * (3.0 - 2.0 * t)
 
+def fan_motion_parameters(x,width_m,phase,sources,initial_velocity):
+    release=(-1+np.sqrt(1+19.62*(25+12*np.sin(phase+x*.31)**2)))/9.81
+    outward=np.array(initial_velocity,float);outward[2]=0;outward/=np.linalg.norm(outward)
+    across=np.array((-outward[1],outward[0],0))
+    if np.dot(across,sources[-1]-sources[0])<0:across=-across
+    # Source offset order is not necessarily local +X. Use the measured source
+    # tangent so outward kicks expand rather than cross/focus the curtain.
+    kick=(4.4*x/(width_m*.5)+.7*np.sin(phase+x*.4))[:,None]*across
+    kick+=(3.1+.6*np.sin(phase+x*.55))[:,None]*outward
+    return release,kick,3.0
+
 
 def digest(path):
     sha = hashlib.sha256()
@@ -183,11 +194,19 @@ class FittedWaterfall(Waterfall):
         self.water_step = float(water["step_cm"]) / 100
         self.water_heights = np.asarray(water["heights_local_cm_y_major"], dtype=float).reshape(self.water_count, self.water_count) / 100
         self.water_coverage = np.asarray(water["coverage_y_major"], dtype=float).reshape(self.water_count, self.water_count)
+        rock=profile.get('occluding_rock')
+        self.rock_grid=None
+        if rock:
+            if rock['count']!=self.water_count or not np.allclose(rock['origin_local_cm'][:2],water['origin_local_cm'][:2]) or rock['step_cm']!=water['step_cm']:
+                raise ValueError('Occluding rock must share the measured receiving grid')
+            self.rock_grid=np.asarray(rock['heights_local_cm_y_major'],float).reshape(self.water_count,self.water_count)/100
+            self.rock_coverage=np.asarray(rock['coverage_y_major'],float).reshape(self.water_count,self.water_count)
         self.water_shore = None
         if "shore_clearance_cm_y_major" in water:
             self.water_shore = np.asarray(water["shore_clearance_cm_y_major"], dtype=float).reshape(self.water_count, self.water_count) / 100
         super().__init__(args)
         self.hero_breakup = bool(self.ballistic_launch and getattr(args, "hero_breakup", False))
+        self.aerated_fan = bool(self.ballistic_launch and getattr(args,"aerated_fan",False))
         if self.hero_breakup:
             # Three unequal physical source channels, advected with their birth
             # phase. Preserve total emitted density mass; do not brighten the
@@ -207,6 +226,9 @@ class FittedWaterfall(Waterfall):
             self.impact_vy = 2.0+3.0*(.5+.5*np.sin(phase+self.x*.9))
             self.impact_vz = 5.5+7.0*(.5+.5*np.sin(phase*2-self.x*.7))
             self.impact_drag = np.minimum(self.impact_drag,1.25)
+        if self.aerated_fan:
+            phase=2*np.pi*self.birth/args.duration
+            self.fan_release_s,self.fan_kick,self.fan_tau=fan_motion_parameters(self.x,args.width_m,phase,self.ballistic_sources,self.ballistic_velocity)
         points = np.asarray(profile["samples_local_cm"], dtype=float) / 100
         length = np.linalg.norm(np.diff(points, axis=0), axis=1)
         keep = np.concatenate(([True], length > .001))
@@ -249,6 +271,7 @@ class FittedWaterfall(Waterfall):
         self.speed_scale = .85 + .30 * (self.terminal - 26) / 9
         self.path_end_age = times[-1] / self.speed_scale
         self.flight = self.path_end_age + 1.5
+        if self.aerated_fan:self.flight=np.maximum(self.flight,12.)
         self.profile_ready = True
         # Locate each strand's first actual water entry. Lateral tracks and the
         # small air-side offset can contact at different times. A short ballistic
@@ -275,6 +298,8 @@ class FittedWaterfall(Waterfall):
         self.along = current / max(np.linalg.norm(current), 1e-6)
         self.across = np.array((self.along[1], -self.along[0], 0))
         self.impact_life, _ = self.first_water_hit(self.impact_positions, self.impact_life, steps=64, start_age=.03)
+        if self.rock_grid is not None:
+            self.impact_life,_=self.first_water_hit(self.impact_positions,self.impact_life,steps=96,start_age=.03,surface=self.rock_surface)
         # A separate subset leaves the core as short ballistic fragments. The
         # density remains close to the source rather than becoming rising smoke.
         self.spray_indices = np.arange(0, len(self.birth), 5)
@@ -320,7 +345,7 @@ class FittedWaterfall(Waterfall):
         covered = sample(self.water_shore) >= 0 if self.water_shore is not None else sample(self.water_coverage) >= .5
         return sample(self.water_heights), inside & covered
 
-    def first_water_hit(self, trajectory, max_age, steps, start_age=0):
+    def first_water_hit(self, trajectory, max_age, steps, start_age=0, surface=None):
         found = np.zeros(len(max_age), dtype=bool)
         lo = np.full(len(max_age), start_age)
         hi = max_age.copy()
@@ -328,7 +353,7 @@ class FittedWaterfall(Waterfall):
         for step in range(1, steps+1):
             age = start_age + (max_age-start_age)*(step/steps)
             p = trajectory(age)
-            height, covered = self.water_surface(p[:, :2])
+            height, covered = (surface or self.water_surface)(p[:, :2])
             new = ~found & covered & (p[:, 2] <= height)
             lo[new], hi[new] = previous[new], age[new]
             found |= new
@@ -336,7 +361,7 @@ class FittedWaterfall(Waterfall):
         for _ in range(20):
             age = (lo+hi)*.5
             p = trajectory(age)
-            height, covered = self.water_surface(p[:, :2])
+            height, covered = (surface or self.water_surface)(p[:, :2])
             below = covered & (p[:, 2] <= height)
             hi = np.where(found & below, age, hi)
             lo = np.where(found & ~below, age, lo)
@@ -353,13 +378,25 @@ class FittedWaterfall(Waterfall):
     def keep_airborne(self, p, mass):
         height, covered = self.water_surface(p[:, :2])
         mass *= np.where(covered, smoothstep(0, .12, p[:, 2]-height), 1.0)
+        if self.rock_grid is not None:
+            height,covered=self.rock_surface(p[:,:2]);mass*=np.where(covered,smoothstep(0,.12,p[:,2]-height),1.)
         active = mass > 0
         return p[active], mass[active]
+
+    def rock_surface(self,xy):
+        if self.rock_grid is None:return np.zeros(len(xy)),np.zeros(len(xy),bool)
+        n=self.water_count;index=(xy-self.water_origin)/self.water_step
+        inside=np.all((index>=0)&(index<=n-1),axis=1);index=np.clip(index,0,n-1.000001)
+        cell=np.floor(index).astype(int);f=index-cell;x,y=cell[:,0],cell[:,1]
+        weights=np.array([(1-f[:,0])*(1-f[:,1]),f[:,0]*(1-f[:,1]),(1-f[:,0])*f[:,1],f[:,0]*f[:,1]])
+        def sample(grid):return np.sum(weights*np.array([grid[y,x],grid[y,x+1],grid[y+1,x],grid[y+1,x+1]]),axis=0)
+        return sample(self.rock_grid),inside&(sample(self.rock_coverage)>.999)
 
     def fall_positions(self, age):
         if not getattr(self, "profile_ready", False):
             return super().fall_positions(age)
         if self.ballistic_launch:
+            if getattr(self,'aerated_fan',False):return self.fan_kinematics(age)[0]
             source = np.column_stack([np.interp(self.x, self.ballistic_offsets, self.ballistic_sources[:, axis]) for axis in range(3)])
             p = source + self.ballistic_velocity * age[:, None]
             p[:, 2] -= .5 * 9.81 * age ** 2
@@ -388,6 +425,19 @@ class FittedWaterfall(Waterfall):
         p[:, 2] -= .5*9.81*coast**2
         return p
 
+    def fan_kinematics(self,age):
+        source=np.column_stack([np.interp(self.x,self.ballistic_offsets,self.ballistic_sources[:,axis])for axis in range(3)])
+        release=self.fan_release_s;tau=self.fan_tau;elapsed=np.maximum(age-release,0)
+        travel=tau*(1-np.exp(-elapsed/tau));gravity=np.array((0,0,-9.81))
+        at_release=source+self.ballistic_velocity*release[:,None]+.5*gravity*release[:,None]**2
+        velocity=self.ballistic_velocity+gravity*release[:,None]+self.fan_kick
+        fan=at_release+velocity*travel[:,None]+gravity*tau*(elapsed-travel)[:,None]
+        fan_velocity=velocity*np.exp(-elapsed[:,None]/tau)+gravity*tau*(1-np.exp(-elapsed[:,None]/tau))
+        original=source+self.ballistic_velocity*age[:,None]+.5*gravity*age[:,None]**2
+        original_velocity=self.ballistic_velocity+gravity*age[:,None]
+        active=age>=release
+        return np.where(active[:,None],fan,original),np.where(active[:,None],fan_velocity,original_velocity)
+
     def particles(self, time_s, component):
         if component == "Falling":
             p, mass = super().particles(time_s, component)
@@ -404,6 +454,7 @@ class FittedWaterfall(Waterfall):
                 start = self.fall_positions(self.spray_launch_time)[indices]
                 launch_velocity = np.broadcast_to(self.ballistic_velocity,(len(indices),3)).copy()
                 launch_velocity[:,2] -= 9.81*launch
+                if self.aerated_fan:launch_velocity=self.fan_kinematics(self.spray_launch_time)[1][indices]
             else:
                 start = self.sample_width(launch, self.x[indices])
                 tangent = np.column_stack([np.interp(launch, self.path_time, self.path_tangent[:, axis]) for axis in range(3)])
@@ -484,6 +535,9 @@ class CrestWaterfalls(FittedWaterfall):
     def water_surface(self,xy):
         return self.models[0].water_surface(xy)
 
+    def rock_surface(self,xy):
+        return self.models[0].rock_surface(xy)
+
     def particles(self,time_s,component):
         points=[];masses=[]
         for model,(rotation,offset) in zip(self.models,self.transforms):
@@ -518,6 +572,9 @@ class Raster:
             x, y = np.meshgrid((np.arange(self.shape[0])+self.lo[0])*args.voxel_m,
                                (np.arange(self.shape[1])+self.lo[1])*args.voxel_m, indexing="ij")
             height, covered = model.water_surface(np.column_stack((x.ravel(), y.ravel())))
+            rock_height,rock_covered=model.rock_surface(np.column_stack((x.ravel(),y.ravel())))
+            height=np.where(rock_covered&(~covered|(rock_height>height)),rock_height,height)
+            covered=covered|rock_covered
             self.receiving_height = height.reshape(self.shape[:2])
             self.receiving_coverage = covered.reshape(self.shape[:2])
 
@@ -599,6 +656,7 @@ def main():
     parser.add_argument("--threshold", type=float, default=.00005)
     parser.add_argument("--profile", type=Path, help="actual lower water-core profile exported with -DCExportWaterfallProfile")
     parser.add_argument("--hero-breakup", action="store_true", help="bounded unequal channels and lower aerodynamic spray for an explicit ballistic hero profile")
+    parser.add_argument("--aerated-fan",action="store_true",help="physical lateral dispersion and linear drag after25–37m breakup; replaces the dense lower ballistic shaft")
     args = parser.parse_args()
     positive = (args.width_m, args.height_m, args.depth_m, args.voxel_m,
                 args.fps, args.duration, args.emission_rate)
@@ -632,7 +690,7 @@ def main():
         if args.hero_breakup:
             parser.error("--hero-breakup requires an explicit ballistic --profile")
         model = Waterfall(args)
-    if args.hero_breakup and not getattr(model,"ballistic_launch",None):
+    if (args.hero_breakup or args.aerated_fan) and not getattr(model,"ballistic_launch",None):
         parser.error("--hero-breakup requires a ballistic_launch profile")
     manifest = {
         "schema": "directorscut.waterfall_vdb.v1",
@@ -670,6 +728,12 @@ def main():
                 manifest['physics']['separate_outlets']=[dict(source_cm=p['source_local_cm'],
                     origin_arena_cm=p['local_origin_arena_cm'],width_m=p['source_half_width_cm']*.02,
                     launch=p['ballistic_launch']) for p in profile['ballistic_outlets']]
+            if args.aerated_fan:
+                manifest['physics']['core_drag']='none above25–37m breakup; linear drag3s thereafter'
+                manifest['physics']['aerated_fan']=dict(release_drop_m=[25,37],linear_drag_seconds=3.,
+                    lateral_velocity_m_s=5.1,outward_additional_velocity_m_s=[2.5,3.7],
+                    lower_dense_shaft_retained=False,
+                    limitation='authored aeration/drag model; static whole-rock and route tests required, not a resolved liquid/air simulation')
             if args.hero_breakup:
                 manifest["physics"]["hero_breakup"] = {
                     "source_channels": 3, "source_density_mass_preserved": True,
