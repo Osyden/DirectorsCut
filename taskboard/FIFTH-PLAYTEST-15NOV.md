@@ -58,7 +58,7 @@ Menu music was imported and passes actual start/fade/restart: two menu starts, t
 
 Selected `E:/Projects/DirectorsCut/Builds/2026-11-15_2211_fifth-playtest/Windows/Atlantean Odyssey.exe` through the usual launcher. Runtime2a757bc; selected-payload staging17e9081. Fresh build/cook/archive succeeded in153.74s with50 essential assets verified.20:48 fallback retained in Saved/Release/Previous-2048-before-fifth.json. No itch upload.
 
-Packaged full voyage reached470/ending with no terrain strikes under sustained-right steering, one landing event, Caldera music224.03 and descent gain0.4368. The held-outward landing occurred at elapsed25.15 versus native neutral23.19, reflecting its longer route; both use actual bow clearance. Full fog/slide/cannon/ending captures and the clear offscreen slam instruction at342 were inspected.
+Packaged full voyage reached470/ending with no terrain strikes under sustained-right steering, one landing event, Caldera music224.03 and descent gain0.4368. The held-outward landing occurred at elapsed25.15 versus native neutral23.19, reflecting its longer route; both use actual bow clearance. Packaged fog/slide/ending captures and the clear offscreen slam instruction at342 were inspected.
 
 Packaged cold Gemma passes27/27 strict commands, actual selected model readiness6.34s. The coordinated trailer gunner recording supplies packaged speech acceptance: all3 Phonon voices, portable24kHz producer,115/98/91 positive A2F animation samples, music duck0.052, VOICE_SMOKE_SUCCESS and process exit0; world drain29ms and exit drain0ms. Evidence copied into package ReviewEvidence. Existing Whisper server was reused, so no cold-STT claim.
 
