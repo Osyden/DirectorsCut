@@ -2,6 +2,7 @@
 
 | Task | Status | Owner | Done when |
 | --- | --- | --- | --- |
+| Unique cliff geology material | Generated; Unreal comparison pending | Codex terrain_texture_strategy, `codex/cliff-bedding-resolved` | [Unique geology source and handoff](UNIQUE-CLIFF-GEOLOGY-15NOV.md); owns generator and ignored outputs; root owns Unreal integration. |
 | Unique full-ring cliff context material | CPU maps complete; root owns native integration | Codex, `codex/cliff-context-map` | [Context atlas handoff](CLIFF-CONTEXT-MAP-15NOV.md); preserve accepted geometry and root-owned Unreal session. |
 | Maelstrom crater, tunnel exit and timed naval boss encounter | Continuous scan-cliff prototype delivered; visual target unmet; old scheduler paused; boss deferred | Codex, `codex/maelstrom-saturday` | [Current cliff demo and native review](CONTINUOUS-SCAN-CLIFF-15NOV.md); [Previous iterations](CRATER-VISUAL-ITERATIONS.md); [Combined sky/water overhaul](MAELSTROM-INTEGRATED-14NOV.md); [Rock crater plan](MAELSTROM-ROCK-BASIN-PLAN.md); [Whitewater and impact trails](MAELSTROM-WHITEWATER-14NOV.md); [spiral prototype](MAELSTROM-SPIRAL-PROTOTYPE-14NOV.md). Geometry/flow/foam/crest spray remain here; separate chat owns cloud composition and lighting. Not reference quality. |
 | Maelstrom sky, cloud composition and godrays | Integrated into maelstrom review branch; combined render/exit checks pass | Codex | [Sky handoff](MAELSTROM-SKY-14NOV.md), source e32cd85. |
