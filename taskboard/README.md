@@ -2,6 +2,7 @@
 
 | Task | Status | Owner | Done when |
 | --- | --- | --- | --- |
+| Voyage music | In progress; root owns audio/import and build slot | Root, main | Import the fog/caldera tracks; start on new run, crossfade 20 seconds before Slide, duck beneath crew, verify packaged playback. |
 | Atlantean Odyssey branded menu and executable | Complete; runtime31abe47, 18:19 local package selected; packaged menu/panels/Start/three ACE voices pass | Root integration; cannons_helm branding; voice_audio credits | [Menu, build and evidence](ATLANTEAN-MENU-15NOV.md). Four buttons, live animated ship/ocean, right-side instructions and credits including Suno. Branded bootstrap and leaf executable verified. Build/GPU slot released. No itch upload. |
 | Atlantean Odyssey executable and Windows branding | Integrated and packaged; real bootstrap launch, leaf ProductName and local voice components verified | cannons_helm, main | [Technical handoff](GAME-BRANDING-15NOV.md), [selected build](ATLANTEAN-MENU-15NOV.md). Internal DirectorsCut identifiers remain stable. |
 | Second human playtest pass, 15 Nov | Main b28e58a pushed; 17:49 local package selected after focused contact/menu checks; preceding 17:39 package passed full voyage/restart/ACE/ending | Root integration; cannons_helm steering/water; tunnel_boss pillars; voice_audio crew routes | [Build, changes and exact verification scope](SECOND-PLAYTEST-15NOV.md). Six gameplay reports plus generated logo/animated menu integrated. Build/GPU slot released after final review. No itch upload. |

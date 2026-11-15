@@ -27,6 +27,8 @@ public:
 	UPROPERTY(EditAnywhere) float MasterVolume = 0.65f;
 	UPROPERTY(EditAnywhere) float AmbienceVolume = 0.55f;
 	UPROPERTY(EditAnywhere) float BellVolume = 1.f;
+	/** Quiet stereo score; also follows MasterVolume and crew speech ducking. */
+	UPROPERTY(EditAnywhere) float MusicVolume = .25f;
 	/** Extra wind, 0 to 1, set each frame by whatever is roaring near the ship (a waterspout, the creature's end). */
 	float SpoutRoar = 0.f;
 	/** A heavy report: thunder and a crash of water together (a burning stone coming down, the plume going up). */
@@ -66,6 +68,14 @@ protected:
 	int32 RoarsPlayed = 0;
 	void OnShipHit(float Amount);
 	void TickBell(float DeltaSeconds);
+	void TickMusic(float DeltaSeconds);
+	UPROPERTY() TObjectPtr<UAudioComponent> FogMusic;
+	UPROPERTY() TObjectPtr<UAudioComponent> CalderaMusic;
+	float MusicTransitionTime = 220.f;
+	float LastMusicRideTime = -1.f;
+	float NextMusicReviewTime = 0.f;
+	bool bMusicReview = false;
+	bool bMusicStarted[2] = {false, false};
 
 	// Recorded sounds, when present in Content/Sonniss.
 	struct FRealBed { TWeakObjectPtr<UAudioComponent> Component; float Volume = 0.f; };

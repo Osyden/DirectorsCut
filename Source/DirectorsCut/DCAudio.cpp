@@ -4,6 +4,7 @@
 #include "DCTroubles.h"
 #include "DCCrew.h"
 #include "DCVoice.h"
+#include "DCGame.h"
 #include "DCKraken.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Animation/AnimationAsset.h"
@@ -73,6 +74,15 @@ ADCAudio::ADCAudio()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+	FogMusic = CreateDefaultSubobject<UAudioComponent>(TEXT("FogMusic"));
+	CalderaMusic = CreateDefaultSubobject<UAudioComponent>(TEXT("CalderaMusic"));
+	for (UAudioComponent* C : {FogMusic.Get(), CalderaMusic.Get()})
+	{
+		C->SetupAttachment(RootComponent);
+		C->bAutoActivate = false;
+		C->bAllowSpatialization = false;
+		C->bIsUISound = true;
+	}
 }
 
 void ADCAudio::StartLayer(FLayer& Layer, TArray<float>&& Samples)
@@ -104,8 +114,15 @@ void ADCAudio::BeginPlay()
 {
 	Super::BeginPlay();
 	Director = ADCRideDirector::Get(this);
+	FogMusic->SetSound(LoadObject<USoundBase>(nullptr, TEXT("/Game/DC/Music/TheFog.TheFog")));
+	CalderaMusic->SetSound(LoadObject<USoundBase>(nullptr, TEXT("/Game/DC/Music/TheCaldera.TheCaldera")));
+	bMusicReview = FParse::Param(FCommandLine::Get(), TEXT("DCMusicReview"));
 	if (Director)
 	{
+		for (const FDCPhaseDef& Phase : Director->Phases)
+		{
+			if (Phase.Phase == EDCPhase::Slide) { MusicTransitionTime = FMath::Max(0.f, Phase.StartTime - 20.f); break; }
+		}
 		Director->OnLightning.AddUObject(this, &ADCAudio::OnLightning);
 		Director->OnShipHit.AddUObject(this, &ADCAudio::OnShipHit);
 		Director->OnHullStrike.AddUObject(this, &ADCAudio::OnHullStrike);
@@ -327,6 +344,56 @@ void ADCAudio::OnLightning()
 	PendingThunder.Add(FPlatformTime::Seconds() + FMath::FRandRange(0.15f, 2.2f));
 }
 
+void ADCAudio::TickMusic(float DeltaSeconds)
+{
+	const ADCGameMode* Game = GetWorld()->GetAuthGameMode<ADCGameMode>();
+	const bool bMenu = Game && Game->IsAwaitingStart();
+	const float Time = Director->RideTime;
+	const bool bSeek = LastMusicRideTime >= 0.f &&
+		(Time < LastMusicRideTime - .1f || Time - LastMusicRideTime > DeltaSeconds * Director->TimeScale + 1.f);
+	if (bMenu || bSeek)
+	{
+		FogMusic->Stop();
+		CalderaMusic->Stop();
+		bMusicStarted[0] = bMusicStarted[1] = false;
+		if (bSeek) { UE_LOG(LogDC, Log, TEXT("MUSIC_RESET ride=%.2f"), Time); }
+	}
+	LastMusicRideTime = bMenu ? -1.f : Time;
+	// Four seconds fits the first track's authored 3:44 ending. Keep the sum
+	// of the two gains constant through the handoff, without a loud overlap.
+	const float Blend = FMath::Clamp((Time - MusicTransitionTime) / 4.f, 0.f, 1.f);
+	const float EndGain = 1.f - FMath::SmoothStep(Director->GetRideLength() - 10.f, Director->GetRideLength(), Time);
+	const float Gain = FMath::Max(0.f, MusicVolume * MasterVolume) * SpeechDuck * EndGain;
+	UAudioComponent* Components[] = {FogMusic.Get(), CalderaMusic.Get()};
+	const float Envelopes[] = {FMath::Clamp(Time / 1.5f, 0.f, 1.f) * (1.f - Blend), Blend};
+	for (int32 Index = 0; Index < 2; ++Index)
+	{
+		UAudioComponent* C = Components[Index];
+		const float Start = Index == 0 ? 0.f : MusicTransitionTime;
+		const bool bInWindow = !bMenu && Time >= Start && EndGain > 0.f && (Index != 0 || Blend < 1.f);
+		C->SetVolumeMultiplier(bInWindow ? Gain * Envelopes[Index] : 0.f);
+		if (bInWindow && !bMusicStarted[Index])
+		{
+			bMusicStarted[Index] = true;
+			const float Offset = Time - Start;
+			if (C->Sound && Offset < C->Sound->GetDuration())
+			{
+				C->Play(Offset);
+				UE_LOG(LogDC, Log, TEXT("MUSIC_START track=%s ride=%.2f offset=%.2f duration=%.2f transition=%.2f"),
+					Index == 0 ? TEXT("TheFog") : TEXT("TheCaldera"), Time, Offset, C->Sound->GetDuration(), MusicTransitionTime);
+			}
+			else { UE_LOG(LogDC, Warning, TEXT("MUSIC_UNAVAILABLE track=%d offset=%.2f"), Index, Offset); }
+		}
+		if (!bInWindow && C->IsPlaying()) { C->Stop(); }
+	}
+	if (bMusicReview && GetWorld()->GetTimeSeconds() >= NextMusicReviewTime)
+	{
+		NextMusicReviewTime = GetWorld()->GetTimeSeconds() + 1.f;
+		UE_LOG(LogDC, Log, TEXT("MUSIC_MIX ride=%.2f menu=%d speechDuck=%.3f fogPlaying=%d fogGain=%.4f calderaPlaying=%d calderaGain=%.4f"),
+			Time, bMenu, SpeechDuck, FogMusic->IsPlaying(), FogMusic->VolumeMultiplier, CalderaMusic->IsPlaying(), CalderaMusic->VolumeMultiplier);
+	}
+}
+
 float ADCAudio::GetStormGain() const
 {
 	if (!Director) { return 1.f; }
@@ -382,6 +449,7 @@ void ADCAudio::Tick(float DeltaSeconds)
 	const ADCVoice* Voice = ADCVoice::Get(this);
 	const float VoiceTarget = Voice && Voice->IsSpeaking() ? .25f : 1.f;
 	SpeechDuck = FMath::FInterpTo(SpeechDuck, VoiceTarget, DeltaSeconds, VoiceTarget < SpeechDuck ? 12.f : 2.f);
+	TickMusic(DeltaSeconds);
 	const float StormGain = GetStormGain();
 	const bool bQuietCity = Director->GetPhase() == EDCPhase::Fog && Director->RideTime >= 76.f;
 	if (Director->GetPhase() >= EDCPhase::Breach || bQuietCity) { PendingThunder.Empty(); }

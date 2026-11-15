@@ -58,6 +58,8 @@ if ($project.Plugins | Where-Object { $_.Name -eq 'LLMPlugin' -and $_.Enabled })
 # source content is intentionally absent from Git-only checkouts.
 $required = @(
     'DC/Maps/L_Ride.umap',
+    'DC/Music/TheFog.uasset',
+    'DC/Music/TheCaldera.uasset',
     'DC/UI/T_AtlanteanOdysseyLogo.uasset',
     'DC/UI/T_AtlanteanOdysseyLogoV2.uasset',
     'DC/UI/T_AtlanteanMenuPanel.uasset',
