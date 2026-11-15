@@ -1,6 +1,42 @@
-param([Parameter(Mandatory=$true)][string]$ProjectRoot)
+param(
+    [Parameter(Mandatory=$true)][string]$ProjectRoot,
+    [string]$EngineRoot = 'E:\Utilities\UE_5.8'
+)
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path -LiteralPath $ProjectRoot).Path
+function Assert-SteeringWaterPatch([string]$ProjectDirectory, [string]$EngineDirectory) {
+    $manifestPath = Join-Path $ProjectDirectory 'Saved/OceanSteeringPatch/manifest.json'
+    $repair = 'Run Tools/patch_drw_steering.py --backup, then its native generation with -AllowCommandletRendering before cooking. Preserve the resulting Saved/OceanSteeringPatch manifest in the selected project.'
+    if (!(Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw "Missing steering water patch manifest. $repair" }
+    $patch = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+    if ($patch.schema -ne 'dc.ocean-steering.v1') { throw "Unsupported steering water patch manifest. $repair" }
+    $coverage = @{'Core/MF_GetUV'=1; 'MF_GetWPO'=2; 'MF_GetBaseNormal'=1; 'MF_GetHQFoam'=2}
+    foreach ($function in $coverage.Keys) {
+        $rows = @($patch.audit | Where-Object { $_.function -eq $function })
+        if ($rows.Count -ne 1 -or $rows[0].nodes -ne $coverage[$function] -or
+            $rows[0].status -notin @('patched','already patched')) {
+            throw "Incomplete steering water patch coverage: $function. $repair"
+        }
+    }
+    # Check the actual installation used for cooking, not the backup paths in
+    # the manifest. A restored plugin must not pass just because evidence exists.
+    $pluginContent = Join-Path $EngineDirectory 'Engine/Plugins/Marketplace/DynamicR1d9938e98fdbV5/Content'
+    $paths = @($coverage.Keys | ForEach-Object { "Materials/MaterialFunctions/$_.uasset" })
+    $paths += @('High','Med','Low','Far','UltraLow','Billboard') | ForEach-Object { "Materials/OceanLOD/M_DRW_$_.uasset" }
+    foreach ($relative in $paths) {
+        $entry = $patch.files.PSObject.Properties[$relative]
+        $installed = Join-Path $pluginContent $relative
+        if (!$entry -or $entry.Value.patched_sha256 -notmatch '^[a-fA-F0-9]{64}$' -or
+            !(Test-Path -LiteralPath $installed -PathType Leaf)) {
+            throw "Missing installed steering water asset or completed hash: $relative. $repair"
+        }
+        if ((Get-FileHash -LiteralPath $installed -Algorithm SHA256).Hash -ne $entry.Value.patched_sha256) {
+            throw "Steering water asset differs from the verified patch: $relative. Restore/reconcile vendor changes and regenerate before cooking."
+        }
+    }
+    Write-Output 'Steering water preflight passed (four patched functions, six ocean LOD materials, installed SHA-256 verified).'
+}
+Assert-SteeringWaterPatch -ProjectDirectory $root -EngineDirectory $EngineRoot
 $project = Get-Content -LiteralPath (Join-Path $root 'DirectorsCut.uproject') -Raw | ConvertFrom-Json
 if ($project.Plugins | Where-Object { $_.Name -eq 'LLMPlugin' -and $_.Enabled }) {
     foreach ($relative in @('Plugins/LLMPlugin/LLMPlugin.uplugin','Plugins/LLMPlugin/ThirdParty/bin/Win64/ACE.SDK.dll')) {
@@ -15,6 +51,8 @@ if ($project.Plugins | Where-Object { $_.Name -eq 'LLMPlugin' -and $_.Enabled })
 # source content is intentionally absent from Git-only checkouts.
 $required = @(
     'DC/Maps/L_Ride.umap',
+    'DC/UI/T_AtlanteanOdysseyLogo.uasset',
+    'DC/Materials/M_StormComposite.uasset',
     'Brigantine/BP/BP_Brigantine.uasset',
     'Brigantine/SFX/Cue/Bell_cue.uasset',
     'UltraDynamicSky/Blueprints/Ultra_Dynamic_Sky.uasset',
