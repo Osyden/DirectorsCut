@@ -1,6 +1,6 @@
 # Second human playtest pass, 15 November
 
-Runtime source is `362464f`. The 17:25 candidate is packaging at `E:/Projects/DirectorsCut/Builds/2026-11-15_1725_second-playtest`. The 15:51 playable remains selected until packaged review passes. No itch upload is authorized yet.
+Final runtime source is `b28e58a`, packaged at `E:/Projects/DirectorsCut/Builds/2026-11-15_1749_second-playtest`. Use `E:/Projects/DirectorsCut/Play DirectorsCut.cmd` for the selected local build. No itch upload is authorized yet.
 
 ## Changes
 
@@ -21,6 +21,15 @@ Runtime source is `362464f`. The 17:25 candidate is packaging at `E:/Projects/Di
 - `Saved/CrewSteeringClose.log` and corresponding scene-review images: braking precedes reversal, released steering coasts to rest, heading relaxes toward neutral. Duncan/Ruby reach their stations with no blocked routes. Ruby's boots visibly contact the deck. The other two crew feet are obscured by this camera; sparse captures do not certify continuous gait smoothness. Exact water-coordinate agreement is supported by the shader/query audit and CPU checks, rather than a phase-tracked visual measurement.
 - `Saved/FinalFogPillars.log` and corresponding images: continuous storm crossing, dry city at 94s; pillar actor Z remains -120cm while sampled waves vary and local spray pulses activate. No exposed pillar bottoms are apparent from the helm, but a closer side view remains for the packaged review.
 
-Full-raymarch storm replacements and early thin-mist iterations were rejected. They are retained only under `Saved` as diagnostic evidence; the final generated asset uses the continuous depth-fog method with the original sculpted front. Packaged full-voyage/ACE/restart validation, closer pillar/crew views and candidate selection remain pending.
+Full-raymarch storm replacements and early thin-mist iterations were rejected. They are retained only under `Saved` as diagnostic evidence; the final generated asset uses the continuous depth-fog method with the original sculpted front.
+
+## Packaged verification
+
+- The 17:25 candidate was rejected after runtime duplication of a cooked Cascade module crashed on first pillar creation. The spray is now authored before cooking (`Tools/make_pillar_splash.py`, 45 local-space modules), loaded without runtime mutation and required by release preflight.
+- The 17:39 candidate (`ca18f29`) passed a complete continuous voyage, menu, Start and level restart. `Windows/DirectorsCut/Saved/SecondFullVoyage.log`: six boss interrupts, two permanent limb breaks, ending at 450s, final capture at 465s with hull 72.4%, no fires or rigging damage, exit 0. Forty synthesized ACE playbacks completed after restart across Rex/Duncan/Ruby. Exactly three bell strikes, storm silence at 94.00/277.01, zero stale obstacle calls after tunnel entry and no blocked crew routes or application voice failures. One landing impact fired at ride 299.16. NVIDIA worker flush warnings remain nonfatal; this is not a claim of a warning-free log or human audio review.
+- Close pillar review then exposed contact effects below the trough's rendered water surface. The final 17:49 package adds the exact shader height offset to pillar contacts and bow spray, keeps the ship's raw wave fit unchanged, and fits upright columns once around fixed submerged feet. Horizontal obstacle clearance is unchanged. This is the only gameplay difference from the completed full-voyage package.
+- Final `PillarHeightReview.log` and `Screenshots/Auto/shot_01070.png`, `shot_01075.png`, `shot_01080.png` show exposed columns, submerged feet, visible foam/spray contact, hull 100% and exit 0. Three first-cluster tops are 1317.8cm; fixed feet 9.5cm, foundations 800cm. No runtime asset fallback or crash. `Saved/FinalPillarAutomation.log` passes the updated clearance/exposure suite; 122,026 CPU footprint/lane cases also pass.
+- The final package's `FinalMenuSmoke.log` checks menu animation and Start again. The longer restart/ACE/ending run above was on 17:39, before the isolated contact-height correction; those systems were not changed afterwards.
+- Additional native close crew captures (`CrewDuncanFeet`, `CrewRexInside`) show grounded bodies at deck/stairs. Still images and route tests do not certify continuous gait quality. Human steering feel, headphone mix, microphone input and second-machine testing remain local playtest checks.
 
 Logo source and generation record: `Art/UI/AtlanteanOdyssey-logo.png` and adjacent JSON, generated with the built-in image generation tool and imported as `/Game/DC/UI/T_AtlanteanOdysseyLogo`.
