@@ -31,6 +31,32 @@ def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def original_mesh_reference(meta):
+    """Keep arbitrary source XYZ and connectivity; never reconstruct an XY grid."""
+    import numpy as np
+    with np.load(meta["mesh_path"], allow_pickle=False) as archive:
+        world = np.asarray(archive["vertices_m"], dtype=np.float64)
+        faces = archive["triangles"].copy()
+        rgba = np.asarray(archive["vertex_rgba"], dtype=np.float32)
+    origin = np.asarray(meta["local_origin_arena_m"], dtype=np.float64)
+    basis = np.column_stack([meta[key] for key in ("basis_u_arena", "basis_v_arena", "basis_z_arena")])
+    if (world.ndim != 2 or world.shape[1] != 3 or not np.isfinite(world).all()
+        or origin.shape != (3,) or not np.isfinite(origin).all()
+        or basis.shape != (3, 3) or not np.isfinite(basis).all()
+        or not np.allclose(basis.T @ basis, np.eye(3), atol=1.e-7, rtol=0)
+        or not np.isclose(np.linalg.det(basis), 1., atol=1.e-7, rtol=0)):
+        raise RuntimeError("Original mesh requires finite XYZ and a right-handed orthonormal export frame")
+    if (faces.ndim != 2 or faces.shape[1] != 3 or faces.dtype.kind not in "iu"
+        or not len(faces) or faces.min() < 0 or faces.max() >= len(world)):
+        raise RuntimeError("Invalid original triangle indices")
+    if rgba.shape != (len(world), 4) or not np.isfinite(rgba).all() or np.any(rgba < 0) or np.any(rgba > 1):
+        raise RuntimeError("Original numeric vertex masks must be finite RGBA in [0,1]")
+    # The exporter creates Blender float32 positions in this identical rigid
+    # frame. Stacked vertices and overhangs retain their original XYZ identity.
+    vertices = ((world - origin) @ basis).astype(np.float32)
+    return vertices, faces, rgba
+
+
 def prepare(sidecar_path, output):
     import numpy as np
     sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -39,34 +65,36 @@ def prepare(sidecar_path, output):
     meta = json.loads(sidecar_path.read_text(encoding="utf-8"))
     if meta["schema"] != "directorscut.cliff_preview_fbx.v1":
         raise RuntimeError("Unsupported FBX sidecar")
-    for kind in ("seed", "result", "fbx"):
+    for kind in ("seed", "result", "mesh", "fbx"):
         if meta.get(kind + "_path") and sha(meta[kind + "_path"]) != meta[kind + "_sha256"]:
             raise RuntimeError(kind + " hash no longer matches the exported FBX")
-    seed, result = load_pair(Path(meta["seed_path"]), Path(meta["result_path"]) if meta.get("result_path") else None)
-    rows, cols = seed["height_m"].shape
-    cell = float(seed["cell_size_m"])
-    x, y = np.meshgrid(np.arange(cols)*cell-(cols-1)*cell*.5,
-                       np.arange(rows)*cell-(rows-1)*cell*.5)
-    valid = seed["heightfield_valid_mask"] > 0
-    h = result["height_m"]
-    z_origin = float(np.median(h[valid]))
-    vertices = np.stack((x, y, h-z_origin), axis=-1).reshape(-1, 3)
-    faces = triangles(valid)
-    used = np.unique(faces)
-    remap = np.full(len(vertices), -1, dtype=np.int64)
-    remap[used] = np.arange(len(used))
-    # Blender's authoring positions and FLOAT_COLOR are float32 before FBX.
-    vertices = vertices[used].astype(np.float32)
-    faces = remap[faces]
-    channels = []
-    for key in ("flow_accumulation", "deposited_m", "eroded_m"):
-        raw = np.maximum(result[key].astype(np.float64), 0)
-        field = np.log1p(raw) if key == "flow_accumulation" else raw
-        divisor = max(float(field[valid].max()), 1.e-12)
-        if not math.isclose(divisor, max(meta["color_normalization"][key]["divisor"], 1.e-12), rel_tol=1.e-9):
-            raise RuntimeError("Export color normalization no longer matches " + key)
-        channels.append((field/divisor).ravel()[used])
-    rgba = np.stack((*channels, np.ones(len(used))), axis=-1).astype(np.float32)
+    if meta.get("mesh_path"):
+        vertices, faces, rgba = original_mesh_reference(meta)
+    else:
+        seed, result = load_pair(Path(meta["seed_path"]), Path(meta["result_path"]) if meta.get("result_path") else None)
+        rows, cols = seed["height_m"].shape
+        cell = float(seed["cell_size_m"])
+        x, y = np.meshgrid(np.arange(cols)*cell-(cols-1)*cell*.5,
+                           np.arange(rows)*cell-(rows-1)*cell*.5)
+        valid = seed["heightfield_valid_mask"] > 0
+        h = result["height_m"]
+        z_origin = float(np.median(h[valid]))
+        vertices = np.stack((x, y, h-z_origin), axis=-1).reshape(-1, 3)
+        faces = triangles(valid)
+        used = np.unique(faces)
+        remap = np.full(len(vertices), -1, dtype=np.int64)
+        remap[used] = np.arange(len(used))
+        vertices = vertices[used].astype(np.float32)
+        faces = remap[faces]
+        channels = []
+        for key in ("flow_accumulation", "deposited_m", "eroded_m"):
+            raw = np.maximum(result[key].astype(np.float64), 0)
+            field = np.log1p(raw) if key == "flow_accumulation" else raw
+            divisor = max(float(field[valid].max()), 1.e-12)
+            if not math.isclose(divisor, max(meta["color_normalization"][key]["divisor"], 1.e-12), rel_tol=1.e-9):
+                raise RuntimeError("Export color normalization no longer matches " + key)
+            channels.append((field/divisor).ravel()[used])
+        rgba = np.stack((*channels, np.ones(len(used))), axis=-1).astype(np.float32)
     if len(vertices) != meta["vertices"] or len(faces) != meta["triangles"]:
         raise RuntimeError("Reference topology does not match FBX sidecar")
     payload = {"schema": "directorscut.cliff_import_audit_source.v1", "sidecar_path": str(sidecar_path),
@@ -90,7 +118,7 @@ def quantized_srgb_decode(rgba):
 
 
 def key_cm(point):
-    # 0.1cm buckets; source XY spacing is200cm. Full residual is checked later.
+    # 0.1cm buckets. Full XYZ residual is checked later; duplicate buckets fail.
     return tuple(round(value*10) for value in point)
 
 
@@ -179,7 +207,7 @@ def unreal_main():
         raise RuntimeError("Unsupported audit payload")
     if sha(source["sidecar_path"]) != source["sidecar_sha256"]:
         raise RuntimeError("Sidecar changed after reference preparation")
-    for kind in ("seed", "result", "fbx"):
+    for kind in ("seed", "result", "mesh", "fbx"):
         path = source["meta"].get(kind + "_path")
         if path and sha(path) != source["meta"][kind + "_sha256"]:
             raise RuntimeError(kind + " changed after reference preparation")

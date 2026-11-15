@@ -188,8 +188,18 @@ void ADCMaelstrom::UpdateCliffPreview()
     if(ACameraActor* Camera=CliffPreviewCamera.Get())
     {
         const FTransform Frame=CliffPreviewMesh->GetComponentTransform();
-        const FVector Eye=Frame.TransformPosition(FVector(9000,49000,-1500));
-        const FVector Target=Frame.TransformPosition(FVector(0,1500,-7500));
+        const FVector LocalTarget(0,1500,-7500);
+        FVector LocalEye(9000,49000,-1500);
+        // Opt-in metric distance check, using the same target, angle and FOV.
+        // The default authoring camera remains unchanged for matched reviews.
+        float ReviewDistanceM=0.f;
+        if(FParse::Value(FCommandLine::Get(),TEXT("DCCliffPreviewDistance="),ReviewDistanceM)
+            &&FMath::IsFinite(ReviewDistanceM)&&ReviewDistanceM>=50.f&&ReviewDistanceM<=4000.f)
+        {
+            LocalEye=LocalTarget+(LocalEye-LocalTarget).GetSafeNormal()*(ReviewDistanceM*100.f);
+        }
+        const FVector Eye=Frame.TransformPosition(LocalEye);
+        const FVector Target=Frame.TransformPosition(LocalTarget);
         Camera->SetActorLocationAndRotation(Eye,(Target-Eye).Rotation());
     }
 }

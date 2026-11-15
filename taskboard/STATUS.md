@@ -2,6 +2,12 @@
 
 Newest entry first. Times are local. Plan: [PLAN.md](PLAN.md). Messages to Claude: [INBOX.md](INBOX.md).
 
+## 15 Nov Codex: surface-detail trials rejected; rock-fracturing reference reproduced
+
+- Refined the full 500 m sector and rendered two procedural-detail trials, then a separate radial-shear crop. All remain too soft/repetitive; none entered the game. Guards, masks and original-triangle contact checks distinguish numerical validity from the failed appearance. [Current evidence and next algorithm](CRATER-ROCK-STRUCTURE-15NOV.md).
+- Inspected, built and ran the authors' MIT reference implementation of *Modeling Rocky Scenery using Implicit Blocks*, generating all four examples successfully. Eight supplied-model clay views favour polyhedral faces, then rhombohedral; neither is ready for the scene. Fix grid-coordinate/Y-up export, reduce smoothing/warping, and adapt connected fracture volumes to one protected outcrop next. Stop adding generic surface-noise variants to the current soft mass. See [reproduction](ROCK-FRACTURING-REFERENCE.md) and [visual review](ROCK-FRACTURING-REFERENCE-REVIEW.md).
+- Added an isolated metric-distance camera and original-3D import-reference support. Editor/Game builds, source-reference regression checks and actual far-camera seek/exit restoration pass. Normal arena, water/falls, sky/light and boss unchanged; no main merge/package.
+
 ## 15 Nov Codex: established terrain workflow; 3D fracture tests rejected visually
 
 - Answered the mountain-algorithm direction: ridged terrain and erosion for connected landforms, detailed 3D cliff meshes, and terrain-derived material masks. [Workflow, evidence and next shape work](CRATER-CLIFF-ALGORITHMS-15NOV.md).
