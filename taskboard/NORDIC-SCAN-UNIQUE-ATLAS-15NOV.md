@@ -55,3 +55,19 @@ The actual unique-atlas frame removed the waffle but still read as a brown retai
 ```
 
 Only BaseColor changes; the depth NPZ, normal and roughness maps are copied byte-for-byte. The variant manifest records exact geometry-helper/source hashes and palette selection. Generation took 8.2 seconds. Root runs the same importer pointed at this directory; no importer modification is required. Appearance is still pending the combined native comparison, and this material cannot substitute for convincing macro geometry.
+
+## Final prototype binding
+
+The actual Midscale frame still looked pillow-shaped. The geometry worker's final bounded correction uses irregular planar faces. The material was rebound once to that exact `faceted_relief(tile,u,z)` helper with **raw** depth (the earlier intermediate helper used filtered depth); the palette and strengths were not retuned. Add `--relief-function faceted_relief` to the command above, outputting `Saved/OwnedCliffProjection/vfmjadufa/FinalFacetedExposure`.
+
+Final helper source SHA256: `9fcdf351cb754545c8b88b7ea116113a3c6396b9f42f1768d6deb457849e52ef`.
+
+Final artifact SHA256 values:
+
+- BaseColor: `0ecad7c956227447a462ffe8426573da9f534a73c2880b8d15d941179949667e`
+- NormalGL: `21c1514026fd306ac5dee59ee6965f0f051c51c5748813035d7e634e5bbe6359`
+- Roughness: `9cd6060edea461e29e0f5c99b270b40da49ba5762fc1171a4359b1a15306ba49`
+- Depth NPZ: `728edbd2e9af33c76eee1541d280b7ce0ce706a1a04666e6679cf3854775e72c`
+- Manifest: `a9ebc572402ac5cc1a5b7f1e595eee3ccf3d5198bcf0283b4cd15e911e89cd5b`
+
+This final rebake took 8.35 seconds. Root owns the final native comparison. No further material experiments are scheduled; delivery is a prototype, not a claim of realistic or reference-quality cliffs.
