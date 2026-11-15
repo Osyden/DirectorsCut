@@ -518,15 +518,17 @@ return saturate((1-(1-coverage0)*(1-coverage1))*Coverage*(1-shelf*.35));
 foam = custom(water, foam_code, FLOAT, foam_inputs)
 source_foam=foam
 if fft_foam:
-    live_foam_inputs={"Fallback":foam,"Live":fft_foam,"Enabled":use_live_fft,"Count":live_count}
+    live_foam_inputs={"Fallback":foam,"Live":fft_foam,"Enabled":use_live_fft,"Count":live_count,"Tunnel":tunnel_flow}
     live_foam_code="float detail=0.15;\n"
     if foam_texture:
         live_foam_inputs.update({"C0":foam_inputs["Cells0"],"C1":foam_inputs["Cells1"],"T":time})
         live_foam_code="float blend=abs(frac(T*0.07)*2.0-1.0); float detail=lerp(smoothstep(.08,.50,C0.r),smoothstep(.08,.50,C1.r),blend);\n"
-    # The flat-ocean accumulation field is a subtle wind-wave aeration layer,
-    # not a dense white coating over the crater. Actual breaking lips are the
-    # brighter source above; no constant floor fills the live accumulation mask.
-    live_foam_code+="float liveWeight=saturate(Enabled)*step(0.5,Count); return max(Fallback,saturate(Live)*detail*.08*liveWeight);"
+    # Native Source-only vs combined BaseColor captures confirmed this .08
+    # flat-ocean overlay painted grey powder across otherwise clear crater water.
+    # Crater whitewater is driven by its actual crest/impact/wake sources above;
+    # retain the previous overlay only for the separately authored tunnel path.
+    # Live FFT normals, displacement and roughness remain independent/unchanged.
+    live_foam_code+="if(Tunnel<.5) return Fallback; float liveWeight=saturate(Enabled)*step(0.5,Count); return max(Fallback,saturate(Live)*detail*.08*liveWeight);"
     foam=custom(water,live_foam_code,FLOAT,live_foam_inputs,1350)
 color = custom(water, r"""
 float3 body=lerp(float3(0.012,0.043,0.052),float3(0.005,0.020,0.028),saturate(VC.b));
