@@ -107,7 +107,8 @@ struct FCapture
         }
         const FString Name=FString::Printf(TEXT("frame_%05d.png"),Frame++);
         Times+=FString::Printf(TEXT("%s,%.6f\n"),*Name,Age-Warmup);
-        FScreenshotRequest::RequestScreenshot(Folder / Name,false,false);
+        if (!FParse::Param(FCommandLine::Get(),TEXT("DCTrailerNoFrames")))
+            FScreenshotRequest::RequestScreenshot(Folder / Name,false,false);
     }
 };
 static FCapture Capture;
