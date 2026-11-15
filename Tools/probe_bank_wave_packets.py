@@ -27,28 +27,52 @@ int main(){
  pass&=worstMean<1e-5 && worstEdgeSlope<1e-5;
  std::printf("individual packet mean=%.9f, edge height/slope residual=%.9f: %s\n",worstMean,worstEdgeSlope,pass?"PASS":"FAIL");
 
- double protectedHeight=0,coastHeight=0;
+ double protectedHeight=0,coastHeight=0,coastSlope=0;
  for(int t=0;t<=178;++t)for(int offset=-12500;offset<=12500;offset+=500){
   protectedHeight=std::max(protectedHeight,double(std::abs(height(DCMaelstromRoute::Point(float(t),m.Radius,float(offset))))));
  }
  for(int side=0;side<=1536;++side){
   float a=side*UE_TWO_PI/1536;FVector2D d(std::cos(a),std::sin(a));
-  for(float offset:{0.f,100.f,1500.f,3499.f})coastHeight=std::max(coastHeight,double(std::abs(height(d*(shore(a)-offset)))));
+  for(float offset:{0.f,-1.f,-100.f,-1500.f})coastHeight=std::max(coastHeight,double(std::abs(height(d*(shore(a)-offset)))));
+  // One-sided1cm derivative at the unchanged shore: finite smooth return,
+  // not the old35m exclusion which erased all early/mid bank packets.
+  coastSlope=std::max(coastSlope,double(std::abs(height(d*(shore(a)-1.f)))));
  }
- pass&=protectedHeight<.001 && coastHeight<.001;
- std::printf("125m protected corridor max=%.9fcm;35m coast strip max=%.9fcm\n",protectedHeight,coastHeight);
+ pass&=protectedHeight<.001 && coastHeight<.001 && coastSlope<.001;
+ std::printf("125m protected corridor max=%.9fcm;shore/outside max=%.9fcm;1cm shore derivative=%.9f\n",protectedHeight,coastHeight,coastSlope);
 
- double lo=0,hi=0,sum=0,sumSq=0,area=0,maxPlanar=0,maxPhysical=0,maxSlope=0;int active=0;
+ double lo=0,hi=0,sum=0,sumSq=0,area=0,maxPlanar=0,maxPhysical=0,maxSlope=0,minPacketSamples=1e9;int active=0;
+ double windowSum[3]={},windowSquare[3]={},windowMin[3]={},windowMax[3]={};int windowCount[3]={};
+ const float windowTimes[3]={30,80,150};
  constexpr int sectors=1536,rings=448;
  for(int side=0;side<sectors;++side){
   float a=side*UE_TWO_PI/sectors,b=(side+1)*UE_TWO_PI/sectors;
   float edge=shore(a),nextEdge=shore(b),dr=(edge-120)/rings;
   for(int ring=1;ring<rings;++ring){
    float r=120+dr*ring;FVector2D p=FVector2D(std::cos(a),std::sin(a))*r;double h=height(p);
+   // Evaluate the actual production vertices in each remaining wet bank,
+   // including zero heights. A globalRMS alone hid the old zero-overlap bug:
+   // its late wide bowl passed while ride350 had no packets at all.
+   float t=DCMaelstromRoute::SecondsAtAngle(a);
+   float across=r-m.Radius*DCMaelstromRoute::RadialFraction(t);
+   if(across>12500.f)for(int w=0;w<3;++w)if(std::abs(t-windowTimes[w])<4.f){
+    ++windowCount[w];windowSum[w]+=h;windowSquare[w]+=h*h;
+    windowMin[w]=std::min(windowMin[w],h);windowMax[w]=std::max(windowMax[w],h);
+   }
    if(std::abs(h)<.00001)continue;
    ++active;double weight=r*dr;area+=weight;sum+=h*weight;sumSq+=h*h*weight;lo=std::min(lo,h);hi=std::max(hi,h);
    FVector2D q=FVector2D(std::cos(b),std::sin(b))*(120+(nextEdge-120)*ring/rings);
    maxPlanar=std::max(maxPlanar,std::max(double(dr),(q-p).Size()));
+   const double neighbour=std::max(double(dr),(q-p).Size());
+   int cx=int(std::floor(p.X/DCMaelstromBankWaves::CellSize)),cy=int(std::floor(p.Y/DCMaelstromBankWaves::CellSize));
+   for(int y=cy-1;y<=cy+1;++y)for(int x=cx-1;x<=cx+1;++x){
+    FVector2D center((x+.2f+.6f*DCMaelstromBankWaves::Random(x,y,1013904223u))*DCMaelstromBankWaves::CellSize,
+     (y+.2f+.6f*DCMaelstromBankWaves::Random(x,y,2246822519u))*DCMaelstromBankWaves::CellSize);
+    if((p-center).SizeSquared()>27200000.f)continue;
+    double wavelength=std::max(double(2400.f+1400.f*DCMaelstromBankWaves::Random(x,y,668265263u)),
+     double(6.f*DCMaelstromBankWaves::PacketMeshStep(center,m.Radius,shore)));
+    minPacketSamples=std::min(minPacketSamples,wavelength/neighbour);
+   }
    maxPhysical=std::max(maxPhysical,std::hypot((q-p).Size(),m.HeightAt(q)-m.HeightAt(p)));
    double dx=(height(p+FVector2D(60,0))-height(p-FVector2D(60,0)))/120.;
    double dy=(height(p+FVector2D(0,60))-height(p-FVector2D(0,60)))/120.;
@@ -59,9 +83,17 @@ int main(){
  double mean=sum/area,rms=std::sqrt(sumSq/area);
  pass&=active>1000 && lo>=-200 && hi<=200 && std::abs(mean)<10 && rms>15 && maxSlope<1.2;
  std::printf("actual448x1536 grid active=%d height=%.3f..%.3fm weighted mean=%.5fm RMS=%.3fm maximum added slope=%.4f\n",active,lo*.01,hi*.01,mean*.01,rms*.01,maxSlope);
- const double minimumWavelength=std::max(2400.,6.*m.Radius*1.25/448);
- pass&=minimumWavelength>=maxPlanar*6;
- std::printf("active grid max planar neighbour=%.3fm physical neighbour=%.3fm; shortest nominal wavelength=%.3fm (%.2f samples)\n",maxPlanar*.01,maxPhysical*.01,minimumWavelength*.01,minimumWavelength/maxPlanar);
+ pass&=minPacketSamples>=6;
+ std::printf("active grid max planar neighbour=%.3fm physical neighbour=%.3fm; minimum contributing-packet wavelength/neighbour=%.3f samples\n",maxPlanar*.01,maxPhysical*.01,minPacketSamples);
+ for(int w=0;w<3;++w){
+  double rms=windowCount[w]?std::sqrt(windowSquare[w]/windowCount[w]):0;
+  // Early/mid banks must now contain resolved signed relief. Late depth includes
+  // the broad quiet region beyond the packet window, so only its extent is used.
+  pass&=windowCount[w]>100 && windowMax[w]-windowMin[w]>40 && (w==2||rms>12);
+  std::printf("elapsed%.0f +/-4s wet-bank vertices=%d range=%.3f..%.3fm RMS=%.3fm mean=%.4fm\n",
+   windowTimes[w],windowCount[w],windowMin[w]*.01,windowMax[w]*.01,rms*.01,
+   windowCount[w]?windowSum[w]/windowCount[w]*.01:0);
+ }
 
  double maxSeamJump=0,maxSlopeJump=0;int seamSamples=0;
  for(int t=40;t<170;t+=2)for(int offset=15000;offset<36000;offset+=700){

@@ -38,6 +38,21 @@ namespace DCMaelstromBankWaves
     }
 
     template<typename ShoreSampler>
+    inline float PacketMeshStep(const FVector2D& Center,float Radius,const ShoreSampler& ShoreAt)
+    {
+        constexpr float SectorStep=UE_TWO_PI/1536.f,PacketReach=5220.f;
+        const float Angle=FMath::Atan2(Center.Y,Center.X),R=Center.Size();
+        // Basin rings terminate at a varying shore. Adjacent angular vertices
+        // move radially as well as tangentially; radius*dAngle missed that skew.
+        // Include the packet's outer reach and a12% derivative safety margin.
+        const float Outer=R+PacketReach;
+        const float Fraction=FMath::Clamp((Outer-120.f)/FMath::Max(ShoreAt(Angle)-120.f,1.f),0.f,1.f);
+        const float Skew=(ShoreAt(Angle+SectorStep)-ShoreAt(Angle-SectorStep))*.5f*Fraction;
+        return FMath::Max(Radius*1.25f/448.f,
+            1.12f*FMath::Sqrt(FMath::Square(Outer*SectorStep)+FMath::Square(Skew)));
+    }
+
+    template<typename ShoreSampler>
     inline float Height(const FVector2D& Point,float Radius,const ShoreSampler& ShoreAt)
     {
         const float R=Point.Size(),Angle=FMath::Atan2(Point.Y,Point.X);
@@ -47,13 +62,25 @@ namespace DCMaelstromBankWaves
         const float Width=DCMaelstromRoute::WidthScale(T);
         const float Across=R-Radius*DCMaelstromRoute::RadialFraction(T);
         // Full steering is +/-110m. Keep another15m for the hull even when the
-        // late route narrows. This candidate cannot change ship position/grade.
-        const float Inner=FMath::Max(12500.f,15000.f*Width);
-        const float Bank=FMath::SmoothStep(Inner,Inner+2500.f,Across)
+        // late route narrows. Fit the packet envelope to the ACTUAL remaining
+        // water: early/mid descent has only35m between this hull guard and shore.
+        // The former +150m start and35m shore exclusion never overlapped there.
+        constexpr float Inner=12500.f;
+        const float Shore=ShoreAt(Angle),Available=Shore-Radius*DCMaelstromRoute::RadialFraction(T)-Inner;
+        const float RadialMeshStep=FMath::Max(1.f,(Shore-120.f)/448.f);
+        // Suppress a genuinely sub-grid strip smoothly; do not squeeze waves
+        // into fewer than four radial intervals. The actual35m band has9--13.
+        const float Resolved=FMath::SmoothStep(4.f*RadialMeshStep,8.f*RadialMeshStep,Available);
+        if(Resolved<=0.f) { return 0.f; }
+        const float Fade=FMath::Min(2500.f,Available*.35f);
+        const float Bank=FMath::SmoothStep(Inner,Inner+Fade,Across)
             *(1.f-FMath::SmoothStep(33000.f*Width+1000.f,38000.f*Width+1000.f,Across));
         if(Bank<=0.f) { return 0.f; }
-        // Leave the shore and waterfall receiving strip exactly unchanged.
-        const float Coast=FMath::SmoothStep(3500.f,6500.f,ShoreAt(Angle)-R);
+        // Zero value AND first derivative on the shoreline. Receiving water's
+        // mean surface/contact stays unchanged; waves may occupy its wet side.
+        // Independent fades use at most70% of the available band, leaving a
+        // full-strength interior instead of two incompatible exclusion strips.
+        const float Coast=FMath::SmoothStep(0.f,Fade,Shore-R);
         if(Coast<=0.f) { return 0.f; }
 
         const int32 CellX=FMath::FloorToInt(Point.X/CellSize),CellY=FMath::FloorToInt(Point.Y/CellSize);
@@ -73,11 +100,9 @@ namespace DCMaelstromBankWaves
             const FVector2D AcrossCurrent(-Current.Y,Current.X);
             const FVector2D Along=Current*FMath::Cos(Skew)+AcrossCurrent*FMath::Sin(Skew);
             const FVector2D Cross(-Along.Y,Along.X);
-            // Actual448x1536 bank grid has up to4.40m planar neighbour spacing,
-            // including shoreline-induced skew. The conservative4.46m floor
-            // keeps at least six planar mesh samples
-            // per wavelength; 12m waves belong to the material at this density.
-            const float MeshStep=FMath::Max(Radius*1.25f/448.f,static_cast<float>(Center.Size())*UE_TWO_PI/1536.f);
+            // At least six planar samples per wavelength, accounting for the
+            // actual448x1536 shore-skewed grid. Shorter waves belong to shading.
+            const float MeshStep=PacketMeshStep(Center,Radius,ShoreAt);
             const float Wavelength=FMath::Max(2400.f+1400.f*Random(X,Y,668265263u),6.f*MeshStep);
             const float HalfTravel=FMath::Min(4400.f,Wavelength*(.95f+.20f*Random(X,Y,374761393u)));
             const float HalfCrest=1800.f+1000.f*Random(X,Y,1274126177u);
@@ -87,6 +112,6 @@ namespace DCMaelstromBankWaves
         }
         // Odd smooth limiting keeps signed troughs and bounds every superposed
         // packet to2m. No permanent positive-height shelf is added to the bank.
-        return Raw/FMath::Sqrt(1.f+FMath::Square(Raw/MaximumRelief))*Active*Bank*Coast;
+        return Raw/FMath::Sqrt(1.f+FMath::Square(Raw/MaximumRelief))*Active*Bank*Coast*Resolved;
     }
 }

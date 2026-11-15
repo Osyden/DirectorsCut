@@ -1,0 +1,15 @@
+# Visible bank-wave window correction
+
+Owner: water worker, `codex/cliff-bedding-resolved`. Scope: `DCMaelstromBankWaves.h` and existing `probe_bank_wave_packets.py`. Native build/render belongs to root; visual acceptance is pending.
+
+The production CPU probe found that ride350 (elapsed80) has route radius1029.395 m and shoreline1189.395 m. The old packet window started150 m outside the route but excluded35 m next to shore. It therefore required both offset>150 m and offset<125 m: no wave packets could reach this visible bank. The previously measured170–330 m channel recovery is outside the rendered water at this time.
+
+The candidate retains the conservative125 m steering/hull envelope and the original mean channel, route, shoreline and packet amplitude. It fits two smooth fades to the actual wet width, each using at most35% of the available band. At elapsed80 the35 m band contains12.25 m fades and a10.5 m full-strength interior. Height and first derivative return to zero at the shore; the prior35 m wet-side exclusion is intentionally removed. Waterfall mean-contact queries are unchanged. Sub-grid bands fade out rather than compressing waves into unresolved slivers. This is geometric standing relief; it does not simulate breaking, alter foam sources or animate the mesh.
+
+The newly active outer mesh has6.799 m angular-neighbor spacing because the shoreline changes radius between sectors. The old radius*dAngle estimate missed that radial skew. Packet wavelength now uses actual neighboring shoreline samples, packet reach and a12% safety margin; the production-grid probe checks every potentially contributing packet against the real local mesh edge. Wave amplitudes stay bounded2 m, with signed troughs and finite packet supports. This does not enlarge rocks or crater dimensions.
+
+Run: `E:/Utilities/Blender/5.3/python/bin/python.exe Tools/probe_bank_wave_packets.py`.
+
+Actual448x1536 probe passes:30,801 active vertices, height−1.268..+1.459 m, weighted mean−.00261 m, RMS.338 m, maximum added slope.4728. Minimum packet wavelength/neighbour ratio6.083 samples. Elapsed80±4s:445 wet-bank vertices,−1.204..+1.323 m, RMS.304 m; old mask was identically zero. Elapsed30 RMS.167 m and elapsed150 RMS.221 m. Hull-corridor residual<1.3e−7 cm; shore/outside exactly zero.1 cm one-sided shoreline derivative.000272; cell-boundary2 cm height jump.3426 cm and slope difference.00359. Individual unwindowed packets integrate to zero; clipped population mean is measured rather than claimed exactly zero.
+
+Compare native player350/300 beauty and source mask, plus420 lower descent and665 m review. The large white near sheet is not all foam: much of the beauty's silver bank is black in the source-mode image, with true foam at the lip and lower-left. Root's `DirectionalFoamMask350` also retains distant lighting, so it is not a perfectly isolated source raster. Separate shader finding: liveFFT normals blend out120–500 m while its roughness override remains active at every distance; far procedural normals can therefore receive low flat-ocean roughness. Match those weights before a global foam reduction. No shader change in this commit.
