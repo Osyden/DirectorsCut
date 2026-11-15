@@ -28,23 +28,54 @@ def curve(u, knots, values):
     return values[k]*(1-t)+values[k+1]*t
 
 
-def uv_at(world, start, width, height):
+def macro_profile(u, t, toe_radius, span):
+    knots = np.array([0,.10,.22,.37,.48,.63,.77,.88,1])*span
+    crest = curve(u,knots,np.array([38.,52.,44.,59.,47.,54.,39.,46.,35.]))
+    setback = curve(u,knots,np.array([88.,59.,94.,52.,84.,58.,96.,66.,84.]))
+    # Broad masses remain rooted: width increases toward the receiving toe,
+    # and shoulder relief starts gradually instead of ending as a hanging fin.
+    radius = toe_radius+setback*(.65*t+.35*smooth(t))
+    for centre,width,depth,lean in [(86,66,10,-12),(249,89,16,16),(408,59,12,-9)]:
+        varying_width=width*(1.40-.40*t)
+        shoulder=smooth(1-abs(u-centre-lean*(t-.5))/varying_width)
+        radius-=depth*shoulder*smooth(t/.65)
+    # Open gullies cut through the crest; none is capped into an arch/slot.
+    for centre,width,depth,lean in [(143,17,10,12),(326,24,15,-17),(454,13,8,8)]:
+        gully=smooth(1-abs(u-centre-lean*(t-.3))/width)
+        radius+=depth*gully*smooth(t/.38)
+        crest-=5*smooth(1-abs(u-centre-lean*.7)/width)
+    # Two unequal finite oblique shelves. They recess into connected rock and
+    # terminate gradually across U, rather than becoming repeated wall bands.
+    for centre,width,depth,level,lean in [(178,61,5,.56,.0009),(370,47,7,.36,-.0011)]:
+        extent=smooth(1-abs(u-centre)/width)
+        radius+=depth*extent*smooth((t-level-lean*(u-centre))/.055)
+    return radius,crest
+
+
+def uv_at(world, start, width, height, unique=False, crest_radius=None):
     angle = np.mod(np.arctan2(world[:, 1], world[:, 0]), 2*np.pi)
     arc = (angle-start*2*np.pi/1536)*1600.
     z = world[:, 2]
+    if unique:
+        landward=0. if crest_radius is None else np.maximum(0.,np.linalg.norm(world[:,:2],axis=1)-crest_radius)
+        return np.c_[arc/width,(z+.35*landward+200.)/height]
     return np.c_[(arc+1.6*np.sin(z/37.))/width, (z+1.1*np.sin(arc/61.))/height]
 
 
-def lookup(tile, uv):
+def lookup(tile, uv, clamp=False):
     # Samples at pixel/grid centres, periodic on both axes. UV+V is source+Z.
-    x = np.mod(uv[:, 0], 1)*tile.shape[1]-.5
-    y = np.mod(uv[:, 1], 1)*tile.shape[0]-.5
+    x = (np.clip(uv[:,0],0,1) if clamp else np.mod(uv[:, 0], 1))*tile.shape[1]-.5
+    y = (np.clip(uv[:,1],0,1) if clamp else np.mod(uv[:, 1], 1))*tile.shape[0]-.5
+    if clamp:
+        x=np.clip(x,0,tile.shape[1]-1);y=np.clip(y,0,tile.shape[0]-1)
     ix, iy = np.floor(x).astype(int), np.floor(y).astype(int)
     fx, fy = x-ix, y-iy
+    jx=np.minimum(ix+1,tile.shape[1]-1) if clamp else (ix+1)%tile.shape[1]
+    jy=np.minimum(iy+1,tile.shape[0]-1) if clamp else (iy+1)%tile.shape[0]
     return (tile[iy % tile.shape[0], ix % tile.shape[1]]*(1-fx)*(1-fy)
-        +tile[iy % tile.shape[0], (ix+1) % tile.shape[1]]*fx*(1-fy)
-        +tile[(iy+1) % tile.shape[0], ix % tile.shape[1]]*(1-fx)*fy
-        +tile[(iy+1) % tile.shape[0], (ix+1) % tile.shape[1]]*fx*fy)
+        +tile[iy % tile.shape[0], jx]*fx*(1-fy)
+        +tile[jy, ix % tile.shape[1]]*(1-fx)*fy
+        +tile[jy, jx]*fx*fy)
 
 
 def main():
@@ -55,6 +86,7 @@ def main():
     p.add_argument('--tile-width-m', type=float, default=7.9875)
     p.add_argument('--tile-height-m', type=float, default=5.5125)
     p.add_argument('--edge-m', type=float, default=.85)
+    p.add_argument('--unique-atlas', action='store_true', help='One full-pilot U/Z atlas, Z range−200..80m')
     a = p.parse_args()
     if a.output.exists() or 'saved' not in [x.lower() for x in a.output.resolve().parts]:
         p.error('Use a new ignored Saved directory')
@@ -101,21 +133,27 @@ def main():
     for centre, half_width, amount, lean in [(95,53,13,-17),(258,76,19,12),(411,48,15,-9)]:
         ridge = np.maximum(0., 1-abs(u-centre-lean*(t-.5))/half_width)
         radius -= amount*ridge*envelope
+    if a.unique_atlas:
+        radius,crest=macro_profile(u,t,toe_radius,span)
+        crest_radius,_=macro_profile(u,np.ones_like(t),toe_radius,span)
+        z=toe[:,2]+(crest-toe[:,2])*t
+    else:
+        crest_radius=toe_radius+setback
     angle = col*2*np.pi/1536
     macro = np.c_[np.cos(angle)*radius, np.sin(angle)*radius, z]
     back = row>120
     b = np.clip((row-120)/40., 0, 1)
-    top = np.c_[np.cos(angle)*(toe_radius+setback), np.sin(angle)*(toe_radius+setback), crest]
+    top = np.c_[np.cos(angle)*crest_radius, np.sin(angle)*crest_radius, crest]
     macro[back] = (top+(end-top)*b[:, None])[back]
     macro[back, 2] = (crest+(end[:, 2]-crest)*smooth((b-.72)/.28))[back]
     side = smooth(np.minimum(u, span-u)/28.)
     shape = old+(macro-old)*side[:, None]
     fixed = (row<=8+1e-10)|(row>=160-1e-10)|(col<=c0+1e-10)|(col>=c1-1e-10)
     shape[fixed] = old[fixed]
-    uv = uv_at(shape, c0, a.tile_width_m, a.tile_height_m)
+    uv = uv_at(shape, c0, a.tile_width_m, a.tile_height_m,a.unique_atlas,crest_radius)
     mask = smooth(t/.13)*smooth((1-t)/.08)*side
     mask[(row>=120)|fixed] = 0.
-    scan = lookup(depth, uv)*mask
+    scan = lookup(depth, uv,a.unique_atlas)*mask
     scan[(row>=120)|fixed] = 0.
     # +Y scan depth is an outward rock protrusion, hence decreases arena radius.
     final = shape.copy()
@@ -139,6 +177,9 @@ def main():
         exact_fixed_vertices=int(fixed.sum()), uv_mapping='U=(arc+1.6sin(Z/37))/width,V=(Z+1.1sin(arc/61))/height; +V=source+Z; periodic pixel centres',
         existing_waterfall_attachment_valid=False, visual_accepted=False,
         limitations='New authored continuous wall with measured scan relief, not simulated geology. Existing falls require rebinding. Original outer/toe coordinates retained; no full dynamic-route/collision certification.')
+    if a.unique_atlas:
+        meta['uv_mapping']='U=arc/497.418836818384; V=(Z+.35*max(0,R−localCrestR)+200)/280; +V=source+Z; no phase or repeated face UV'
+        meta['unique_atlas']=True
     a.output.mkdir(parents=True)
     for name, v in [('baseline',old),('candidate',final)]:
         np.savez_compressed(a.output/(name+'.npz'),vertices_m=v,triangles=triangles,uv0=uv,
@@ -147,14 +188,19 @@ def main():
     full_path = a.output/'full_ring_candidate.npz'
     with np.load(full_path, allow_pickle=False) as f:
         full = {k:f[k].copy() for k in f.files}
-    full['uv0'] = uv_at(full['vertices_m'],c0,a.tile_width_m,a.tile_height_m).astype(np.float32)
     fv = full['vertices_m']
     fc = np.mod(np.arctan2(fv[:,1],fv[:,0]),2*np.pi)*1536/(2*np.pi)
     fu = (fc-c0)*arc_step
-    ftz = sample_ring(ring,np.full(len(fv),8.),fc)[:,2]
+    ftoe = sample_ring(ring,np.full(len(fv),8.),fc)
+    ftz = ftoe[:,2]
     fcrest = curve(fu,knots,np.array([37.,43.,39.,47.,42.,36.]))
     ft = np.clip((fv[:,2]-ftz)/np.maximum(fcrest-ftz,1.),0,1)
     fm = smooth(ft/.13)*smooth((1-ft)/.08)*smooth(np.minimum(fu,span-fu)/28.)
+    fcr=np.linalg.norm(ftoe[:,:2],axis=1)+curve(fu,knots,np.array([79.,62.,76.,67.,82.,75.]))
+    if a.unique_atlas:
+        fcr,_=macro_profile(fu,np.ones_like(fu),np.linalg.norm(ftoe[:,:2],axis=1),span)
+        fm=smooth(np.minimum(fu,span-fu)/28.)
+    full['uv0'] = uv_at(fv,c0,a.tile_width_m,a.tile_height_m,a.unique_atlas,fcr).astype(np.float32)
     rgba = np.zeros((len(fv),4),np.float32);rgba[:,0]=fm;rgba[:,3]=1.
     full['vertex_rgba'] = rgba
     np.savez_compressed(full_path, **full)
