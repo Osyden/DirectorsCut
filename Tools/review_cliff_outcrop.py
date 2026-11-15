@@ -85,6 +85,7 @@ def topology_audit(mesh):
               "inconsistent_winding_edges": int(np.count_nonzero((counts == 2) & (orientations != 0))),
               "degenerate_triangles": degenerate, "duplicate_triangles": duplicates,
               "signed_volume_m3": volume, "surface_area_m2": float(twice_area.sum()*.5),
+              "topology_limitations": "Edge-manifold/winding and signed-volume checks only; no exhaustive self-intersection or nested-shell containment test.",
               "front_downward_area_m2": float(twice_area[downward_front].sum()*.5),
               "front_area_m2": float(twice_area[front].sum()*.5),
               "front_downward_area_limitation": "Normal-selected diagnostic; closure geometry and internal cavity surfaces are not proof of visible overhangs.",
@@ -102,10 +103,32 @@ def matched_views(baseline, candidate):
     center = (low+high)*.5
     span = float(max(high-low))
     return {
-        "wall": {"location": (center+[.08*span, -2*span, .10*span]).tolist(), "target": center.tolist(), "width": span*1.35},
-        "oblique": {"location": (center+[1.35*span, -1.65*span, .95*span]).tolist(), "target": center.tolist(), "width": span*1.70},
-        "side": {"location": (center+[2*span, -.12*span, .05*span]).tolist(), "target": center.tolist(), "width": span*1.35},
+        "wall": {"location": (center+[.08*span, -2*span, .10*span]).tolist(), "target": center.tolist(), "width": span*1.90},
+        "oblique": {"location": (center+[1.35*span, -1.65*span, .95*span]).tolist(), "target": center.tolist(), "width": span*2.00},
+        "side": {"location": (center+[2*span, -.12*span, .05*span]).tolist(), "target": center.tolist(), "width": span*1.90},
     }
+
+
+def crop_boundary_audit(baseline, candidate, tolerance=1.e-5):
+    """Compare crop-plane vertices, independent of the generator's own metrics.
+
+    This checks rectangular authoring-patch joins. It does not claim that an
+    arbitrary new cutout already fits the game's full cliff mesh.
+    """
+    low, high = baseline["chart"].min(axis=0), baseline["chart"].max(axis=0)
+    sets = []
+    counts = []
+    for mesh in (baseline, candidate):
+        points = mesh["chart"]
+        edge = np.any((np.abs(points[:, :2]-low[:2]) <= tolerance) |
+                      (np.abs(points[:, :2]-high[:2]) <= tolerance), axis=1)
+        border = points[edge]
+        counts.append(len(border))
+        sets.append({tuple(row) for row in np.rint(border/tolerance).astype(np.int64)})
+    return {"tolerance_m": tolerance, "baseline_vertices": counts[0], "candidate_vertices": counts[1],
+            "missing_quantized_vertices": len(sets[0]-sets[1]), "added_quantized_vertices": len(sets[1]-sets[0]),
+            "boundary_vertex_set_preserved": sets[0] == sets[1],
+            "limitation": "Rectangular XY crop-plane vertex sets only; not a proof of full game-sector seam or temple support."}
 
 
 def render_pair(baseline, candidate, output, cameras, samples, mode, angle):
@@ -178,6 +201,7 @@ def main():
         report["source"][stage] = {"path": data["path"], "sha256": data["sha256"], "metadata": data["metadata"], "audit": topology_audit(data)}
     cameras = json.loads(args.camera_manifest.read_text())["cameras"] if args.camera_manifest else matched_views(baseline, candidate)
     report["cameras"] = cameras
+    report["crop_boundary"] = crop_boundary_audit(baseline, candidate)
     report["audit_passed"] = all(s["audit"]["closed_consistently_oriented"] for s in report["source"].values())
     # Invalid candidates may be rendered diagnostically, but never silently
     # repaired or certified. Their exact defects stay visible in the report.
