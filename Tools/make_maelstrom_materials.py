@@ -477,18 +477,20 @@ foam_code = NOISE + FLOW + r"""
 // Ordinary lake whitecaps come from the installed ocean simulation below.
 // Disable all old ridge, spiral-wake and synthetic breaking-lip populations.
 if(lake>.5) {
-    // Two subdued, broken crests enclose the actual inner no-go region. The
+    // Two broken crests enclose the actual inner no-go region. The
     // outer crest stays at the limit; small wavelets and carried flecks soften
     // the circle without moving its navigation meaning or rotating the water.
     float radial=length(UV*100.0);
     float polar=atan2(UV.y,UV.x);
     float inside=BoundaryRadius-radial+.8*sin(polar*17.0-T*1.7);
-    float outer=exp(-pow(inside/3.5,2.0));
-    float inner=.5*exp(-pow((inside-11.0)/3.0,2.0));
+    // Broad enough to survive the low cannon/helm angle; retain a clear water
+    // gap between the crests instead of merging them into a white carpet.
+    float outer=exp(-pow(inside/6.0,2.0));
+    float inner=.78*exp(-pow((inside-19.0)/5.0,2.0));
     float2 boundaryUV=UV*100.0/float2(3.1,4.7)+float2(T*.55,-T*.8);
     float fragments=smoothstep(.20,.70,wn.fbm(boundaryUV));
     float boundary=saturate(BoundaryStrength)*step(1.0,BoundaryRadius)
-        *saturate(outer+inner)*(.18+.67*fragments);
+        *saturate(outer+inner)*(.48+.50*fragments);
     if(cataract<=0.0) { return boundary; }
     float2 st=float2(riverAcross,riverAlong+30.0*T);
     // Bounded cross-stream eddies split and merge the carried foam. Shorter
@@ -678,7 +680,8 @@ return saturate((1-(1-raftsCoverage)*(1-front))*Coverage*(1-shelf*.35));
 foam = custom(water, foam_code, FLOAT, foam_inputs)
 source_foam=foam
 if fft_foam:
-    live_foam_inputs={"Fallback":foam,"Live":fft_foam,"Enabled":use_live_fft,"Count":live_count,"Tunnel":tunnel_flow,"Calm":calm_caldera,"Cataract":cataract_flow,"VC":vc}
+    live_foam_inputs={"Fallback":foam,"Live":fft_foam,"Enabled":use_live_fft,"Count":live_count,"Tunnel":tunnel_flow,"Calm":calm_caldera,"Cataract":cataract_flow,"VC":vc,
+                      "UV":foam_inputs["UV"],"BoundaryRadius":foam_inputs["BoundaryRadius"],"BoundaryStrength":foam_inputs["BoundaryStrength"]}
     live_foam_code="float detail=0.15;\n"
     if foam_texture:
         live_foam_inputs.update({"C0":foam_inputs["Cells0"],"C1":foam_inputs["Cells1"],"T":time})
@@ -688,7 +691,23 @@ if fft_foam:
     # Crater whitewater is driven by its actual crest/impact/wake sources above;
     # retain the previous overlay only for the separately authored tunnel path.
     # Live FFT normals, displacement and roughness remain independent/unchanged.
-    live_foam_code+="float liveWeight=saturate(Enabled)*step(0.5,Count); if(Calm>.5 && Tunnel<.5) { float river=saturate(Cataract)*smoothstep(.015,.12,VC.r); float ocean=saturate(Live)*lerp(.65,1.0,detail)*liveWeight*(1-river); return 1-(1-saturate(Fallback))*(1-ocean); } if(Tunnel<.5) return Fallback; return max(Fallback,saturate(Live)*detail*.08*liveWeight);"
+    live_foam_code+=r"""
+float liveWeight=saturate(Enabled)*step(0.5,Count);
+if(Calm>.5 && Tunnel<.5) {
+    float river=saturate(Cataract)*smoothstep(.015,.12,VC.r);
+    float ocean=saturate(Live)*lerp(.65,1.0,detail)*liveWeight*(1-river);
+    // Native low-cannon captures lost the crests amongst ordinary whitecaps.
+    // Quiet only background foam near the two rings; wave height, normal,
+    // reflection and their exact basin-space radius remain unchanged.
+    float boundaryDistance=abs(BoundaryRadius-length(UV*100.0)-9.5);
+    float quiet=(1-smoothstep(26.0,48.0,boundaryDistance))
+        *saturate(BoundaryStrength)*step(1.0,BoundaryRadius);
+    ocean*=lerp(1.0,.12,quiet);
+    return 1-(1-saturate(Fallback))*(1-ocean);
+}
+if(Tunnel<.5) return Fallback;
+return max(Fallback,saturate(Live)*detail*.08*liveWeight);
+"""
     foam=custom(water,live_foam_code,FLOAT,live_foam_inputs,1350)
 color = custom(water, r"""
 float3 body=lerp(float3(0.018,0.065,0.085),float3(0.009,0.034,0.052),saturate(VC.b));
