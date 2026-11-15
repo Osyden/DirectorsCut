@@ -33,8 +33,43 @@ int main()
             // Two seconds to recognize/aim, up to one reload already in progress,
             // three seconds between shots, and the cannon's maximum three-second flight.
             const float LastImpact=2.f+3.f+(Health(E.Kind)-1.f)*3.f+3.f;
-            Check(LastImpact<Tell(E.Kind),"A solo individual cannon can interrupt within the warning");
+            const float Contact=Tell(E.Kind)-(E.Kind==EAttack::Obstacle?3.f:0.f);
+            Check(LastImpact<Contact,"Solo cannon including initial reload interrupts before earliest hull contact");
+            Check(Health(E.Kind)==(E.Kind==EAttack::Slam?3.f:2.f),"Interrupt requirements increase fifty percent rounded up");
         }
+        // Replay the actual committed route joint and cannon broadside admission,
+        // not just the nominal warning duration. A ship holding its threatened
+        // lane must be able to land both shots before swept hull contact.
+        float ObstacleMargin=1000.f;
+        for(float Start:{50.f,106.f})for(float Offset:{-9500.f,-6000.f,0.f,6000.f,9500.f})
+        for(float Heading:{-10.f,0.f,10.f})for(float MuzzleX:{-1000.f,0.f,1000.f}){
+            if(Offset>DCMaelstromRoute::InletOutwardLimit(Start,160000)) continue;
+            const float Side=Start<100?1.f:-1.f,Strike=Start+ObstacleLead;
+            const auto Along=DCMaelstromRoute::Tangent(Strike,160000);
+            const FVector2D Across(-Along.Y,Along.X);
+            const auto Anchor=DCMaelstromRoute::Point(Strike,160000,std::clamp(Offset,-6500.f,6500.f));
+            const auto Joint=Anchor+Across*(Side*ObstacleJointSide)+Along*1000.f;
+            auto Previous=WorldPoint(Start,Offset,Heading,Anchor+Across*(Side*ObstacleSideBias));
+            float Contact=1000,LastImpact=1000,NextFire=5;int Shots=0;
+            for(int Frame=1;Frame<=int((ObstacleLead+3)*120);++Frame){
+                const float Age=Frame/120.f,Now=Start+Age;
+                const auto P=WorldPoint(Now,Offset,Heading,Anchor+Across*(Side*ObstacleSideBias));
+                if(Age>=ObstacleLead-3 && Contact==1000 && SweptHull(Previous.X,Previous.Y,P.X,P.Y,ObstacleHalfLength,ObstacleHalfWidth)) Contact=Age;
+                Previous=P;
+                const auto J=WorldPoint(Now,Offset,Heading,Joint);
+                const float X=J.X-MuzzleX, Y=std::abs(J.Y)-600.f;
+                const float Distance=std::sqrt(X*X+Y*Y+1400.f*1400.f);
+                if(Age>=NextFire && Y>100 && std::abs(X)<=Y*1.9f && Distance<=21000 && Shots<int(Health(EAttack::Obstacle))){
+                    ++Shots;NextFire=Age+3.f;LastImpact=Age+std::clamp(Distance/7000.f,.5f,3.f);
+                }
+            }
+            if(Contact<1000){
+                if(LastImpact>=Contact) std::cout<<"Obstacle fire fail start="<<Start<<" lane="<<Offset<<" heading="<<Heading<<" muzzleX="<<MuzzleX<<" contact="<<Contact<<" finalImpact="<<LastImpact<<" shots="<<Shots<<"\n";
+                Check(Shots==2 && LastImpact<Contact,"Two route-joint hits fit actual cannon arc before threatened-lane contact");
+                ObstacleMargin=std::min(ObstacleMargin,Contact-LastImpact);
+            }
+        }
+        std::cout<<"Minimum obstacle interrupt margin="<<ObstacleMargin<<"s\n";
         Check(SweptHull(4000,0,-4000,0,3000,1700),"Swept contact catches frame crossings");
         Check(!SweptHull(4000,1800,-4000,1800,3000,1700),"Clear lane stays safe");
         for(float Deadline:{140.f,160.f,180.f})

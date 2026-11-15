@@ -308,7 +308,7 @@ void ADCBossCombat::UpdateAttack(float DT,const FTransform& Arena)
         PoseBase=Anchor+Across*(Side*6500.f)-FVector(0,0,5000.f);
         // Keep the joint in the forward view and below the gun's elevation
         // limit; the tall curved shaft supplies the silhouette above the sails.
-        PoseJoint=Anchor+Across*(Side*3500.f)+Along*1000.f+FVector(0,0,1400.f);
+        PoseJoint=Anchor+Across*(Side*DCBossTimeline::ObstacleJointSide)+Along*1000.f+FVector(0,0,1400.f);
         PoseBend=Anchor+Across*(Side*4500.f)-Along*500.f+FVector(0,0,6500.f);
         // Uncoil after the initial water tell, then hold the obstruction steady.
         PoseTip=Anchor+Across*(Side*1800.f*(1.f-Rise))+FVector(0,0,1000.f+900.f*FMath::Sin(Rise*UE_PI));
@@ -683,7 +683,7 @@ void ADCBossCombat::DrawStatus(AHUD* HUD,UCanvas* Canvas)
                 FString::Printf(TEXT("%.0f HIT%s  |  %.1fs TO STOP IT"),FMath::CeilToFloat(Attack.Remaining),Attack.Remaining>1?TEXT("S"):TEXT(""),Seconds);
             if(RecentHit && !Rising) Instruction=FString::Printf(TEXT("HIT! %.0f MORE  |  %.1fs TO STOP IT"),FMath::CeilToFloat(Attack.Remaining),Seconds);
             if(Attack.Kind==DCBossTimeline::EAttack::Obstacle)
-                Instruction=FString::Printf(TEXT("1 HIT or STEER %s  |  %.1fs"),Attack.Side>0?TEXT("PORT"):TEXT("STARBOARD"),FMath::Max(0.f,Seconds-3.f));
+                Instruction=FString::Printf(TEXT("%.0f HIT%s or STEER %s | %.1fs"),FMath::CeilToFloat(Attack.Remaining),Attack.Remaining>1?TEXT("S"):TEXT(""),Attack.Side>0?TEXT("PORT"):TEXT("STARBOARD"),FMath::Max(0.f,Seconds-3.f));
             if(!Rising && (P.AtEdge || !InCannonArc))
             {
                 const TCHAR* Kind=Attack.Kind==DCBossTimeline::EAttack::Mouth?TEXT("MOUTH"):

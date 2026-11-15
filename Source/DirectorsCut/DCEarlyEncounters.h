@@ -29,7 +29,9 @@ private:
 		float GaitPhase = 0.f, LastAnimLog = -10.f;
 		TArray<TWeakObjectPtr<class UStaticMeshComponent>> Eyes, Beams;
 		FVector EyeLocal[2] = {};
-		FVector DeckTarget = FVector::ZeroVector;
+		FVector DeckTarget = FVector::ZeroVector, BeamEnd = FVector::ZeroVector;
+        TWeakObjectPtr<class UStaticMeshComponent> BeamSpot;
+        int32 BeamContacts = 0;
 		float X = 0.f, SeaY = 0.f, Side = 1.f, Age = 0.f, Exposure = 0.f, Clock = 0.f;
 		float Size = 1.f, InitialWait = 8.f, HoldX = 3500.f, FootHeight = 0.f;
 		int32 CannonHits = 0;
@@ -77,7 +79,7 @@ private:
 	void TickVerification(float DeltaSeconds);
 	void TickEncounterVerification();
 	TWeakObjectPtr<AActor> VerifyEnemy;
-	int32 VerifyCreatureHits = 0;
+	int32 VerifyCreatureHits = 0, VerifyBeamLineContacts = 0, VerifyBeamLines = 0;
 	int32 VerifyShots = 0, VerifyFireballImpacts = 0, VerifyBeamImpacts = 0;
 	bool bVerifyInterrupted = false;
 	int32 VerifyStage = 0, VerifyScore = 0;

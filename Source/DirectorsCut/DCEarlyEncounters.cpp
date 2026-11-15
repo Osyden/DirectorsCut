@@ -149,8 +149,8 @@ float ADCEarlyEncounters::AcceptCreatureHit(float Damage, TWeakObjectPtr<AActor>
     for (FThreat& T : Threats)
     {
         if (T.bStatue || T.Target != Target || T.Stage == 4) { continue; }
-        // Roll exactly once, on the first accepted cannon contact (never spawn/miss).
-        const int32 Roll = T.CannonHits == 0 ? FMath::RandHelper(100) : 99;
+        // Independent 25% instant kill on EVERY accepted cannon contact, never a miss.
+        const int32 Roll = FMath::RandHelper(100);
         const float Cost = DCEarlyEncounterPolicy::CreatureHitCost(T.CannonHits, Roll);
         ++T.CannonHits;
         const bool bKilled = Cost >= DCEarlyEncounterPolicy::CreatureHealth;
@@ -158,7 +158,7 @@ float ADCEarlyEncounters::AcceptCreatureHit(float Damage, TWeakObjectPtr<AActor>
 #if !UE_BUILD_SHIPPING
         if (T.Body == VerifyEnemy) { VerifyCreatureHits = T.CannonHits; }
 #endif
-        UE_LOG(LogDC, Display, TEXT("Creature cannon hit=%d firstRoll=%d killed=%d"), T.CannonHits, Roll, bKilled);
+        UE_LOG(LogDC, Display, TEXT("Creature cannon hit=%d roll=%d killed=%d"), T.CannonHits, Roll, bKilled);
         return FMath::Min(Damage, Cost);
     }
     return 0.f;
@@ -229,13 +229,13 @@ void ADCEarlyEncounters::SpawnGroup(int32 Group)
 		FThreat G;
 		G.Body = Body; G.Size = 10.f + I * .8f; G.Side = Side;
 		G.X = 23500.f + I * 3800.f;
-		G.HoldX = 3000.f + I * 4600.f;
+		G.HoldX = DCFogRouteLayout::WalkerHoldX(I,Count);
 		const FBoxSphereBounds Reference = Mesh->GetImportedBounds();
 		const float MeshRadius = (FVector2D(Reference.BoxExtent).Size() + FVector2D(Reference.Origin).Size()) * G.Size;
 		G.SeaY = Side * (Treadmill->GetCityBankY() + DCFogRouteLayout::WalkerOffset(I,MeshRadius));
 		// Imported reference geometry, excluding optional culling-bound extensions.
 		G.FootHeight = (Reference.Origin.Z - Reference.BoxExtent.Z) * G.Size;
-		G.InitialWait = 8.f + I * 2.8f;
+		G.InitialWait = DCEarlyEncounterPolicy::CreatureFirstExposure + I * 2.8f;
 		G.bGroupLeader = I == 0;
 		G.GroupId = Group;
 		Body->SetActorScale3D(FVector(G.Size));
@@ -285,6 +285,9 @@ void ADCEarlyEncounters::SpawnStatue(int32 Index)
 		UStaticMeshComponent* Beam = Shape(Body, TEXT("/Engine/BasicShapes/Cylinder.Cylinder"), FLinearColor(8.f, 2.8f, .22f));
 		Beam->SetVisibility(false); S.Beams.Add(Beam);
 	}
+    S.BeamSpot=Shape(Body, TEXT("/Engine/BasicShapes/Sphere.Sphere"), FLinearColor(5.f,1.6f,.12f));
+    S.BeamSpot->SetVisibility(false);
+    S.BeamSpot->SetWorldScale3D(FVector(.9f,.9f,.15f));
 	S.Target = MakeTarget(FVector(S.X, S.SeaY, Director->SeaLevelZ + S.Size * .8f), 1500.f, DCEarlyEncounterPolicy::StatueHealth);
 	Threats.Add(S);
 	UE_LOG(LogDC, Display, TEXT("Sentinel %d placed on %s at %.1f"), Index + 1, S.Side < 0 ? TEXT("port") : TEXT("starboard"), Director->RideTime);
@@ -454,6 +457,7 @@ void ADCEarlyEncounters::TickThreat(FThreat& T, float Dt)
 	AActor* Body = T.Body.Get();
 	if (!Body) { return; }
 	T.Age += Dt; T.Clock += Dt;
+    if(T.BeamSpot.IsValid()) T.BeamSpot->SetVisibility(false);
 	// Dt already includes the ride time scale. Scale movement exactly once so
 	// accelerated reviews retain the same firing windows as normal play.
 	const float Speed = Director->GetEnv().ShipSpeed;
@@ -547,6 +551,20 @@ void ADCEarlyEncounters::TickThreat(FThreat& T, float Dt)
 		if (Troubles->FindIgnitionPoint(ImpactCount + FMath::RoundToInt(T.SeaY / 100.f), T.DeckTarget))
 		{
 			T.Stage = 1; T.Clock = 0.f; T.bImpact = false; AttackSpacing = DCEarlyEncounterPolicy::ChargeSpacing;
+            T.BeamContacts=0;
+            T.BeamEnd=T.DeckTarget;
+            if(T.bStatue)
+            {
+                // Use surveyed safe deck points on one deck level. The widest
+                // pair gives a visible straight sweep without igniting stations.
+                float Longest=0.f;
+                for(const FVector& A:Troubles->DeckPoints) for(const FVector& B:Troubles->DeckPoints)
+                {
+                    const float Span=FVector::DistSquared2D(A,B);
+                    if(FMath::Abs(A.Z-B.Z)<100.f && Span>Longest)
+                    { Longest=Span; T.DeckTarget=T.Side<0?A:B; T.BeamEnd=T.Side<0?B:A; }
+                }
+            }
 			T.Marker = MakeMarker(T.DeckTarget);
 			if (!T.bStatue) { T.Charge = MakeFireball(Hand(T)); }
 			UE_LOG(LogDC, Display, TEXT("Encounter charge: %s exposure=%.1f at %.1f"), T.bStatue ? TEXT("sentinel") : TEXT("creature"), T.Exposure, Director->RideTime);
@@ -554,11 +572,13 @@ void ADCEarlyEncounters::TickThreat(FThreat& T, float Dt)
 	}
 	// Evaluate bones before following the held fireball or sampling its release position.
 	UpdateCreaturePose(T, Dt, GroundSpeed, Facing);
-	if (T.Marker.IsValid())
-	{
-		T.Marker->SetActorLocationAndRotation(Director->DeckToWorld(T.DeckTarget), Director->DeckTransform.GetRotation());
-		T.Marker->SetActorScale3D(FVector(1.f + .08f * FMath::Sin(T.Clock * 8.f)));
-	}
+    if(T.Marker.IsValid())
+    {
+        const FVector Middle=T.bStatue?(T.DeckTarget+T.BeamEnd)*.5f:T.DeckTarget;
+        const FQuat Rotation=Director->DeckTransform.GetRotation()*(T.bStatue?(T.BeamEnd-T.DeckTarget).Rotation().Quaternion():FQuat::Identity);
+        T.Marker->SetActorLocationAndRotation(Director->DeckToWorld(Middle),Rotation);
+        T.Marker->SetActorScale3D(T.bStatue?FVector(FMath::Max(1.f,FVector::Dist2D(T.DeckTarget,T.BeamEnd)/200.f),.65f,1.f):FVector(1.f+.08f*FMath::Sin(T.Clock*8.f)));
+    }
 	if (T.Charge.IsValid()) { T.Charge->SetActorLocation(Hand(T)); }
 	for (auto& Eye : T.Eyes)
 	{
@@ -582,16 +602,12 @@ void ADCEarlyEncounters::TickThreat(FThreat& T, float Dt)
 	{
 		if (T.bStatue)
 		{
-            if (!T.bAttackAnnounced)
-            {
-                const auto Relevant = [Owner=TWeakObjectPtr<ADCEarlyEncounters>(this),Identity=T.Body,Side=T.Side]()
-                { return Owner.IsValid() && Owner->IsThreatReportRelevant(Identity,Side,DCEarlyWarningPolicy::EKind::Beam); };
-                const auto Continuing = [Owner=TWeakObjectPtr<ADCEarlyEncounters>(this),Identity=T.Body,Side=T.Side]()
-                { return Owner.IsValid() && Owner->CanContinueThreatReport(Identity,Side,DCEarlyWarningPolicy::EKind::Beam); };
-                if (UDCCrewSubsystem* Crew=GetWorld()->GetSubsystem<UDCCrewSubsystem>(); Crew && Relevant())
-                { T.bAttackAnnounced=Crew->Report(TEXT("Beam on deck! Watch that marked spot!"),true,Relevant,Continuing); }
-            }
-			const FVector End = Director->DeckToWorld(T.DeckTarget);
+            // The beam lasts less than speech synthesis plus delivery. The
+            // precharge warning and deck line are timely; no stale release call.
+            const FVector End=Director->DeckToWorld(FMath::Lerp(T.DeckTarget,T.BeamEnd,DCEarlyEncounterPolicy::BeamProgress(T.Clock)));
+            if(UStaticMeshComponent* Spot=T.BeamSpot.Get())
+            { Spot->SetVisibility(true); Spot->SetWorldLocation(End+Director->DeckTransform.TransformVectorNoScale(FVector(0,0,12))); Spot->SetWorldRotation(Director->DeckTransform.GetRotation()); }
+
 			for (int32 I = 0; I < T.Beams.Num(); ++I)
 			{
 				if (UStaticMeshComponent* Beam = T.Beams[I].Get())
@@ -600,15 +616,28 @@ void ADCEarlyEncounters::TickThreat(FThreat& T, float Dt)
 					const FVector D = End - Start;
 					Beam->SetVisibility(true);
 					Beam->SetWorldLocationAndRotation((Start + End) * .5f, FRotationMatrix::MakeFromZ(D).Rotator());
-					const float Width = .10f + .025f * FMath::Sin(T.Clock * 43.f + I);
+					const float Width = .35f + .035f * FMath::Sin(T.Clock * 43.f + I);
 					Beam->SetWorldScale3D(FVector(Width, Width, D.Size() / 100.f));
 				}
 			}
-			if (!T.bImpact && T.Clock >= .7f) { T.bImpact = true; Ignite(T.DeckTarget, TEXT("sentinel beam")); }
+			while(T.BeamContacts<DCEarlyEncounterPolicy::BeamContactsDue(T.Clock))
+            {
+                const FVector Point=T.BeamContacts==0?T.DeckTarget:T.BeamEnd;
+                const int32 Before=Troubles->NumFires();
+                if(!T.bImpact) { T.bImpact=true; Ignite(Point,TEXT("sentinel beam")); }
+                else Troubles->StartFire(Point); // No repeated hull damage or boom on the second contact.
+                ++T.BeamContacts;
+#if !UE_BUILD_SHIPPING
+                ++VerifyBeamLineContacts;
+                if(T.BeamContacts==2) ++VerifyBeamLines;
+#endif
+                UE_LOG(LogDC,Display,TEXT("STATUE_BEAM_LINE contact=%d point=%s fires=%d->%d span=%.0f damageApplied=%d"),T.BeamContacts,*Point.ToCompactString(),Before,Troubles->NumFires(),FVector::Dist2D(T.DeckTarget,T.BeamEnd),T.BeamContacts==1);
+            }
 		}
-		if (T.Clock >= (T.bStatue ? 1.2f : 2.4f))
+		if (T.Clock >= (T.bStatue ? DCEarlyEncounterPolicy::BeamDuration : 2.4f))
 		{
 			T.Stage = 3; T.Clock = 0.f;
+            if(T.BeamSpot.IsValid()) T.BeamSpot->SetVisibility(false);
 			for (auto& Beam : T.Beams) { if (Beam.IsValid()) { Beam->SetVisibility(false); } }
 			if (T.Marker.IsValid()) { T.Marker->Destroy(); T.Marker.Reset(); }
 		}

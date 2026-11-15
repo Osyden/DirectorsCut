@@ -3,16 +3,21 @@
 namespace DCEarlyEncounterPolicy
 {
     // Treadmill damage delegates may reduce, but cannot amplify, a cannon hit.
-    // A normalized one-point budget therefore represents two half-point hits.
+    // Three normal hits consume one normalized health budget; a fresh roll on
+    // every valid contact can instead consume the remaining budget immediately.
     constexpr float CreatureHealth=1.f;
-    inline float CreatureHitCost(int PreviousHits,int FirstHitPercentile)
-    { return PreviousHits>0 || FirstHitPercentile<33 ? CreatureHealth : .5f; }
+    inline float CreatureHitCost(int PreviousHits,int HitPercentile)
+    { return PreviousHits>=2 || HitPercentile<25 ? CreatureHealth : CreatureHealth/3.f; }
 
     constexpr float StatueHealth=4.f;
     constexpr float StatueFirstExposure=11.f;
     constexpr float StatueCharge=3.5f;
     constexpr float CreatureCharge=3.f;
+    constexpr float CreatureFirstExposure=12.f;
     constexpr float ChargeSpacing=4.f;
+    constexpr float BeamDuration=1.2f;
+    inline float BeamProgress(float Time) { return Time<=.2f?0.f:(Time>=1.f?1.f:(Time-.2f)/.8f); }
+    inline int BeamContactsDue(float Time) { return (Time>=.2f?1:0)+(Time>=1.f?1:0); }
 
     // Awareness starts when the monument is revealed, before the ship reaches
     // a usable broadside. Shot/review admission remains a separate decision.

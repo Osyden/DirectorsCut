@@ -55,10 +55,11 @@ void ADCEarlyEncounters::TickEncounterVerification()
 		};
 		Check(bVerifyInterrupted, StatueReview?TEXT("captain cannon silences a statue before its beam releases"):TEXT("captain cannon kills a moving creature before its attack releases"));
 		const int32 Hits=StatueReview?int32(DCEarlyEncounterPolicy::StatueHealth):VerifyCreatureHits;
-		if (!StatueReview) { Check(Hits >= 1 && Hits <= 2, TEXT("regular creature dies on the first or second valid cannon hit")); }
-		Check(VerifyShots >= Hits && VerifyShots <= Hits+1, StatueReview?TEXT("four-health statue needs four hits with at most one missed shot"):TEXT("one/two-hit creature uses at most one missed shot"));
+		if (!StatueReview) { Check(Hits >= 1 && Hits <= 3, TEXT("regular creature dies on the first, second or third valid cannon hit")); }
+		Check(VerifyShots >= Hits && VerifyShots <= Hits+1, StatueReview?TEXT("four-health statue needs four hits with at most one missed shot"):TEXT("one/two/three-hit creature uses at most one missed shot"));
 		Check(VerifyFireballImpacts > 0, TEXT("ignored creatures deliver visible projectiles to the deck"));
-		Check(VerifyBeamImpacts > 0, TEXT("ignored statue warms up and ignites a deck point"));
+		Check(VerifyBeamImpacts > 0, TEXT("ignored statue warms up and damages the deck once"));
+        Check(VerifyBeamLines>0 && VerifyBeamLineContacts>=VerifyBeamLines*2, TEXT("statue beam sweeps two separated deck contacts"));
 		Check(Troubles->NumFires() <= Troubles->MaxFires, TEXT("overlapping attacks respect the deck fire cap"));
 		UE_LOG(LogDC, Display, TEXT("ENCOUNTER VERIFY METRICS shots=%d fireballs=%d beams=%d"), VerifyShots, VerifyFireballImpacts, VerifyBeamImpacts);
 		VerifyStage = 2;

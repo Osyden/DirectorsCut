@@ -13,23 +13,25 @@ int Checks=0;
 void Check(bool Good,const char* What){++Checks;if(!Good){std::printf("FAIL: %s\n",What);std::exit(1);}}
 int main(){
  using namespace DCEarlyEncounterPolicy;
- int FirstKills=0;
- for(int Roll=0;Roll<100;++Roll){
+ int Kills[3]={};
+ // Enumerate independent percentile pairs: 25%,18.75%,56.25% kills by hit.
+ for(int First=0;First<100;++First)for(int Second=0;Second<100;++Second){
   float Health=CreatureHealth;int Hits=0,Score=0;
-  float Cost=CreatureHitCost(Hits++,Roll);
-  Health-=std::min(Health,Cost);
-  if(Health<=0){++FirstKills;Score+=100;}
-  Check((Health<=0)==(Roll<33),"exact first-hit percentile boundary");
-  if(Health>0){
-   Check(Health==.5f,"first nonfatal hit leaves exactly one cannon hit");
-   for(int IgnoredRoll=0;IgnoredRoll<100;++IgnoredRoll)
-    Check(CreatureHitCost(Hits,IgnoredRoll)==1.f,"second hit guaranteed irrespective of random input");
-   Health-=std::min(Health,CreatureHitCost(Hits++,99));Score+=100;
+  const int Rolls[]={First,Second,99};
+  while(Health>0 && Hits<3){
+   const float Cost=CreatureHitCost(Hits,Rolls[Hits]);++Hits;
+   Check(Cost>0 && Cost<=1.f,"cost respects real treadmill damage clamp");
+   Health-=std::min(Health,Cost);
+   if(Health<=0){++Kills[Hits-1];Score+=100;}
   }
-  Check(Health==0 && Hits>=1 && Hits<=2,"normalized treadmill clamp kills in one or two hits");
+  Check(Health==0 && Hits>=1 && Hits<=3,"normalized real health budget kills within three shots");
   Check(Score==100,"one kill score per creature");
  }
- Check(FirstKills==33,"exactly 33 percent first-hit outcomes");
+ Check(Kills[0]==2500 && Kills[1]==1875 && Kills[2]==5625,"independent per-shot kill distribution");
+ for(int Previous=0;Previous<2;++Previous)for(int Roll=0;Roll<100;++Roll)
+  Check((CreatureHitCost(Previous,Roll)==CreatureHealth)==(Roll<25),"exact 25 percent threshold on first AND second shots");
+ for(int Roll=0;Roll<100;++Roll)
+  Check(CreatureHitCost(2,Roll)==CreatureHealth,"third hit guarantees death without float residual");
  Check(StatueHealth==4.f,"statues retain four cannon hits");
  std::printf("PASS: %d regular-creature damage policy checks\n",Checks);
 }

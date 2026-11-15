@@ -6,20 +6,24 @@
 namespace DCBossTimeline
 {
     constexpr float CombatStart=44.f, DefaultFinale=160.f;
-    constexpr float ObstacleLead=12.f, SlamTell=12.f, MouthTell=10.f, FireFlight=3.f;
+    constexpr float ObstacleLead=15.f, SlamTell=15.f, MouthTell=12.f, FireFlight=3.f;
     constexpr float ObstacleHalfLength=3000.f, ObstacleHalfWidth=4100.f, ObstacleSideBias=2400.f;
+    constexpr float ObstacleJointSide=9500.f; // Visible broadside early enough for two reload-separated shots.
     enum class EAttack { Obstacle, Slam, Mouth };
     struct FEvent { float At; EAttack Kind; int Side; int Limb; };
     inline constexpr FEvent Events[]={
         {50.f,EAttack::Obstacle,1,-1}, {70.f,EAttack::Slam,-1,0}, {88.f,EAttack::Mouth,-1,-1},
         {106.f,EAttack::Obstacle,-1,-1}, {126.f,EAttack::Slam,1,1}, {144.f,EAttack::Mouth,-1,-1}
     };
+    // A shortened review finale may omit late attacks, but must not compress
+    // reload/recognition windows into overlapping urgent demands.
     inline float At(float Nominal,float Finale)
-    { return CombatStart+(Nominal-CombatStart)*(Finale-CombatStart)/(DefaultFinale-CombatStart); }
+    { return CombatStart+(Nominal-CombatStart)*std::max(1.f,(Finale-CombatStart)/(DefaultFinale-CombatStart)); }
     inline float Tell(EAttack K) { return K==EAttack::Obstacle?ObstacleLead:(K==EAttack::Slam?SlamTell:MouthTell); }
-    inline float Life(EAttack K) { return Tell(K)+(K==EAttack::Mouth?FireFlight:4.f); }
-    // One player cannon fires every three seconds. Only the held slam asks for a reload.
-    inline float Health(EAttack K) { return K==EAttack::Slam?2.f:1.f; }
+    inline float Life(EAttack K) { return Tell(K)+(K==EAttack::Mouth?FireFlight:(K==EAttack::Slam?3.f:4.f)); }
+    // +50% rounded up. Tells include reaction, an initial reload, subsequent
+    // three-second reloads and up to three seconds of projectile travel.
+    inline float Health(EAttack K) { return K==EAttack::Slam?3.f:2.f; }
     inline bool Crossed(float Before,float Now,float At) { return Before<At && Now>=At; }
     inline bool Open(float Time,float Start,float Strike,float Finale)
     { return Time>=Start && Time<Strike && Time<Finale; }

@@ -47,11 +47,16 @@ int main()
             Check(WalkerOffset(J,Radius)+Radius<=BankWidth*.5f-99.9f,"Whole rotated walker reference footprint fits supported bank width");
         }
     }
-    Check(Creatures==12,"Twelve creatures total, three more within existing waves");
+    Check(Creatures==15 && GroupSize(0)==3,"Fifteen creatures, first wave unchanged and three extras in existing later waves");
     Check(sizeof(StatueTimes)/sizeof(float)==4,"Four attack statues total, previously three");
     const float Y=BankCentre(Clear)+1300;
-    Check(std::sqrt(12200.f*12200+Y*Y+4000.f*4000)<21000,"Farthest grouped target remains inside normal centre-lane cannon range");
+    for(int G=0;G<4;++G)for(int I=0;I<GroupSize(G);++I){
+        const float X=WalkerHoldX(I,GroupSize(G));
+        Check(std::sqrt(X*X+Y*Y+4000.f*4000)<21000,"Every held walker stays within centre-lane cannon range");
+        if(I) Check(X-WalkerHoldX(I-1,GroupSize(G))>=3300,"Added walkers retain separate staggered longitudinal positions");
+    }
     using namespace DCEarlyEncounterPolicy;
+    Check(2.f+3.f+2.f*3.f+3.f<CreatureFirstExposure+CreatureCharge,"Three ordinary creature hits fit reaction, initial reload and maximum flight");
     Check(StatueHealth==4 && StatueHealth>3,"Statue survives three hits and falls to the fourth");
     const float SoloLastImpact=2.f+(StatueHealth-1.f)*3.f+3.f;
     Check(SoloLastImpact<StatueFirstExposure+StatueCharge,"One cannon has recognition, reload and flight time before first statue beam");
@@ -82,6 +87,21 @@ int main()
         "Approaching statue has an eye marker without granting a blocked cannon/review shot");
     Check(!CanBeginCharge(0,60.f,StatueFirstExposure,false,0.f),
         "Awareness never allows an unreachable statue to start charging");
+    for(float Step:{1.f/15,1.f/30,1.f/60,1.f/120,.7f,1.5f}){
+        int Contacts=0,Damage=0,Fires=0;
+        float Previous=-1;
+        for(float Time=0;Time<BeamDuration+Step;Time+=Step){
+            const float Progress=BeamProgress(Time);
+            Check(Progress>=Previous && Progress>=0 && Progress<=1,"Beam contact advances continuously along the marked line");
+            Previous=Progress;
+            while(Contacts<BeamContactsDue(Time)){
+                if(Contacts==0) ++Damage;
+                if(Fires<2) ++Fires;
+                ++Contacts;
+            }
+        }
+        Check(Contacts==2 && Damage==1 && Fires==2,"Ordinary and delayed beam frames produce two contacts but exactly one damage event");
+    }
     // Replay all new waves plus statues, repeated attacks and cooldowns. The
     // same production charge gate must leave only one urgent aim demand.
     for(int FPS:{15,30,60,120})
@@ -89,7 +109,7 @@ int main()
         struct Threat { float Spawn,Wait,Exposure=0,Clock=0; int Stage=0; bool Statue; };
         std::vector<Threat> Sim;
         for(int G=0;G<4;++G) for(int I=0;I<GroupSize(G);++I)
-            Sim.push_back({GroupTimes[G],8.f+I*2.8f,0,0,0,false});
+            Sim.push_back({GroupTimes[G],CreatureFirstExposure+I*2.8f,0,0,0,false});
         for(float Spawn:StatueTimes) Sim.push_back({Spawn,StatueFirstExposure,0,0,0,true});
         float Spacing=0; int Charges=0;
         for(int Frame=0;Frame<FPS*150;++Frame)
@@ -104,7 +124,7 @@ int main()
                 if(CanBeginCharge(Enemy.Stage,Enemy.Exposure,Enemy.Wait,true,Spacing))
                 { Enemy.Stage=1; Enemy.Clock=0; Spacing=ChargeSpacing; ++Charges; }
                 if(Enemy.Stage==1 && Enemy.Clock>=(Enemy.Statue?StatueCharge:CreatureCharge)) { Enemy.Stage=2; Enemy.Clock=0; }
-                if(Enemy.Stage==2 && Enemy.Clock>=(Enemy.Statue?1.2f:2.4f)) { Enemy.Stage=3; Enemy.Clock=0; }
+                if(Enemy.Stage==2 && Enemy.Clock>=(Enemy.Statue?BeamDuration:2.4f)) { Enemy.Stage=3; Enemy.Clock=0; }
                 if(Enemy.Stage==3 && Enemy.Clock>=11) { Enemy.Stage=0; Enemy.Exposure=0; Enemy.Wait=2.5f; }
             }
             int Charging=0; for(const auto& Enemy:Sim) Charging+=Enemy.Stage==1;
