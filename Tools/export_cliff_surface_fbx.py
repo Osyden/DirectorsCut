@@ -32,16 +32,24 @@ def main():
         parser.error('Use a new FBX under ignored Saved')
     import bpy
     data = load_mesh(args.input)
+    with np.load(args.input, allow_pickle=False) as source:
+        authored_uv = source['uv0'].copy() if 'uv0' in source else None
+        authored_rgba = source['vertex_rgba'].copy() if 'vertex_rgba' in source else None
     vertices = data['chart'].astype(np.float32)
     triangles = data['triangles']
     rgba = np.zeros((len(vertices), 4), dtype=np.float32)
     rgba[:, 3] = 1.
+    if authored_rgba is not None:
+        if authored_rgba.shape != rgba.shape or not np.isfinite(authored_rgba).all():
+            raise ValueError('Authored vertex RGBA must match the original vertices')
+        rgba = authored_rgba.astype(np.float32)
+    mask_description = 'Authored vertex RGBA; see source metadata, not inferred erosion data' if authored_rgba is not None else 'Constant diagnostic RGBA(0,0,0,1); not erosion/flow data'
     args.output.parent.mkdir(parents=True, exist_ok=True)
     original_path = args.output.with_suffix('.npz')
     np.savez_compressed(original_path, vertices_m=data['vertices'], triangles=triangles,
                         vertex_rgba=rgba, metadata_json=np.asarray(json.dumps(dict(
                             input_path=str(args.input.resolve()), input_sha256=sha(args.input),
-                            masks='Constant diagnostic RGBA(0,0,0,1); not erosion/flow data',
+                            masks=mask_description,
                             source_metadata=data['metadata']))))
     bpy.ops.object.select_all(action='SELECT')
     bpy.ops.object.delete(use_global=False)
@@ -55,8 +63,10 @@ def main():
     scene.collection.objects.link(obj)
     normals = configure_mesh_normals(mesh, 'angle', args.normal_angle_deg)
     corners = np.array([loop.vertex_index for loop in mesh.loops], dtype=np.int64)
-    uv = mesh.uv_layers.new(name='Physical100mUV')
-    uv.data.foreach_set('uv', (vertices[corners, :2]/100.).ravel())
+    if authored_uv is not None and (authored_uv.shape != (len(vertices),2) or not np.isfinite(authored_uv).all()):
+        raise ValueError('Authored UV0 must be finite and correspond to every original vertex')
+    uv = mesh.uv_layers.new(name='AuthoredScanUV' if authored_uv is not None else 'Physical100mUV')
+    uv.data.foreach_set('uv', (authored_uv[corners] if authored_uv is not None else vertices[corners, :2]/100.).ravel())
     color = mesh.color_attributes.new(name='DiagnosticZeros', type='FLOAT_COLOR', domain='CORNER')
     color.data.foreach_set('color', rgba[corners].ravel())
     mesh.color_attributes.active_color = color
@@ -78,8 +88,9 @@ def main():
                    local_dimensions_m=np.ptp(vertices, axis=0).tolist(), vertices=len(vertices),
                    triangles=len(triangles), units='metres; scene unit1; apply_unit_scale=True',
                    axis_forward='-Y', axis_up='Z', normals=normals,
-                   color_encoding='LINEAR FLOAT_COLOR; constant diagnostic(0,0,0,1)',
+                   color_encoding='LINEAR FLOAT_COLOR; '+mask_description,
                    scientific_masks_available=False, unreal_imported=False, runtime_integrated=False)
+    sidecar['uv_mapping'] = 'Original per-vertex uv0' if authored_uv is not None else 'Existing physical100m XY projection'
     args.output.with_suffix('.json').write_text(json.dumps(sidecar, indent=2)+'\n', encoding='utf-8')
     print(json.dumps(dict(fbx=str(args.output), vertices=len(vertices), triangles=len(triangles))), flush=True)
 
