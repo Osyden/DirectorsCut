@@ -266,6 +266,7 @@ void ADCRideDirector::BeginPlay()
 void ADCRideDirector::Seek(float NewTime)
 {
 	RideTime = FMath::Max(0.f, NewTime);
+	if (RideTime == 0.f) { HintStage = 0; }
 }
 
 void ADCRideDirector::DamageShip(float Amount, bool bQuiet)
@@ -376,18 +377,34 @@ void ADCRideDirector::Tick(float DeltaSeconds)
 		if (Left < 10.f) { Trauma = FMath::Max(Trauma, 0.8f * (1.f - Left / 10.f)); }
 	}
 
-	// A nudge at the start for a captain who has not spoken yet.
+	// Space the optional crew nudge ahead of the horizon call so its synthesis
+	// and sentence do not occupy the warning's early playback window.
 	if (UDCCrewSubsystem* CrewSub = GetWorld()->GetSubsystem<UDCCrewSubsystem>())
 	{
-		if (HintStage == 0 && RideTime > 17.f)
+		if (HintStage == 0 && RideTime > 8.f)
 		{
 			HintStage = 1;
-			if (CrewSub->OrdersGiven <= 1) { CrewSub->Report(TEXT("All hands waiting on your word, Captain. Shall we man the guns?"), true); }
+			if (Cur.Phase == EDCPhase::OpenSea && RideTime < 14.f && CrewSub->OrdersGiven <= 1)
+			{ CrewSub->Report(TEXT("All hands waiting on your word, Captain. Shall we man the guns?"), true); }
 		}
-		if (HintStage == 1 && RideTime > 42.f)
+		if (HintStage == 1 && RideTime > 22.f)
 		{
-			HintStage = 2;
-			CrewSub->Report(TEXT("Fog on the horizon, Captain. It is coming on fast."), true);
+			// Twenty seconds earlier than the old 42s trigger. The human run took
+			// another 4.6s to begin speaking, when the front had fully grown (44s).
+			// Retry a report cooldown briefly, but never announce a distant horizon
+			// after a seek into the front. The existing six-second start TTL remains.
+			if (Cur.Phase != EDCPhase::OpenSea || RideTime >= 24.f) { HintStage = 2; }
+			else
+			{
+				const TWeakObjectPtr<ADCRideDirector> Weak(this);
+				const auto InOpenSea = [Weak]() { return Weak.IsValid() && Weak->GetPhase() == EDCPhase::OpenSea; };
+				const auto CanStart = [Weak,InOpenSea]() { return InOpenSea() && Weak->RideTime < 30.f; };
+				if (CrewSub->Report(TEXT("Fog on the horizon, Captain. It is coming on fast."), true, CanStart, InOpenSea))
+				{
+					HintStage = 2;
+					UE_LOG(LogDC, Log, TEXT("HORIZON_WARNING queued ride=%.2f latest_start=30.00"), RideTime);
+				}
+			}
 		}
 	}
 	if (Cur.Phase != CurrentPhase)
