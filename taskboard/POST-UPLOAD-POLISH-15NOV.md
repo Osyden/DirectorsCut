@@ -13,3 +13,15 @@ Source integration complete:4ea8be5 speech continuation, d65a56c water ruins, d0
 User additionally requested a stronger linear statue laser with multiple fires. It now sweeps between surveyed same-level deck points, with larger eye beams/contact glow, two spaced ignition attempts under MaxFires2, and exactly one1.2-hull damage event. No new assets. Runtime validation remains pending upload completion.
 
 Combined CPU reruns pass:43,427 creature damage,297,082 fog/beam,56,775 boss,33,640 ruins and134 warning/continuation checks. Native and package runners are prepared in Saved/ReviewPostUpload.ps1, Saved/ReviewPostUploadCommands.ps1 and Saved/PackagePostUpload.ps1; the scene runner refuses to start until root writes an upload-complete evidence marker. That marker must only be written after actual Butler completion is confirmed. Main source integration is not native acceptance.
+
+Butler transfer completed with exit0 (13.06GiB), confirmed by its chat before root opened the build lane; remote itch processing is tracked there separately. Uploaded23:10 files remain unchanged.
+
+Native editor compile and12 automation checks passed. Six report lifecycle cases passed: two naturally completed reports, four appropriate cancellations and six preserved command replies. Normal fog gameplay produced six starts/six completed ACE lines, no started-report cancellations; one stale contact warning was discarded before start. This is log-based evidence, not a new physical microphone/listening test.
+
+Native beam fixture passed empty deck0→1→2, two distinct contacts876cm apart, damage1.2 then0 and fire cap2. Larger beam visible in captured frames. Creature verification passed all eight assertions including a real three-hit kill, bank waves3/4/4/4 and tunnel cleanup. Slam took three hits and interrupted before contact; authored limb and remaining-hit markers were inspected.
+
+Water collision at106.52 produced one2.7-hull hit and1.76m pushaway with no repeat; columns visibly meet water with foam. Impact spray pulse is logged but its exact peak falls between captured frames. Hard-steering run passed both sampled clusters without collision/terrain penetration; its water-height compensation is numerically correct, with visual grounding established in the closer contact run.
+
+Native route-tentacle review exposed a real ballistic miss: its moving joint had no flight lead. Integrated9a3fb97 publishes bounded world velocity for route targets and extends the existing moving-creature aim correction only to those targets.120 trajectory regressions pass; repeat native interrupt acceptance is required before packaging. Failed original evidence retained separately.
+
+Repeat native route review passed after the fix: real hits at327.04 and329.83, remaining1→0, interrupt before the332 collision and no contact event. The exposed marker and authored limb remain readable. New source is ready for an isolated package and packaged speech/commands/beam checks.
