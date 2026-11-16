@@ -401,9 +401,12 @@ void ADCEarlyEncounters::Ignite(const FVector& DeckPoint, const TCHAR* Cause)
 #endif
 	const int32 Before = Troubles->NumFires();
 	Troubles->StartFire(DeckPoint);
-	Director->DamageShip(1.2f);
+	ADCAudio* Sound = Cast<ADCAudio>(UGameplayStatics::GetActorOfClass(this, ADCAudio::StaticClass()));
+	const bool bFireball = FCString::Strcmp(Cause, TEXT("fireball")) == 0;
+	if (bFireball && Sound) { Sound->FireballImpact(Director, 1.2f); }
+	else { Director->DamageShip(1.2f); }
 	++ImpactCount;
-	if (ADCAudio* Sound = Cast<ADCAudio>(UGameplayStatics::GetActorOfClass(this, ADCAudio::StaticClass()))) { Sound->Boom(.45f); }
+	if (!bFireball && Sound) { Sound->Boom(.45f); }
 	UE_LOG(LogDC, Display, TEXT("Encounter impact: %s deck=%s fires=%d->%d at %.1f"), Cause, *DeckPoint.ToCompactString(), Before, Troubles->NumFires(), Director->RideTime);
 }
 

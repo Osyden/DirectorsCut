@@ -648,6 +648,31 @@ void ADCAudio::LandingImpact()
 		BaseVolume, Sound->GetDuration(), SpeechDuck);
 }
 
+void ADCAudio::FireballImpact(ADCRideDirector* HitDirector, float Damage)
+{
+	// DamageShip still applies trauma and broadcasts the gameplay event. Only
+	// our generic water/timber response is suppressed for this synchronous hit.
+	{
+		TGuardValue<bool> Suppress(bSuppressGenericShipHitAudio, true);
+		if (HitDirector) { HitDirector->DamageShip(Damage); }
+	}
+	USoundBase* Sound = FindReal(TEXT("fireball_flame_whoosh"));
+	if (!Sound)
+	{
+		UE_LOG(LogDC, Warning, TEXT("FIREBALL_AUDIO missing fireball_flame_whoosh; import the approved impact asset"));
+		return;
+	}
+	const float BaseVolume = MasterVolume;
+	if (UAudioComponent* C = UGameplayStatics::SpawnSound2D(this, Sound, BaseVolume * SpeechDuck, 1.f))
+	{
+		FOneShot O; O.Component = C; O.BaseVolume = BaseVolume;
+		O.EndTime = FPlatformTime::Seconds() + Sound->GetDuration() + .5;
+		OneShots.Add(O);
+	}
+	UE_LOG(LogDC, Log, TEXT("FIREBALL_AUDIO asset=fireball_flame_whoosh gain=%.3f pitch=1 duration=%.3f damage=%.2f generic_layers=0 speechDuck=%.3f"),
+		BaseVolume, Sound->GetDuration(), Damage, SpeechDuck);
+}
+
 void ADCAudio::Boom(float Volume)
 {
 	PlayReal(TEXT("water_impact"), FMath::Clamp(Volume, 0.3f, 1.f), FMath::FRandRange(0.6f, 0.8f));
@@ -656,6 +681,7 @@ void ADCAudio::Boom(float Volume)
 
 void ADCAudio::OnShipHit(float Amount)
 {
+	if (bSuppressGenericShipHitAudio) { return; }
 	// Water and timber together: the recorded splash under the synthesised crunch.
 	PlayReal(TEXT("water_impact"), FMath::Clamp(0.4f + Amount * 0.1f, 0.4f, 0.9f), FMath::FRandRange(0.85f, 1.1f));
 	if (Impacts.Num())

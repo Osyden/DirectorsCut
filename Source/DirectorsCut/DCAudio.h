@@ -38,6 +38,8 @@ public:
 	void CannonSplash(const FVector& Where);
 	/** One heavy landing wave and timber compression; remaining tail follows speech duck. */
 	void LandingImpact();
+	/** Apply the normal fireball damage/trauma, replacing only this hit's generic audio with the approved whoosh. */
+	void FireballImpact(ADCRideDirector* HitDirector, float Damage);
 	/** Extra wind, 0 to 1, set each frame by whatever is roaring near the ship (a waterspout, the creature's end). */
 	float SpoutRoar = 0.f;
 	/** A heavy report: thunder and a crash of water together (a burning stone coming down, the plume going up). */
@@ -76,6 +78,7 @@ protected:
 	float MaelstromTime = 0.f;
 	int32 RoarsPlayed = 0;
 	void OnShipHit(float Amount);
+	bool bSuppressGenericShipHitAudio = false;
 	void TickBell(float DeltaSeconds);
 	void TickMusic(float DeltaSeconds);
 	void TickMenuMusic(bool bMenu);

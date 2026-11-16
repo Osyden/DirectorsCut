@@ -43,13 +43,14 @@ namespace DCBossFireball
     inline void Impact(UWorld* World,ADCRideDirector* Director,const FVector& To)
     {
         if(!Director) return;
-        Director->DamageShip(2.f);
+        if(auto* Sound=Cast<ADCAudio>(UGameplayStatics::GetActorOfClass(World,ADCAudio::StaticClass())))
+            Sound->FireballImpact(Director,2.f);
+        else Director->DamageShip(2.f);
         if(auto* T=ADCTroubles::Get(Director); T && T->DeckPoints.Num() && T->NumFires()<T->MaxFires)
         {
             FVector Best=T->DeckPoints[0];
             for(const FVector& P:T->DeckPoints) if(FVector::DistSquared2D(P,To)<FVector::DistSquared2D(Best,To)) Best=P;
             T->StartFire(Best);
         }
-        if(auto* Sound=Cast<ADCAudio>(UGameplayStatics::GetActorOfClass(World,ADCAudio::StaticClass()))) Sound->Boom(.7f);
     }
 }
