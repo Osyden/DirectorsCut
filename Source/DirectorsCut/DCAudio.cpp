@@ -628,20 +628,24 @@ void ADCAudio::CannonSplash(const FVector& Where)
 
 void ADCAudio::LandingImpact()
 {
-	// One close water crash and timber compression, never a storm/thunder loop.
-	// Track the recording so later crew speech ducks the remaining water tail.
-	if (USoundBase* Sound=FindReal(TEXT("water_impact")))
+	// Approved thunder/water composite already contains the complete impact and tail.
+	// Keep native pitch and do not stack the old water or procedural timber hit.
+	USoundBase* Sound = FindReal(TEXT("landing_thunderous"));
+	if (!Sound)
 	{
-		constexpr float Pitch=.78f;
-		if (UAudioComponent* C=UGameplayStatics::SpawnSound2D(this,Sound,1.55f*MasterVolume*SpeechDuck,Pitch))
-		{
-			FOneShot O; O.Component=C; O.BaseVolume=1.55f*MasterVolume;
-			O.EndTime=FPlatformTime::Seconds()+Sound->GetDuration()/Pitch+.5;
-			OneShots.Add(O);
-		}
+		UE_LOG(LogDC, Warning, TEXT("LANDING_AUDIO missing landing_thunderous; import the dedicated landing asset"));
+		return;
 	}
-	if (Impacts.Num()) { PlayOneShot(Impacts[FMath::RandRange(0,Impacts.Num()-1)],.9f); }
-	UE_LOG(LogDC,Log,TEXT("LANDING_AUDIO waterGain=%.3f timberGain=%.3f speechDuck=%.3f"),1.55f*MasterVolume,.9f*MasterVolume,SpeechDuck);
+	constexpr float Gain = .85f;
+	const float BaseVolume = Gain * MasterVolume;
+	if (UAudioComponent* C = UGameplayStatics::SpawnSound2D(this, Sound, BaseVolume * SpeechDuck, 1.f))
+	{
+		FOneShot O; O.Component = C; O.BaseVolume = BaseVolume;
+		O.EndTime = FPlatformTime::Seconds() + Sound->GetDuration() + .5;
+		OneShots.Add(O);
+	}
+	UE_LOG(LogDC, Log, TEXT("LANDING_AUDIO asset=landing_thunderous gain=%.3f pitch=1 duration=%.3f speechDuck=%.3f"),
+		BaseVolume, Sound->GetDuration(), SpeechDuck);
 }
 
 void ADCAudio::Boom(float Volume)
