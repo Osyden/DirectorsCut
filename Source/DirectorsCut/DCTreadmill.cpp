@@ -157,6 +157,19 @@ void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
 			DCHazards::SetGlow(Rock, Ember);
 			Register(Rock, Base, Radius, false, 1.f, FMath::FRandRange(0.f, 360.f), true);
 		}
+        else if(DCRuins::Available() && !FParse::Param(FCommandLine::Get(),TEXT("DCPillarReview")))
+        {
+            static const TCHAR* Compositions[]={TEXT("column-crescent"),TEXT("three-peak-reef"),TEXT("sunken-arch"),TEXT("split-ridge"),TEXT("fallen-arcade")};
+            AActor* Group=DCRuins::SpawnWaterComposition(World,Serial);
+            if(Group)
+            {
+                Group->Tags.Add(TEXT("DCCityObstacle"));
+                Group->Tags.Add(DCCityObstacleLayout::IsRock(Serial)?TEXT("DCRockObstacle"):TEXT("DCPillarObstacle"));
+            }
+            Register(Group,Base,DCCityObstacleLayout::MaximumFootprint,false,1.f,Serial%2 ? -18.f : 16.f,true);
+            UE_LOG(LogDC,Display,TEXT("CITY_WATER_RUIN serial=%d kind=%s composition=%s seaY=%.0f clearLane=%.0f at=%.1f"),Serial,
+                DCCityObstacleLayout::IsRock(Serial)?TEXT("rock"):TEXT("pillars"),Compositions[Serial%5],SeaY,DCCityObstacleLayout::PassingLane(Serial),Director->RideTime);
+        }
         else if (DCCityObstacleLayout::IsRock(Serial) && !FParse::Param(FCommandLine::Get(),TEXT("DCPillarReview")))
         {
             AActor* Rock=DCRuins::Available() ? DCRuins::SpawnCrag(World,FMath::FRandRange(1100.f,1400.f),FMath::FRandRange(3500.f,4500.f))

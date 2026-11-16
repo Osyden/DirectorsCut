@@ -232,6 +232,54 @@ AActor* DCRuins::SpawnBrokenColumns(UWorld* World, float Radius)
 	return A;
 }
 
+AActor* DCRuins::SpawnWaterComposition(UWorld* World, int32 Variant)
+{
+    AActor* A=RuinActor(World);
+    // All pieces are bottom-anchored. Registration measures/fits the complete
+    // rotated assembly to the existing 15m hazard envelope before water contact.
+    const auto Piece=[A](const TCHAR* Name,FVector At,float Width,float Height,float Yaw=0.f,bool Foot=true)
+    {
+        if(UStaticMesh* Mesh=RuinMesh(Name))
+        {
+            const FVector Size=Mesh->GetBoundingBox().GetSize();
+            const float XY=Width/FMath::Max(FMath::Max(Size.X,Size.Y),1.0);
+            RuinPiece(A,Name,At,Yaw,FVector(XY,XY,Height/FMath::Max(Size.Z,1.0)),0.f,0.f,
+                Foot?FName(TEXT("DCPillarUpright")):NAME_None);
+        }
+    };
+    switch(Variant%5)
+    {
+    case 0: // A crescent of unequal broken columns, not the same two posts.
+        Piece(TEXT("Columns/SM_Column_01_dmg_04"),FVector(-760,-400,-180),520,2800,15);
+        Piece(TEXT("Columns/SM_Column_01_01"),FVector(100,350,-180),650,4100,48);
+        Piece(TEXT("Columns/SM_Column_01_dmg_05"),FVector(760,-360,-180),560,3300,-20);
+        break;
+    case 1: // Low/wide reef with three distinct peaks.
+        Piece(TEXT("Rocks/SM_Rock_01"),FVector(-650,-300,-400),1450,3000,25);
+        Piece(TEXT("Cliffs/SM_Cliff_01"),FVector(300,340,-500),1550,4300,-28);
+        Piece(TEXT("Rocks/SM_Rock_01"),FVector(800,-500,-400),850,2700,115);
+        break;
+    case 2: // Sunken arch and its broken neighbouring pier.
+        Piece(TEXT("Arch/SM_Arch_04"),FVector(-200,250,-300),2200,4400,18);
+        Piece(TEXT("Columns/SM_Column_01_dmg_03"),FVector(700,-850,-180),600,2900,-35);
+        break;
+    case 3: // Split rock ridge with one remnant of the drowned city.
+        Piece(TEXT("Cliffs/SM_Cliff_02"),FVector(-650,150,-450),1200,4500,-32);
+        Piece(TEXT("Rocks/SM_Rock_01"),FVector(650,-350,-400),1350,3100,85);
+        Piece(TEXT("Columns/SM_Column_01_dmg_05"),FVector(550,600,-180),430,3500,10);
+        break;
+    default: // Diagonal ruined arcade, tall-to-short with a fallen end.
+        Piece(TEXT("Columns/SM_Column_01_01"),FVector(-850,-500,-180),500,4300,0);
+        Piece(TEXT("Columns/SM_Column_01_dmg_04"),FVector(-260,-150,-180),560,3600,30);
+        Piece(TEXT("Columns/SM_Column_01_dmg_05"),FVector(340,250,-180),540,3000,75);
+        Piece(TEXT("Columns/SM_Column_01_dmg_03"),FVector(900,650,-180),450,2700,110);
+        break;
+    }
+    Piece(TEXT("Columns/SM_Column_01_dmg_07"),FVector(150,-250,-260),1300,650,55,false);
+    Piece(TEXT("Stone_blocks/SM_Stone_blocks_04_block_03"),FVector(-500,480,-280),950,700,-22,false);
+    return A;
+}
+
 AActor* DCRuins::SpawnCrag(UWorld* World, float Radius, float Height)
 {
 	AActor* A = RuinActor(World);

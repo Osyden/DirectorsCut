@@ -29,6 +29,8 @@ namespace DCRuins
 	AActor* SpawnBrokenColumns(UWorld* World, float Radius);
 	/** Lane obstacle: a crag of rock. */
 	AActor* SpawnCrag(UWorld* World, float Radius, float Height);
+	/** Five distinct bounded water-hazard compositions, using installed ruin/rock meshes. */
+	AActor* SpawnWaterComposition(UWorld* World, int32 Variant);
 	/** A whole sanctuary on a stepped platform: temple, colonnaded forecourt, arch, statues. Scale 1 = about 150 m across. */
 	AActor* SpawnComplex(UWorld* World, float Scale, int32 Seed);
 	/** Fixed masonry shore supporting city creatures, with a submerged foundation. */
