@@ -2,7 +2,7 @@
 
 | Task | Status | Owner | Done when |
 | --- | --- | --- | --- |
-| Varied water-obstacle compositions | Source compiled; visual check/build queued behind human playtest | Root | [Five distinct assemblies and checks](WATER-COMPOSITIONS-16NOV.md). Preserve0049 playable and safe lanes. |
+| Varied water-obstacle compositions | Accepted0105; native/package checks passed; launcher selected | Root | [Five distinct assemblies and checks](WATER-COMPOSITIONS-16NOV.md). Runtime bca288e;0049 fallback retained; not uploaded. |
 | Channel variety, visible hazards and earlier fog warning | 00:49 package accepted and selected; native and packaged checks pass | Root plus three workers | [Acceptance](CHANNEL-RESTORATION-16NOV.md). Includes approved landing and isolated fireball sounds; no new upload. |
 | Larger hazards and varied channel banks | Included00:49;129,340 CPU checks and native/packaged course pass | tunnel_boss, codex/channel-landmarks | [Changes, history and native checks](CHANNEL-LANDMARKS-16NOV.md). Larger columns, restored rock hazards and asymmetric shores; safe corridor and enemy support preserved. |
 | Approved thunderous landing sound | Included00:49; imported and native/packaged contact checks pass | Trailer chat source; root integration/build | [Handoff](LANDING-THUNDER-16NOV.md); user-approved effect replaces prior landing layers. |
