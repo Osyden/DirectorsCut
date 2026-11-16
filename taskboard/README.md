@@ -2,6 +2,7 @@
 
 | Task | Status | Owner | Done when |
 | --- | --- | --- | --- |
+| Channel variety, visible hazards and earlier fog warning | Parallel source preparation; root owns engine | tunnel_boss banks/hazards; cannons_helm fog plumes; voice_audio warning | [Scope and ownership](CHANNEL-RESTORATION-16NOV.md). Combine with approved landing sound in fresh package. |
 | Approved thunderous landing sound | In progress | Trailer chat, codex/landing-thunder-approved: LandingImpact only + dedicated import | [Handoff](LANDING-THUNDER-16NOV.md); user-approved effect replaces prior landing layers; root owns integration/build. |
 | Post-upload balance, water obstacles and dialogue | 00:07 package accepted and selected; no new upload | Root plus three workers | [Scope, ownership and acceptance](POST-UPLOAD-POLISH-15NOV.md). Uploaded23:10 preserved; native and packaged checks pass. |
 | Water ruins restored | Included in00:07; CPU and native contact/passing checks pass | tunnel_boss, codex/water-ruins-restore: treadmill, obstacle layout/contact | [Course, checks and native flags](WATER-RUINS-RESTORE-15NOV.md). Five staggered ruins, submerged feet, wave contact and one-shot impact; preserve banks and combat. |
