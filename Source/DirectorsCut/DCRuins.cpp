@@ -1,4 +1,5 @@
 #include "DCRuins.h"
+#include "DCFogRouteLayout.h"
 #include "DCTypes.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
@@ -312,12 +313,21 @@ AActor* DCRuins::SpawnComplex(UWorld* World, float Scale, int32 Seed)
 	return A;
 }
 
-AActor* DCRuins::SpawnBank(UWorld* World, float Length, float Width, float Bottom, float Top)
+AActor* DCRuins::SpawnBank(UWorld* World, float Length, float Width, float Bottom, float Top, float Along, float Side)
 {
 	AActor* A = RuinActor(World);
 	A->Tags.Add(TEXT("DCCityBank"));
-	// The collision proxy and visible instanced blocks share this exact rectangle.
-	// Deep foundations stay submerged even in troughs; the walking surface is fixed.
-	RuinFloor(A, FVector(0, 0, Bottom), Length, Width, Top-Bottom, 8.f);
+    // The old safety fix made both shorelines ruler-straight. Keep its same
+    // supported walking bench, but recess the spare inboard edge and extend
+    // the outer terrace asymmetrically. Each visible slab has its matching proxy.
+    constexpr int32 Slices=8;
+    const float Step=Length/Slices;
+    for(int32 I=0;I<Slices;++I)
+    {
+        const float X=-Length*.5f+(I+.5f)*Step;
+        const float Inset=DCFogRouteLayout::ShoreInset(Along+X,Side);
+        const float Outer=DCFogRouteLayout::ShoreOuterExtension(Along+X,Side);
+        RuinFloor(A,FVector(X,Side*(Inset+Outer)*.5f,Bottom),Step,Width-Inset+Outer,Top-Bottom,8.f);
+    }
 	return A;
 }

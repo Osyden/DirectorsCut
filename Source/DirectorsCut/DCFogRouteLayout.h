@@ -7,6 +7,15 @@ namespace DCFogRouteLayout
 // Reserve the complete helm envelope plus the yawed hull, not just the centreline.
 inline float ClearEdge(float HelmLimit, float HullHalfLength, float HullHalfWidth)
 { return HelmLimit + std::sqrt(HullHalfLength*HullHalfLength + HullHalfWidth*HullHalfWidth) + 250.f; }
+// Scallop only the spare inboard strip. The continuous walking bench begins
+// 12m outside ClearEdge and remains unchanged at every longitudinal position.
+constexpr float MaximumShoreInset=900.f;
+constexpr float ShoreHeadlandHalfWidth=450.f;
+constexpr float ShoreHeadlandCentre=500.f;
+inline float ShoreInset(float Along,float Side)
+{ return MaximumShoreInset*(.5f+.32f*std::sin(Along/17000.f+Side*1.7f)+.18f*std::sin(Along/6300.f-Side*.8f)); }
+inline float ShoreOuterExtension(float Along,float Side)
+{ return 2500.f+1800.f*std::sin(Along/24000.f+Side*2.3f); }
 constexpr float BankWidth = 6000.f;
 constexpr float BankTop = 1600.f;
 constexpr float BankBottom = -2200.f;

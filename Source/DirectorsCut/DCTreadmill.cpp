@@ -122,7 +122,7 @@ void ADCTreadmill::Register(AActor* Actor, const FVector& Base, float Radius, bo
 	// initially contributes world origin to actor bounds, inflating them to 650m.
 	if(Actor->ActorHasTag(TEXT("DCCityObstacle"))) { Obj.Reach=Radius; }
 	Actor->SetActorLocation(Obj.Base);
-	if(Actor->ActorHasTag(TEXT("DCPillarObstacle"))) { UDCObstacleWaterContact::Attach(Actor); }
+	if(Actor->ActorHasTag(TEXT("DCPillarObstacle")) || Actor->ActorHasTag(TEXT("DCRockObstacle"))) { UDCObstacleWaterContact::Attach(Actor); }
 }
 
 void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
@@ -157,13 +157,21 @@ void ADCTreadmill::SpawnForPhase(EDCPhase Phase, float DeltaSeconds)
 			DCHazards::SetGlow(Rock, Ember);
 			Register(Rock, Base, Radius, false, 1.f, FMath::FRandRange(0.f, 360.f), true);
 		}
+        else if (DCCityObstacleLayout::IsRock(Serial) && !FParse::Param(FCommandLine::Get(),TEXT("DCPillarReview")))
+        {
+            AActor* Rock=DCRuins::Available() ? DCRuins::SpawnCrag(World,FMath::FRandRange(1100.f,1400.f),FMath::FRandRange(3500.f,4500.f))
+                : DCHazards::SpawnRock(World,1300.f,4000.f,false,Stone);
+            if(Rock) { Rock->Tags.Add(TEXT("DCCityObstacle")); Rock->Tags.Add(TEXT("DCRockObstacle")); }
+            Register(Rock,Base,1400.f,false,1.f,FMath::FRandRange(-25.f,25.f),true);
+            UE_LOG(LogDC,Display,TEXT("CITY_WATER_RUIN serial=%d kind=rock seaY=%.0f clearLane=%.0f at=%.1f"),Serial,SeaY,DCCityObstacleLayout::PassingLane(Serial),Director->RideTime);
+        }
 		else
 		{
-			const float Scale = FMath::FRandRange(.55f,.75f);
+			const float Scale = FMath::FRandRange(1.1f,1.35f);
 			AActor* Columns=DCRuins::Available()?DCRuins::SpawnBrokenColumns(World,1000.f*Scale):DCHazards::SpawnRuin(World,Scale,Stone);
 			if(Columns) { Columns->Tags.Add(TEXT("DCCityObstacle")); Columns->Tags.Add(TEXT("DCPillarObstacle")); }
 			Register(Columns,Base,1000.f*Scale,false,1.f,FMath::FRandRange(-25.f,25.f),true);
-            UE_LOG(LogDC,Display,TEXT("CITY_WATER_RUIN serial=%d seaY=%.0f clearLane=%.0f at=%.1f"),Serial,SeaY,DCCityObstacleLayout::PassingLane(Serial),Director->RideTime);
+            UE_LOG(LogDC,Display,TEXT("CITY_WATER_RUIN serial=%d kind=pillars seaY=%.0f clearLane=%.0f at=%.1f"),Serial,SeaY,DCCityObstacleLayout::PassingLane(Serial),Director->RideTime);
 		}
 	}
 
@@ -1297,8 +1305,23 @@ void ADCTreadmill::SpawnAtlantis()
 		{
 			for (float Side : {-1.f,1.f})
 			{
-				AActor* Bank = DCRuins::SpawnBank(World,40000.f,DCFogRouteLayout::BankWidth,DCFogRouteLayout::BankBottom,DCFogRouteLayout::BankTop);
-				Register(Bank,FVector(20000.f+Section*40000.f,Side*GetCityBankY(),SeaZ),2000.f,false,1.f,0.f,false);
+                const float Along=20000.f+Section*40000.f;
+                AActor* Bank=DCRuins::SpawnBank(World,40000.f,DCFogRouteLayout::BankWidth,DCFogRouteLayout::BankBottom,DCFogRouteLayout::BankTop,Along,Side);
+                Register(Bank,FVector(Along,Side*GetCityBankY(),SeaZ),2000.f,false,1.f,0.f,false);
+                if (Section>=1 && Section<=8 && Side==(Section%2 ? -1.f : 1.f))
+                {
+                    // Broad along the shore, narrow across it: irregular rock
+                    // shoulders break the masonry outline without entering the
+                    // reserved hull envelope or the existing walkers' bench.
+                    AActor* Headland=DCRuins::SpawnCrag(World,1300.f,2800.f+(Section%3)*700.f);
+                    if(Headland)
+                    {
+                        FVector Origin,Extent; Headland->GetActorBounds(false,Origin,Extent);
+                        Headland->SetActorScale3D(FVector((1800.f+(Section%3)*700.f)/FMath::Max(Extent.X,1.0),DCFogRouteLayout::ShoreHeadlandHalfWidth/FMath::Max(Extent.Y,1.0),1.f));
+                        Headland->Tags.Add(TEXT("DCCityBank"));
+                        Register(Headland,FVector(Along+Side*6500.f,Side*(GetCityClearEdge()+DCFogRouteLayout::ShoreHeadlandCentre),SeaZ-400.f),600.f,false,1.f,0.f,false);
+                    }
+                }
 			}
 		}
 	}

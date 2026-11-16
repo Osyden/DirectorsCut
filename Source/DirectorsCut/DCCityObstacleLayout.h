@@ -9,12 +9,13 @@ namespace DCCityObstacleLayout
     // in the player's chosen lane. Last cluster passes well before the tunnel.
     constexpr float Lanes[Count]={-650.f,1800.f,-1400.f,1000.f,-2100.f};
     inline float Lane(int32 Serial) { return Lanes[Serial%Count]; }
-    inline float PassingLane(int32 Serial) { return Lane(Serial)<0.f ? 3300.f : -3300.f; }
+    inline float PassingLane(int32 Serial) { return Lane(Serial)<0.f ? 4200.f : -4200.f; }
+    inline bool IsRock(int32 Serial) { return Serial%2==1; }
     constexpr float MinimumSide=650.f;
     constexpr float MaximumSide=2100.f;
-    constexpr float MaximumFootprint=900.f;
+    constexpr float MaximumFootprint=1500.f;
     constexpr float Submergence=300.f;
-    constexpr float MinimumVisiblePillar=600.f;
+    constexpr float MinimumVisiblePillar=2400.f;
     constexpr float WaveAllowance=250.f;
     // Evaluate the maximum future city shoulder, even when spawning in the
     // storm entry before its trough has formed. All quantities are centimetres.

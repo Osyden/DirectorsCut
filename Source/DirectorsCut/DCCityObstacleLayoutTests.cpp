@@ -19,7 +19,7 @@ bool FDCCityObstacleLayoutTest::RunTest(const FString& Parameters)
         {
             const float U=FMath::Clamp(FMath::Abs(Lane(I)+FootY)/9000.f,0.f,1.f);
             const float HighestWater=230.f+1100.f*U*U*(3.f-2.f*U)+WaveAllowance;
-            TestTrue(TEXT("Visible upright clears highest local wave by six metres"),Top-HighestWater>=MinimumVisiblePillar-.1f);
+            TestTrue(TEXT("Visible upright clears highest local wave by twenty-four metres"),Top-HighestWater>=MinimumVisiblePillar-.1f);
         }
     }
     TestTrue(TEXT("First cluster challenges an unattended centre route"),FMath::Abs(Lane(0))<MaximumFootprint+500.f);

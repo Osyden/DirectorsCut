@@ -8,6 +8,7 @@ out.mkdir(parents=True,exist_ok=True)
 source=r'''
 #include "DCCityObstacleLayout.h"
 #include "DCSteering.h"
+#include "DCFogRouteLayout.h"
 #include <cstdio>
 #include <cstdlib>
 #include <initializer_list>
@@ -53,6 +54,30 @@ int main(){
    std::printf("lane %.0f authority %.2f dt %.3f minimum clearance %.0fcm\n",Lane(I),Authority,Dt,Min);
   }
  }
+ // Every bank slice retains the same fixed enemy support, while its spare
+ // inner edge and extended outer terrace differ between port and starboard.
+ float MaxInset=0,MinInset=1e9,MaxAsymmetry=0;
+ for(float X=0;X<=400000;X+=500){
+  MaxAsymmetry=std::max(MaxAsymmetry,std::abs(DCFogRouteLayout::ShoreInset(X,-1)-DCFogRouteLayout::ShoreInset(X,1)));
+  for(float Side:{-1.f,1.f}){
+   float Inset=DCFogRouteLayout::ShoreInset(X,Side),Outer=DCFogRouteLayout::ShoreOuterExtension(X,Side);
+   MaxInset=std::max(MaxInset,Inset);MinInset=std::min(MinInset,Inset);
+   Check(Inset>=0 && Inset<=900,"recessed shoreline never enters reserved corridor");
+   Check(Outer>=0,"outer terrace never removes the supporting bench");
+   for(int Group=0;Group<4;++Group)for(int I=0;I<DCFogRouteLayout::GroupSize(Group);++I){
+    const float Radius=(std::hypot(137.113953f,92.420547f)+13.226578f)*(10+.8f*I);
+    const float Centre=3000+DCFogRouteLayout::WalkerOffset(I,Radius);
+    Check(Centre-Radius>Inset+100,"every actual Rampage footprint remains supported over all shoreline samples");
+    Check(Centre+Radius<6000+Outer,"outer bank retains each moving creature footprint");
+    Check(Centre-Radius>DCFogRouteLayout::ShoreHeadlandCentre+DCFogRouteLayout::ShoreHeadlandHalfWidth+100,"headlands do not intersect walker path");
+   }
+   Check(3000-1780>Inset+100,"statue pedestal keeps supported inboard margin");
+  }
+ }
+ Check(MaxInset-MinInset>850 && MaxAsymmetry>500,"bank profiles vary substantially and asymmetrically");
+ Check(DCFogRouteLayout::ShoreHeadlandCentre-DCFogRouteLayout::ShoreHeadlandHalfWidth>0,"headlands stay outside full rotated hull envelope");
+ Check(IsRock(1)&&IsRock(3)&&!IsRock(0)&&!IsRock(2)&&!IsRock(4),"course restores two rock hazards among three pillar clusters");
+ Check(MinimumVisiblePillar==2400,"pillars have four times previous visible clearance");
  Check(std::abs(Lane(0))<MaximumFootprint+500,"centre route requires a deliberate choice");
  bool Hit=false;int Events=0;
  for(int Frame=0;Frame<600;++Frame)if(CanImpact(Hit,0)){Hit=true;++Events;}

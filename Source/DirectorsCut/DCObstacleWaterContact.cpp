@@ -43,6 +43,7 @@ void UDCObstacleWaterContact::Build()
     SampleChannel=NextChannel; NextChannel+=8;
     UStaticMesh* Cylinder=LoadObject<UStaticMesh>(nullptr,TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
     TInlineComponentArray<UStaticMeshComponent*> Parts(Owner);
+    const bool Rock=Owner->ActorHasTag(TEXT("DCRockObstacle"));
     const bool Authored=Parts.ContainsByPredicate([](const UStaticMeshComponent* P){return P->ComponentHasTag(TEXT("DCPillarUpright"));});
     float PeakRise=1100.f;
     FParse::Value(FCommandLine::Get(),TEXT("DCTrough="),PeakRise);
@@ -53,10 +54,10 @@ void UDCObstacleWaterContact::Build()
         if(!Part->GetStaticMesh()) { continue; }
         FVector Extent=Part->Bounds.BoxExtent;
         // Upright columns only. Fallen drums/debris are already submerged.
-        if((Authored?!Part->ComponentHasTag(TEXT("DCPillarUpright")):Extent.Z<FMath::Max(Extent.X,Extent.Y)*1.15f) || Feet.Num()>=6) { continue; }
+        if((Authored?!Part->ComponentHasTag(TEXT("DCPillarUpright")):(!Rock && Extent.Z<FMath::Max(Extent.X,Extent.Y)*1.15f)) || Feet.Num()>=6) { continue; }
         const FVector Bottom=Part->Bounds.Origin-FVector(0,0,Extent.Z);
         const float OldHeight=Extent.Z*2.f;
-        if(Authored && OldHeight>1.f && Bottom.Z+OldHeight<MinimumTop)
+        if((Authored || Rock) && OldHeight>1.f && Bottom.Z+OldHeight<MinimumTop)
         {
             // One-time vertical fit around the fixed seabed foot. These tagged
             // pieces have yaw only: changing Z scale cannot change their XY gap.
@@ -71,7 +72,7 @@ void UDCObstacleWaterContact::Build()
         }
         UE_LOG(LogDC,Log,TEXT("PILLAR_FIT actor=%s mesh=%s footZ=%.1f oldHeight=%.1f height=%.1f topZ=%.1f requiredTop=%.1f"),
             *Owner->GetName(),*Part->GetStaticMesh()->GetName(),Bottom.Z,OldHeight,Extent.Z*2.f,Bottom.Z+Extent.Z*2.f,MinimumTop);
-        const float Radius=FMath::Clamp(static_cast<float>(FMath::Min(Extent.X,Extent.Y))*.92f,55.f,500.f);
+        const float Radius=FMath::Clamp(static_cast<float>(FMath::Min(Extent.X,Extent.Y))*.92f,55.f,Rock?1300.f:750.f);
         FFoot& Foot=Feet.AddDefaulted_GetRef();
         Foot.LocalCenter=Owner->GetActorTransform().InverseTransformPosition(Bottom);
         Foot.Radius=Radius; Foot.Height=Extent.Z*2.f; Foot.NextSplash=.4f+Feet.Num()*.37f;
