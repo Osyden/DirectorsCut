@@ -27,12 +27,19 @@ ADCFogBank* ADCFogBank::Spawn(UWorld* World, const FDCFogBankDesc& InDesc, int32
 	ADCFogBank* Bank = World->SpawnActor<ADCFogBank>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
 	if (!Bank) { return nullptr; }
 	Bank->Desc = InDesc;
+    static const bool bLegacyCityBillows=FParse::Param(FCommandLine::Get(),TEXT("DCLegacyCityBillows"));
+    const bool bCityFogGrid=InDesc.bCityLayer && InDesc.bHero && !bLegacyCityBillows;
+    // Landmark curtains must share the city's fog lighting/depth integration.
+    // Independent self-shadowed, low-albedo volumes read as isolated black smoke
+    // and add a separate composite behind thin rigging. Keep their spatial and
+    // reveal/weather envelopes; only their renderer/albedo joins the other banks.
+    if(bCityFogGrid) Bank->Desc.Tint=FDCFogBankDesc().Tint;
 	Bank->Director = ADCRideDirector::Get(World);
 	Bank->Mesh->SetStaticMesh(Sphere);
 	Bank->Mesh->SetWorldScale3D(InDesc.Radii / 50.f);
 	Bank->MID = UMaterialInstanceDynamic::Create(Base, Bank);
 	Bank->Mesh->SetMaterial(0, Bank->MID);
-	Bank->MID->SetVectorParameterValue(TEXT("Tint"), InDesc.Tint * (InDesc.bCityLayer ? 0.68f : 1.f));
+	Bank->MID->SetVectorParameterValue(TEXT("Tint"), Bank->Desc.Tint * (InDesc.bCityLayer ? 0.68f : 1.f));
 	Bank->MID->SetVectorParameterValue(TEXT("Radii"), FLinearColor(InDesc.Radii.X, InDesc.Radii.Y, InDesc.Radii.Z, 0.f));
 	Bank->MID->SetScalarParameterValue(TEXT("Size"), InDesc.Size);
 	Bank->MID->SetScalarParameterValue(TEXT("Erode"), InDesc.Erode);
@@ -45,7 +52,7 @@ ADCFogBank* ADCFogBank::Spawn(UWorld* World, const FDCFogBankDesc& InDesc, int32
 	// No fog below the sea, and it gathers over the first few metres above it.
 	Bank->MID->SetVectorParameterValue(TEXT("Floor"), FLinearColor(SeaZ - 150.f, 0.f, 0.f, 500.f));
 	Bank->Mesh->SetVisibility(false);
-	UMaterialInterface* HeroBase = InDesc.bHero ? LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_HeteroCloud.M_HeteroCloud")) : nullptr;
+	UMaterialInterface* HeroBase = InDesc.bHero && !bCityFogGrid ? LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/DC/Materials/M_HeteroCloud.M_HeteroCloud")) : nullptr;
 	if (HeroBase)
 	{
 		static float Res = 48.f; static bool bResRead = false;   // 96 and 64 looked the same from the deck and cost a tenth and a fifth more
@@ -84,6 +91,9 @@ ADCFogBank* ADCFogBank::Spawn(UWorld* World, const FDCFogBankDesc& InDesc, int32
 		Bank->Hero = H;
 		Bank->HeroUnit = (Unit.X + Unit.Y + Unit.Z) / 3.f;
 	}
+    if(InDesc.bCityLayer && InDesc.bHero)
+        UE_LOG(LogDC,Log,TEXT("CITY_BILLOW seed=%d renderer=%s density=%.6f radii=%s legacy=%d"),Seed,
+            HeroBase?TEXT("heterogeneous"):TEXT("fog-grid"),InDesc.Density,*InDesc.Radii.ToCompactString(),bLegacyCityBillows);
 	return Bank;
 }
 
