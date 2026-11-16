@@ -216,6 +216,8 @@ AActor* ADCBossCombat::MakeMesh(UStaticMesh* Mesh,UMaterialInterface* Mat,const 
 void ADCBossCombat::MakeTarget(const FVector& P)
 {
     AActor* A=MakeMesh(Sphere,Glow,P); if(!A) return;
+    if(Attack.Kind==DCBossTimeline::EAttack::Obstacle) A->Tags.Add(TEXT("DCMovingWeakPoint"));
+    A->GetRootComponent()->ComponentVelocity=FVector::ZeroVector; // Spawn/reconstruct never inherits a teleport velocity.
     // A flattened exposed band sits in the flesh; the generous invisible hit
     // radius remains forgiving while the visible target avoids a floating orb.
     A->SetActorScale3D(Attack.Kind==DCBossTimeline::EAttack::Mouth?FVector(2.4f):FVector(2.4f,2.4f,1.f));
@@ -393,7 +395,15 @@ void ADCBossCombat::UpdateAttack(float DT,const FTransform& Arena)
     { if(auto* T=Attack.Target.Get()) T->Destroy(); Attack.Target.Reset(); }
     else if(auto* T=Attack.Target.Get())
     {
+        const FVector Before=T->GetActorLocation();
         T->SetActorLocation(Attack.Kind==DCBossTimeline::EAttack::Mouth?Mouth():PoseJoint);
+        // Projectile flight/reload uses world seconds, whereas DT is ride time.
+        // Publish world-space motion per world second, including helm rotation.
+        const float WorldDT=GetWorld()->GetDeltaSeconds();
+        const FVector Movement=T->GetActorLocation()-Before;
+        const bool Continuous=DT>0.f && DT<.5f && WorldDT>UE_SMALL_NUMBER && Movement.SizeSquared()<FMath::Square(5000.f);
+        T->GetRootComponent()->ComponentVelocity=Attack.Kind==DCBossTimeline::EAttack::Obstacle && Continuous
+            ? (Movement/WorldDT).GetClampedToMaxSize(3500.f) : FVector::ZeroVector;
         if(Attack.Kind!=DCBossTimeline::EAttack::Mouth)
             T->SetActorRotation(FRotationMatrix::MakeFromZ((PoseJoint-PoseBend).GetSafeNormal()).Rotator());
         if(auto* Light=T->FindComponentByClass<UPointLightComponent>()) Light->SetIntensity(15000.f+85000.f*FMath::Square(GetCharge()));

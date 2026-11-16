@@ -429,10 +429,10 @@ bool ADCGunnery::ResolveAim(EDCSide Side, const FVector& Origin, const FVector& 
 	if (HostileIndex != INDEX_NONE)
 	{
 		OutTarget = HostilePoint;
-		// Early encounters reward keeping the sight on the visible creature. Its
-		// approach is led here so a good aim does not miss solely during ball flight.
+		// Moving creatures and committed route joints reward keeping the sight
+		// on the visible target; compensate only their motion during ball flight.
 		const AActor* Hostile = Treadmill->GetHostileActor(HostileIndex);
-		if (Hostile && Hostile->ActorHasTag(TEXT("DCEarlyThreat")))
+		if (Hostile && (Hostile->ActorHasTag(TEXT("DCEarlyThreat")) || Hostile->ActorHasTag(TEXT("DCMovingWeakPoint"))))
 		{
 			const FVector Point = Hostile->GetActorLocation();
 			const FVector Velocity = Hostile->GetVelocity().GetClampedToMaxSize(3500.f);
