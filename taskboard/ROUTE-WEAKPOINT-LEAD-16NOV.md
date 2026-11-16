@@ -11,3 +11,5 @@ Tools/probe_route_weakpoint_lead.py passes120 cases replaying three recorded sho
 Root must rerun Obstacle: expect two BOSS_HIT, remaining1 then0, BOSS_INTERRUPT before332, no BOSS_CONTACT. In initial frame review the revised authored limb silhouette/root immersion and marker looked acceptable; the failure was ballistic. Separate Slam native already proved three hits (remaining2/1/0) then permanent interruption at349.39.
 
 No engine/build/GPU launched, accepted/uploaded23:10 package untouched.
+
+Root native acceptance after integration9a3fb97: compile succeeded; two hits at327.04/329.83 reduced remaining1/0, interruption at329.83 preceded collision332, and no contact event occurred. Evidence Saved/PostUpload/Native/Obstacle; original failed run retained as Obstacle-before-lead. This closes the native requirement above.
